@@ -1,0 +1,262 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  LINKER
+  WRITER
+  TEAM_LEAD
+}
+
+enum ProductType {
+  NUTRA
+  ECOM
+}
+
+enum ArticleStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum LinkStatus {
+  REQUESTED
+  ACCEPTED
+  CANCELED
+  ISSUE
+  NEED_TO_CHECK
+  PRESELL_PAGE
+  REDIRECTED
+}
+
+enum NotificationType {
+  ARTICLE_SUGGESTION
+  LINK_ISSUE
+  APPROVAL_GRANTED
+}
+
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Site access for writers (assigned by Admin)
+  siteAccess      SiteAccess[]
+
+  // Products added by this linker
+  productsAdded   Product[]    @relation("ProductAddedBy")
+
+  // Articles written
+  articles        Article[]    @relation("ArticleWriter")
+
+  // Links added by this linker
+  linksAdded      LinkLog[]    @relation("LinkAddedBy")
+
+  // Team Lead: articles approved or reviewed
+  articleReviews  ArticleReview[] @relation("ReviewedBy")
+
+  // Team Lead: special approvals granted
+  specialApprovals SpecialApproval[] @relation("ApprovedBy")
+
+  // Notifications received
+  notifications   Notification[] @relation("NotificationRecipient")
+
+  // Notifications sent (by team lead)
+  notificationsSent Notification[] @relation("NotificationSender")
+}
+
+// ─────────────────────────────────────────────
+// SITE
+// ─────────────────────────────────────────────
+
+model Site {
+  id          Int         @id @default(autoincrement())
+  name        String
+  url         String?
+  productType ProductType
+  createdAt   DateTime    @default(now())
+
+  categories  Category[]
+  products    Product[]
+  siteAccess  SiteAccess[]
+}
+
+// Writer access to specific sites (assigned by Admin)
+model SiteAccess {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  siteId    Int
+  grantedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  site Site @relation(fields: [siteId], references: [id])
+
+  @@unique([userId, siteId])
+}
+
+// ─────────────────────────────────────────────
+// CATEGORY
+// ─────────────────────────────────────────────
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  siteId    Int
+  createdAt DateTime  @default(now())
+
+  site     Site      @relation(fields: [siteId], references: [id])
+  products Product[]
+
+  @@unique([name, siteId])
+}
+
+// ─────────────────────────────────────────────
+// PRODUCT
+// ─────────────────────────────────────────────
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
+  productType ProductType
+  siteId      Int
+  categoryId  Int
+  trendLink   String?
+  previewLink String?
+  remarks     String?     @db.Text
+  addedById   Int
+  addedAt     DateTime    @default(now())
+
+  site       Site     @relation(fields: [siteId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id])
+  addedBy    User     @relation("ProductAddedBy", fields: [addedById], references: [id])
+
+  article    Article?
+  linkLogs   LinkLog[]
+}
+
+// ─────────────────────────────────────────────
+// ARTICLE
+// ─────────────────────────────────────────────
+
+model Article {
+  id              Int           @id @default(autoincrement())
+  productId       Int           @unique
+  writerId        Int?
+  status          ArticleStatus @default(PENDING)
+  articleLink     String?
+  startedAt       DateTime?     // Set when status → IN_PROGRESS
+  completedAt     DateTime?     // Set when status → COMPLETED
+  writingTimeMin  Int?          // Calculated: completedAt - startedAt in minutes
+  updatedAt       DateTime      @updatedAt
+  productCreatedAt DateTime?    // Auto-set when article is completed
+
+  product  Product  @relation(fields: [productId], references: [id])
+  writer   User?    @relation("ArticleWriter", fields: [writerId], references: [id])
+
+  reviews          ArticleReview[]
+  specialApproval  SpecialApproval?
+}
+
+// ─────────────────────────────────────────────
+// ARTICLE REVIEW (Team Lead review/suggestions)
+// ─────────────────────────────────────────────
+
+model ArticleReview {
+  id          Int      @id @default(autoincrement())
+  articleId   Int
+  reviewedById Int
+  suggestion  String?  @db.Text
+  approved    Boolean  @default(false)
+  reviewedAt  DateTime @default(now())
+
+  article    Article @relation(fields: [articleId], references: [id])
+  reviewedBy User    @relation("ReviewedBy", fields: [reviewedById], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// SPECIAL APPROVAL (complete without article link)
+// ─────────────────────────────────────────────
+
+model SpecialApproval {
+  id           Int      @id @default(autoincrement())
+  articleId    Int      @unique
+  approvedById Int
+  writerName   String   // Denormalized for reporting
+  productName  String   // Denormalized for reporting
+  reason       String   @db.Text
+  approvedAt   DateTime @default(now())
+
+  article    Article @relation(fields: [articleId], references: [id])
+  approvedBy User    @relation("ApprovedBy", fields: [approvedById], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// LINK LOG
+// ─────────────────────────────────────────────
+
+model LinkLog {
+  id              Int        @id @default(autoincrement())
+  productId       Int
+  addedById       Int
+  bridgePageLink  String?
+  buyLink         String?
+  affiliateName   String
+  affiliateLink   String
+  geos            LinkGeo[]
+  status          LinkStatus @default(REQUESTED)
+  linkerRemarks   String?    @db.Text
+  addedAt         DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  product  Product @relation(fields: [productId], references: [id])
+  addedBy  User    @relation("LinkAddedBy", fields: [addedById], references: [id])
+}
+
+// GEO entries for a link (multi-select support)
+model LinkGeo {
+  id        Int    @id @default(autoincrement())
+  linkLogId Int
+  geo       String // e.g. "US", "UK", "CA"
+
+  linkLog LinkLog @relation(fields: [linkLogId], references: [id])
+
+  @@unique([linkLogId, geo])
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATION
+// ─────────────────────────────────────────────
+
+model Notification {
+  id          Int              @id @default(autoincrement())
+  recipientId Int
+  senderId    Int
+  type        NotificationType
+  message     String           @db.Text
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id])
+  sender    User @relation("NotificationSender", fields: [senderId], references: [id])
+}
