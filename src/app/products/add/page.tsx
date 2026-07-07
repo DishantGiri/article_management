@@ -5,12 +5,9 @@ import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ProductType = "NUTRA" | "ECOM";
-
 interface Site {
   id: number;
   name: string;
-  productType: ProductType;
 }
 
 interface Category {
@@ -19,9 +16,8 @@ interface Category {
 }
 
 interface FormData {
-  productType: ProductType | "";
-  siteId: string;
   categoryId: string;
+  siteId: string;
   name: string;
   trendLink: string;
   previewLink: string;
@@ -31,7 +27,7 @@ interface FormData {
 // ─── Step Indicator ───────────────────────────────────────────────────────────
 
 function StepIndicator({ step }: { step: number }) {
-  const steps = ["Product Type", "Select Site", "Product Details"];
+  const steps = ["Select Category", "Select Site", "Product Details"];
   return (
     <div className="flex items-center gap-0 mb-8">
       {steps.map((label, i) => {
@@ -93,36 +89,34 @@ export default function AddProductPage() {
   const [success, setSuccess] = useState(false);
 
   const [form, setForm] = useState<FormData>({
-    productType: "",
-    siteId: "",
     categoryId: "",
+    siteId: "",
     name: "",
     trendLink: "",
     previewLink: "",
     remarks: "",
   });
 
-  // Fetch sites when product type changes
+  // Fetch categories on load
   useEffect(() => {
-    if (!form.productType) return;
     setLoading(true);
-    fetch(`/api/sites?productType=${form.productType}`)
+    fetch("/api/categories")
       .then((r) => r.json())
-      .then((data) => setSites(data))
-      .catch(() => setError("Failed to load sites"))
-      .finally(() => setLoading(false));
-  }, [form.productType]);
-
-  // Fetch categories when site changes
-  useEffect(() => {
-    if (!form.siteId) return;
-    setLoading(true);
-    fetch(`/api/sites/${form.siteId}/categories`)
-      .then((r) => r.json())
-      .then((data) => setCategories(data))
+      .then((data) => setCategories(Array.isArray(data) ? data : []))
       .catch(() => setError("Failed to load categories"))
       .finally(() => setLoading(false));
-  }, [form.siteId]);
+  }, []);
+
+  // Fetch sites when category changes
+  useEffect(() => {
+    if (!form.categoryId) return;
+    setLoading(true);
+    fetch(`/api/sites?categoryId=${form.categoryId}`)
+      .then((r) => r.json())
+      .then((data) => setSites(Array.isArray(data) ? data : []))
+      .catch(() => setError("Failed to load sites"))
+      .finally(() => setLoading(false));
+  }, [form.categoryId]);
 
   const update = useCallback((field: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -148,7 +142,7 @@ export default function AddProductPage() {
           trendLink: form.trendLink || null,
           previewLink: form.previewLink || null,
           remarks: form.remarks || null,
-          addedById: 1, // TODO: replace with session user ID once auth is set up
+          addedById: typeof window !== "undefined" ? parseInt(localStorage.getItem("mockUserId") || "1") : 1,
         }),
       });
 
@@ -165,6 +159,8 @@ export default function AddProductPage() {
     }
   };
 
+  const getCategoryName = () => categories.find(c => String(c.id) === form.categoryId)?.name || "";
+
   // ── Success screen ──────────────────────────────────────────────────────────
   if (success) {
     return (
@@ -177,13 +173,13 @@ export default function AddProductPage() {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Product Added!</h2>
           <p className="text-gray-500 mb-6">
-            <strong className="text-gray-700">{form.name}</strong> has been successfully added and is now visible across all {form.productType} sites.
+            <strong className="text-gray-700">{form.name}</strong> has been successfully added to the {getCategoryName()} category.
           </p>
           <div className="flex gap-3 justify-center">
             <button
               id="btn-add-another"
               onClick={() => {
-                setForm({ productType: "", siteId: "", categoryId: "", name: "", trendLink: "", previewLink: "", remarks: "" });
+                setForm({ categoryId: "", siteId: "", name: "", trendLink: "", previewLink: "", remarks: "" });
                 setStep(1);
                 setSuccess(false);
               }}
@@ -227,58 +223,49 @@ export default function AddProductPage() {
             </div>
           )}
 
-          {/* ── STEP 1: Product Type ─────────────────────────────────────── */}
+          {/* ── STEP 1: Category ─────────────────────────────────────── */}
           {step === 1 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Product Type</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {(["NUTRA", "ECOM"] as ProductType[]).map((type) => (
-                  <button
-                    key={type}
-                    id={`btn-type-${type.toLowerCase()}`}
-                    onClick={() => {
-                      update("productType", type);
-                      update("siteId", "");
-                      update("categoryId", "");
-                      setSites([]);
-                      setCategories([]);
-                    }}
-                    className={`relative p-6 rounded-xl border-2 text-left transition-all duration-200 ${
-                      form.productType === type
-                        ? "border-violet-500 bg-violet-50"
-                        : "border-gray-200 hover:border-violet-300 hover:bg-slate-50"
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-lg mb-3 flex items-center justify-center ${
-                      type === "NUTRA" ? "bg-emerald-100" : "bg-blue-100"
-                    }`}>
-                      {type === "NUTRA" ? (
-                        <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                        </svg>
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Category</h2>
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-6 h-6 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+                </div>
+              ) : categories.length === 0 ? (
+                <div className="text-center py-6 text-gray-500">
+                  No categories found. Please create categories first.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        update("categoryId", String(cat.id));
+                        update("siteId", "");
+                        setSites([]);
+                      }}
+                      className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
+                        form.categoryId === String(cat.id)
+                          ? "border-violet-500 bg-violet-50"
+                          : "border-gray-200 hover:border-violet-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="font-semibold text-gray-800 text-sm truncate">{cat.name}</div>
+                      {form.categoryId === String(cat.id) && (
+                        <div className="absolute top-1/2 -translate-y-1/2 right-3 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
                       )}
-                    </div>
-                    <div className="font-semibold text-gray-800">{type}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {type === "NUTRA" ? "Nutraceutical products" : "E-commerce products"}
-                    </div>
-                    {form.productType === type && (
-                      <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 id="btn-step1-next"
-                disabled={!form.productType}
+                disabled={!form.categoryId}
                 onClick={() => setStep(2)}
                 className="w-full mt-6 py-3 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
@@ -292,7 +279,7 @@ export default function AddProductPage() {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-gray-800 mb-1">Select Site</h2>
               <p className="text-sm text-gray-500 mb-4">
-                Showing <span className="font-medium text-violet-600">{form.productType}</span> sites only
+                Showing sites in <span className="font-medium text-violet-600">{getCategoryName()}</span>
               </p>
 
               {loading ? (
@@ -304,7 +291,7 @@ export default function AddProductPage() {
                   <svg className="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  No {form.productType} sites found. Ask an Admin to add sites.
+                  No sites found for this category.
                 </div>
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -312,11 +299,7 @@ export default function AddProductPage() {
                     <button
                       key={site.id}
                       id={`btn-site-${site.id}`}
-                      onClick={() => {
-                        update("siteId", String(site.id));
-                        update("categoryId", "");
-                        setCategories([]);
-                      }}
+                      onClick={() => update("siteId", String(site.id))}
                       className={`w-full px-4 py-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all duration-150 ${
                         form.siteId === String(site.id)
                           ? "border-violet-500 bg-violet-50"
@@ -363,31 +346,6 @@ export default function AddProductPage() {
           {step === 3 && (
             <div className="space-y-5">
               <h2 className="text-lg font-semibold text-gray-800 mb-1">Product Details</h2>
-
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Category <span className="text-red-500">*</span>
-                </label>
-                {loading ? (
-                  <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
-                    <div className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
-                    Loading categories…
-                  </div>
-                ) : (
-                  <select
-                    id="select-category"
-                    value={form.categoryId}
-                    onChange={(e) => update("categoryId", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition"
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
 
               {/* Product Name */}
               <div>
@@ -446,12 +404,9 @@ export default function AddProductPage() {
               </div>
 
               {/* Summary chip */}
-              <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
-                <span>Type: <strong className="text-violet-600">{form.productType}</strong></span>
+              <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1 border border-slate-100">
+                <span>Category: <strong className="text-violet-600">{getCategoryName()}</strong></span>
                 <span>Site: <strong>{sites.find((s) => String(s.id) === form.siteId)?.name ?? "—"}</strong></span>
-                {form.categoryId && (
-                  <span>Category: <strong>{categories.find((c) => String(c.id) === form.categoryId)?.name ?? "—"}</strong></span>
-                )}
               </div>
 
               <div className="flex gap-3 mt-2">
@@ -464,7 +419,7 @@ export default function AddProductPage() {
                 </button>
                 <button
                   id="btn-submit-product"
-                  disabled={!form.name.trim() || !form.categoryId || submitting}
+                  disabled={!form.name.trim() || submitting}
                   onClick={handleSubmit}
                   className="flex-1 py-3 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
                 >

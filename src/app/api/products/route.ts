@@ -15,10 +15,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch site to get productType (auto-set on product)
+    const user = await prisma.user.findUnique({
+      where: { id: Number(addedById) },
+      select: { role: true },
+    });
+
+    if (!user || (user.role !== "LINKER" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
+      return NextResponse.json(
+        { error: "Only Linkers, Admins, and Super Admins can add products." },
+        { status: 403 }
+      );
+    }
+
     const site = await prisma.site.findUnique({
       where: { id: Number(siteId) },
-      select: { productType: true },
+      select: { id: true },
     });
 
     if (!site) {
@@ -28,7 +39,6 @@ export async function POST(req: NextRequest) {
     const product = await prisma.product.create({
       data: {
         name,
-        productType: site.productType,
         siteId: Number(siteId),
         categoryId: Number(categoryId),
         trendLink: trendLink || null,
@@ -37,7 +47,7 @@ export async function POST(req: NextRequest) {
         addedById: Number(addedById),
       },
       include: {
-        site: { select: { name: true, productType: true } },
+        site: { select: { name: true } },
         category: { select: { name: true } },
         addedBy: { select: { name: true } },
       },
@@ -55,23 +65,42 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET /api/products?siteId=1  — list products (optionally filtered by site)
+// GET /api/products?siteId=1  — list products (optionally filtered by site, role site-access rules enforced)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const siteId = searchParams.get("siteId");
   const categoryId = searchParams.get("categoryId");
-  const productType = searchParams.get("productType");
+  const userIdStr = searchParams.get("userId");
+
+  let allowedSiteIds: number[] | undefined = undefined;
+
+  if (userIdStr) {
+    const userId = parseInt(userIdStr);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === "WRITER" || user?.role === "TEAM_LEAD") {
+      const accesses = await prisma.siteAccess.findMany({
+        where: { userId },
+        select: { siteId: true },
+      });
+      allowedSiteIds = accesses.map((a) => a.siteId);
+    }
+  }
 
   const products = await prisma.product.findMany({
     where: {
       ...(siteId ? { siteId: parseInt(siteId) } : {}),
       ...(categoryId ? { categoryId: parseInt(categoryId) } : {}),
-      ...(productType ? { productType: productType as "NUTRA" | "ECOM" } : {}),
+      ...(allowedSiteIds !== undefined ? { siteId: { in: allowedSiteIds } } : {}),
     },
     include: {
       site: { select: { name: true } },
       category: { select: { name: true } },
       addedBy: { select: { name: true } },
+      article: { select: { id: true, status: true } },
     },
     orderBy: { addedAt: "desc" },
   });

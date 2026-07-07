@@ -17,6 +17,11 @@ async function main() {
   console.log("🌱 Seeding database...");
 
   // ── Users ─────────────────────────────────────────────────────────────
+  const superAdmin = await prisma.user.upsert({
+    where: { email: "superadmin@articlemgmt.com" },
+    update: {},
+    create: { name: "Super Admin", email: "superadmin@articlemgmt.com", password: "superadmin123", role: "SUPER_ADMIN" },
+  });
   const admin = await prisma.user.upsert({
     where: { email: "admin@articlemgmt.com" },
     update: {},
@@ -39,32 +44,29 @@ async function main() {
   });
 
   // ── Sites ─────────────────────────────────────────────────────────────
-  const nutraSite = await prisma.site.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { name: "NutraVital", url: "https://nutravital.com", productType: "NUTRA" },
+  const nutraSite = await prisma.site.create({
+    data: { name: "NutraVital", url: "https://nutravital.com" },
   });
-  const ecomSite = await prisma.site.upsert({
-    where: { id: 2 },
-    update: {},
-    create: { name: "EcomStore", url: "https://ecomstore.com", productType: "ECOM" },
+
+  const ecomSite = await prisma.site.create({
+    data: { name: "EcomStore", url: "https://ecomstore.com" },
   });
 
   // ── Categories ────────────────────────────────────────────────────────
   const nutraCategories = ["Protein", "Vitamins", "Pre-Workout", "Weight Loss", "Recovery", "Omega & Fish Oil"];
   for (const name of nutraCategories) {
     await prisma.category.upsert({
-      where: { name_siteId: { name, siteId: nutraSite.id } },
-      update: {},
-      create: { name, siteId: nutraSite.id },
+      where: { name },
+      update: { sites: { connect: { id: nutraSite.id } } },
+      create: { name, sites: { connect: { id: nutraSite.id } } },
     });
   }
   const ecomCategories = ["Electronics", "Clothing", "Home & Garden", "Sports", "Beauty", "Books"];
   for (const name of ecomCategories) {
     await prisma.category.upsert({
-      where: { name_siteId: { name, siteId: ecomSite.id } },
-      update: {},
-      create: { name, siteId: ecomSite.id },
+      where: { name },
+      update: { sites: { connect: { id: ecomSite.id } } },
+      create: { name, sites: { connect: { id: ecomSite.id } } },
     });
   }
 
@@ -81,6 +83,7 @@ async function main() {
   });
 
   console.log("✅ Seed complete!");
+  console.log(`   SuperAdmin (ID ${superAdmin.id}): superadmin@articlemgmt.com`);
   console.log(`   Admin    (ID ${admin.id}): admin@articlemgmt.com`);
   console.log(`   Linker   (ID ${linker.id}): linker@articlemgmt.com`);
   console.log(`   Writer   (ID ${writer.id}): writer@articlemgmt.com`);

@@ -12,9 +12,12 @@ interface Article {
   writingTimeMin?: number;
   productCreatedAt?: string;
   updatedAt: string;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  specialApprovalRequested?: boolean;
+  specialApprovalRequestReason?: string;
   product: {
     id: number; name: string; trendLink?: string; previewLink?: string; remarks?: string;
-    site: { name: string }; category: { name: string }; addedBy: { name: string };
+    site: { id: number; name: string }; category: { name: string }; addedBy: { name: string };
     linkLogs: { id: number; affiliateName: string; affiliateLink: string; bridgePageLink?: string; buyLink?: string; status: string; geos: { geo: string }[]; addedBy: { name: string }; addedAt: string }[];
   };
   writer?: { id: number; name: string };
@@ -50,17 +53,46 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showApprovalRequest, setShowApprovalRequest] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState("WRITER");
+
+  const [hasOtherInProgress, setHasOtherInProgress] = useState(false);
+  const [requestReason, setRequestReason] = useState("");
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("mockUserId");
-    setCurrentUserId(parseInt(stored || "2"));
-    fetch(`/api/articles/${id}`)
+    const stored = localStorage.getItem("mockUserId") || "2";
+    const uId = parseInt(stored);
+    setCurrentUserId(uId);
+    const roles: Record<string, string> = { "5": "SUPER_ADMIN", "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD" };
+    const uRole = roles[stored] || "WRITER";
+    setCurrentUserRole(uRole);
+
+    fetch(`/api/articles/${id}?userId=${uId}`)
       .then((r) => r.json())
       .then((data) => {
-        setArticle(data);
-        setArticleLink(data.articleLink || "");
+        if (data.error) {
+          setError(data.error);
+          setArticle(null);
+        } else {
+          setArticle(data);
+          setArticleLink(data.articleLink || "");
+        }
       })
+      .catch(() => setError("Failed to fetch article details"))
       .finally(() => setLoading(false));
+
+    // Check if this writer has any other article in progress
+    fetch(`/api/articles?writerId=${uId}&status=IN_PROGRESS`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const other = data.find((art) => art.id !== parseInt(id));
+          if (other) {
+            setHasOtherInProgress(true);
+          }
+        }
+      })
+      .catch((e) => console.error("Failed to check active writing constraints", e));
   }, [id]);
 
   const updateStatus = async (newStatus: string) => {
@@ -112,9 +144,49 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
           <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
           <p className="text-gray-500 mt-1">{product.site.name} · {product.category.name}</p>
         </div>
-        <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${STATUS_COLORS[article.status]}`}>
-          {article.status.replace("_", " ")}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* Priority Select or Badge */}
+          {currentUserRole === "TEAM_LEAD" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN" ? (
+            <select
+              value={article.priority || "MEDIUM"}
+              onChange={async (e) => {
+                const newPriority = e.target.value;
+                setError("");
+                setSuccess("");
+                try {
+                  const res = await fetch(`/api/articles/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ priority: newPriority, callerId: currentUserId }),
+                  });
+                  const data = res.ok ? await res.json() : null;
+                  if (!res.ok) throw new Error(data?.error || "Failed to update priority");
+                  setArticle((prev) => prev ? { ...prev, priority: newPriority as any } : prev);
+                  setSuccess("Priority updated successfully");
+                } catch (e: any) {
+                  setError(e.message || "Failed to update priority");
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-violet-400 font-semibold text-slate-700 shadow-sm"
+            >
+              <option value="HIGH">High Priority</option>
+              <option value="MEDIUM">Medium Priority</option>
+              <option value="LOW">Low Priority</option>
+            </select>
+          ) : (
+            <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
+              article.priority === "HIGH" ? "bg-red-50 text-red-700 border-red-200" :
+              article.priority === "LOW" ? "bg-blue-50 text-blue-700 border-blue-200" :
+              "bg-amber-50 text-amber-700 border-amber-200"
+            }`}>
+              {article.priority || "MEDIUM"} Priority
+            </span>
+          )}
+
+          <span className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${STATUS_COLORS[article.status]}`}>
+            {article.status.replace("_", " ")}
+          </span>
+        </div>
       </div>
 
       {/* Error / Success */}
@@ -160,12 +232,14 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Stats */}
-            {article.startedAt && (
-              <div className="grid grid-cols-3 gap-3 mb-5 text-center">
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-400 mb-1">Started</p>
-                  <p className="text-sm font-semibold text-gray-700">{new Date(article.startedAt).toLocaleDateString()}</p>
-                </div>
+            {(article.startedAt || article.productCreatedAt) && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 text-center">
+                {article.startedAt && (
+                  <div className="bg-slate-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-1">Started</p>
+                    <p className="text-sm font-semibold text-gray-700">{new Date(article.startedAt).toLocaleDateString()}</p>
+                  </div>
+                )}
                 {article.completedAt && (
                   <div className="bg-slate-50 rounded-xl p-3">
                     <p className="text-xs text-gray-400 mb-1">Completed</p>
@@ -178,6 +252,12 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                     <p className="text-sm font-semibold text-violet-700">
                       {article.writingTimeMin >= 60 ? `${Math.floor(article.writingTimeMin / 60)}h ${article.writingTimeMin % 60}m` : `${article.writingTimeMin}m`}
                     </p>
+                  </div>
+                )}
+                {article.productCreatedAt && (
+                  <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+                    <p className="text-xs text-emerald-600 mb-1">Product Created</p>
+                    <p className="text-sm font-semibold text-emerald-855">{new Date(article.productCreatedAt).toLocaleDateString()}</p>
                   </div>
                 )}
               </div>
@@ -204,26 +284,43 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
               </div>
             )}
 
-            {/* Special Approval */}
+            {/* Special Approval Request Indicators */}
             {article.specialApproval && (
-              <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                <p className="text-xs text-amber-600 font-medium mb-1">Special Approval Granted</p>
-                <p className="text-sm text-amber-700">By: {article.specialApproval.approvedBy.name}</p>
-                <p className="text-sm text-amber-700">Reason: {article.specialApproval.reason}</p>
+              <div className="mb-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                <p className="text-xs text-emerald-600 font-medium mb-1">Special Approval Granted</p>
+                <p className="text-sm text-emerald-700">By: {article.specialApproval.approvedBy.name}</p>
+                <p className="text-sm text-emerald-700">Reason: {article.specialApproval.reason}</p>
+              </div>
+            )}
+
+            {article.specialApprovalRequested && !article.specialApproval && (
+              <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200 flex flex-col gap-1">
+                <p className="text-xs text-amber-600 font-medium">⚠️ Special Completion Requested</p>
+                <p className="text-sm text-amber-700 font-semibold">Awaiting Team Lead response.</p>
+                {article.specialApprovalRequestReason && (
+                  <p className="text-xs text-slate-500 italic mt-0.5">Reason: "{article.specialApprovalRequestReason}"</p>
+                )}
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-3 flex-wrap items-center">
               {article.status === "PENDING" && (
-                <button
-                  id="btn-start-article"
-                  disabled={updating}
-                  onClick={() => updateStatus("IN_PROGRESS")}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition"
-                >
-                  {updating ? "Starting…" : "Start Writing"}
-                </button>
+                <div className="flex flex-col gap-1.5 w-full items-start">
+                  <button
+                    id="btn-start-article"
+                    disabled={updating || hasOtherInProgress}
+                    onClick={() => updateStatus("IN_PROGRESS")}
+                    className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition"
+                  >
+                    {updating ? "Starting…" : "Start Writing"}
+                  </button>
+                  {hasOtherInProgress && (
+                    <p className="text-xs text-rose-500 font-medium">
+                      ⚠️ You already have an article In Progress. Complete it before starting another.
+                    </p>
+                  )}
+                </div>
               )}
               {article.status === "IN_PROGRESS" && (
                 <>
@@ -235,22 +332,69 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                   >
                     {updating ? "Saving…" : "Mark Completed"}
                   </button>
-                  <button
-                    onClick={() => setShowApprovalRequest(true)}
-                    className="px-4 py-2 border border-amber-300 text-amber-700 rounded-xl text-sm font-semibold hover:bg-amber-50 transition"
-                  >
-                    Request Special Approval
-                  </button>
+                  {!article.specialApprovalRequested && (
+                    <button
+                      onClick={() => setShowApprovalRequest(true)}
+                      className="px-4 py-2 border border-amber-300 text-amber-700 rounded-xl text-sm font-semibold hover:bg-amber-50 transition"
+                    >
+                      Request Special Approval
+                    </button>
+                  )}
                 </>
               )}
             </div>
 
             {/* Approval Request Form */}
-            {showApprovalRequest && (
-              <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
-                <p className="text-sm font-semibold text-amber-800 mb-2">Request Completion Without Article Link</p>
-                <p className="text-xs text-amber-600 mb-3">A Team Lead must approve this. Contact your Team Lead with article ID: <strong>#{article.id}</strong></p>
-                <button onClick={() => setShowApprovalRequest(false)} className="text-xs text-amber-700 hover:underline">Cancel</button>
+            {showApprovalRequest && !article.specialApproval && !article.specialApprovalRequested && (
+              <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200 space-y-3">
+                <p className="text-sm font-semibold text-amber-800">Request Completion Without Article Link</p>
+                <p className="text-xs text-amber-600">Explain to your Team Lead why you need to mark this article completed without a link.</p>
+                <textarea
+                  rows={2}
+                  placeholder="Request reason..."
+                  value={requestReason}
+                  onChange={(e) => setRequestReason(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-amber-200 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                />
+                <div className="flex gap-2">
+                  <button
+                    disabled={submittingRequest || !requestReason.trim()}
+                    onClick={async () => {
+                      setSubmittingRequest(true);
+                      setError("");
+                      setSuccess("");
+                      try {
+                        const res = await fetch(`/api/articles/${id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            specialApprovalRequested: true,
+                            specialApprovalRequestReason: requestReason,
+                            callerId: currentUserId,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error);
+                        setArticle((prev) => prev ? { ...prev, ...data } : prev);
+                        setSuccess("Special completion request submitted!");
+                        setShowApprovalRequest(false);
+                      } catch (e: any) {
+                        setError(e.message || "Failed to submit request");
+                      } finally {
+                        setSubmittingRequest(false);
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-amber-550 text-amber-900 bg-amber-200 rounded-lg text-xs font-bold hover:bg-amber-300 disabled:opacity-40 transition"
+                  >
+                    {submittingRequest ? "Submitting…" : "Submit Request"}
+                  </button>
+                  <button
+                    onClick={() => { setShowApprovalRequest(false); setRequestReason(""); }}
+                    className="px-3 py-1.5 border border-amber-200 text-amber-700 rounded-lg text-xs font-semibold hover:bg-amber-100 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendRealtimeNotification } from "@/lib/notifier";
 
 // POST /api/approvals — team lead grants special completion without article link
 export async function POST(req: NextRequest) {
@@ -7,6 +8,14 @@ export async function POST(req: NextRequest) {
     const { articleId, approvedById, reason } = await req.json();
     if (!articleId || !approvedById || !reason) {
       return NextResponse.json({ error: "articleId, approvedById, and reason are required" }, { status: 400 });
+    }
+
+    const approver = await prisma.user.findUnique({
+      where: { id: Number(approvedById) },
+      select: { role: true },
+    });
+    if (!approver || (approver.role !== "TEAM_LEAD" && approver.role !== "ADMIN" && approver.role !== "SUPER_ADMIN")) {
+      return NextResponse.json({ error: "Only Team Leads or Admins can grant special approvals." }, { status: 403 });
     }
 
     const article = await prisma.article.findUnique({
@@ -25,9 +34,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Reset approval request flags on the article
+    await prisma.article.update({
+      where: { id: parseInt(articleId) },
+      data: {
+        specialApprovalRequested: false,
+        specialApprovalRequestReason: null,
+      },
+    });
+
     // Notify the writer
     if (article.writer?.id) {
-      await prisma.notification.create({
+      const notif = await prisma.notification.create({
         data: {
           recipientId: article.writer.id,
           senderId: parseInt(approvedById),
@@ -35,6 +53,7 @@ export async function POST(req: NextRequest) {
           message: `Special approval granted for "${article.product.name}". Reason: ${reason}`,
         },
       });
+      await sendRealtimeNotification(article.writer.id, notif);
     }
 
     return NextResponse.json(approval, { status: 201 });

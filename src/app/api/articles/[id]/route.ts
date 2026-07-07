@@ -3,10 +3,13 @@ import { prisma } from "@/lib/prisma";
 
 // GET /api/articles/[id]
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { searchParams } = new URL(req.url);
+  const userIdStr = searchParams.get("userId");
+
   const article = await prisma.article.findUnique({
     where: { id: parseInt(id) },
     include: {
@@ -35,10 +38,34 @@ export async function GET(
   if (!article) {
     return NextResponse.json({ error: "Article not found" }, { status: 404 });
   }
+
+  // Authorize check for WRITER
+  if (userIdStr) {
+    const userId = parseInt(userIdStr);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === "WRITER") {
+      const access = await prisma.siteAccess.findUnique({
+        where: {
+          userId_siteId: {
+            userId,
+            siteId: article.product.siteId,
+          },
+        },
+      });
+      if (!access) {
+        return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+      }
+    }
+  }
+
   return NextResponse.json(article);
 }
 
-// PATCH /api/articles/[id] — update status, writer, article link
+// PATCH /api/articles/[id] — update status, writer, article link, priority, special approval request
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -46,11 +73,54 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, articleLink, writerId } = body;
+    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, callerId } = body;
 
-    const existing = await prisma.article.findUnique({ where: { id: parseInt(id) } });
+    const activeUserId = writerId || callerId;
+
+    const existing = await prisma.article.findUnique({
+      where: { id: parseInt(id) },
+      include: { product: true }
+    });
     if (!existing) {
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
+    }
+
+    let activeUserRole = "";
+    if (activeUserId) {
+      const user = await prisma.user.findUnique({
+        where: { id: Number(activeUserId) },
+        select: { role: true },
+      });
+      if (user) {
+        activeUserRole = user.role;
+      }
+    }
+
+    // Site access check for WRITER
+    if (activeUserRole === "WRITER") {
+      const access = await prisma.siteAccess.findUnique({
+        where: {
+          userId_siteId: {
+            userId: Number(activeUserId),
+            siteId: existing.product.siteId,
+          },
+        },
+      });
+      if (!access) {
+        return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+      }
+    }
+
+    // Prevent writer from editing someone else's article
+    if (activeUserRole === "WRITER" && existing.writerId && existing.writerId !== Number(activeUserId)) {
+      return NextResponse.json({ error: "This article is already in progress or completed by another writer." }, { status: 403 });
+    }
+
+    // Priority change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN
+    if (priority !== undefined) {
+      if (activeUserRole !== "TEAM_LEAD" && activeUserRole !== "ADMIN" && activeUserRole !== "SUPER_ADMIN") {
+        return NextResponse.json({ error: "Only Team Leads and Admins can change article priority." }, { status: 403 });
+      }
     }
 
     // Business rules
@@ -95,6 +165,10 @@ export async function PATCH(
         ...(status ? { status } : {}),
         ...(writerId ? { writerId: parseInt(writerId) } : {}),
         ...(articleLink !== undefined ? { articleLink } : {}),
+        ...(priority !== undefined ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" } : {}),
+        ...(specialApprovalRequested !== undefined ? { specialApprovalRequested } : {}),
+        ...(specialApprovalRequestReason !== undefined ? { specialApprovalRequestReason } : {}),
+        ...(status === "COMPLETED" ? { specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
         ...(status === "IN_PROGRESS" && !existing.startedAt ? { startedAt: new Date() } : {}),
         ...(completedAt ? { completedAt } : {}),
         ...(writingTimeMin !== undefined ? { writingTimeMin } : {}),

@@ -15,16 +15,14 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum Role {
+  SUPER_ADMIN
   ADMIN
   LINKER
   WRITER
   TEAM_LEAD
 }
 
-enum ProductType {
-  NUTRA
-  ECOM
-}
+
 
 enum ArticleStatus {
   PENDING
@@ -40,6 +38,12 @@ enum LinkStatus {
   NEED_TO_CHECK
   PRESELL_PAGE
   REDIRECTED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
 }
 
 enum NotificationType {
@@ -58,6 +62,7 @@ model User {
   email     String   @unique
   password  String
   role      Role
+  allowLinkLogAccess Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -84,6 +89,13 @@ model User {
 
   // Notifications sent (by team lead)
   notificationsSent Notification[] @relation("NotificationSender")
+
+  // Team Lead assigned to this user (for Writers)
+  teamLeadId      Int?
+  teamLead        User?          @relation("TeamMembers", fields: [teamLeadId], references: [id])
+  
+  // Writers assigned to this Team Lead
+  teamMembers     User[]         @relation("TeamMembers")
 }
 
 // ─────────────────────────────────────────────
@@ -94,7 +106,7 @@ model Site {
   id          Int         @id @default(autoincrement())
   name        String
   url         String?
-  productType ProductType
+
   createdAt   DateTime    @default(now())
 
   categories  Category[]
@@ -121,14 +133,11 @@ model SiteAccess {
 
 model Category {
   id        Int       @id @default(autoincrement())
-  name      String
-  siteId    Int
+  name      String    @unique
   createdAt DateTime  @default(now())
 
-  site     Site      @relation(fields: [siteId], references: [id])
+  sites    Site[]
   products Product[]
-
-  @@unique([name, siteId])
 }
 
 // ─────────────────────────────────────────────
@@ -138,7 +147,7 @@ model Category {
 model Product {
   id          Int         @id @default(autoincrement())
   name        String
-  productType ProductType
+
   siteId      Int
   categoryId  Int
   trendLink   String?
@@ -147,8 +156,8 @@ model Product {
   addedById   Int
   addedAt     DateTime    @default(now())
 
-  site       Site     @relation(fields: [siteId], references: [id])
-  category   Category @relation(fields: [categoryId], references: [id])
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   addedBy    User     @relation("ProductAddedBy", fields: [addedById], references: [id])
 
   article    Article?
@@ -168,10 +177,13 @@ model Article {
   startedAt       DateTime?     // Set when status → IN_PROGRESS
   completedAt     DateTime?     // Set when status → COMPLETED
   writingTimeMin  Int?          // Calculated: completedAt - startedAt in minutes
+  priority        Priority      @default(MEDIUM)
+  specialApprovalRequested    Boolean   @default(false)
+  specialApprovalRequestReason String?   @db.Text
   updatedAt       DateTime      @updatedAt
   productCreatedAt DateTime?    // Auto-set when article is completed
 
-  product  Product  @relation(fields: [productId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   writer   User?    @relation("ArticleWriter", fields: [writerId], references: [id])
 
   reviews          ArticleReview[]
@@ -190,7 +202,7 @@ model ArticleReview {
   approved    Boolean  @default(false)
   reviewedAt  DateTime @default(now())
 
-  article    Article @relation(fields: [articleId], references: [id])
+  article    Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
   reviewedBy User    @relation("ReviewedBy", fields: [reviewedById], references: [id])
 }
 
@@ -207,7 +219,7 @@ model SpecialApproval {
   reason       String   @db.Text
   approvedAt   DateTime @default(now())
 
-  article    Article @relation(fields: [articleId], references: [id])
+  article    Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
   approvedBy User    @relation("ApprovedBy", fields: [approvedById], references: [id])
 }
 
@@ -229,7 +241,7 @@ model LinkLog {
   addedAt         DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  product  Product @relation(fields: [productId], references: [id])
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   addedBy  User    @relation("LinkAddedBy", fields: [addedById], references: [id])
 }
 
@@ -239,7 +251,7 @@ model LinkGeo {
   linkLogId Int
   geo       String // e.g. "US", "UK", "CA"
 
-  linkLog LinkLog @relation(fields: [linkLogId], references: [id])
+  linkLog LinkLog @relation(fields: [linkLogId], references: [id], onDelete: Cascade)
 
   @@unique([linkLogId, geo])
 }

@@ -1,13 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/links?productId=X
+// GET /api/links?productId=X&userId=Y
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const productId = searchParams.get("productId");
+  const userId = searchParams.get("userId");
+
+  let allowedSiteIds: number[] | undefined = undefined;
+
+  if (userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      select: { role: true, allowLinkLogAccess: true },
+    });
+    if (user?.role === "WRITER" && !user.allowLinkLogAccess) {
+      return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
+    }
+    
+    // Team lead restrictions
+    if (user?.role === "TEAM_LEAD") {
+      const accesses = await prisma.siteAccess.findMany({
+        where: { userId: parseInt(userId) },
+        select: { siteId: true },
+      });
+      allowedSiteIds = accesses.map((a) => a.siteId);
+    }
+  }
 
   const links = await prisma.linkLog.findMany({
-    where: productId ? { productId: parseInt(productId) } : undefined,
+    where: {
+      ...(productId ? { productId: parseInt(productId) } : {}),
+      ...(allowedSiteIds !== undefined ? { product: { siteId: { in: allowedSiteIds } } } : {}),
+    },
     include: {
       geos: true,
       addedBy: { select: { name: true } },
@@ -28,9 +53,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "productId, addedById, affiliateName, affiliateLink are required" }, { status: 400 });
     }
 
-    // Business rule: buyLink requires bridgePageLink
-    if (buyLink && !bridgePageLink) {
-      return NextResponse.json({ error: "Bridge Page Link must be added before Buy Link." }, { status: 400 });
+    const user = await prisma.user.findUnique({
+      where: { id: Number(addedById) },
+      select: { role: true, allowLinkLogAccess: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 });
+    }
+
+    if (user.role === "WRITER" && !user.allowLinkLogAccess) {
+      return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
+    }
+
+    if (user.role !== "LINKER" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN" && user.role !== "TEAM_LEAD" && (user.role !== "WRITER" || !user.allowLinkLogAccess)) {
+      return NextResponse.json(
+        { error: "Only Linkers, Admins, and Super Admins can add links." },
+        { status: 403 }
+      );
     }
 
     // Business rule: status ACCEPTED requires bridgePageLink
