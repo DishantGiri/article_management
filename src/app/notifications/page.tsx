@@ -73,7 +73,7 @@ export default function NotificationsPage() {
     <div className="p-8 max-w-5xl mx-auto space-y-6" suppressHydrationWarning>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4" suppressHydrationWarning>
-        <div>
+        <div suppressHydrationWarning>
           <h1 className="text-xl font-bold text-slate-900">Notifications</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {unreadCount} unread
@@ -91,17 +91,17 @@ export default function NotificationsPage() {
       </div>
 
       {/* Notifications List */}
-      <div>
+      <div suppressHydrationWarning>
         {loading ? (
-          <div className="p-12 text-center">
-            <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="p-12 text-center" suppressHydrationWarning>
+            <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" suppressHydrationWarning></div>
           </div>
         ) : notifications.length === 0 ? (
-          <div className="p-16 text-center text-slate-500 text-sm">
+          <div className="p-16 text-center text-slate-500 text-sm" suppressHydrationWarning>
             No notifications yet.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" suppressHydrationWarning>
             {notifications.map((notification) => {
               
               // Determine icon and colors based on notification type/message
