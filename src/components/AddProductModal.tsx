@@ -107,25 +107,46 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
     }
   }, [isOpen]);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const update = useCallback((field: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
+
+    if (field === "trendLink" || field === "previewLink") {
+      if (value && !isValidUrl(value)) {
+        setFieldErrors((prevErrors) => ({
+          ...prevErrors,
+          [field]: "Must start with http:// or https:// and be a valid URL",
+        }));
+      } else {
+        setFieldErrors((prevErrors) => {
+          const next = { ...prevErrors };
+          delete next[field];
+          return next;
+        });
+      }
+    }
   }, []);
 
-const isValidUrl = (url: string) => {
-  if (!url) return true;
-  try {
-    if (!/^https?:\/\//i.test(url)) return false;
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
-};
+  const isValidUrl = (url: string) => {
+    if (!url) return true;
+    try {
+      if (!/^https?:\/\//i.test(url)) return false;
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.name.trim()) {
       setError("Product name is required.");
+      return;
+    }
+    if (Object.keys(fieldErrors).length > 0) {
+      setError("Please fix the link validation errors before submitting.");
       return;
     }
     if (form.trendLink && !isValidUrl(form.trendLink)) {
@@ -341,8 +362,16 @@ const isValidUrl = (url: string) => {
                       type="url"
                       value={form.trendLink}
                       onChange={(e) => update("trendLink", e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
+                      placeholder="https://..."
+                      className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
+                        fieldErrors.trendLink
+                          ? "border-rose-400 focus:border-rose-500"
+                          : "border-slate-200 focus:border-indigo-500"
+                      }`}
                     />
+                    {fieldErrors.trendLink && (
+                      <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.trendLink}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Preview Link</label>
@@ -350,8 +379,16 @@ const isValidUrl = (url: string) => {
                       type="url"
                       value={form.previewLink}
                       onChange={(e) => update("previewLink", e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
+                      placeholder="https://..."
+                      className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
+                        fieldErrors.previewLink
+                          ? "border-rose-400 focus:border-rose-500"
+                          : "border-slate-200 focus:border-indigo-500"
+                      }`}
                     />
+                    {fieldErrors.previewLink && (
+                      <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.previewLink}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Remarks</label>

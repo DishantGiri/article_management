@@ -266,15 +266,15 @@ export default function Sidebar() {
 
       {/* Real-time notification Toast */}
       {toast && (
-        <div className="fixed top-5 right-5 z-[9999] bg-slate-900 text-white px-5 py-4 rounded-2xl shadow-2xl border border-slate-800 flex items-start gap-3 animate-slide-in max-w-sm">
-          <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
-            🔔
+        <div className="fixed top-5 right-5 z-[9999] bg-slate-950/90 backdrop-blur-md text-white px-5 py-4 rounded-2xl shadow-2xl border border-slate-800/80 flex items-start gap-3 animate-slide-in max-w-sm">
+          <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/30 text-violet-400 flex items-center justify-center flex-shrink-0">
+            <Bell className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-slate-400">Live Notification</p>
-            <p className="text-sm font-semibold text-white mt-0.5 leading-relaxed">{toast.message}</p>
+            <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider">Live Notification</p>
+            <p className="text-xs font-semibold text-slate-200 mt-1 leading-relaxed">{toast.message}</p>
           </div>
-          <button onClick={() => setToast(null)} className="text-slate-400 hover:text-white text-xs font-bold font-mono">
+          <button onClick={() => setToast(null)} className="text-slate-500 hover:text-slate-300 text-xs font-bold font-mono transition-colors">
             ✕
           </button>
         </div>

@@ -52,6 +52,8 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [affiliateLinkError, setAffiliateLinkError] = useState("");
+  const [siteLinkErrors, setSiteLinkErrors] = useState<Record<string, { bridgePageLink?: string; buyLink?: string }>>({});
 
   // Get unique product names for the dropdown list
   const uniqueProductNames = Array.from(new Set(products.map((p) => p.name)));
@@ -69,6 +71,8 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
       setStatus("REQUESTED");
       setLinkerRemarks("");
       setError("");
+      setAffiliateLinkError("");
+      setSiteLinkErrors({});
       
       const mockUserId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
       setLoadingProducts(true);
@@ -98,6 +102,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
       initialInputs[p.id] = { bridgePageLink: "", buyLink: "" };
     });
     setSiteLinks(initialInputs);
+    setSiteLinkErrors({});
   }, [selectedProductName, products]);
 
   const toggleGeo = (geo: string) => {
@@ -112,11 +117,41 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
         [field]: value,
       },
     }));
+
+    // Dynamic Validation
+    if (value && !isValidUrl(value)) {
+      setSiteLinkErrors((prev) => ({
+        ...prev,
+        [productId]: {
+          ...(prev[productId] || {}),
+          [field]: "Must start with http:// or https:// and be a valid URL",
+        },
+      }));
+    } else {
+      setSiteLinkErrors((prev) => {
+        const next = { ...prev };
+        if (next[productId]) {
+          const updatedProductErrors = { ...next[productId] };
+          delete updatedProductErrors[field];
+          if (Object.keys(updatedProductErrors).length === 0) {
+            delete next[productId];
+          } else {
+            next[productId] = updatedProductErrors;
+          }
+        }
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async () => {
     if (!selectedProductName || !affiliateName || !affiliateLink) {
       setError("Product Name, Affiliate Name, and Affiliate Link are required.");
+      return;
+    }
+
+    if (affiliateLinkError || Object.keys(siteLinkErrors).length > 0) {
+      setError("Please fix all URL validation errors before submitting.");
       return;
     }
 
@@ -236,46 +271,78 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
               <input
                 type="url"
                 value={affiliateLink}
-                onChange={e => setAffiliateLink(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value;
+                  setAffiliateLink(val);
+                  if (val && !isValidUrl(val)) {
+                    setAffiliateLinkError("Must start with http:// or https:// and be a valid URL");
+                  } else {
+                    setAffiliateLinkError("");
+                  }
+                }}
                 placeholder="https://..."
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
+                className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
+                  affiliateLinkError
+                    ? "border-rose-400 focus:border-rose-500 bg-rose-50/10"
+                    : "border-slate-200 focus:border-indigo-500"
+                }`}
               />
+              {affiliateLinkError && (
+                <p className="text-[11px] font-semibold text-rose-500 mt-1">{affiliateLinkError}</p>
+              )}
             </div>
           </div>
 
           {matchingProducts.length > 0 && (
             <div className="space-y-3">
               <label className="block text-[11px] font-bold text-slate-500 uppercase">Configure Site-Specific Links</label>
-              {matchingProducts.map((p) => (
-                <div key={p.id} className="p-4 bg-slate-50 border border-slate-200/50 rounded-xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-indigo-700">{p.site.name}</span>
-                    <span className="text-[10px] text-slate-400 font-semibold">Product ID: {p.id}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bridge Page Link</label>
-                      <input
-                        type="url"
-                        value={siteLinks[p.id]?.bridgePageLink || ""}
-                        onChange={e => updateSiteLink(p.id, "bridgePageLink", e.target.value)}
-                        placeholder="https://..."
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
-                      />
+              {matchingProducts.map((p) => {
+                const prodErrors = siteLinkErrors[p.id] || {};
+                return (
+                  <div key={p.id} className="p-4 bg-slate-50 border border-slate-200/50 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-indigo-700">{p.site.name}</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Product ID: {p.id}</span>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Buy Link</label>
-                      <input
-                        type="url"
-                        value={siteLinks[p.id]?.buyLink || ""}
-                        onChange={e => updateSiteLink(p.id, "buyLink", e.target.value)}
-                        placeholder="https://..."
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bridge Page Link</label>
+                        <input
+                          type="url"
+                          value={siteLinks[p.id]?.bridgePageLink || ""}
+                          onChange={e => updateSiteLink(p.id, "bridgePageLink", e.target.value)}
+                          placeholder="https://..."
+                          className={`w-full px-2.5 py-1.5 bg-white border rounded-lg text-xs text-slate-900 focus:outline-none transition-colors ${
+                            prodErrors.bridgePageLink
+                              ? "border-rose-400 focus:border-rose-500 bg-rose-50/10"
+                              : "border-slate-200 focus:border-indigo-500"
+                          }`}
+                        />
+                        {prodErrors.bridgePageLink && (
+                          <p className="text-[10px] font-semibold text-rose-500 mt-1">{prodErrors.bridgePageLink}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Buy Link</label>
+                        <input
+                          type="url"
+                          value={siteLinks[p.id]?.buyLink || ""}
+                          onChange={e => updateSiteLink(p.id, "buyLink", e.target.value)}
+                          placeholder="https://..."
+                          className={`w-full px-2.5 py-1.5 bg-white border rounded-lg text-xs text-slate-900 focus:outline-none transition-colors ${
+                            prodErrors.buyLink
+                              ? "border-rose-400 focus:border-rose-500 bg-rose-50/10"
+                              : "border-slate-200 focus:border-indigo-500"
+                          }`}
+                        />
+                        {prodErrors.buyLink && (
+                          <p className="text-[10px] font-semibold text-rose-500 mt-1">{prodErrors.buyLink}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

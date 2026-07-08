@@ -118,25 +118,46 @@ export default function AddProductPage() {
       .finally(() => setLoading(false));
   }, [form.categoryId]);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const update = useCallback((field: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
+
+    if (field === "trendLink" || field === "previewLink") {
+      if (value && !isValidUrl(value)) {
+        setFieldErrors((prevErrors) => ({
+          ...prevErrors,
+          [field]: "Must start with http:// or https:// and be a valid URL",
+        }));
+      } else {
+        setFieldErrors((prevErrors) => {
+          const next = { ...prevErrors };
+          delete next[field];
+          return next;
+        });
+      }
+    }
   }, []);
 
-const isValidUrl = (url: string) => {
-  if (!url) return true;
-  try {
-    if (!/^https?:\/\//i.test(url)) return false;
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
-};
+  const isValidUrl = (url: string) => {
+    if (!url) return true;
+    try {
+      if (!/^https?:\/\//i.test(url)) return false;
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.name.trim()) {
       setError("Product name is required.");
+      return;
+    }
+    if (Object.keys(fieldErrors).length > 0) {
+      setError("Please fix the link validation errors before submitting.");
       return;
     }
     if (form.trendLink && !isValidUrl(form.trendLink)) {
@@ -390,8 +411,15 @@ const isValidUrl = (url: string) => {
                   value={form.trendLink}
                   onChange={(e) => update("trendLink", e.target.value)}
                   placeholder="https://trends.google.com/..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition"
+                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${
+                    fieldErrors.trendLink
+                      ? "border-rose-400 focus:ring-2 focus:ring-rose-400"
+                      : "border-gray-300 focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+                  }`}
                 />
+                {fieldErrors.trendLink && (
+                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.trendLink}</p>
+                )}
               </div>
 
               {/* Preview Link */}
@@ -403,8 +431,15 @@ const isValidUrl = (url: string) => {
                   value={form.previewLink}
                   onChange={(e) => update("previewLink", e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition"
+                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${
+                    fieldErrors.previewLink
+                      ? "border-rose-400 focus:ring-2 focus:ring-rose-400"
+                      : "border-gray-300 focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+                  }`}
                 />
+                {fieldErrors.previewLink && (
+                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.previewLink}</p>
+                )}
               </div>
 
               {/* Remarks */}

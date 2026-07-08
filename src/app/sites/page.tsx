@@ -35,6 +35,7 @@ export default function SitesPage() {
     url: "",
     categoryIds: [] as number[],
   });
+  const [urlError, setUrlError] = useState("");
 
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
 
@@ -61,6 +62,7 @@ export default function SitesPage() {
     setEditingSiteId(null);
     setForm({ name: "", url: "", categoryIds: [] });
     setError("");
+    setUrlError("");
     setShowModal(true);
   };
 
@@ -72,6 +74,7 @@ export default function SitesPage() {
       categoryIds: s.categories?.map(c => c.id) || []
     });
     setError("");
+    setUrlError("");
     setShowModal(true);
     setActiveDropdown(null);
   };
@@ -103,6 +106,10 @@ const isValidUrl = (url: string) => {
 };
 
   const handleSaveSite = async () => {
+    if (urlError) {
+      setError("Please fix the URL validation error before saving.");
+      return;
+    }
     if (form.url && !isValidUrl(form.url)) {
       setError("Please enter a valid URL (must start with http:// or https://)");
       return;
@@ -270,10 +277,25 @@ const isValidUrl = (url: string) => {
                 <input
                   type="url"
                   value={form.url}
-                  onChange={(e) => setForm({ ...form, url: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm({ ...form, url: val });
+                    if (val && !isValidUrl(val)) {
+                      setUrlError("Must start with http:// or https:// and be a valid URL");
+                    } else {
+                      setUrlError("");
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none transition-colors ${
+                    urlError 
+                      ? "border-rose-400 focus:ring-2 focus:ring-rose-400" 
+                      : "border-slate-200 focus:ring-2 focus:ring-indigo-500"
+                  }`}
                   placeholder="https://example.com"
                 />
+                {urlError && (
+                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{urlError}</p>
+                )}
               </div>
 
               <div>

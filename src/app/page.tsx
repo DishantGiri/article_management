@@ -703,6 +703,7 @@ export default function DashboardPage() {
 
 function WriterActiveWorkspace({ article, completedArticles, currentUserId, onSuccess }: any) {
   const [articleLink, setArticleLink] = useState("");
+  const [articleLinkError, setArticleLinkError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalReason, setApprovalReason] = useState("");
@@ -739,6 +740,10 @@ const isValidUrl = (url: string) => {
 
   const handleMarkCompleted = async () => {
     if (!articleLink.trim()) return;
+    if (articleLinkError) {
+      alert("Please fix the URL validation error before submitting.");
+      return;
+    }
     if (!isValidUrl(articleLink)) {
       alert("Please enter a valid Article Link (must start with http:// or https://)");
       return;
@@ -873,16 +878,31 @@ const isValidUrl = (url: string) => {
             <h3 className="text-lg font-bold text-slate-900 mb-2">Submit Work</h3>
             <p className="text-xs text-slate-500 mb-6">Paste your document URL below to complete this assignment.</p>
             
-            <div className="mb-6">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Article URL (GDocs/WP)</label>
-              <input 
-                type="url"
-                value={articleLink}
-                onChange={e => setArticleLink(e.target.value)}
-                placeholder="https://docs.google.com/..."
-                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition"
-              />
-            </div>
+             <div className="mb-6">
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Article URL (GDocs/WP)</label>
+               <input 
+                 type="url"
+                 value={articleLink}
+                 onChange={e => {
+                   const val = e.target.value;
+                   setArticleLink(val);
+                   if (val && !isValidUrl(val)) {
+                     setArticleLinkError("Must start with http:// or https:// and be a valid URL");
+                   } else {
+                     setArticleLinkError("");
+                   }
+                 }}
+                 placeholder="https://docs.google.com/..."
+                 className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none transition bg-slate-50 focus:bg-white ${
+                   articleLinkError
+                     ? "border-rose-400 focus:ring-2 focus:ring-rose-400"
+                     : "border-slate-200 focus:ring-2 focus:ring-indigo-500"
+                 }`}
+               />
+               {articleLinkError && (
+                 <p className="text-[11px] font-semibold text-rose-500 mt-1">{articleLinkError}</p>
+               )}
+             </div>
 
             <div className="space-y-3">
               <button 
