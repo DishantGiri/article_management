@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
   const userIdStr = searchParams.get("userId");
 
   let allowedSiteIds: number[] | undefined = undefined;
+  let onlyPending = false;
 
   if (userIdStr) {
     const userId = parseInt(userIdStr);
@@ -120,7 +121,8 @@ export async function GET(req: NextRequest) {
       select: { role: true },
     });
 
-    if (user?.role === "WRITER" || user?.role === "TEAM_LEAD") {
+    if (user?.role === "WRITER") {
+      onlyPending = true;
       const accesses = await prisma.siteAccess.findMany({
         where: { userId },
         select: { siteId: true },
@@ -134,6 +136,7 @@ export async function GET(req: NextRequest) {
       ...(siteId ? { siteId: parseInt(siteId) } : {}),
       ...(categoryId ? { categoryId: parseInt(categoryId) } : {}),
       ...(allowedSiteIds !== undefined ? { siteId: { in: allowedSiteIds } } : {}),
+      ...(onlyPending ? { article: { status: "PENDING" } } : {}),
     },
     include: {
       site: { select: { name: true, url: true } },

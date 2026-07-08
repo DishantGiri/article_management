@@ -395,11 +395,11 @@ export default function ProductsPage() {
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Name</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trend</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Added By</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Writer</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                  {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                  )}
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Links</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">Actions</th>
                 </tr>
@@ -407,7 +407,6 @@ export default function ProductsPage() {
               <tbody className="divide-y divide-slate-50">
                 {paginated.map((p: any) => {
                   const status = p.article?.status || "PENDING";
-                  const statusColor = STATUS_COLORS[status] || STATUS_COLORS.PENDING;
                   
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -433,16 +432,6 @@ export default function ProductsPage() {
                         <span className="text-[13px] font-medium text-slate-600">{p.category?.name}</span>
                       </td>
                       <td className="px-3 py-3.5">
-                        {p.trendLink ? (
-                          <a href={p.trendLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-500 hover:text-blue-600 transition">
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            Link
-                          </a>
-                        ) : (
-                          <span className="text-[12px] font-semibold text-slate-300">--</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3.5">
                         <span className="text-[13px] font-medium text-slate-600">{p.addedBy?.name}</span>
                       </td>
                       <td className="px-3 py-3.5">
@@ -450,36 +439,36 @@ export default function ProductsPage() {
                           {new Date(p.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       </td>
-                      <td className="px-3 py-3.5">
-                        {p.article?.writer?.name ? (
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[9px] font-bold">
-                              {getInitials(p.article.writer.name)}
-                            </div>
-                            <span className="text-[12px] font-semibold text-slate-600">{p.article.writer.name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-[12px] font-medium text-slate-400">Unassigned</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3.5">
-                        <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${statusColor}`}>
-                          {status === "IN_PROGRESS" ? "In Progress" : status.charAt(0) + status.slice(1).toLowerCase()}
-                        </span>
-                      </td>
+                      {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
+                        <td className="px-3 py-3.5">
+                          <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${STATUS_COLORS[status] || STATUS_COLORS.PENDING}`}>
+                            {status === "IN_PROGRESS" ? "In Progress" : status.charAt(0) + status.slice(1).toLowerCase()}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-3 py-3.5 text-center">
                         <span className="text-[13px] font-semibold text-slate-600">{p.linkLogs?.length || 0}</span>
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
-                          {/* Preview — always left, all roles */}
-                          <button
-                            onClick={() => setSelectedProduct(p)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-[11px] font-semibold whitespace-nowrap"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            Preview
-                          </button>
+                          {/* Review — for Admin/Team Lead, link to article; for others, show product modal */}
+                          {p.article && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") ? (
+                            <Link
+                              href={`/articles/${p.article.id}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-[11px] font-semibold whitespace-nowrap"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              Review
+                            </Link>
+                          ) : (
+                            <button
+                              onClick={() => setSelectedProduct(p)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              Preview
+                            </button>
+                          )}
 
                           {/* WRITER: Write button — always shown, disabled unless PENDING */}
                           {currentUserRole === "WRITER" && (
@@ -510,17 +499,6 @@ export default function ProductsPage() {
                               <PlayCircle className="w-3.5 h-3.5" />
                               Write
                             </button>
-                          )}
-
-                          {/* NON-WRITERS: Track link — only when article exists */}
-                          {currentUserRole !== "WRITER" && p.article && (
-                            <Link
-                              href={`/articles/${p.article.id}`}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all text-[11px] font-semibold whitespace-nowrap"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              Track
-                            </Link>
                           )}
 
                           {/* LINKER/ADMIN: Edit & Delete buttons */}

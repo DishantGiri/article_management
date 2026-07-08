@@ -125,6 +125,19 @@ export default function Sidebar() {
     const audioObj = new Audio("/mixkit-software-interface-back-2575.wav");
     audioObj.load();
 
+    const unlockAudio = () => {
+      audioObj.play()
+        .then(() => {
+          audioObj.pause();
+          audioObj.currentTime = 0;
+          window.removeEventListener("click", unlockAudio);
+          window.removeEventListener("keydown", unlockAudio);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("click", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsHost = window.location.host;
     const ws = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
@@ -149,6 +162,8 @@ export default function Sidebar() {
 
     return () => {
       ws.close();
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
     };
   }, []);
 
