@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Check, Trash2, CheckCircle2 } from "lucide-react";
+import { Bell, Check, Trash2, CheckCircle2, Package, AlertTriangle, Eye, FileText, Star } from "lucide-react";
 
 interface Notification {
   id: number;
@@ -110,22 +110,22 @@ export default function NotificationsPage() {
               
               const msg = notification.message.toLowerCase();
               if (msg.includes("product") || notification.type === "PRODUCT_ADDED") {
-                Icon = require("lucide-react").Package;
+                Icon = Package;
                 iconBg = "bg-indigo-50 text-indigo-500";
               } else if (msg.includes("approved")) {
-                Icon = require("lucide-react").CheckCircle2;
+                Icon = CheckCircle2;
                 iconBg = "bg-emerald-50 text-emerald-500";
               } else if (msg.includes("dead link") || msg.includes("issue")) {
-                Icon = require("lucide-react").AlertTriangle;
+                Icon = AlertTriangle;
                 iconBg = "bg-rose-50 text-rose-500";
               } else if (msg.includes("review")) {
-                Icon = require("lucide-react").Eye;
+                Icon = Eye;
                 iconBg = "bg-cyan-50 text-cyan-500";
               } else if (msg.includes("completed")) {
-                Icon = require("lucide-react").FileText;
+                Icon = FileText;
                 iconBg = "bg-emerald-50 text-emerald-500";
               } else if (msg.includes("special")) {
-                Icon = require("lucide-react").Star;
+                Icon = Star;
                 iconBg = "bg-purple-50 text-purple-500";
               }
 

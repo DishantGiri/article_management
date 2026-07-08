@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Package, Clock, CheckCircle2, PlayCircle, FileText, Users, UserCheck, Crown, LayoutGrid, Globe, Network, AlertTriangle, Link as LinkIcon, Calendar, Activity, Star, ClipboardList, Check, X, Lock, ExternalLink, Flag, MoreHorizontal, Copy } from "lucide-react";
+import { Package, Clock, CheckCircle2, PlayCircle, FileText, Users, UserCheck, Crown, LayoutGrid, Globe, Network, AlertTriangle, Link as LinkIcon, Calendar, Activity, Star, ClipboardList, Check, X, Lock, ExternalLink, Flag, MoreHorizontal, Copy, Bell } from "lucide-react";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
 import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
 
@@ -79,6 +79,7 @@ export default function DashboardPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string>("ADMIN");
   const [currentUserId, setCurrentUserId] = useState<number>(1);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [showBellDropdown, setShowBellDropdown] = useState(false);
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
@@ -278,33 +279,52 @@ export default function DashboardPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6" suppressHydrationWarning>
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-          {currentUserRole === "TEAM_LEAD" && "Team Lead Overview"}
-          {currentUserRole === "LINKER" && "Linker Workspace"}
-          {currentUserRole === "WRITER" && "Writer Workspace"}
-        </h1>
-        <p className="text-slate-500 text-sm mt-0.5 font-medium">
-          {currentUserRole === "TEAM_LEAD" && "Approve completed articles, flag broken links, and direct workflows"}
-          {currentUserRole === "LINKER" && "Add and optimize buy links, affiliate tags, and monitor alerts"}
-          {currentUserRole === "WRITER" && "Submit quality articles, respond to lead suggestions, and view assignments"}
-        </p>
-      </div>
-
-      {/* Notifications Alert Inbox */}
-      {notifications.length > 0 && (
-        <div className="space-y-2">
-          {notifications.map((n) => (
-            <div key={n.id} className="p-4 bg-violet-50 border border-violet-100 rounded-2xl text-xs flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse flex-shrink-0" />
-                <span className="font-semibold text-slate-700">{n.message}</span>
-              </div>
-              <span className="text-[10px] text-violet-400 font-semibold">{new Date(n.createdAt).toLocaleDateString()}</span>
-            </div>
-          ))}
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+            {currentUserRole === "TEAM_LEAD" && "Team Lead Overview"}
+            {currentUserRole === "LINKER" && "Linker Workspace"}
+            {currentUserRole === "WRITER" && "Writer Workspace"}
+          </h1>
+          <p className="text-slate-500 text-sm mt-0.5 font-medium">
+            {currentUserRole === "TEAM_LEAD" && "Approve completed articles, flag broken links, and direct workflows"}
+            {currentUserRole === "LINKER" && "Add and optimize buy links, affiliate tags, and monitor alerts"}
+            {currentUserRole === "WRITER" && "Submit quality articles, respond to lead suggestions, and view assignments"}
+          </p>
         </div>
-      )}
+        <div className="relative">
+          <button
+            onClick={() => setShowBellDropdown(!showBellDropdown)}
+            className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition duration-150 border border-slate-200/50 shadow-sm bg-white cursor-pointer"
+          >
+            <Bell className="w-5 h-5" />
+            {notifications.length > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white" />
+            )}
+          </button>
+
+          {showBellDropdown && (
+            <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider font-semibold">Notifications</span>
+                <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-full">{notifications.length}</span>
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-2.5">
+                {notifications.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic text-center py-4">No notifications</p>
+                ) : (
+                  notifications.map((n) => (
+                    <div key={n.id} className="p-3 bg-slate-50 rounded-xl border border-slate-250/30 text-xs flex flex-col gap-1">
+                      <p className="font-semibold text-slate-700 leading-snug">{n.message}</p>
+                      <span className="text-[10px] text-slate-400 font-medium self-end">{new Date(n.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
 
 

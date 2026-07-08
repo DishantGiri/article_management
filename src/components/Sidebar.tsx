@@ -122,6 +122,9 @@ export default function Sidebar() {
 
     const user = initialUser; // Fallback for WebSocket registration before fetch completes
 
+    const audioObj = new Audio("/mixkit-software-interface-back-2575.wav");
+    audioObj.load();
+
     const ws = new WebSocket("ws://localhost:3001");
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: "register", userId: user.id }));
@@ -130,8 +133,8 @@ export default function Sidebar() {
       try {
         const notif = JSON.parse(event.data);
         setToast({ message: notif.message });
-        const audio = new Audio("/mixkit-software-interface-back-2575.wav");
-        audio.play().catch((e) => console.log("Failed to play notification sound:", e));
+        audioObj.currentTime = 0;
+        audioObj.play().catch((e) => console.log("Failed to play notification sound:", e));
         const customEvent = new CustomEvent("live-notification", { detail: notif });
         window.dispatchEvent(customEvent);
       } catch (err) {

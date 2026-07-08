@@ -15,17 +15,25 @@ const server = createServer((req, res) => {
         const payloadStr = JSON.stringify({ id, message, createdAt, type, data });
 
         if (broadcast) {
-          clients.forEach((client, userId) => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(payloadStr);
-            }
+          clients.forEach((sockets) => {
+            sockets.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(payloadStr);
+              }
+            });
           });
           console.log(`Broadcasted real-time notification: "${message || type}" to ${clients.size} users`);
         } else {
-          const client = clients.get(Number(recipientId));
-          if (client && client.readyState === WebSocket.OPEN) {
-            client.send(payloadStr);
-            console.log(`Pushed real-time notification to user ${recipientId}: "${message}"`);
+          const sockets = clients.get(Number(recipientId));
+          if (sockets && sockets.size > 0) {
+            let sentCount = 0;
+            sockets.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(payloadStr);
+                sentCount++;
+              }
+            });
+            console.log(`Pushed real-time notification to user ${recipientId} (${sentCount} tabs active): "${message}"`);
           } else {
             console.log(`User ${recipientId} is offline. Live notification skipped.`);
           }
@@ -44,7 +52,7 @@ const server = createServer((req, res) => {
 });
 
 const wss = new WebSocketServer({ noServer: true });
-const clients = new Map<number, WebSocket>();
+const clients = new Map<number, Set<WebSocket>>();
 
 server.on("upgrade", (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
@@ -60,8 +68,11 @@ wss.on("connection", (ws) => {
       const data = JSON.parse(message.toString());
       if (data.type === "register" && data.userId) {
         registeredUserId = Number(data.userId);
-        clients.set(registeredUserId, ws);
-        console.log(`User ${registeredUserId} registered for WebSocket notifications.`);
+        if (!clients.has(registeredUserId)) {
+          clients.set(registeredUserId, new Set());
+        }
+        clients.get(registeredUserId)!.add(ws);
+        console.log(`User ${registeredUserId} registered for WebSocket notifications. Total connections: ${clients.get(registeredUserId)!.size}`);
       }
     } catch (err) {
       console.error("WebSocket message parsing error:", err);
@@ -70,7 +81,13 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     if (registeredUserId !== null) {
-      clients.delete(registeredUserId);
+      const sockets = clients.get(registeredUserId);
+      if (sockets) {
+        sockets.delete(ws);
+        if (sockets.size === 0) {
+          clients.delete(registeredUserId);
+        }
+      }
       console.log(`User ${registeredUserId} disconnected.`);
     }
   });
