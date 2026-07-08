@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendRealtimeNotification } from "@/lib/notifier";
 
 // POST /api/products  — create a new product
 export async function POST(req: NextRequest) {
@@ -76,6 +77,25 @@ export async function POST(req: NextRequest) {
         })
       )
     );
+
+    // Notify writers who have access to the sites of these products
+    for (const p of createdProducts) {
+      const accesses = await prisma.siteAccess.findMany({
+        where: { siteId: p.siteId, user: { role: "WRITER" } },
+        select: { userId: true },
+      });
+      for (const access of accesses) {
+        const notif = await prisma.notification.create({
+          data: {
+            recipientId: access.userId,
+            senderId: Number(addedById),
+            type: "PRODUCT_ADDED",
+            message: `New product "${p.name}" has been added to site "${p.site.name}".`,
+          },
+        });
+        await sendRealtimeNotification(access.userId, notif);
+      }
+    }
 
     return NextResponse.json(createdProducts, { status: 201 });
   } catch (err) {

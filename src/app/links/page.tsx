@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { Search, Plus, Download, MoreHorizontal, ExternalLink, AlertTriangle } from "lucide-react";
+import { Search, Plus, Download, MoreHorizontal, ExternalLink, AlertTriangle, Network } from "lucide-react";
 import AddLinkModal from "@/components/AddLinkModal";
 import { useSearchParams } from "next/navigation";
 
@@ -53,6 +53,8 @@ function LinksPageContent() {
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const itemsPerPage = 10;
 
+  const [stats, setStats] = useState<any>(null);
+
   useEffect(() => {
     const uId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "2" : "2";
     
@@ -60,17 +62,46 @@ function LinksPageContent() {
     const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
     setCurrentUserRole(roles[uId] || "WRITER");
 
-    fetch(`/api/links?userId=${uId}`)
-      .then((r) => r.json())
-      .then((data) => setLinks(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch(`/api/links?userId=${uId}`).then((r) => r.json()),
+      fetch(`/api/dashboard?userId=${uId}`).then((r) => r.json()),
+    ]).then(([linksData, dashboardData]) => {
+      setLinks(Array.isArray(linksData) ? linksData : []);
+      setStats(dashboardData);
+    }).finally(() => setLoading(false));
   }, []);
 
+  const [userFilter, setUserFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const uniqueAdders = Array.from(new Set(links.map((l) => l.addedBy?.name).filter(Boolean))) as string[];
+
   const filtered = links.filter((l) => {
-    const matchSearch = l.product.name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch =
+      l.product.name.toLowerCase().includes(search.toLowerCase()) ||
       l.affiliateName.toLowerCase().includes(search.toLowerCase());
     const matchStatus = !statusFilter || l.status === statusFilter;
-    return matchSearch && matchStatus;
+
+    // Added By filter
+    const matchUser = !userFilter || l.addedBy?.name === userFilter;
+
+    // Date Range filter
+    let matchDate = true;
+    if (startDate) {
+      const s = new Date(startDate);
+      s.setHours(0, 0, 0, 0);
+      const d = new Date(l.addedAt);
+      if (d < s) matchDate = false;
+    }
+    if (endDate) {
+      const e = new Date(endDate);
+      e.setHours(23, 59, 59, 999);
+      const d = new Date(l.addedAt);
+      if (d > e) matchDate = false;
+    }
+
+    return matchSearch && matchStatus && matchUser && matchDate;
   });
 
   const missingBridgeCount = links.filter(l => !l.bridgePageLink).length;
@@ -143,6 +174,42 @@ function LinksPageContent() {
         </div>
       </div>
 
+      {/* Metric Cards Row */}
+      {stats && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "LINKER") && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 mb-2">
+              <Network className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.affiliateNetworks || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Affiliate Networks</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32 relative">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full flex items-center gap-1">↓ 2</span>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.deadLinks || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Dead Links</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 mb-2">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.issueLinks || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Issue Links</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Alert Banner */}
       {missingBridgeCount > 0 && (
         <div className="mb-6 bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
@@ -154,8 +221,9 @@ function LinksPageContent() {
       )}
 
       {/* Filters Bar */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-3 mb-6 bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="w-4 h-4 text-slate-400" />
           </div>
@@ -164,19 +232,55 @@ function LinksPageContent() {
             placeholder="Search link logs..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white placeholder-slate-400 font-medium text-slate-700"
+            className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white placeholder-slate-400 font-medium text-slate-700"
           />
         </div>
+
+        {/* Status Filter */}
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-          className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none min-w-32 cursor-pointer"
+          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[120px]"
         >
           <option value="">All Statuses</option>
           {Object.keys(STATUS_LABELS).map((k) => (
             <option key={k} value={k}>{STATUS_LABELS[k]}</option>
           ))}
         </select>
+
+        {/* Added By Filter */}
+        <select
+          value={userFilter}
+          onChange={(e) => { setUserFilter(e.target.value); setCurrentPage(1); }}
+          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[130px]"
+        >
+          <option value="">All Adders</option>
+          {uniqueAdders.map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
+
+        {/* Date Range Start */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-400 uppercase">From</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        {/* Date Range End */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-400 uppercase">To</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
       </div>
 
       {/* Table Content */}

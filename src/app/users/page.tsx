@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Plus, Pencil, Trash2, X } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, X, Users } from "lucide-react";
 
 interface Site {
   id: number;
@@ -62,6 +62,8 @@ export default function UsersPage() {
 
   const teamLeads = users.filter((u) => u.role === "TEAM_LEAD");
 
+  const [stats, setStats] = useState<any>(null);
+
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
     setCurrentUserId(parseInt(stored));
@@ -71,9 +73,11 @@ export default function UsersPage() {
     Promise.all([
       fetch("/api/users").then((r) => r.json()),
       fetch("/api/sites").then((r) => r.json()),
-    ]).then(([usersData, sitesData]) => {
+      fetch(`/api/dashboard?userId=${stored}`).then((r) => r.json()),
+    ]).then(([usersData, sitesData, dashboardData]) => {
       setUsers(Array.isArray(usersData) ? usersData : []);
       setSites(Array.isArray(sitesData) ? sitesData : []);
+      setStats(dashboardData);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -226,6 +230,48 @@ export default function UsersPage() {
           </button>
         )}
       </div>
+
+      {/* Metric Cards Row */}
+      {stats && currentUserRole !== "TEAM_LEAD" && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-violet-50 flex items-center justify-center text-violet-500 mb-2">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.totalWriters || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Writers</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-fuchsia-50 flex items-center justify-center text-fuchsia-500 mb-2">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.totalLinkers || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Linkers</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-500 mb-2">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.totalTeamLeads || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Team Leads</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 mb-2">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{users.filter((u) => getMockStatus(u.id) === "Active").length}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Active Users</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 mb-6 bg-white p-2 rounded-xl border border-slate-200 shadow-sm w-fit">
         <div className="relative w-64">

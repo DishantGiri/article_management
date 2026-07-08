@@ -50,6 +50,7 @@ enum NotificationType {
   ARTICLE_SUGGESTION
   LINK_ISSUE
   APPROVAL_GRANTED
+  PRODUCT_ADDED
 }
 
 // ─────────────────────────────────────────────

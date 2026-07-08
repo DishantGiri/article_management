@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Download, MoreHorizontal } from "lucide-react";
+import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity } from "lucide-react";
 
 interface Article {
   id: number;
@@ -27,19 +27,42 @@ export default function ArticlesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const [statusFilter, setStatusFilter] = useState("");
+  const [writerFilter, setWriterFilter] = useState("");
+  const [siteFilter, setSiteFilter] = useState("");
+
+  const [currentUserRole, setCurrentUserRole] = useState("WRITER");
+  const [stats, setStats] = useState<any>(null);
+
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
-    fetch(`/api/articles?userId=${stored}`)
-      .then((r) => r.json())
-      .then((data) => setArticles(data))
-      .finally(() => setLoading(false));
+    const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
+    setCurrentUserRole(roles[stored] || "WRITER");
+
+    Promise.all([
+      fetch(`/api/articles?userId=${stored}`).then((r) => r.json()),
+      fetch(`/api/dashboard?userId=${stored}`).then((r) => r.json()),
+    ]).then(([articlesData, dashboardData]) => {
+      setArticles(Array.isArray(articlesData) ? articlesData : []);
+      setStats(dashboardData);
+    }).finally(() => setLoading(false));
   }, []);
 
-  const filtered = articles.filter((a) =>
-    a.product.name.toLowerCase().includes(search.toLowerCase()) ||
-    (a.writer?.name || "").toLowerCase().includes(search.toLowerCase()) ||
-    a.product.site.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const uniqueWriters = Array.from(new Set(articles.map((a) => a.writer?.name).filter(Boolean))) as string[];
+  const uniqueSites = Array.from(new Set(articles.map((a) => a.product.site.name).filter(Boolean))) as string[];
+
+  const filtered = articles.filter((a) => {
+    const matchSearch =
+      a.product.name.toLowerCase().includes(search.toLowerCase()) ||
+      (a.writer?.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      a.product.site.name.toLowerCase().includes(search.toLowerCase());
+
+    const matchStatus = !statusFilter || a.status === statusFilter;
+    const matchWriter = !writerFilter || a.writer?.name === writerFilter;
+    const matchSite = !siteFilter || a.product.site.name === siteFilter;
+
+    return matchSearch && matchStatus && matchWriter && matchSite;
+  });
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -112,8 +135,100 @@ export default function ArticlesPage() {
         </div>
       </div>
 
+      {/* Metric Cards Row */}
+      {stats && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32 relative">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500"><CheckCircle2 className="w-4 h-4" /></div>
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">↑ 8%</span>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.general.completedArticles || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Completed Articles</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mb-2"><PlayCircle className="w-4 h-4" /></div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.general.inProgressArticles || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">In Progress</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 mb-2"><FileText className="w-4 h-4" /></div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.general.pendingArticles || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Pending Articles</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-500 mb-2"><Activity className="w-4 h-4" /></div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.avgWritingTime || "0.0"}h</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Avg Writing Time</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters Bar */}
+      <div className="flex items-center gap-3 mt-6 mb-2">
+        {/* Search */}
+        <div className="relative flex-1 max-w-sm bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 text-slate-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search articles..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            className="w-full pl-9 pr-4 py-2 border-none text-sm focus:outline-none focus:ring-0 bg-transparent placeholder-slate-400 font-medium text-slate-700"
+          />
+        </div>
+
+        {/* Status Filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+          className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+        >
+          <option value="">All Statuses</option>
+          <option value="PENDING">Pending</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="REVIEW">Review</option>
+        </select>
+
+        {/* Writer Filter */}
+        <select
+          value={writerFilter}
+          onChange={(e) => { setWriterFilter(e.target.value); setCurrentPage(1); }}
+          className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+        >
+          <option value="">All Writers</option>
+          {uniqueWriters.map((writer) => (
+            <option key={writer} value={writer}>{writer}</option>
+          ))}
+        </select>
+
+        {/* Site Filter */}
+        <select
+          value={siteFilter}
+          onChange={(e) => { setSiteFilter(e.target.value); setCurrentPage(1); }}
+          className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+        >
+          <option value="">All Sites</option>
+          {uniqueSites.map((site) => (
+            <option key={site} value={site}>{site}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Table Content */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-4">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />

@@ -70,9 +70,9 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-8 max-w-5xl mx-auto space-y-6" suppressHydrationWarning>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4" suppressHydrationWarning>
         <div>
           <h1 className="text-xl font-bold text-slate-900">Notifications</h1>
           <p className="text-sm text-slate-500 mt-0.5">

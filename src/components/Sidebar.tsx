@@ -130,6 +130,8 @@ export default function Sidebar() {
       try {
         const notif = JSON.parse(event.data);
         setToast({ message: notif.message });
+        const audio = new Audio("/mixkit-software-interface-back-2575.wav");
+        audio.play().catch((e) => console.log("Failed to play notification sound:", e));
         const customEvent = new CustomEvent("live-notification", { detail: notif });
         window.dispatchEvent(customEvent);
       } catch (err) {
@@ -170,14 +172,14 @@ export default function Sidebar() {
 
   const isActive = (href: string) => href === activeHref;
   return (
-    <aside className="w-64 min-h-screen bg-white flex flex-col fixed left-0 top-0 bottom-0 z-40 border-r border-slate-100 shadow-sm">
+    <aside className="w-64 min-h-screen bg-white flex flex-col fixed left-0 top-0 bottom-0 z-40 border-r border-slate-100 shadow-sm" suppressHydrationWarning>
       {/* Logo */}
-      <div className="px-6 py-6 border-b border-slate-100">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-[#0f172a] flex items-center justify-center shadow-sm">
+      <div className="px-6 py-6 border-b border-slate-100" suppressHydrationWarning>
+        <div className="flex items-center gap-3" suppressHydrationWarning>
+          <div className="w-8 h-8 rounded-md bg-[#0f172a] flex items-center justify-center shadow-sm" suppressHydrationWarning>
             <span className="text-white font-bold text-sm">I</span>
           </div>
-          <div>
+          <div suppressHydrationWarning>
             <p className="text-slate-900 font-bold text-sm leading-tight">InventoryPro</p>
             <p className="text-slate-500 text-[10px] mt-0.5 font-medium">Enterprise Manager</p>
           </div>
@@ -208,7 +210,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User Switcher (mock auth) */}
-      <div className="px-3 py-4 border-t border-slate-100 relative bg-slate-50/50">
+      <div className="px-3 py-4 border-t border-slate-100 relative bg-slate-50/50" suppressHydrationWarning>
         {isMounted ? (
           <>
             <button
@@ -260,7 +262,7 @@ export default function Sidebar() {
             )}
           </>
         ) : (
-          <div className="w-full h-[62px] p-2.5 rounded-xl bg-slate-100/50 animate-pulse border border-slate-200/50" />
+          <div className="w-full h-[62px] p-2.5 rounded-xl bg-slate-100/50 animate-pulse border border-slate-200/50" suppressHydrationWarning />
         )}
       </div>
 

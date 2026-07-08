@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy } from "lucide-react";
+import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package } from "lucide-react";
 import AddProductModal from "@/components/AddProductModal";
 import { useRouter } from "next/navigation";
 
@@ -47,6 +47,12 @@ export default function ProductsPage() {
   const itemsPerPage = 10;
   const router = useRouter();
 
+  const [userFilter, setUserFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const [stats, setStats] = useState<any>(null);
+
   useEffect(() => {
     const mockUserId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
     const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
@@ -55,14 +61,16 @@ export default function ProductsPage() {
     Promise.all([
       fetch(`/api/products?userId=${mockUserId}`).then((r) => r.json()),
       fetch("/api/categories").then((r) => r.json()),
+      fetch(`/api/dashboard?userId=${mockUserId}`).then((r) => r.json()),
     ])
-      .then(([productsData, categoriesData]) => {
+      .then(([productsData, categoriesData, dashboardData]) => {
         const mapped = productsData.map((p: any) => ({
           ...p,
           mockLinksCount: Math.floor(Math.random() * 8) + 1
         }));
         setProducts(mapped);
         setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+        setStats(dashboardData);
       })
       .finally(() => setLoading(false));
 
@@ -116,12 +124,34 @@ export default function ProductsPage() {
     };
   }, []);
 
+  const uniqueAdders = Array.from(new Set(products.map((p) => p.addedBy?.name).filter(Boolean))) as string[];
+
   const filtered = products.filter((p) => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch =
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.site.name.toLowerCase().includes(search.toLowerCase());
     const matchCategory = !categoryFilter || p.category?.id?.toString() === categoryFilter;
     const matchStatus = !statusFilter || (p.article ? p.article.status === statusFilter : false);
-    return matchSearch && matchCategory && matchStatus;
+
+    // Added By filter
+    const matchUser = !userFilter || p.addedBy?.name === userFilter;
+
+    // Date Range filter
+    let matchDate = true;
+    if (startDate) {
+      const s = new Date(startDate);
+      s.setHours(0, 0, 0, 0);
+      const d = new Date(p.addedAt);
+      if (d < s) matchDate = false;
+    }
+    if (endDate) {
+      const e = new Date(endDate);
+      e.setHours(23, 59, 59, 999);
+      const d = new Date(p.addedAt);
+      if (d > e) matchDate = false;
+    }
+
+    return matchSearch && matchCategory && matchStatus && matchUser && matchDate;
   });
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -200,9 +230,51 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Metric Cards Row */}
+      {stats && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "LINKER") && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-violet-50 flex items-center justify-center text-violet-500 mb-2"><Package className="w-4 h-4" /></div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.general.totalProducts || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Products</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 mb-2"><Clock className="w-4 h-4" /></div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.unlinkedProducts?.length || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Pending Products</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 mb-2"><Calendar className="w-4 h-4" /></div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.todaysProducts || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Today's Products</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-500 mb-2"><Globe className="w-4 h-4" /></div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.totalSites || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Sites</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center text-sky-500 mb-2"><LayoutGrid className="w-4 h-4" /></div>
+            <div>
+              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.totalCategories || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Categories</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters Bar */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-3 mb-6 bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="w-4 h-4 text-slate-400" />
           </div>
@@ -211,13 +283,15 @@ export default function ProductsPage() {
             placeholder="Search products..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white placeholder-slate-400 font-medium text-slate-700"
+            className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white placeholder-slate-400 font-medium text-slate-700"
           />
         </div>
+
+        {/* Status Filter */}
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-          className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none min-w-32 cursor-pointer"
+          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[120px]"
         >
           <option value="">All Statuses</option>
           <option value="PENDING">Pending</option>
@@ -226,16 +300,53 @@ export default function ProductsPage() {
           <option value="REJECTED">Rejected</option>
           <option value="REVIEW">Review</option>
         </select>
+
+        {/* Category Filter */}
         <select
           value={categoryFilter}
           onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-          className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none min-w-32 cursor-pointer max-w-xs truncate"
+          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[140px] max-w-xs truncate"
         >
           <option value="">All Categories</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
+
+        {/* Added By User Filter */}
+        <select
+          value={userFilter}
+          onChange={(e) => { setUserFilter(e.target.value); setCurrentPage(1); }}
+          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[130px]"
+        >
+          <option value="">All Adders</option>
+          {uniqueAdders.map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
+
+        {/* Date Range Start */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-400 uppercase">From</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        {/* Date Range End */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-400 uppercase">To</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
         <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-slate-500" />
           Filters

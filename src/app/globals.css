@@ -153,4 +153,7 @@ body {
   html {
     @apply font-sans;
   }
+  a {
+    color: #000000;
+  }
 }
