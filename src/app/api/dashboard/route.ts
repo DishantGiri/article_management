@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
       unlinkedProducts,
       writerPendingArticles,
       writerInProgressArticles,
+      writerCompletedArticles,
       linkerProducts,
       linkerLinks,
     ] = await Promise.all([
@@ -96,24 +97,42 @@ export async function GET(req: NextRequest) {
             where: { status: "PENDING", product: { siteId: { in: allowedSiteIds } } },
             include: {
               product: {
-                include: { site: { select: { name: true } }, category: { select: { name: true } } },
+                include: { 
+                  site: { select: { name: true } }, 
+                  category: { select: { name: true } },
+                  linkLogs: { include: { geos: true } }
+                },
               },
             },
-            take: 5,
+            take: 10,
           })
         : Promise.resolve([]),
 
-      // WRITER: Writer's own In-Progress articles
-      role === "WRITER"
-        ? prisma.article.findMany({
-            where: { writerId: userId, status: "IN_PROGRESS" },
-            include: {
-              product: {
-                include: { site: { select: { name: true } }, category: { select: { name: true } } },
-              },
+      // ANY ROLE: User's own In-Progress articles
+      prisma.article.findMany({
+        where: { writerId: userId, status: "IN_PROGRESS" },
+        include: {
+          product: {
+            include: { 
+              site: { select: { name: true } }, 
+              category: { select: { name: true } },
+              linkLogs: { include: { geos: true } }
             },
-          })
-        : Promise.resolve([]),
+          },
+        },
+      }),
+
+      // ANY ROLE: User's recently completed articles
+      prisma.article.findMany({
+        where: { writerId: userId, status: "COMPLETED" },
+        orderBy: { completedAt: "desc" },
+        include: {
+          product: {
+            include: { site: { select: { name: true } } }
+          }
+        },
+        take: 5,
+      }),
 
       // LINKER: Products added by this linker
       role === "LINKER"
@@ -278,6 +297,7 @@ export async function GET(req: NextRequest) {
       unlinkedProducts,
       writerPendingArticles,
       writerInProgressArticles,
+      writerCompletedArticles,
       linkerProducts,
       linkerLinks,
     });

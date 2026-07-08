@@ -123,9 +123,28 @@ export default function AddProductPage() {
     setError("");
   }, []);
 
+const isValidUrl = (url: string) => {
+  if (!url) return true;
+  try {
+    if (!/^https?:\/\//i.test(url)) return false;
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
   const handleSubmit = async () => {
     if (!form.name.trim()) {
       setError("Product name is required.");
+      return;
+    }
+    if (form.trendLink && !isValidUrl(form.trendLink)) {
+      setError("Please enter a valid Trend Link URL (must start with http:// or https://)");
+      return;
+    }
+    if (form.previewLink && !isValidUrl(form.previewLink)) {
+      setError("Please enter a valid Preview Link URL (must start with http:// or https://)");
       return;
     }
     setSubmitting(true);

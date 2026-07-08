@@ -8,11 +8,11 @@ import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, Check
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
 
 const MOCK_USERS = [
-  { id: 1, name: "Super Admin", role: "SUPER_ADMIN" as Role, email: "superadmin@articlemgmt.com" },
-  { id: 2, name: "Admin User", role: "ADMIN" as Role, email: "admin@articlemgmt.com" },
-  { id: 3, name: "John Linker", role: "LINKER" as Role, email: "linker@articlemgmt.com" },
-  { id: 4, name: "Jane Writer", role: "WRITER" as Role, email: "writer@articlemgmt.com" },
-  { id: 5, name: "Team Lead", role: "TEAM_LEAD" as Role, email: "lead@articlemgmt.com" },
+  { id: 5, name: "Super Admin", role: "SUPER_ADMIN" as Role, email: "superadmin@articlemgmt.com" },
+  { id: 1, name: "Admin User", role: "ADMIN" as Role, email: "admin@articlemgmt.com" },
+  { id: 2, name: "John Linker", role: "LINKER" as Role, email: "linker@articlemgmt.com" },
+  { id: 3, name: "Jane Writer", role: "WRITER" as Role, email: "writer@articlemgmt.com" },
+  { id: 4, name: "Team Lead", role: "TEAM_LEAD" as Role, email: "lead@articlemgmt.com" },
 ];
 
 const ROLE_COLORS: Record<Role, string> = {
@@ -96,6 +96,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [users, setUsers] = useState(MOCK_USERS);
   const [currentUser, setCurrentUser] = useState(MOCK_USERS[0]);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
@@ -105,8 +106,21 @@ export default function Sidebar() {
   useEffect(() => {
     setIsMounted(true);
     const stored = localStorage.getItem("mockUserId");
-    const user = MOCK_USERS.find((u) => u.id === parseInt(stored || "1")) || MOCK_USERS[0];
-    setCurrentUser(user);
+    const initialUser = MOCK_USERS.find((u) => u.id === parseInt(stored || "1")) || MOCK_USERS[0];
+    setCurrentUser(initialUser);
+
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setUsers(data);
+          const found = data.find((u: any) => u.id === parseInt(stored || "1")) || data[0];
+          setCurrentUser(found);
+        }
+      })
+      .catch((err) => console.error("Failed to load real users", err));
+
+    const user = initialUser; // Fallback for WebSocket registration before fetch completes
 
     const ws = new WebSocket("ws://localhost:3001");
     ws.onopen = () => {
@@ -219,7 +233,7 @@ export default function Sidebar() {
               <div className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden z-50">
                 <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider px-3 pt-3 pb-1">Switch Role (Dev)</p>
                 <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto">
-                  {MOCK_USERS.map((u) => (
+                  {users.map((u) => (
                     <button
                       key={u.id}
                       onClick={() => switchUser(u)}

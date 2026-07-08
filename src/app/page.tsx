@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Package, Clock, CheckCircle2, PlayCircle, FileText, Users, UserCheck, Crown, LayoutGrid, Globe, Network, AlertTriangle, Link as LinkIcon, Calendar, Activity, Star, ClipboardList, Check, X } from "lucide-react";
+import { Package, Clock, CheckCircle2, PlayCircle, FileText, Users, UserCheck, Crown, LayoutGrid, Globe, Network, AlertTriangle, Link as LinkIcon, Calendar, Activity, Star, ClipboardList, Check, X, Lock, ExternalLink, Flag, MoreHorizontal, Copy } from "lucide-react";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
 import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
 
@@ -25,6 +25,7 @@ interface DashboardData {
   unlinkedProducts: any[];
   writerPendingArticles: any[];
   writerInProgressArticles: any[];
+  writerCompletedArticles: any[];
   linkerProducts: any[];
   linkerLinks: any[];
   superAdmin?: {
@@ -102,6 +103,16 @@ export default function DashboardPage() {
 
     const handleLiveNotif = (e: Event) => {
       const notif = (e as CustomEvent).detail;
+      // If article status changed, re-fetch dashboard data to reflect new state
+      if (notif.type === "ARTICLE_STATUS_UPDATED") {
+        const stored2 = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+        fetch(`/api/dashboard?userId=${stored2}`)
+          .then((r) => r.json())
+          .then((resData) => {
+            setData(resData);
+          })
+          .catch(() => {});
+      }
       setNotifications((prev) => [notif, ...prev]);
     };
     window.addEventListener("live-notification", handleLiveNotif);
@@ -119,7 +130,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ status: "IN_PROGRESS", writerId: currentUserId }),
       });
       if (res.ok) {
-        router.push(`/articles/${articleId}`);
+        window.location.reload();
       } else {
         const err = await res.json();
         alert(err.error || "Failed to start writing");
@@ -138,6 +149,8 @@ export default function DashboardPage() {
   }
 
   if (!data) return <div className="p-8 text-red-500" suppressHydrationWarning>Failed to load dashboard.</div>;
+
+  const activeArticle = data.writerInProgressArticles?.[0];
 
   if (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN") {
     const sa = data.superAdmin || {
@@ -164,6 +177,8 @@ export default function DashboardPage() {
           </h1>
           <p className="text-slate-500 text-sm mt-1 font-medium">Full platform overview — all metrics and activity</p>
         </div>
+
+
 
         {/* 15 Metric Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
@@ -412,6 +427,8 @@ export default function DashboardPage() {
         </div>
       )}
 
+
+
       {/* Unlinked Alert Warning (Linkers only) */}
       {currentUserRole === "LINKER" && data.unlinkedProducts && data.unlinkedProducts.length > 0 && (
         <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl shadow-sm">
@@ -642,104 +659,471 @@ export default function DashboardPage() {
       {/* ─── ROLE-SPECIFIC VIEW: WRITER ─────────────────────────────────── */}
       {currentUserRole === "WRITER" && (
         <>
-          {/* Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <StatCard
-              label="Your In-Progress Articles"
-              value={data.writerInProgressArticles.length}
-              sub={data.writerInProgressArticles.length >= 1 ? "Complete to write another" : "Ready to accept task"}
-              color="bg-white text-slate-800"
-              icon={<svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036" /></svg>}
+          {data.writerInProgressArticles && data.writerInProgressArticles.length > 0 ? (
+            // STATE 2: ACTIVE ASSIGNMENT
+            <WriterActiveWorkspace 
+              article={data.writerInProgressArticles[0]} 
+              completedArticles={data.writerCompletedArticles || []}
+              currentUserId={currentUserId}
+              onSuccess={() => window.location.reload()}
             />
-            <StatCard
-              label="Unassigned Pending Articles"
-              value={data.writerPendingArticles.length}
-              sub="available to start on your sites"
-              color="bg-white text-slate-800"
-              icon={<svg className="w-8 h-8 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12" /></svg>}
+          ) : (
+            // STATE 1: NO ACTIVE ASSIGNMENT (AVAILABLE PRODUCTS)
+            <WriterAvailableAssignments 
+              pendingArticles={data.writerPendingArticles || []}
+              completedArticles={data.writerCompletedArticles || []}
+              currentUserId={currentUserId}
+              onStartWriting={handleStartWriting}
             />
-            <StatCard
-              label="Assigned Sites"
-              value="Authorized"
-              sub="Access configured by Admin"
-              color="bg-white text-slate-800"
-              icon={<svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4" /></svg>}
-            />
-          </div>
-
-          {/* Columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Active Articles */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100">
-                <h2 className="font-bold text-slate-800 text-sm">Your Active Assignments</h2>
-              </div>
-              <div className="p-4 space-y-3">
-                {data.writerInProgressArticles.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400 text-xs">
-                    No active assignments. Select a pending article below to start writing!
-                  </div>
-                ) : (
-                  data.writerInProgressArticles.map((a) => (
-                    <div key={a.id} className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-slate-800">{a.product.name}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">{a.product.site.name} · {a.product.category.name}</p>
-                      </div>
-                      <Link href={`/articles/${a.id}`} className="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs rounded-xl transition shadow-sm shadow-violet-500/10">
-                        Edit Article
-                      </Link>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Pending Articles */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100">
-                <h2 className="font-bold text-slate-800 text-sm">Available Pending Articles</h2>
-              </div>
-              <div className="p-4 space-y-3">
-                {data.writerPendingArticles.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400 text-xs">
-                    No pending articles found on your authorized sites.
-                  </div>
-                ) : (
-                  data.writerPendingArticles.map((a) => (
-                    <div key={a.id} className="p-4 bg-slate-50/50 border border-slate-100 rounded-xl flex items-center justify-between hover:bg-slate-50 transition-colors">
-                      <div>
-                        <p className="text-xs font-bold text-slate-800">{a.product.name}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">{a.product.site.name} · {a.product.category.name}</p>
-                      </div>
-                      <button
-                        onClick={() => handleStartWriting(a.id)}
-                        className="px-3 py-1.5 border border-violet-200 text-violet-700 hover:bg-violet-50 font-semibold text-xs rounded-xl transition"
-                      >
-                        Claim Task
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          )}
         </>
       )}
 
-      {/* Quick Access Actions Links */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-        {[
-          { href: "/products/add", label: "Add Product", desc: "Configure new product specs", bg: "bg-white text-slate-700 border border-slate-100 hover:border-violet-300 hover:bg-violet-50/20", roles: ["LINKER"] },
-          { href: "/articles", label: "View Articles", desc: "Monitor statuses & logs", bg: "bg-white text-slate-700 border border-slate-100 hover:border-violet-300 hover:bg-violet-50/20", roles: ["WRITER", "TEAM_LEAD"] },
-          { href: "/links", label: "Manage Links", desc: "Integrate affiliate pathways", bg: "bg-white text-slate-700 border border-slate-100 hover:border-violet-300 hover:bg-violet-50/20", roles: ["LINKER", "TEAM_LEAD"] },
-        ].filter(act => act.roles.includes(currentUserRole)).map((a) => (
-          <Link key={a.href} href={a.href}
-            className={`rounded-2xl p-5 ${a.bg} transition-all duration-200 shadow-sm block`}>
-            <p className="font-bold text-sm text-slate-800">{a.label}</p>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">{a.desc}</p>
-          </Link>
-        ))}
+      {/* Quick Access Actions Links (Hide for WRITER since their view is completely different now) */}
+      {currentUserRole !== "WRITER" && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
+          {[
+            { href: "/products/add", label: "Add Product", desc: "Configure new product specs", bg: "bg-white text-slate-700 border border-slate-100 hover:border-violet-300 hover:bg-violet-50/20", roles: ["LINKER"] },
+            { href: "/articles", label: "View Articles", desc: "Monitor statuses & logs", bg: "bg-white text-slate-700 border border-slate-100 hover:border-violet-300 hover:bg-violet-50/20", roles: ["TEAM_LEAD"] },
+            { href: "/links", label: "Manage Links", desc: "Integrate affiliate pathways", bg: "bg-white text-slate-700 border border-slate-100 hover:border-violet-300 hover:bg-violet-50/20", roles: ["LINKER", "TEAM_LEAD"] },
+          ].filter(act => act.roles.includes(currentUserRole)).map((a) => (
+            <Link key={a.href} href={a.href}
+              className={`rounded-2xl p-5 ${a.bg} transition-all duration-200 shadow-sm block`}>
+              <p className="font-bold text-sm text-slate-800">{a.label}</p>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">{a.desc}</p>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── WRITER WORKSPACE COMPONENTS ──────────────────────────────────────────────────────────
+
+function WriterActiveWorkspace({ article, completedArticles, currentUserId, onSuccess }: any) {
+  const [articleLink, setArticleLink] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalReason, setApprovalReason] = useState("");
+
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (article.startedAt) {
+      const start = new Date(article.startedAt).getTime();
+      const interval = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - start) / 1000));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [article.startedAt]);
+
+  const formatTime = (secs: number) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+const isValidUrl = (url: string) => {
+  if (!url) return true;
+  try {
+    if (!/^https?:\/\//i.test(url)) return false;
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+  const handleMarkCompleted = async () => {
+    if (!articleLink.trim()) return;
+    if (!isValidUrl(articleLink)) {
+      alert("Please enter a valid Article Link (must start with http:// or https://)");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/articles/${article.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED", articleLink, callerId: currentUserId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      onSuccess();
+    } catch (e: any) {
+      alert(e.message || "Failed to submit");
+      setSubmitting(false);
+    }
+  };
+
+  const handleRequestApproval = async () => {
+    if (!approvalReason.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/articles/${article.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ specialApprovalRequested: true, specialApprovalRequestReason: approvalReason, callerId: currentUserId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setShowApprovalModal(false);
+      onSuccess(); // Trigger reload to update UI
+    } catch (e: any) {
+      alert(e.message || "Failed to request approval");
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 mb-2">
+        <Lock className="w-5 h-5 text-emerald-600" />
+        <span className="text-sm font-medium text-slate-600">Complete current article to unlock next assignment.</span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative">
+          <div className="flex items-center justify-between mb-6">
+            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              In Progress
+            </span>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Writing Timer</p>
+              <p className="text-xl font-bold text-slate-800 font-mono tracking-tight">{formatTime(elapsed)}</p>
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">{article.product.name}</h2>
+          
+          <div className="flex items-center gap-4 text-sm text-slate-500 font-medium mb-8">
+            <span className="flex items-center gap-1.5"><FileText className="w-4 h-4" /> {article.product.site.name}</span>
+            <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4" /> {article.product.category.name}</span>
+          </div>
+
+          <div className="flex items-center gap-3 mb-8 pb-8 border-b border-slate-100">
+            {article.product.trendLink && (
+              <a href={article.product.trendLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">
+                <ExternalLink className="w-4 h-4" /> Trend Link
+              </a>
+            )}
+            {article.product.previewLink && (
+              <a href={article.product.previewLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-semibold transition">
+                <Globe className="w-4 h-4" /> Preview Link
+              </a>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 mb-4">Affiliate Links & Geos</h3>
+            {article.product.linkLogs?.length > 0 ? (
+              <div className="space-y-3">
+                {article.product.linkLogs.map((log: any) => (
+                  <div key={log.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="font-bold text-slate-800 text-sm">{log.affiliateName}</p>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{log.status}</span>
+                    </div>
+                    <div className="space-y-1.5 mb-2">
+                      {log.affiliateLink && (
+                        <div><span className="text-[10px] font-bold text-slate-400 uppercase">Affiliate Link:</span> <a href={log.affiliateLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline break-all">{log.affiliateLink}</a></div>
+                      )}
+                      {log.bridgePageLink && (
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Bridge Page:</span> 
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <a href={log.bridgePageLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline break-all">{log.bridgePageLink}</a>
+                            <button onClick={() => { navigator.clipboard.writeText(log.bridgePageLink); alert("Copied bridge page link!"); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Bridge Page Link"><Copy className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      )}
+                      {log.buyLink && (
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Buy Link:</span> 
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <a href={log.buyLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline break-all">{log.buyLink}</a>
+                            <button onClick={() => { navigator.clipboard.writeText(log.buyLink); alert("Copied buy link!"); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Buy Link"><Copy className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      )}
+                      {log.linkerRemarks && (
+                        <div className="mt-2 bg-slate-100 p-2 rounded text-xs text-slate-600"><span className="font-bold">Remarks:</span> {log.linkerRemarks}</div>
+                      )}
+                    </div>
+                    {log.geos?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {log.geos.map((g: any) => (
+                          <span key={g.geo} className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-500">{g.geo}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400 italic">No links available for this product.</p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Submit Work</h3>
+            <p className="text-xs text-slate-500 mb-6">Paste your document URL below to complete this assignment.</p>
+            
+            <div className="mb-6">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Article URL (GDocs/WP)</label>
+              <input 
+                type="url"
+                value={articleLink}
+                onChange={e => setArticleLink(e.target.value)}
+                placeholder="https://docs.google.com/..."
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <button 
+                onClick={handleMarkCompleted}
+                disabled={!articleLink.trim() || submitting}
+                className="w-full py-3 bg-black hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition"
+              >
+                <CheckCircle2 className="w-5 h-5" /> Mark Completed
+              </button>
+              
+              <button 
+                onClick={() => setShowApprovalModal(true)}
+                disabled={submitting || article.specialApprovalRequested}
+                className="w-full py-3 bg-white hover:bg-slate-50 border border-slate-200 disabled:opacity-50 text-slate-700 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition"
+              >
+                <Flag className="w-4 h-4" /> {article.specialApprovalRequested ? "Approval Pending..." : "Request Special Approval"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <RecentCompletionsTable completedArticles={completedArticles} />
+
+      {/* Special Approval Modal */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Request Special Approval</h3>
+            <p className="text-xs text-slate-500 mb-4">Explain why you need to submit this article without a document link.</p>
+            <textarea 
+              rows={3}
+              value={approvalReason}
+              onChange={e => setApprovalReason(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 mb-4"
+              placeholder="e.g. Published directly on site..."
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowApprovalModal(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold">Cancel</button>
+              <button onClick={handleRequestApproval} disabled={submitting || !approvalReason.trim()} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">Submit Request</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WriterAvailableAssignments({ pendingArticles, completedArticles, currentUserId, onStartWriting }: any) {
+  const [selectedArticle, setSelectedArticle] = useState<any>(null);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100">
+          <h2 className="text-lg font-bold text-slate-900">Available Assignments</h2>
+          <p className="text-xs text-slate-500 mt-1">Select a pending article to view details and start writing.</p>
+        </div>
+        
+        {pendingArticles.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 text-sm">No pending articles available for your authorized sites.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6 bg-slate-50/50">
+            {pendingArticles.map((a: any) => (
+              <div 
+                key={a.id} 
+                onClick={() => setSelectedArticle(a)}
+                className="bg-white p-5 rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-md cursor-pointer transition flex flex-col justify-between h-36"
+              >
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm line-clamp-2 leading-tight mb-2">{a.product.name}</h3>
+                  <div className="flex flex-wrap gap-2 text-[10px] font-bold text-slate-500">
+                    <span className="bg-slate-100 px-2 py-0.5 rounded">{a.product.site.name}</span>
+                    <span className="bg-slate-100 px-2 py-0.5 rounded">{a.product.category.name}</span>
+                  </div>
+                </div>
+                <div className="flex justify-end mt-4">
+                  <span className="text-xs font-semibold text-indigo-600 flex items-center gap-1 group-hover:gap-2 transition-all">Preview <ExternalLink className="w-3 h-3" /></span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <RecentCompletionsTable completedArticles={completedArticles} />
+
+      {selectedArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Assignment Details</h2>
+              <button onClick={() => setSelectedArticle(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">{selectedArticle.product.name}</h3>
+                <div className="flex items-center gap-4 text-sm text-slate-500 font-medium">
+                  <span className="flex items-center gap-1.5"><FileText className="w-4 h-4" /> {selectedArticle.product.site.name}</span>
+                  <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4" /> {selectedArticle.product.category.name}</span>
+                </div>
+              </div>
+
+              {(selectedArticle.product.trendLink || selectedArticle.product.previewLink) && (
+                <div className="flex gap-3">
+                  {selectedArticle.product.trendLink && (
+                    <a href={selectedArticle.product.trendLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">
+                      <ExternalLink className="w-4 h-4" /> Trend Link
+                    </a>
+                  )}
+                  {selectedArticle.product.previewLink && (
+                    <a href={selectedArticle.product.previewLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-semibold transition">
+                      <Globe className="w-4 h-4" /> Preview Link
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {selectedArticle.product.remarks && (
+                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-sm text-amber-800">
+                  <span className="font-bold block mb-1">Remarks:</span>
+                  {selectedArticle.product.remarks}
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 mb-3">Links & Geos</h4>
+                {selectedArticle.product.linkLogs?.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedArticle.product.linkLogs.map((log: any) => (
+                      <div key={log.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="font-bold text-slate-800 text-xs">{log.affiliateName}</p>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{log.status}</span>
+                        </div>
+                        <div className="space-y-1 mb-2">
+                          {log.affiliateLink && (
+                            <div><span className="text-[9px] font-bold text-slate-400 uppercase">Affiliate Link:</span> <a href={log.affiliateLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate">{log.affiliateLink}</a></div>
+                          )}
+                          {log.bridgePageLink && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center justify-between">
+                                Bridge Page:
+                                <button onClick={() => { navigator.clipboard.writeText(log.bridgePageLink); alert("Copied bridge page link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition"><Copy className="w-3 h-3" /></button>
+                              </span> 
+                              <a href={log.bridgePageLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.bridgePageLink}</a>
+                            </div>
+                          )}
+                          {log.buyLink && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center justify-between">
+                                Buy Link:
+                                <button onClick={() => { navigator.clipboard.writeText(log.buyLink); alert("Copied buy link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition"><Copy className="w-3 h-3" /></button>
+                              </span> 
+                              <a href={log.buyLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.buyLink}</a>
+                            </div>
+                          )}
+                          {log.linkerRemarks && (
+                            <div className="mt-1.5 bg-slate-100 p-1.5 rounded text-[10px] text-slate-600"><span className="font-bold">Remarks:</span> {log.linkerRemarks}</div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {log.geos?.map((g: any) => (
+                            <span key={g.geo} className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[9px] font-bold text-slate-500 uppercase">{g.geo}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">No links configured yet.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
+              <button onClick={() => setSelectedArticle(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-white transition">Close</button>
+              <button onClick={() => onStartWriting(selectedArticle.id)} className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition flex items-center gap-2">
+                <PlayCircle className="w-4 h-4" /> Start Writing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RecentCompletionsTable({ completedArticles }: { completedArticles: any[] }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
+        <h3 className="font-bold text-slate-900 text-sm">Recent Completions</h3>
+        <button className="text-slate-400 hover:text-slate-600"><MoreHorizontal className="w-5 h-5" /></button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-100">
+              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Name</th>
+              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site</th>
+              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Writing Time</th>
+              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {completedArticles.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-6 py-8 text-center text-xs text-slate-400">No completed articles yet.</td>
+              </tr>
+            ) : (
+              completedArticles.map((a: any) => (
+                <tr key={a.id} className="hover:bg-slate-50/50 transition">
+                  <td className="px-6 py-3.5">
+                    <p className="text-xs font-bold text-slate-800 line-clamp-1">{a.product.name}</p>
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <p className="text-[11px] font-medium text-slate-500">{a.product.site.name}</p>
+                  </td>
+                  <td className="px-6 py-3.5 text-center">
+                    <p className="text-[11px] font-bold text-slate-700">
+                      {a.writingTimeMin ? (
+                        a.writingTimeMin >= 60 
+                          ? `${Math.floor(a.writingTimeMin / 60).toString().padStart(2, '0')}:${(a.writingTimeMin % 60).toString().padStart(2, '0')}:00`
+                          : `00:${a.writingTimeMin.toString().padStart(2, '0')}:00`
+                      ) : (
+                        "--"
+                      )}
+                    </p>
+                  </td>
+                  <td className="px-6 py-3.5 text-right">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-700">
+                      <Check className="w-3 h-3" /> Submitted
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

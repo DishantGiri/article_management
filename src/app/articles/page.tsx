@@ -7,6 +7,7 @@ interface Article {
   id: number;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "REVIEW";
   updatedAt: string;
+  articleLink?: string;
   product: { id: number; name: string; site: { name: string }; category: { name: string } };
   writer?: { id: number; name: string };
 }
@@ -82,6 +83,13 @@ export default function ArticlesPage() {
         </div>
       </div>
     );
+  };
+
+  const ensureExternalUrl = (url: string | null | undefined) => {
+    if (!url) return "";
+    const trimmed = url.trim();
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
   };
 
   const getInitials = (name: string) => {
@@ -163,8 +171,8 @@ export default function ArticlesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-center">
-                        {a.link ? (
-                          <a href={a.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition">
+                        {a.articleLink ? (
+                          <a href={ensureExternalUrl(a.articleLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                           </a>
                         ) : (

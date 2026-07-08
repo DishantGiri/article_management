@@ -91,7 +91,22 @@ export default function SitesPage() {
     }
   };
 
+const isValidUrl = (url: string) => {
+  if (!url) return true;
+  try {
+    if (!/^https?:\/\//i.test(url)) return false;
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
   const handleSaveSite = async () => {
+    if (form.url && !isValidUrl(form.url)) {
+      setError("Please enter a valid URL (must start with http:// or https://)");
+      return;
+    }
     setSaving(true);
     setError("");
     setSuccess("");

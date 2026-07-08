@@ -10,14 +10,25 @@ const server = createServer((req, res) => {
     req.on("end", () => {
       try {
         const payload = JSON.parse(body);
-        const { recipientId, message, id, createdAt, type } = payload;
+        const { recipientId, message, id, createdAt, type, broadcast, data } = payload;
         
-        const client = clients.get(Number(recipientId));
-        if (client && client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({ id, message, createdAt, type }));
-          console.log(`Pushed real-time notification to user ${recipientId}: "${message}"`);
+        const payloadStr = JSON.stringify({ id, message, createdAt, type, data });
+
+        if (broadcast) {
+          clients.forEach((client, userId) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(payloadStr);
+            }
+          });
+          console.log(`Broadcasted real-time notification: "${message || type}" to ${clients.size} users`);
         } else {
-          console.log(`User ${recipientId} is offline. Live notification skipped.`);
+          const client = clients.get(Number(recipientId));
+          if (client && client.readyState === WebSocket.OPEN) {
+            client.send(payloadStr);
+            console.log(`Pushed real-time notification to user ${recipientId}: "${message}"`);
+          } else {
+            console.log(`User ${recipientId} is offline. Live notification skipped.`);
+          }
         }
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true }));

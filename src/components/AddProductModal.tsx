@@ -14,8 +14,7 @@ interface Category {
 }
 
 interface FormData {
-  categoryId: string;
-  siteId: string;
+  categoryIds: number[];
   name: string;
   trendLink: string;
   previewLink: string;
@@ -23,7 +22,7 @@ interface FormData {
 }
 
 function StepIndicator({ step }: { step: number }) {
-  const steps = ["Category", "Site", "Details"];
+  const steps = ["Categories", "Preview Sites", "Details"];
   return (
     <div className="flex items-center gap-0 mb-6">
       {steps.map((label, i) => {
@@ -82,8 +81,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
   const [successState, setSuccessState] = useState(false);
 
   const [form, setForm] = useState<FormData>({
-    categoryId: "",
-    siteId: "",
+    categoryIds: [],
     name: "",
     trendLink: "",
     previewLink: "",
@@ -94,34 +92,48 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
     if (isOpen) {
       setStep(1);
       setSuccessState(false);
-      setForm({ categoryId: "", siteId: "", name: "", trendLink: "", previewLink: "", remarks: "" });
+      setForm({ categoryIds: [], name: "", trendLink: "", previewLink: "", remarks: "" });
       setLoading(true);
-      fetch("/api/categories")
-        .then((r) => r.json())
-        .then((data) => setCategories(Array.isArray(data) ? data : []))
-        .catch(() => setError("Failed to load categories"))
+      Promise.all([
+        fetch("/api/categories").then((r) => r.json()),
+        fetch("/api/sites").then((r) => r.json())
+      ])
+        .then(([catsData, sitesData]) => {
+          setCategories(Array.isArray(catsData) ? catsData : []);
+          setSites(Array.isArray(sitesData) ? sitesData : []);
+        })
+        .catch(() => setError("Failed to load initial data"))
         .finally(() => setLoading(false));
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!form.categoryId) return;
-    setLoading(true);
-    fetch(`/api/sites?categoryId=${form.categoryId}`)
-      .then((r) => r.json())
-      .then((data) => setSites(Array.isArray(data) ? data : []))
-      .catch(() => setError("Failed to load sites"))
-      .finally(() => setLoading(false));
-  }, [form.categoryId]);
 
   const update = useCallback((field: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
   }, []);
 
+const isValidUrl = (url: string) => {
+  if (!url) return true;
+  try {
+    if (!/^https?:\/\//i.test(url)) return false;
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
   const handleSubmit = async () => {
     if (!form.name.trim()) {
       setError("Product name is required.");
+      return;
+    }
+    if (form.trendLink && !isValidUrl(form.trendLink)) {
+      setError("Please enter a valid Trend Link URL (must start with http:// or https://)");
+      return;
+    }
+    if (form.previewLink && !isValidUrl(form.previewLink)) {
+      setError("Please enter a valid Preview Link URL (must start with http:// or https://)");
       return;
     }
     setSubmitting(true);
@@ -133,8 +145,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
-          siteId: parseInt(form.siteId),
-          categoryId: parseInt(form.categoryId),
+          categoryIds: form.categoryIds,
           trendLink: form.trendLink || null,
           previewLink: form.previewLink || null,
           remarks: form.remarks || null,
@@ -156,7 +167,16 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
     }
   };
 
-  const getCategoryName = () => categories.find(c => String(c.id) === form.categoryId)?.name || "";
+  const getCategoryNames = () => {
+    return categories
+      .filter((c) => form.categoryIds.includes(c.id))
+      .map((c) => c.name)
+      .join(", ");
+  };
+
+  const previewSites = sites.filter((site: any) => 
+    site.categories?.some((c: any) => form.categoryIds.includes(c.id))
+  );
 
   if (!isOpen) return null;
 
@@ -182,12 +202,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-2">Product Added!</h3>
               <p className="text-sm text-slate-500 mb-6">
-                <strong className="text-slate-700">{form.name}</strong> has been successfully added to {getCategoryName()}.
+                <strong className="text-slate-700">{form.name}</strong> has been successfully added to {getCategoryNames()}.
               </p>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={() => {
-                    setForm({ categoryId: "", siteId: "", name: "", trendLink: "", previewLink: "", remarks: "" });
+                    setForm({ categoryIds: [], name: "", trendLink: "", previewLink: "", remarks: "" });
                     setStep(1);
                     setSuccessState(false);
                   }}
@@ -216,34 +236,46 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
               {/* STEP 1 */}
               {step === 1 && (
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-800">Select Category</h3>
+                  <h3 className="text-sm font-semibold text-slate-800">Select Categories</h3>
                   {loading ? (
                     <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" /></div>
                   ) : categories.length === 0 ? (
                     <div className="text-center py-4 text-slate-500 text-sm">No categories found.</div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                      {categories.map((cat) => (
-                        <button
-                          key={cat.id}
-                          onClick={() => {
-                            update("categoryId", String(cat.id));
-                            update("siteId", "");
-                            setSites([]);
-                          }}
-                          className={`p-3 rounded-lg border text-left transition-all ${
-                            form.categoryId === String(cat.id)
-                              ? "border-indigo-500 bg-indigo-50"
-                              : "border-slate-200 hover:border-indigo-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          <div className="font-semibold text-slate-800 text-sm truncate">{cat.name}</div>
-                        </button>
-                      ))}
+                      {categories.map((cat) => {
+                        const isSelected = form.categoryIds.includes(cat.id);
+                        return (
+                          <button
+                            key={cat.id}
+                            onClick={() => {
+                              setForm((prev) => ({
+                                ...prev,
+                                categoryIds: isSelected 
+                                  ? prev.categoryIds.filter((id) => id !== cat.id)
+                                  : [...prev.categoryIds, cat.id]
+                              }));
+                              setError("");
+                            }}
+                            className={`p-3 rounded-lg border text-left transition-all flex items-center justify-between ${
+                              isSelected
+                                ? "border-indigo-500 bg-indigo-50"
+                                : "border-slate-200 hover:border-indigo-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="font-semibold text-slate-800 text-sm truncate">{cat.name}</div>
+                            {isSelected && (
+                              <svg className="w-4 h-4 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                   <button
-                    disabled={!form.categoryId}
+                    disabled={form.categoryIds.length === 0}
                     onClick={() => setStep(2)}
                     className="w-full mt-4 py-2.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50 transition text-sm"
                   >
@@ -255,25 +287,20 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
               {/* STEP 2 */}
               {step === 2 && (
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-800">Select Site in {getCategoryName()}</h3>
-                  {loading ? (
-                    <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" /></div>
-                  ) : sites.length === 0 ? (
-                    <div className="text-center py-4 text-slate-500 text-sm">No sites found.</div>
+                  <h3 className="text-sm font-semibold text-slate-800">Preview Websites</h3>
+                  <p className="text-xs text-slate-500">The product will be automatically added to these websites.</p>
+                  {previewSites.length === 0 ? (
+                    <div className="text-center py-4 text-slate-500 text-sm">No websites found for the selected categories.</div>
                   ) : (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {sites.map((site) => (
-                        <button
+                    <div className="space-y-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-100">
+                      {previewSites.map((site: any) => (
+                        <div
                           key={site.id}
-                          onClick={() => update("siteId", String(site.id))}
-                          className={`w-full px-3 py-2.5 rounded-lg border flex items-center gap-3 transition-all ${
-                            form.siteId === String(site.id)
-                              ? "border-indigo-500 bg-indigo-50"
-                              : "border-slate-200 hover:border-indigo-200"
-                          }`}
+                          className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 flex items-center justify-between"
                         >
-                          <span className="font-semibold text-slate-800 text-sm">{site.name}</span>
-                        </button>
+                          <span className="font-semibold text-slate-700 text-sm">{site.name}</span>
+                          <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold">Auto-assigned</span>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -285,7 +312,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
                       Back
                     </button>
                     <button
-                      disabled={!form.siteId}
+                      disabled={previewSites.length === 0}
                       onClick={() => setStep(3)}
                       className="flex-1 py-2.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50 transition text-sm"
                     >

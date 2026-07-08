@@ -125,6 +125,12 @@ export async function PATCH(
 
     // Business rules
     if (status === "IN_PROGRESS" && writerId) {
+      if (activeUserRole !== "WRITER") {
+        return NextResponse.json(
+          { error: "Only Writers can write articles." },
+          { status: 403 }
+        );
+      }
       // Check writer doesn't already have an in-progress article
       const inProgress = await prisma.article.findFirst({
         where: { writerId: parseInt(writerId), status: "IN_PROGRESS", id: { not: parseInt(id) } },
@@ -175,10 +181,42 @@ export async function PATCH(
         ...(productCreatedAt ? { productCreatedAt } : {}),
       },
       include: {
-        product: { select: { name: true } },
-        writer: { select: { name: true } },
+        product: {
+          include: {
+            site: true,
+            category: true,
+            addedBy: { select: { name: true } },
+            linkLogs: {
+              include: { geos: true, addedBy: { select: { name: true } } },
+              orderBy: { addedAt: "desc" },
+            },
+          },
+        },
+        writer: { select: { id: true, name: true } },
+        reviews: {
+          include: { reviewedBy: { select: { id: true, name: true } } },
+          orderBy: { reviewedAt: "desc" },
+        },
+        specialApproval: {
+          include: { approvedBy: { select: { name: true } } },
+        },
       },
     });
+
+    try {
+      fetch("http://localhost:3001/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          broadcast: true,
+          type: "ARTICLE_STATUS_UPDATED",
+          message: `Article for ${updated.product.name} is now ${updated.status}`,
+          id: updated.id,
+          createdAt: new Date().toISOString(),
+          data: updated,
+        }),
+      }).catch((e) => console.error("WS Notification failed", e));
+    } catch (e) {}
 
     return NextResponse.json(updated);
   } catch (err) {

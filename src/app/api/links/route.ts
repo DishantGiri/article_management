@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     include: {
       geos: true,
       addedBy: { select: { name: true } },
-      product: { select: { name: true } },
+      product: { select: { name: true, article: { select: { articleLink: true } } } },
     },
     orderBy: { addedAt: "desc" },
   });
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
     }
 
-    if (user.role !== "LINKER" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN" && user.role !== "TEAM_LEAD" && (user.role !== "WRITER" || !user.allowLinkLogAccess)) {
+    if (user.role !== "LINKER" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Only Linkers, Admins, and Super Admins can add links." },
         { status: 403 }

@@ -5,12 +5,12 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, siteId, categoryId, trendLink, previewLink, remarks, addedById } = body;
+    const { name, categoryIds, trendLink, previewLink, remarks, addedById } = body;
 
     // Basic validation
-    if (!name || !siteId || !categoryId || !addedById) {
+    if (!name || !categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0 || !addedById) {
       return NextResponse.json(
-        { error: "name, siteId, categoryId, and addedById are required" },
+        { error: "name, categoryIds array, and addedById are required" },
         { status: 400 }
       );
     }
@@ -27,38 +27,57 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const site = await prisma.site.findUnique({
-      where: { id: Number(siteId) },
-      select: { id: true },
+    const categoriesWithSites = await prisma.category.findMany({
+      where: { id: { in: categoryIds.map(Number) } },
+      include: { sites: true },
     });
 
-    if (!site) {
-      return NextResponse.json({ error: "Site not found" }, { status: 404 });
+    if (categoriesWithSites.length === 0) {
+      return NextResponse.json({ error: "No valid categories found" }, { status: 404 });
     }
 
-    const product = await prisma.product.create({
-      data: {
-        name,
-        siteId: Number(siteId),
-        categoryId: Number(categoryId),
-        trendLink: trendLink || null,
-        previewLink: previewLink || null,
-        remarks: remarks || null,
-        addedById: Number(addedById),
-      },
-      include: {
-        site: { select: { name: true } },
-        category: { select: { name: true } },
-        addedBy: { select: { name: true } },
-      },
-    });
+    const productsToCreate = [];
+    for (const cat of categoriesWithSites) {
+      for (const site of cat.sites) {
+        productsToCreate.push({
+          name,
+          siteId: site.id,
+          categoryId: cat.id,
+          trendLink: trendLink || null,
+          previewLink: previewLink || null,
+          remarks: remarks || null,
+          addedById: Number(addedById),
+        });
+      }
+    }
 
-    // Auto-create a PENDING article for the product
-    await prisma.article.create({
-      data: { productId: product.id, status: "PENDING" },
-    });
+    if (productsToCreate.length === 0) {
+      return NextResponse.json({ error: "No sites associated with the selected categories" }, { status: 400 });
+    }
 
-    return NextResponse.json(product, { status: 201 });
+    const createdProducts = await prisma.$transaction(
+      productsToCreate.map((p) =>
+        prisma.product.create({
+          data: p,
+          include: {
+            site: { select: { name: true, url: true } },
+            category: { select: { name: true } },
+            addedBy: { select: { name: true } },
+          },
+        })
+      )
+    );
+
+    // Auto-create a PENDING article for each product
+    await prisma.$transaction(
+      createdProducts.map((p) =>
+        prisma.article.create({
+          data: { productId: p.id, status: "PENDING" },
+        })
+      )
+    );
+
+    return NextResponse.json(createdProducts, { status: 201 });
   } catch (err) {
     console.error("[POST /api/products]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -97,10 +116,11 @@ export async function GET(req: NextRequest) {
       ...(allowedSiteIds !== undefined ? { siteId: { in: allowedSiteIds } } : {}),
     },
     include: {
-      site: { select: { name: true } },
+      site: { select: { name: true, url: true } },
       category: { select: { name: true } },
       addedBy: { select: { name: true } },
-      article: { select: { id: true, status: true } },
+      article: { select: { id: true, status: true, writer: { select: { name: true } } } },
+      linkLogs: { include: { geos: true } },
     },
     orderBy: { addedAt: "desc" },
   });

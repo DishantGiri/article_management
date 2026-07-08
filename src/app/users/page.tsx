@@ -65,7 +65,7 @@ export default function UsersPage() {
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
     setCurrentUserId(parseInt(stored));
-    const roles: Record<string, string> = { "1": "SUPER_ADMIN", "2": "ADMIN", "3": "LINKER", "4": "WRITER", "5": "TEAM_LEAD" };
+    const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
     setCurrentUserRole(roles[stored] || "ADMIN");
 
     Promise.all([

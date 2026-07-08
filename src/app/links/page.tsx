@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { Search, Plus, Download, MoreHorizontal, ExternalLink, AlertTriangle } from "lucide-react";
+import AddLinkModal from "@/components/AddLinkModal";
+import { useSearchParams } from "next/navigation";
 
 interface LinkLog {
   id: number;
@@ -13,7 +15,7 @@ interface LinkLog {
   addedAt: string;
   geos: { geo: string }[];
   addedBy: { name: string };
-  product: { name: string };
+  product: { name: string; article?: { articleLink?: string | null } };
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -38,16 +40,26 @@ const STATUS_LABELS: Record<string, string> = {
   ALERT: "Alert",
 };
 
-export default function LinksPage() {
+function LinksPageContent() {
+  const searchParams = useSearchParams();
+  const urlProductId = searchParams.get("productId");
+
   const [links, setLinks] = useState<LinkLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const itemsPerPage = 10;
 
   useEffect(() => {
     const uId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "2" : "2";
+    
+    // Determine Role
+    const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
+    setCurrentUserRole(roles[uId] || "WRITER");
+
     fetch(`/api/links?userId=${uId}`)
       .then((r) => r.json())
       .then((data) => setLinks(Array.isArray(data) ? data : []))
@@ -115,10 +127,15 @@ export default function LinksPage() {
           <p className="text-slate-500 text-sm mt-0.5 font-medium">{links.length} link entries</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 shadow-sm transition flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Link
-          </button>
+          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+            <button 
+              onClick={() => setIsAddLinkOpen(true)}
+              className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 shadow-sm transition flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Link
+            </button>
+          )}
           <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
             <Download className="w-4 h-4 text-slate-500" />
             Export
@@ -178,13 +195,16 @@ export default function LinksPage() {
               <thead>
                 <tr className="border-b border-slate-100">
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Article Link</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bridge Page</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Affiliate</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Geo</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Added By</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center"></th>
+                  {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center"></th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -196,6 +216,18 @@ export default function LinksPage() {
                     <tr key={l.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-3 py-3.5">
                         <span className="text-[13px] font-semibold text-slate-800">{l.product.name}</span>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        {l.product.article?.articleLink ? (
+                          <a href={l.product.article.articleLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-500 hover:text-blue-600 transition">
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Article
+                          </a>
+                        ) : (
+                          <span className="text-[12px] font-semibold text-slate-400">
+                            --
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3.5">
                         {l.bridgePageLink ? (
@@ -239,11 +271,13 @@ export default function LinksPage() {
                           {new Date(l.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       </td>
-                      <td className="px-3 py-3.5 text-center">
-                        <button className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 mx-auto transition">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </td>
+                      {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+                        <td className="px-3 py-3.5 text-center">
+                          <button className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 mx-auto transition">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -253,6 +287,21 @@ export default function LinksPage() {
           </div>
         )}
       </div>
+
+      <AddLinkModal 
+        isOpen={isAddLinkOpen} 
+        onClose={() => setIsAddLinkOpen(false)} 
+        onSuccess={() => window.location.reload()} 
+        preselectedProductId={urlProductId ? parseInt(urlProductId) : null}
+      />
     </div>
+  );
+}
+
+export default function LinksPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading...</div>}>
+      <LinksPageContent />
+    </Suspense>
   );
 }

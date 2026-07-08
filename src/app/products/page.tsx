@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, MoreHorizontal } from "lucide-react";
+import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy } from "lucide-react";
 import AddProductModal from "@/components/AddProductModal";
+import { useRouter } from "next/navigation";
 
 interface Category {
   id: number;
@@ -41,16 +42,21 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState("WRITER");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const itemsPerPage = 10;
+  const router = useRouter();
 
   useEffect(() => {
     const mockUserId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+    const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
+    setCurrentUserRole(roles[mockUserId] || "WRITER");
+
     Promise.all([
       fetch(`/api/products?userId=${mockUserId}`).then((r) => r.json()),
       fetch("/api/categories").then((r) => r.json()),
     ])
       .then(([productsData, categoriesData]) => {
-        // Mock links array for UI demonstration since links might not be fully fetched
         const mapped = productsData.map((p: any) => ({
           ...p,
           mockLinksCount: Math.floor(Math.random() * 8) + 1
@@ -59,6 +65,55 @@ export default function ProductsPage() {
         setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       })
       .finally(() => setLoading(false));
+
+    // Live status updates via WebSocket
+    let ws: WebSocket | null = null;
+    try {
+      ws = new WebSocket("ws://localhost:3001");
+      ws.onopen = () => {
+        ws?.send(JSON.stringify({ type: "register", userId: parseInt(mockUserId) }));
+      };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "ARTICLE_STATUS_UPDATED" && msg.data) {
+            const updated = msg.data;
+            setProducts((prev) =>
+              prev.map((p) =>
+                p.id === updated.productId
+                  ? {
+                      ...p,
+                      article: {
+                        id: updated.id,
+                        status: updated.status,
+                        writer: updated.writer,
+                      },
+                    }
+                  : p
+              )
+            );
+            // Also patch selectedProduct if it's open
+            setSelectedProduct((prev) =>
+              prev && prev.id === updated.productId
+                ? {
+                    ...prev,
+                    article: {
+                      id: updated.id,
+                      status: updated.status,
+                      writer: updated.writer,
+                    },
+                  }
+                : prev
+            );
+          }
+        } catch (e) {}
+      };
+      ws.onerror = () => {};
+    } catch (e) {}
+
+    return () => {
+      ws?.close();
+    };
   }, []);
 
   const filtered = products.filter((p) => {
@@ -126,12 +181,14 @@ export default function ProductsPage() {
           <p className="text-slate-500 text-sm mt-0.5 font-medium">{filtered.length} products found</p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 shadow-sm transition flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Product
-          </button>
+          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 shadow-sm transition flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Add Product
+            </button>
+          )}
           <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
             <Upload className="w-4 h-4 text-slate-500" />
             Import
@@ -209,7 +266,7 @@ export default function ProductsPage() {
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Writer</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Links</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Actions</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -223,7 +280,19 @@ export default function ProductsPage() {
                         <span className="text-[13px] font-semibold text-slate-800">{p.name}</span>
                       </td>
                       <td className="px-3 py-3.5">
-                        <span className="text-[13px] font-medium text-slate-600">{p.site?.name}</span>
+                        {p.site?.url ? (
+                          <a 
+                            href={p.site.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-[13px] font-semibold text-indigo-600 hover:text-indigo-700 hover:underline inline-flex items-center gap-1"
+                          >
+                            {p.site.name}
+                            <ExternalLink className="w-3 h-3 opacity-60" />
+                          </a>
+                        ) : (
+                          <span className="text-[13px] font-medium text-slate-600">{p.site?.name}</span>
+                        )}
                       </td>
                       <td className="px-3 py-3.5">
                         <span className="text-[13px] font-medium text-slate-600">{p.category?.name}</span>
@@ -264,12 +333,61 @@ export default function ProductsPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3.5 text-center">
-                        <span className="text-[13px] font-semibold text-slate-600">{p.mockLinksCount || 0}</span>
+                        <span className="text-[13px] font-semibold text-slate-600">{p.linkLogs?.length || 0}</span>
                       </td>
-                      <td className="px-3 py-3.5 text-center">
-                        <button className="w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 mx-auto transition">
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </button>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          {/* Preview — always left, all roles */}
+                          <button
+                            onClick={() => setSelectedProduct(p)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-[11px] font-semibold whitespace-nowrap"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            Preview
+                          </button>
+
+                          {/* WRITER: Write button — always shown, disabled unless PENDING */}
+                          {currentUserRole === "WRITER" && (
+                            <button
+                              disabled={status !== "PENDING"}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!p.article || status !== "PENDING") return;
+                                try {
+                                  const uId = localStorage.getItem("mockUserId") || "1";
+                                  const res = await fetch(`/api/articles/${p.article.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
+                                  });
+                                  if (!res.ok) throw new Error((await res.json()).error);
+                                  window.location.href = "/";
+                                } catch (err: any) {
+                                  alert(err.message || "Failed to start writing");
+                                }
+                              }}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${
+                                status === "PENDING"
+                                  ? "bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
+                                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                              }`}
+                            >
+                              <PlayCircle className="w-3.5 h-3.5" />
+                              Write
+                            </button>
+                          )}
+
+                          {/* NON-WRITERS: Track link — only when article exists */}
+                          {currentUserRole !== "WRITER" && p.article && (
+                            <Link
+                              href={`/articles/${p.article.id}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all text-[11px] font-semibold whitespace-nowrap"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Track
+                            </Link>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -289,6 +407,134 @@ export default function ProductsPage() {
           window.location.reload();
         }}
       />
+
+      {selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Assignment Details</h2>
+              <button onClick={() => setSelectedProduct(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">{selectedProduct.name}</h3>
+                <div className="flex items-center gap-4 text-sm text-slate-500 font-medium">
+                  <span className="flex items-center gap-1.5"><FileText className="w-4 h-4" /> {selectedProduct.site.name}</span>
+                  <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4" /> {selectedProduct.category.name}</span>
+                </div>
+              </div>
+
+              {(selectedProduct.trendLink || selectedProduct.previewLink) && (
+                <div className="flex gap-3">
+                  {selectedProduct.trendLink && (
+                    <a href={selectedProduct.trendLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">
+                      <ExternalLink className="w-4 h-4" /> Trend Link
+                    </a>
+                  )}
+                  {selectedProduct.previewLink && (
+                    <a href={selectedProduct.previewLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-semibold transition">
+                      <Globe className="w-4 h-4" /> Preview Link
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {selectedProduct.remarks && (
+                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-sm text-amber-800">
+                  <span className="font-bold block mb-1">Remarks:</span>
+                  {selectedProduct.remarks}
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 mb-3">Links & Geos</h4>
+                {selectedProduct.linkLogs && selectedProduct.linkLogs.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedProduct.linkLogs.map((log: any) => (
+                      <div key={log.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="font-bold text-slate-800 text-xs">{log.affiliateName}</p>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{log.status}</span>
+                        </div>
+                        <div className="space-y-1 mb-2">
+                          {log.affiliateLink && (
+                            <div><span className="text-[9px] font-bold text-slate-400 uppercase">Affiliate Link:</span> <a href={log.affiliateLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate">{log.affiliateLink}</a></div>
+                          )}
+                          {log.bridgePageLink && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center justify-between">
+                                Bridge Page:
+                                <button onClick={() => { navigator.clipboard.writeText(log.bridgePageLink); alert("Copied bridge page link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Bridge Page Link"><Copy className="w-3 h-3" /></button>
+                              </span> 
+                              <a href={log.bridgePageLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.bridgePageLink}</a>
+                            </div>
+                          )}
+                          {log.buyLink && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center justify-between">
+                                Buy Link:
+                                <button onClick={() => { navigator.clipboard.writeText(log.buyLink); alert("Copied buy link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Buy Link"><Copy className="w-3 h-3" /></button>
+                              </span> 
+                              <a href={log.buyLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.buyLink}</a>
+                            </div>
+                          )}
+                          {log.linkerRemarks && (
+                            <div className="mt-1.5 bg-slate-100 p-1.5 rounded text-[10px] text-slate-600"><span className="font-bold">Remarks:</span> {log.linkerRemarks}</div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {log.geos?.map((g: any) => (
+                            <span key={g.geo} className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[9px] font-bold text-slate-500 uppercase">{g.geo}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">No links configured yet.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
+              <button onClick={() => setSelectedProduct(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-white transition">Close</button>
+              
+              {currentUserRole === "WRITER" && selectedProduct.article?.status === "PENDING" && (
+                <button 
+                  onClick={async () => {
+                    if (!selectedProduct.article) return;
+                    try {
+                      const uId = localStorage.getItem("mockUserId") || "1";
+                      const res = await fetch(`/api/articles/${selectedProduct.article.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
+                      });
+                      if (!res.ok) throw new Error((await res.json()).error);
+                      window.location.href = "/";
+                    } catch (e: any) {
+                      alert(e.message || "Failed to start writing");
+                    }
+                  }}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition flex items-center gap-2"
+                >
+                  <PlayCircle className="w-4 h-4" /> Start Writing
+                </button>
+              )}
+
+              {currentUserRole !== "WRITER" && selectedProduct.article && (
+                <Link 
+                  href={`/articles/${selectedProduct.article.id}`}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" /> View Article Tracking
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
