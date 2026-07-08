@@ -3,7 +3,8 @@ export async function sendRealtimeNotification(
   notification: { id: number; message: string; type: string; createdAt: Date }
 ) {
   try {
-    await fetch("http://localhost:3001/notify", {
+    const wsPort = process.env.WS_PORT || "3001";
+    await fetch(`http://localhost:${wsPort}/notify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

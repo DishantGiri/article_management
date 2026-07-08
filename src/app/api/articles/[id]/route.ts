@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import moment from "moment";
 
 // GET /api/articles/[id]
 export async function GET(
@@ -204,7 +205,8 @@ export async function PATCH(
     });
 
     try {
-      fetch("http://localhost:3001/notify", {
+      const wsPort = process.env.WS_PORT || "3001";
+      fetch(`http://localhost:${wsPort}/notify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -125,7 +125,9 @@ export default function Sidebar() {
     const audioObj = new Audio("/mixkit-software-interface-back-2575.wav");
     audioObj.load();
 
-    const ws = new WebSocket("ws://localhost:3001");
+    const wsHost = typeof window !== "undefined" ? window.location.hostname : "localhost";
+    const wsPort = process.env.NEXT_PUBLIC_WS_PORT || "3001";
+    const ws = new WebSocket(`ws://${wsHost}:${wsPort}`);
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: "register", userId: user.id }));
     };
