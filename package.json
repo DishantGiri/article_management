@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx server.ts",
     "build": "next build",
-    "start": "next start -p 3022",
+    "start": "NODE_ENV=production tsx server.ts",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"

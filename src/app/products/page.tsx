@@ -99,9 +99,9 @@ export default function ProductsPage() {
     // Live status updates via WebSocket
     let ws: WebSocket | null = null;
     try {
-      const wsHost = typeof window !== "undefined" ? window.location.hostname : "localhost";
-      const wsPort = process.env.NEXT_PUBLIC_WS_PORT || "3001";
-      ws = new WebSocket(`ws://${wsHost}:${wsPort}`);
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsHost = window.location.host;
+      ws = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
       ws.onopen = () => {
         ws?.send(JSON.stringify({ type: "register", userId: parseInt(mockUserId) }));
       };

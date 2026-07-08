@@ -205,8 +205,8 @@ export async function PATCH(
     });
 
     try {
-      const wsPort = process.env.WS_PORT || "3001";
-      fetch(`http://localhost:${wsPort}/notify`, {
+      const port = process.env.PORT || "3022";
+      fetch(`http://localhost:${port}/notify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
