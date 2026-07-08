@@ -15,6 +15,8 @@ interface Category {
 interface Product {
   id: number;
   name: string;
+  siteId: number;
+  categoryId: number;
   trendLink?: string;
   previewLink?: string;
   remarks?: string;
