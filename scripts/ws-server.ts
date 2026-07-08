@@ -93,7 +93,7 @@ wss.on("connection", (ws) => {
   });
 });
 
-const PORT = process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3001;
+const PORT = process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3021;
 server.listen(PORT, () => {
   console.log(`WebSocket notification server running on http://localhost:${PORT}`);
 });

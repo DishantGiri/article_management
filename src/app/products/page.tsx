@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package } from "lucide-react";
+import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2 } from "lucide-react";
 import AddProductModal from "@/components/AddProductModal";
+import EditProductModal from "@/components/EditProductModal";
 import { useRouter } from "next/navigation";
 
 interface Category {
@@ -42,10 +43,29 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const itemsPerPage = 10;
   const router = useRouter();
+
+  const handleDeleteProduct = async (productId: number, productName: string) => {
+    if (confirm(`Are you sure you want to delete "${productName}"? This will also delete all associated article tracking and link log entries.`)) {
+      const uId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+      try {
+        const res = await fetch(`/api/products/${productId}?callerId=${uId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Failed to delete product");
+        }
+        window.location.reload();
+      } catch (err: any) {
+        alert(err.message || "Failed to delete product");
+      }
+    }
+  };
 
   const [userFilter, setUserFilter] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -500,6 +520,26 @@ export default function ProductsPage() {
                               Track
                             </Link>
                           )}
+
+                          {/* LINKER/ADMIN: Edit & Delete buttons */}
+                          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+                            <>
+                              <button
+                                onClick={() => setEditingProduct(p)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(p.id, p.name)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -519,6 +559,15 @@ export default function ProductsPage() {
           // Trigger a re-fetch of products if needed, or simply let the user close it
           window.location.reload();
         }}
+      />
+
+      <EditProductModal
+        isOpen={!!editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSuccess={() => {
+          window.location.reload();
+        }}
+        product={editingProduct}
       />
 
       {selectedProduct && (

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { Search, Plus, Download, MoreHorizontal, ExternalLink, AlertTriangle, Network } from "lucide-react";
+import { Search, Plus, Download, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2 } from "lucide-react";
 import AddLinkModal from "@/components/AddLinkModal";
+import EditLinkModal from "@/components/EditLinkModal";
 import { useSearchParams } from "next/navigation";
 
 interface LinkLog {
@@ -50,8 +51,27 @@ function LinksPageContent() {
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
+  const [editingLink, setEditingLink] = useState<any>(null);
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const itemsPerPage = 10;
+
+  const handleDeleteLink = async (linkId: number) => {
+    if (confirm("Are you sure you want to delete this link log?")) {
+      const uId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+      try {
+        const res = await fetch(`/api/links/${linkId}?callerId=${uId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Failed to delete link");
+        }
+        window.location.reload();
+      } catch (err: any) {
+        alert(err.message || "Failed to delete link");
+      }
+    }
+  };
 
   const [stats, setStats] = useState<any>(null);
 
@@ -377,9 +397,22 @@ function LinksPageContent() {
                       </td>
                       {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
                         <td className="px-3 py-3.5 text-center">
-                          <button className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 mx-auto transition">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setEditingLink(l)}
+                              className="p-1.5 rounded-md border border-slate-200 bg-white text-slate-400 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition cursor-pointer"
+                              title="Edit Link"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLink(l.id)}
+                              className="p-1.5 rounded-md border border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition cursor-pointer"
+                              title="Delete Link"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -397,6 +430,13 @@ function LinksPageContent() {
         onClose={() => setIsAddLinkOpen(false)} 
         onSuccess={() => window.location.reload()} 
         preselectedProductId={urlProductId ? parseInt(urlProductId) : null}
+      />
+
+      <EditLinkModal
+        isOpen={!!editingLink}
+        onClose={() => setEditingLink(null)}
+        onSuccess={() => window.location.reload()}
+        link={editingLink}
       />
     </div>
   );

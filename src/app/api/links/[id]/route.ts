@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
 
-// PATCH /api/links/[id] — update link status / details
+// PATCH /api/links/[id] — update link details / status
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -10,7 +10,18 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, bridgePageLink, buyLink, linkerRemarks, callerId, teamLeadId } = body;
+    const {
+      status,
+      bridgePageLink,
+      buyLink,
+      linkerRemarks,
+      productId,
+      affiliateName,
+      affiliateLink,
+      geos,
+      callerId,
+      teamLeadId,
+    } = body;
 
     const activeUserId = callerId || teamLeadId;
     if (activeUserId) {
@@ -35,13 +46,30 @@ export async function PATCH(
       );
     }
 
+    // If geos are being updated, delete old geos first
+    if (geos && Array.isArray(geos)) {
+      await prisma.linkGeo.deleteMany({
+        where: { linkLogId: parseInt(id) },
+      });
+    }
+
     const updated = await prisma.linkLog.update({
       where: { id: parseInt(id) },
       data: {
-        ...(status ? { status } : {}),
-        ...(bridgePageLink !== undefined ? { bridgePageLink } : {}),
-        ...(buyLink !== undefined ? { buyLink } : {}),
-        ...(linkerRemarks !== undefined ? { linkerRemarks } : {}),
+        ...(status !== undefined ? { status } : {}),
+        ...(bridgePageLink !== undefined ? { bridgePageLink: bridgePageLink || null } : {}),
+        ...(buyLink !== undefined ? { buyLink: buyLink || null } : {}),
+        ...(linkerRemarks !== undefined ? { linkerRemarks: linkerRemarks || null } : {}),
+        ...(productId !== undefined ? { productId: Number(productId) } : {}),
+        ...(affiliateName !== undefined ? { affiliateName } : {}),
+        ...(affiliateLink !== undefined ? { affiliateLink } : {}),
+        ...(geos && Array.isArray(geos)
+          ? {
+              geos: {
+                create: geos.map((geo: string) => ({ geo })),
+              },
+            }
+          : {}),
       },
       include: { geos: true },
     });
@@ -62,6 +90,46 @@ export async function PATCH(
     return NextResponse.json(updated);
   } catch (err) {
     console.error("[PATCH /api/links/:id]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// DELETE /api/links/[id] — delete link log
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { searchParams } = new URL(req.url);
+    const callerId = searchParams.get("callerId");
+
+    const callerIdNum = Number(callerId);
+    if (callerIdNum) {
+      const user = await prisma.user.findUnique({
+        where: { id: callerIdNum },
+        select: { role: true },
+      });
+      if (!user || (user.role !== "LINKER" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
+        return NextResponse.json(
+          { error: "Access Denied: Only Linkers, Admins, and Super Admins can delete links." },
+          { status: 403 }
+        );
+      }
+    } else {
+      return NextResponse.json({ error: "callerId is required" }, { status: 400 });
+    }
+
+    const existing = await prisma.linkLog.findUnique({ where: { id: parseInt(id) } });
+    if (!existing) return NextResponse.json({ error: "Link not found" }, { status: 404 });
+
+    await prisma.linkLog.delete({
+      where: { id: parseInt(id) },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[DELETE /api/links/:id]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -92,3 +160,4 @@ export async function GET(
   if (!link) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(link);
 }
+
