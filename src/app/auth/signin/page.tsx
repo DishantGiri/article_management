@@ -34,9 +34,9 @@ function SignInContent() {
       {/* Brand Logo/Header */}
       <div className="space-y-2">
         <div className="w-16 h-16 bg-[#0f172a] rounded-2xl flex items-center justify-center shadow-lg mx-auto transform transition duration-500 hover:scale-105 hover:rotate-3">
-          <span className="text-white font-extrabold text-2xl">I</span>
+          <span className="text-white font-extrabold text-2xl">A</span>
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">InventoryPro</h1>
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Article Flow</h1>
         <p className="text-slate-500 text-sm font-medium">Enterprise Workflow Manager</p>
       </div>
 
@@ -50,8 +50,51 @@ function SignInContent() {
         </p>
       </div>
 
+      {/* Email Testing Login Form */}
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const email = (e.currentTarget.elements.namedItem("email") as HTMLInputElement).value;
+          if (!email) return;
+          setLoading(true);
+          try {
+            await signIn("credentials", { email, callbackUrl });
+          } catch (e) {
+            console.error(e);
+            setLoading(false);
+          }
+        }}
+        className="space-y-3"
+      >
+        <input
+          type="email"
+          name="email"
+          required
+          placeholder="test@fishtailinfosolutions.com"
+          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder:text-slate-400"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-md transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+        >
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            "Sign in with Email (Test)"
+          )}
+        </button>
+      </form>
+
+      <div className="relative flex items-center py-2">
+        <div className="flex-grow border-t border-slate-200"></div>
+        <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px] font-bold uppercase tracking-wider">Or</span>
+        <div className="flex-grow border-t border-slate-200"></div>
+      </div>
+
       {/* Google Login Button */}
       <button
+        type="button"
         onClick={handleGoogleSignIn}
         disabled={loading}
         className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm shadow-md transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50 cursor-pointer active:scale-98"

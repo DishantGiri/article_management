@@ -19,16 +19,11 @@ export async function GET(req: NextRequest) {
     });
 
     if (user?.role === "TEAM_LEAD") {
-      const accesses = await prisma.siteAccess.findMany({
-        where: { userId },
-        select: { siteId: true },
-      });
-      const siteIds = accesses.map((a) => a.siteId);
       allowedFilter = {
         OR: [
           { writerId: userId },
           { writer: { teamLeadId: userId } },
-          { status: "PENDING", product: { siteId: { in: siteIds } } }
+          { status: "PENDING" }
         ]
       };
     } else if (user?.role === "WRITER") {
@@ -46,7 +41,7 @@ export async function GET(req: NextRequest) {
   const articles = await prisma.article.findMany({
     where: {
       ...(writerId ? { writerId: parseInt(writerId) } : {}),
-      ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" } : {}),
+      ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO" } : {}),
       ...(productId ? { productId: parseInt(productId) } : {}),
       ...allowedFilter,
     },

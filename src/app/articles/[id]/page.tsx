@@ -8,11 +8,12 @@ import { useSession } from "next-auth/react";
 
 interface Article {
   id: number;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO";
   articleLink?: string;
   startedAt?: string;
   completedAt?: string;
   writingTimeMin?: number;
+  updateTimeMin?: number;
   productCreatedAt?: string;
   updatedAt: string;
   priority: "LOW" | "MEDIUM" | "HIGH";
@@ -46,6 +47,11 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [remark, setRemark] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [editLinkMode, setEditLinkMode] = useState(false);
+  const [newLinkValue, setNewLinkValue] = useState("");
+  const [updatingLink, setUpdatingLink] = useState(false);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -73,6 +79,49 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
       .catch(() => setError("Failed to fetch article details"))
       .finally(() => setLoading(false));
   }, [id, router, session?.user?.id]);
+
+  useEffect(() => {
+    if (article?.articleLink) {
+      setNewLinkValue(article.articleLink);
+    }
+  }, [article]);
+
+  const handleReviewSubmit = async (approved: boolean) => {
+    if (!remark.trim() && !approved) {
+      setError("Please provide feedback remarks when requesting a redo.");
+      return;
+    }
+    setSubmittingReview(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleId: article?.id,
+          reviewedById: currentUserId,
+          suggestion: remark,
+          approved,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to submit review");
+      
+      setSuccess(approved ? "Article approved successfully!" : "Redo request submitted successfully.");
+      setRemark("");
+      
+      // Refresh article data
+      const refreshRes = await fetch(`/api/articles/${id}?userId=${currentUserId}`);
+      const freshData = await refreshRes.json();
+      if (!refreshRes.ok) throw new Error(freshData.error);
+      setArticle(freshData);
+    } catch (err: any) {
+      setError(err.message || "Failed to submit review");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -141,10 +190,16 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative">
              <div className="flex items-center justify-between mb-6">
-               <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${article.status === 'IN_PROGRESS' ? 'bg-emerald-100 text-emerald-700' : article.status === 'COMPLETED' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>
-                 {article.status === 'IN_PROGRESS' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
-                 {article.status.replace("_", " ")}
-               </span>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                  article.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 border border-blue-200/50' :
+                  article.status === 'REDO' ? 'bg-rose-50 text-rose-700 border border-rose-200/50' :
+                  article.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/50' :
+                  article.status === 'COMPLETED' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/50' :
+                  'bg-amber-50 text-amber-700 border border-amber-200/50'
+                }`}>
+                  {(article.status === 'IN_PROGRESS' || article.status === 'REDO') && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>}
+                  {article.status === 'REDO' ? 'Needs Changes' : article.status.charAt(0) + article.status.slice(1).toLowerCase()}
+                </span>
                
                {article.writer && (
                  <div className="text-right">
@@ -253,22 +308,101 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                  </div>
                  
                  {article.writingTimeMin !== undefined && article.writingTimeMin !== null && (
-                   <div className="pt-2">
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Writing Time</p>
-                     <p className="text-sm font-bold text-slate-800">{article.writingTimeMin >= 60 ? `${Math.floor(article.writingTimeMin / 60)}h ${article.writingTimeMin % 60}m` : `${article.writingTimeMin}m`}</p>
-                   </div>
-                 )}
-                 
-                 {/* Submitted Article Link */}
-                 {article.articleLink && (
-                    <div className="pt-4 border-t border-slate-100">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Submitted Document</p>
-                      <a href={ensureExternalUrl(article.articleLink)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition break-all leading-tight text-center">
-                        <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                        Open Document
-                      </a>
+                    <div className="pt-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Writing Time</p>
+                      <p className="text-sm font-bold text-slate-800">{article.writingTimeMin >= 60 ? `${Math.floor(article.writingTimeMin / 60)}h ${article.writingTimeMin % 60}m` : `${article.writingTimeMin}m`}</p>
                     </div>
-                 )}
+                  )}
+
+                  {article.updateTimeMin !== undefined && article.updateTimeMin !== null && (
+                    <div className="pt-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Revision / Redo Time</p>
+                      <p className="text-sm font-bold text-slate-800">{article.updateTimeMin >= 60 ? `${Math.floor(article.updateTimeMin / 60)}h ${article.updateTimeMin % 60}m` : `${article.updateTimeMin}m`}</p>
+                    </div>
+                  )}
+                                  {/* Submitted Article Link / Edit Link Form */}
+                  <div className="pt-4 border-t border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Submitted Document</p>
+                      {(currentUserRole === "TEAM_LEAD" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN") && !editLinkMode && (
+                        <button
+                          onClick={() => {
+                            setNewLinkValue(article.articleLink || "");
+                            setEditLinkMode(true);
+                          }}
+                          className="text-[10px] text-indigo-650 hover:text-indigo-850 font-bold transition cursor-pointer"
+                        >
+                          Edit Link
+                        </button>
+                      )}
+                    </div>
+
+                    {editLinkMode ? (
+                      <div className="space-y-2">
+                        <input
+                          type="url"
+                          value={newLinkValue}
+                          onChange={(e) => setNewLinkValue(e.target.value)}
+                          placeholder="https://docs.google.com/..."
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => setEditLinkMode(false)}
+                            className="px-2.5 py-1.5 border border-slate-200 text-slate-600 rounded-lg text-[11px] font-bold hover:bg-slate-50 transition cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setUpdatingLink(true);
+                              setError("");
+                              setSuccess("");
+                              try {
+                                const res = await fetch(`/api/articles/${article.id}`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    articleLink: newLinkValue,
+                                    callerId: currentUserId,
+                                    ...(article.status === "REDO" ? { status: "COMPLETED" } : {}),
+                                  }),
+                                });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error || "Failed to update link");
+                                
+                                setSuccess(article.status === "REDO" ? "Article updated and marked Completed!" : "Article link updated successfully!");
+                                setEditLinkMode(false);
+                                
+                                // Refresh article details
+                                const refreshRes = await fetch(`/api/articles/${id}?userId=${currentUserId}`);
+                                const freshData = await refreshRes.json();
+                                if (!refreshRes.ok) throw new Error(freshData.error);
+                                setArticle(freshData);
+                              } catch (err: any) {
+                                setError(err.message || "Failed to update link");
+                              } finally {
+                                setUpdatingLink(false);
+                              }
+                            }}
+                            disabled={updatingLink}
+                            className="px-2.5 py-1.5 bg-black hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold transition cursor-pointer disabled:opacity-50"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      article.articleLink ? (
+                        <a href={ensureExternalUrl(article.articleLink)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition break-all leading-tight text-center">
+                          <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                          Open Document
+                        </a>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No document link submitted yet.</p>
+                      )
+                    )}
+                  </div>
 
                  {/* Special Approval Notice */}
                  {article.specialApprovalRequested && !article.specialApproval && (
@@ -339,6 +473,50 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                   )}
                </div>
             </div>
+
+            {/* Team Lead Review Panel Card */}
+            {(currentUserRole === "TEAM_LEAD" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN") && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Review Article</h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Provide feedback, request revisions, or approve this article.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Review Remarks / Suggestions
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={remark}
+                      onChange={(e) => setRemark(e.target.value)}
+                      placeholder="Enter feedback or change requests for the writer..."
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleReviewSubmit(false)}
+                      disabled={submittingReview}
+                      className="py-2.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      Request Redo
+                    </button>
+                    <button
+                      onClick={() => handleReviewSubmit(true)}
+                      disabled={submittingReview}
+                      className="py-2.5 px-4 bg-[#69F0AE] hover:bg-[#52d698] text-slate-900 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
       </div>
     </div>

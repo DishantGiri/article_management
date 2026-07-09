@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
@@ -7,6 +8,23 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
+    CredentialsProvider({
+      name: "Testing",
+      credentials: {
+        email: { label: "Email", type: "email" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email) return null;
+        return {
+          id: "test",
+          email: credentials.email,
+          name: credentials.email.split("@")[0],
+          image: null,
+          role: null,
+          approved: false,
+        } as any; // Cast as any or specific type to bypass NextAuth internal User type clash, since signIn callback catches it
+      },
     }),
   ],
   session: {
@@ -28,8 +46,16 @@ export const authOptions: NextAuthOptions = {
           where: { email: user.email },
         });
 
-        // Auto-create unrecognized Google logins with null role and pending approval (approved: false)
-        if (!dbUser) {
+        if (dbUser) {
+          // Update profile image if it has changed or is newly available
+          if (user.image && dbUser.image !== user.image) {
+            dbUser = await prisma.user.update({
+              where: { email: user.email },
+              data: { image: user.image },
+            });
+          }
+        } else {
+          // Auto-create unrecognized Google logins with null role and pending approval (approved: false)
           dbUser = await prisma.user.create({
             data: {
               name: user.name || "Google User",
@@ -37,6 +63,7 @@ export const authOptions: NextAuthOptions = {
               password: "", // password is not used with OAuth provider
               role: null, // No role assigned initially
               approved: false, // Wait for admin approval
+              image: user.image || null,
             },
           });
           console.log(`Auto-created user for Google sign-in: ${user.email} with null role (pending approval)`);
@@ -57,11 +84,12 @@ export const authOptions: NextAuthOptions = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: token.email },
-            select: { id: true, role: true, approved: true },
+            select: { id: true, role: true, approved: true, image: true },
           });
           if (dbUser) {
             token.id = dbUser.id;
             token.approved = dbUser.approved;
+            token.image = dbUser.image;
             if (trigger !== "update") {
               token.role = dbUser.role;
             }
@@ -77,6 +105,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.approved = token.approved;
+        session.user.image = token.image as string | null | undefined;
       }
       return session;
     },

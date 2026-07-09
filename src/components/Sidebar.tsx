@@ -76,6 +76,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: BarChart2,
   },
   {
+    href: "/team-members",
+    label: "Team Members",
+    roles: ["TEAM_LEAD"],
+    icon: Users,
+  },
+  {
     href: "/users",
     label: "Users",
     roles: ["SUPER_ADMIN", "ADMIN"],
@@ -108,12 +114,14 @@ export default function Sidebar() {
         name: session.user.name || "User",
         email: session.user.email || "",
         role: session.user.role as Role | null,
+        image: session.user.image || null,
       }
     : {
         id: 1,
         name: "Admin User",
         email: "admin@articlemgmt.com",
         role: "ADMIN" as Role,
+        image: null,
       };
 
   useEffect(() => {
@@ -189,10 +197,10 @@ export default function Sidebar() {
       <div className="px-6 py-6 border-b border-slate-100" suppressHydrationWarning>
         <div className="flex items-center gap-3" suppressHydrationWarning>
           <div className="w-8 h-8 rounded-md bg-[#0f172a] flex items-center justify-center shadow-sm" suppressHydrationWarning>
-            <span className="text-white font-bold text-sm">I</span>
+            <span className="text-white font-bold text-sm">A</span>
           </div>
           <div suppressHydrationWarning>
-            <p className="text-slate-900 font-bold text-sm leading-tight">InventoryPro</p>
+            <p className="text-slate-900 font-bold text-sm leading-tight">Article Flow</p>
             <p className="text-slate-500 text-[10px] mt-0.5 font-medium">Enterprise Manager</p>
           </div>
         </div>
@@ -229,8 +237,12 @@ export default function Sidebar() {
               onClick={() => setShowSwitcher(!showSwitcher)}
               className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white border border-transparent hover:border-slate-200/40 shadow-sm transition-all bg-white/70"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 text-violet-700 flex items-center justify-center text-xs font-bold flex-shrink-0 border border-violet-200/30">
-                <span>{currentUser.name.charAt(0)}</span>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 text-violet-700 flex items-center justify-center text-xs font-bold flex-shrink-0 border border-violet-200/30 overflow-hidden">
+                {currentUser.image ? (
+                  <img src={currentUser.image} alt={currentUser.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{currentUser.name.charAt(0)}</span>
+                )}
               </div>
               <div className="flex-1 text-left min-w-0">
                 <p className="text-slate-800 text-xs font-bold truncate">{currentUser.name}</p>

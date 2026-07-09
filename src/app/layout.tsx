@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import Providers from "@/components/Providers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "ArticleMgmt — Workflow System",
@@ -18,7 +18,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const showSidebar = session && session.user.approved !== false;
 
   return (
-    <html lang="en" className={`${geist.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} font-sans h-full`} suppressHydrationWarning>
       <body className="h-full bg-slate-50 antialiased" suppressHydrationWarning>
         <Providers>
           <div className="flex h-full" suppressHydrationWarning>

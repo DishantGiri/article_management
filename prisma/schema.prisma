@@ -28,6 +28,8 @@ enum ArticleStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
+  APPROVED
+  REDO
 }
 
 enum LinkStatus {
@@ -64,6 +66,7 @@ model User {
   password  String
   role      Role?
   approved  Boolean  @default(false)
+  image     String?
   allowLinkLogAccess Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -182,6 +185,7 @@ model Article {
   startedAt       DateTime?     // Set when status → IN_PROGRESS
   completedAt     DateTime?     // Set when status → COMPLETED
   writingTimeMin  Int?          // Calculated: completedAt - startedAt in minutes
+  updateTimeMin   Int?          // Calculated: cumulative minutes spent on revisions/redo
   priority        Priority      @default(MEDIUM)
   specialApprovalRequested    Boolean   @default(false)
   specialApprovalRequestReason String?   @db.Text

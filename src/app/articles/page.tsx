@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 
 interface Article {
   id: number;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "REJECTED" | "REVIEW";
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO";
   updatedAt: string;
   articleLink?: string;
   product: { id: number; name: string; site: { name: string }; category: { name: string } };
@@ -15,11 +15,11 @@ interface Article {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700",
-  IN_PROGRESS: "bg-blue-100 text-blue-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-rose-100 text-rose-700",
-  REVIEW: "bg-cyan-100 text-cyan-700",
+  PENDING: "bg-slate-100 text-slate-700 border border-slate-200/50",
+  IN_PROGRESS: "bg-blue-50 text-blue-700 border border-blue-200/50",
+  COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/50",
+  APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/50",
+  REDO: "bg-rose-50 text-rose-700 border border-rose-200/50",
 };
 
 export default function ArticlesPage() {
@@ -202,8 +202,8 @@ export default function ArticlesPage() {
           <option value="PENDING">Pending</option>
           <option value="IN_PROGRESS">In Progress</option>
           <option value="COMPLETED">Completed</option>
-          <option value="REJECTED">Rejected</option>
-          <option value="REVIEW">Review</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REDO">Redo / Needs Changes</option>
         </select>
 
         {/* Writer Filter */}

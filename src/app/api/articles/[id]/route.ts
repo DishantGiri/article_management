@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import moment from "moment";
+import { sendRealtimeNotification } from "@/lib/notifier";
 
 // GET /api/articles/[id]
 export async function GET(
@@ -25,7 +26,7 @@ export async function GET(
           },
         },
       },
-      writer: { select: { id: true, name: true } },
+      writer: { select: { id: true, name: true, teamLeadId: true } },
       reviews: {
         include: { reviewedBy: { select: { id: true, name: true } } },
         orderBy: { reviewedAt: "desc" },
@@ -44,7 +45,7 @@ export async function GET(
     return NextResponse.json({ error: "Article not found" }, { status: 404 });
   }
 
-  // Authorize check for WRITER
+  // Authorize check: only WRITER is restricted by SiteAccess
   if (userIdStr) {
     const userId = parseInt(userIdStr);
     const user = await prisma.user.findUnique({
@@ -52,7 +53,7 @@ export async function GET(
       select: { role: true },
     });
 
-    if (user?.role === "WRITER" || user?.role === "TEAM_LEAD") {
+    if (user?.role === "WRITER") {
       const access = await prisma.siteAccess.findUnique({
         where: {
           userId_siteId: {
@@ -101,8 +102,8 @@ export async function PATCH(
       }
     }
 
-    // Site access check for WRITER & TEAM_LEAD
-    if (activeUserRole === "WRITER" || activeUserRole === "TEAM_LEAD") {
+    // Site access check: only WRITER is restricted by SiteAccess
+    if (activeUserRole === "WRITER") {
       const access = await prisma.siteAccess.findUnique({
         where: {
           userId_siteId: {
@@ -168,12 +169,18 @@ export async function PATCH(
 
     // Calculate writing time if completing
     let writingTimeMin: number | undefined;
+    let updateTimeMin: number | undefined;
     let completedAt: Date | undefined;
     let productCreatedAt: Date | undefined;
 
     if (status === "COMPLETED" && existing.startedAt) {
       completedAt = new Date();
-      writingTimeMin = Math.round((completedAt.getTime() - existing.startedAt.getTime()) / 60000);
+      const elapsedMin = Math.round((completedAt.getTime() - existing.startedAt.getTime()) / 60000);
+      if (existing.status === "REDO") {
+        updateTimeMin = (existing.updateTimeMin || 0) + elapsedMin;
+      } else {
+        writingTimeMin = elapsedMin;
+      }
       productCreatedAt = completedAt;
     }
 
@@ -190,6 +197,7 @@ export async function PATCH(
         ...(status === "IN_PROGRESS" && !existing.startedAt ? { startedAt: new Date() } : {}),
         ...(completedAt ? { completedAt } : {}),
         ...(writingTimeMin !== undefined ? { writingTimeMin } : {}),
+        ...(updateTimeMin !== undefined ? { updateTimeMin } : {}),
         ...(productCreatedAt ? { productCreatedAt } : {}),
       },
       include: {
@@ -230,6 +238,32 @@ export async function PATCH(
         }),
       }).catch((e) => console.error("WS Notification failed", e));
     } catch (e) {}
+
+    // Notify Team Lead if Writer completed the article
+    if (status === "COMPLETED" && existing.status !== "COMPLETED") {
+      try {
+        const writerIdToQuery = updated.writerId || existing.writerId;
+        if (writerIdToQuery) {
+          const writerUser = await prisma.user.findUnique({
+            where: { id: writerIdToQuery },
+            select: { teamLeadId: true },
+          });
+          if (writerUser?.teamLeadId) {
+            const notif = await prisma.notification.create({
+              data: {
+                recipientId: writerUser.teamLeadId,
+                senderId: writerIdToQuery,
+                type: "ARTICLE_SUGGESTION",
+                message: `${updated.writer?.name || "A writer"} completed the article for "${updated.product.name}". Please review it.`,
+              },
+            });
+            await sendRealtimeNotification(writerUser.teamLeadId, notif);
+          }
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify Team Lead:", notifErr);
+      }
+    }
 
     // Record to Article History
     try {

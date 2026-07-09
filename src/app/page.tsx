@@ -47,8 +47,10 @@ interface DashboardData {
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-slate-100 text-slate-600 border border-slate-200/50",
-  IN_PROGRESS: "bg-amber-50 text-amber-700 border border-amber-200/50",
-  COMPLETED: "bg-emerald-50 text-emerald-700 border border-emerald-200/50",
+  IN_PROGRESS: "bg-blue-50 text-blue-700 border border-blue-200/50",
+  COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/50",
+  APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/50",
+  REDO: "bg-rose-50 text-rose-700 border border-rose-200/50",
 };
 
 const LINK_STATUS_COLORS: Record<string, string> = {
@@ -696,15 +698,46 @@ const isValidUrl = (url: string) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative">
           <div className="flex items-center justify-between mb-6">
-            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              In Progress
-            </span>
+            {article.status === 'REDO' ? (
+              <span className="px-3 py-1 bg-rose-50 text-rose-700 border border-rose-200/40 rounded-full text-xs font-bold flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                Needs Changes
+              </span>
+            ) : (
+              <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200/40 rounded-full text-xs font-bold flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                In Progress
+              </span>
+            )}
             <div className="text-right">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Writing Timer</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                {article.status === 'REDO' ? 'Revision Timer' : 'Writing Timer'}
+              </p>
               <p className="text-xl font-bold text-slate-800 font-mono tracking-tight">{formatTime(elapsed)}</p>
             </div>
           </div>
+
+          {article.status === 'REDO' && article.reviews && article.reviews.length > 0 && (
+            <div className="mb-6 p-4 bg-rose-50/50 border border-rose-200/60 rounded-2xl text-left space-y-1.5">
+              <div className="flex items-center gap-2 text-rose-800 font-bold text-xs">
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                Revision Requested by {article.reviews[0].reviewedBy?.name || "Team Lead"}
+              </div>
+              <p className="text-[11px] text-rose-600/90 font-medium">
+                Please make the requested modifications and resubmit:
+              </p>
+              {article.reviews[0].suggestion && (
+                <p className="text-xs text-rose-700 italic bg-rose-50 p-3 rounded-xl border border-rose-100">
+                  "{article.reviews[0].suggestion}"
+                </p>
+              )}
+              {article.updateTimeMin !== undefined && article.updateTimeMin !== null && (
+                <p className="text-[10px] font-bold text-rose-800 uppercase tracking-wider mt-2.5">
+                  Total Redo Time from Previous Rounds: {article.updateTimeMin >= 60 ? `${Math.floor(article.updateTimeMin / 60)}h ${article.updateTimeMin % 60}m` : `${article.updateTimeMin}m`}
+                </p>
+              )}
+            </div>
+          )}
 
           <h2 className="text-2xl font-bold text-slate-900 mb-3">{article.product.name}</h2>
           
@@ -815,7 +848,7 @@ const isValidUrl = (url: string) => {
                 disabled={!articleLink.trim() || submitting}
                 className="w-full py-3 bg-black hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition"
               >
-                <CheckCircle2 className="w-5 h-5" /> Mark Completed
+                <CheckCircle2 className="w-5 h-5" /> {article.status === 'REDO' ? 'Submit Update' : 'Mark Completed'}
               </button>
               
               <button 

@@ -35,7 +35,7 @@ export default function PendingApprovalPage() {
           )}
           
           <p className="text-slate-600 text-xs leading-relaxed">
-            Welcome to InventoryPro! Your account has been registered. 
+            Welcome to Article Flow! Your account has been registered. 
             Before you can access the system, an administrator must verify and approve your registration and assign your role.
           </p>
           

@@ -54,8 +54,8 @@ export async function GET(req: NextRequest) {
       // General counts
       prisma.product.count(),
       prisma.article.count({ where: { status: "PENDING" } }),
-      prisma.article.count({ where: { status: "IN_PROGRESS" } }),
-      prisma.article.count({ where: { status: "COMPLETED" } }),
+      prisma.article.count({ where: { status: { in: ["IN_PROGRESS", "REDO"] } } }),
+      prisma.article.count({ where: { status: { in: ["COMPLETED", "APPROVED"] } } }),
       prisma.linkLog.count(),
       prisma.linkLog.count({ where: { status: "REQUESTED" } }),
       prisma.linkLog.count({ where: { status: "ACCEPTED" } }),
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
       prisma.article.findMany({
         take: 5,
         orderBy: { updatedAt: "desc" },
-        where: { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
+        where: { status: { in: ["IN_PROGRESS", "COMPLETED", "APPROVED", "REDO"] } },
         include: {
           product: { select: { name: true } },
           writer: { select: { name: true } },
@@ -94,7 +94,10 @@ export async function GET(req: NextRequest) {
       // WRITER & TEAM_LEAD: Pending articles on their assigned sites
       role === "WRITER" || role === "TEAM_LEAD"
         ? prisma.article.findMany({
-            where: { status: "PENDING", product: { siteId: { in: allowedSiteIds } } },
+            where: {
+              status: "PENDING",
+              ...(role === "WRITER" ? { product: { siteId: { in: allowedSiteIds } } } : {}),
+            },
             include: {
               product: {
                 include: { 
@@ -110,7 +113,7 @@ export async function GET(req: NextRequest) {
 
       // ANY ROLE: User's own In-Progress articles
       prisma.article.findMany({
-        where: { writerId: userId, status: "IN_PROGRESS" },
+        where: { writerId: userId, status: { in: ["IN_PROGRESS", "REDO"] } },
         include: {
           product: {
             include: { 
@@ -124,7 +127,7 @@ export async function GET(req: NextRequest) {
 
       // ANY ROLE: User's recently completed articles
       prisma.article.findMany({
-        where: { writerId: userId, status: "COMPLETED" },
+        where: { writerId: userId, status: { in: ["COMPLETED", "APPROVED"] } },
         orderBy: { completedAt: "desc" },
         include: {
           product: {
@@ -190,10 +193,10 @@ export async function GET(req: NextRequest) {
           prisma.linkLog.count({ where: { status: "ISSUE", linkerRemarks: { contains: "dead" } } }),
           prisma.linkLog.count({ where: { status: "ISSUE" } }),
           prisma.product.count({ where: { addedAt: { gte: today } } }),
-          prisma.article.findMany({ where: { status: "COMPLETED", writingTimeMin: { not: null } }, select: { writingTimeMin: true } }),
+          prisma.article.findMany({ where: { status: { in: ["COMPLETED", "APPROVED"] }, writingTimeMin: { not: null } }, select: { writingTimeMin: true } }),
           prisma.user.findMany({ 
             where: { role: "WRITER" },
-            include: { _count: { select: { articles: { where: { status: "COMPLETED" } } } } }
+            include: { _count: { select: { articles: { where: { status: { in: ["COMPLETED", "APPROVED"] } } } } } }
           }),
           prisma.product.findMany({ take: 20, orderBy: { addedAt: 'desc' }, include: { addedBy: { select: { name: true } } } }),
           prisma.article.findMany({ take: 20, orderBy: { updatedAt: 'desc' }, include: { product: { select: { name: true } }, writer: { select: { name: true } } } }),
