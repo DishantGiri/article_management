@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { Search, Plus, Download, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import AddLinkModal from "@/components/AddLinkModal";
 import EditLinkModal from "@/components/EditLinkModal";
 import { useSearchParams } from "next/navigation";
@@ -64,13 +65,11 @@ function LinksPageContent() {
         const res = await fetch(`/api/links/${linkId}?callerId=${uId}`, {
           method: "DELETE",
         });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || "Failed to delete link");
-        }
-        window.location.reload();
+        if (!res.ok) throw new Error((await res.json()).error || "Failed to delete link");
+        setLinks((prev) => prev.filter((l) => l.id !== linkId));
+        toast.success("Link deleted successfully!");
       } catch (err: any) {
-        alert(err.message || "Failed to delete link");
+        toast.error(err.message || "Failed to delete link");
       }
     }
   };

@@ -11,6 +11,13 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "ArticleMgmt — Workflow System",
   description: "Product & article workflow management for Linkers, Writers, and Team Leads.",
+  manifest: "/manifest.json",
+  themeColor: "#4f46e5",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ArticleMgmt",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Globe, MoreHorizontal, Plus, Pencil, Trash2, X } from "lucide-react";
+import { Toggle } from "@/components/ui/toggle";
+import { toast } from "react-hot-toast";
 
 interface Category {
   id: number;
@@ -86,11 +88,12 @@ export default function SitesPage() {
     try {
       const res = await fetch(`/api/sites/${id}`, { method: "DELETE" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "Failed to delete site");
       
       setSites(prev => prev.filter(s => s.id !== id));
+      toast.success("Site deleted successfully!");
     } catch (e: any) {
-      alert(e.message || "Failed to delete site");
+      toast.error(e.message || "Failed to delete site");
     }
   };
 
@@ -303,17 +306,14 @@ const isValidUrl = (url: string) => {
                 {allCategories.length === 0 ? (
                   <p className="text-sm text-slate-500 italic">No categories exist. Create some in the Categories page first.</p>
                 ) : (
-                  <div className="flex flex-col gap-2 max-h-[150px] overflow-y-auto pr-2">
+                  <div className="flex flex-col gap-3 max-h-[160px] overflow-y-auto pr-2">
                     {allCategories.map(cat => (
-                      <label key={cat.id} className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={form.categoryIds.includes(cat.id)}
-                          onChange={() => toggleCategory(cat.id)}
-                          className="w-4 h-4 text-indigo-500 rounded border-slate-300 focus:ring-indigo-500"
-                        />
-                        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">{cat.name}</span>
-                      </label>
+                      <Toggle
+                        key={cat.id}
+                        checked={form.categoryIds.includes(cat.id)}
+                        onChange={() => toggleCategory(cat.id)}
+                        label={cat.name}
+                      />
                     ))}
                   </div>
                 )}

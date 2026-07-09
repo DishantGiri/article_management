@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings } from "lucide-react";
+import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings, Clock } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -74,6 +74,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Reports",
     roles: ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD"],
     icon: BarChart2,
+  },
+  {
+    href: "/history",
+    label: "History",
+    roles: ["SUPER_ADMIN", "ADMIN"],
+    icon: Clock,
   },
   {
     href: "/team-members",

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Search, Plus, Pencil, Trash2, X, Users } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { Toggle } from "@/components/ui/toggle";
+import { toast } from "react-hot-toast";
 
 interface Site {
   id: number;
@@ -13,8 +15,9 @@ interface User {
   id: number;
   name: string;
   email: string;
-  role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
+  role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | null;
   allowLinkLogAccess: boolean;
+  approved: boolean;
   siteAccess: {
     site: {
       id: number;
@@ -60,6 +63,7 @@ export default function UsersPage() {
     siteIds: [] as number[],
     teamLeadId: "",
     allowLinkLogAccess: false,
+    approved: false,
   });
 
   const teamLeads = users.filter((u) => u.role === "TEAM_LEAD");
@@ -86,7 +90,7 @@ export default function UsersPage() {
 
   const openAddModal = () => {
     setEditingUserId(null);
-    setForm({ name: "", email: "", role: "WRITER", siteIds: [], teamLeadId: "", allowLinkLogAccess: false });
+    setForm({ name: "", email: "", role: "WRITER", siteIds: [], teamLeadId: "", allowLinkLogAccess: false, approved: true });
     setError("");
     setShowModal(true);
   };
@@ -96,10 +100,11 @@ export default function UsersPage() {
     setForm({ 
       name: u.name, 
       email: u.email, 
-      role: u.role, 
+      role: u.role || "WRITER", 
       siteIds: u.siteAccess ? u.siteAccess.map(sa => sa.site.id) : [], 
       teamLeadId: u.teamLead ? String(u.teamLead.id) : "",
-      allowLinkLogAccess: u.allowLinkLogAccess 
+      allowLinkLogAccess: u.allowLinkLogAccess,
+      approved: u.approved
     });
     setError("");
     setShowModal(true);
@@ -110,10 +115,11 @@ export default function UsersPage() {
     try {
       const res = await fetch(`/api/users/${id}?creatorId=${currentUserId}`, { method: "DELETE" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "Failed to delete user");
       setUsers(prev => prev.filter(u => u.id !== id));
+      toast.success("User deleted successfully!");
     } catch (e: any) {
-      alert(e.message || "Failed to delete user");
+      toast.error(e.message || "Failed to delete user");
     }
   };
 
@@ -269,8 +275,8 @@ export default function UsersPage() {
               <Users className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{users.filter((u) => getMockStatus(u.id) === "Active").length}</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Active Users</p>
+              <p className="text-3xl font-bold text-slate-800">{users.filter((u) => u.approved).length}</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Approved Users</p>
             </div>
           </div>
         </div>
@@ -326,7 +332,7 @@ export default function UsersPage() {
               <tbody className="divide-y divide-slate-50">
                 {paginated.map((u) => {
                   const status = getMockStatus(u.id);
-                  const isWriter = u.role.toLowerCase().includes('writer');
+                  const isWriter = u.role?.toLowerCase().includes('writer');
                   const roleBg = isWriter ? "bg-indigo-50" : "bg-purple-50";
                   const roleText = isWriter ? "text-indigo-600" : "text-purple-600";
                   
@@ -345,9 +351,15 @@ export default function UsersPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex flex-col items-start gap-1">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${roleBg} ${roleText}`}>
-                            {ROLE_LABELS[u.role] || u.role}
-                          </span>
+                          {u.role ? (
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${roleBg} ${roleText}`}>
+                              {ROLE_LABELS[u.role] || u.role}
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-600`}>
+                              Pending Role
+                            </span>
+                          )}
                           {u.teamLead && (
                             <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
                               Lead: {u.teamLead.name}
@@ -356,8 +368,8 @@ export default function UsersPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                          {status}
+                        <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${u.approved ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                          {u.approved ? "Approved" : "Pending"}
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-right">
@@ -437,23 +449,20 @@ export default function UsersPage() {
               {(form.role === "WRITER" || form.role === "TEAM_LEAD") && (
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Websites</label>
-                  <div className="space-y-2 max-h-32 overflow-y-auto p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="space-y-3 max-h-40 overflow-y-auto p-4 bg-slate-50 rounded-xl border border-slate-100">
                     {sites.map(site => (
-                      <label key={site.id} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={form.siteIds.includes(site.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setForm({ ...form, siteIds: [...form.siteIds, site.id] });
-                            } else {
-                              setForm({ ...form, siteIds: form.siteIds.filter(id => id !== site.id) });
-                            }
-                          }}
-                          className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                        />
-                        <span className="text-sm font-medium text-slate-700">{site.name}</span>
-                      </label>
+                      <Toggle
+                        key={site.id}
+                        checked={form.siteIds.includes(site.id)}
+                        onChange={(checked) => {
+                          if (checked) {
+                            setForm({ ...form, siteIds: [...form.siteIds, site.id] });
+                          } else {
+                            setForm({ ...form, siteIds: form.siteIds.filter(id => id !== site.id) });
+                          }
+                        }}
+                        label={site.name}
+                      />
                     ))}
                   </div>
                 </div>
@@ -474,6 +483,17 @@ export default function UsersPage() {
                   </select>
                 </div>
               )}
+
+              <div className="pt-2">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 transition hover:bg-slate-100/70">
+                  <Toggle
+                    checked={form.approved}
+                    onChange={(checked) => setForm({ ...form, approved: checked })}
+                    label="Approve User Access"
+                    subLabel="Unapproved users cannot log in."
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">

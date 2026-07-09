@@ -115,6 +115,11 @@ export async function GET(req: NextRequest) {
       prisma.article.findMany({
         where: { writerId: userId, status: { in: ["IN_PROGRESS", "REDO"] } },
         include: {
+          reviews: {
+            orderBy: { reviewedAt: 'desc' },
+            take: 1,
+            include: { reviewedBy: { select: { name: true } } }
+          },
           product: {
             include: { 
               site: { select: { name: true } }, 

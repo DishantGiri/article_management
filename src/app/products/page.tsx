@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import AddProductModal from "@/components/AddProductModal";
 import EditProductModal from "@/components/EditProductModal";
 import { useRouter } from "next/navigation";
@@ -64,9 +65,10 @@ export default function ProductsPage() {
           const errData = await res.json();
           throw new Error(errData.error || "Failed to delete product");
         }
-        window.location.reload();
+        setProducts((prev) => prev.filter((p) => p.id !== productId));
+        toast.success("Product deleted successfully!");
       } catch (err: any) {
-        alert(err.message || "Failed to delete product");
+        toast.error(err.message || "Failed to delete product");
       }
     }
   };
@@ -488,10 +490,15 @@ export default function ProductsPage() {
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
                                   });
-                                  if (!res.ok) throw new Error((await res.json()).error);
-                                  window.location.href = "/";
+                                  if (res.ok) {
+                                    toast.success("Started writing!");
+                                    setTimeout(() => window.location.reload(), 1000);
+                                  } else {
+                                    const err = await res.json();
+                                    toast.error(err.error || "Failed to start writing");
+                                  }
                                 } catch (err: any) {
-                                  alert(err.message || "Failed to start writing");
+                                  toast.error(err.message || "Failed to start writing");
                                 }
                               }}
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${
@@ -611,7 +618,7 @@ export default function ProductsPage() {
                             <div>
                               <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center justify-between">
                                 Bridge Page:
-                                <button onClick={() => { navigator.clipboard.writeText(log.bridgePageLink); alert("Copied bridge page link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Bridge Page Link"><Copy className="w-3 h-3" /></button>
+                                <button onClick={() => { navigator.clipboard.writeText(log.bridgePageLink); toast.success("Copied bridge page link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Bridge Page Link"><Copy className="w-3 h-3" /></button>
                               </span> 
                               <a href={log.bridgePageLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.bridgePageLink}</a>
                             </div>
@@ -620,7 +627,7 @@ export default function ProductsPage() {
                             <div>
                               <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center justify-between">
                                 Buy Link:
-                                <button onClick={() => { navigator.clipboard.writeText(log.buyLink); alert("Copied buy link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Buy Link"><Copy className="w-3 h-3" /></button>
+                                <button onClick={() => { navigator.clipboard.writeText(log.buyLink); toast.success("Copied buy link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Buy Link"><Copy className="w-3 h-3" /></button>
                               </span> 
                               <a href={log.buyLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.buyLink}</a>
                             </div>
@@ -657,10 +664,15 @@ export default function ProductsPage() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
                       });
-                      if (!res.ok) throw new Error((await res.json()).error);
-                      window.location.href = "/";
+                      if (res.ok) {
+                        toast.success("Started writing!");
+                        setTimeout(() => window.location.reload(), 1000);
+                      } else {
+                        const err = await res.json();
+                        toast.error(err.error || "Failed to start writing");
+                      }
                     } catch (e: any) {
-                      alert(e.message || "Failed to start writing");
+                      toast.error(e.message || "Failed to start writing");
                     }
                   }}
                   className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition flex items-center gap-2"

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileText, LayoutGrid, Globe, ExternalLink, Copy, Clock, CheckCircle2, Flag, Lock, Shield, User, Calendar } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { toast } from "react-hot-toast";
 
 interface Article {
   id: number;
@@ -253,7 +254,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                             <div>
                               <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center justify-between">
                                 Bridge Page:
-                                <button onClick={() => { navigator.clipboard.writeText(log.bridgePageLink); alert("Copied bridge page link!"); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Bridge Page Link"><Copy className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => { navigator.clipboard.writeText(log.bridgePageLink); toast.success("Copied bridge page link!"); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Bridge Page Link"><Copy className="w-3.5 h-3.5" /></button>
                               </span> 
                               <a href={log.bridgePageLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.bridgePageLink}</a>
                             </div>
@@ -262,7 +263,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                             <div>
                               <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center justify-between">
                                 Buy Link:
-                                <button onClick={() => { navigator.clipboard.writeText(log.buyLink); alert("Copied buy link!"); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Buy Link"><Copy className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => { navigator.clipboard.writeText(log.buyLink); toast.success("Copied buy link!"); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Buy Link"><Copy className="w-3.5 h-3.5" /></button>
                               </span> 
                               <a href={log.buyLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.buyLink}</a>
                             </div>

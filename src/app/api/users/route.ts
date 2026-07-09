@@ -20,7 +20,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, password, role, siteIds, allowLinkLogAccess, creatorId, teamLeadId } = body;
+    const { name, email, password, role, siteIds, allowLinkLogAccess, creatorId, teamLeadId, approved } = body;
 
     // Use provided password or fallback to default
     const finalPassword = password || "DefaultPass123!";
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
         role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD",
         allowLinkLogAccess: role === "WRITER" ? !!allowLinkLogAccess : false,
         teamLeadId: role === "WRITER" && teamLeadId ? Number(teamLeadId) : null,
+        approved: typeof approved === 'boolean' ? approved : true,
         siteAccess: (role === "WRITER" || role === "TEAM_LEAD") && siteIds && Array.isArray(siteIds)
           ? {
               create: siteIds.map((siteId: number) => ({ siteId })),

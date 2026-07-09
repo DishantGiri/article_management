@@ -9,7 +9,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { name, role, siteIds, allowLinkLogAccess, creatorId, teamLeadId } = body;
+    const { name, role, siteIds, allowLinkLogAccess, creatorId, teamLeadId, approved } = body;
 
     // Get creator role
     let creatorRole = "ADMIN";
@@ -69,6 +69,7 @@ export async function PATCH(
         ...(role ? { role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" } : {}),
         allowLinkLogAccess: newRole === "WRITER" ? !!allowLinkLogAccess : false,
         teamLeadId: newRole === "WRITER" && teamLeadId ? Number(teamLeadId) : (newRole === "WRITER" ? undefined : null),
+        ...(typeof approved === 'boolean' ? { approved } : {}),
         ...(siteAccessUpdate ? { siteAccess: siteAccessUpdate } : {}),
       },
       include: {

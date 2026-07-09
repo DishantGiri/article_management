@@ -7,6 +7,7 @@ import { AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Cart
 import { Package, Clock, CheckCircle2, PlayCircle, FileText, Users, UserCheck, Crown, LayoutGrid, Globe, Network, AlertTriangle, Link as LinkIcon, Calendar, Activity, Star, ClipboardList, Check, X, Lock, ExternalLink, Flag, MoreHorizontal, Copy, Bell } from "lucide-react";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
 import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
+import { toast } from "react-hot-toast";
 
 interface DashboardData {
   role: "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -112,6 +113,10 @@ export default function DashboardPage() {
       .then(setNotifications)
       .catch((e) => console.error("Failed to load notifications", e));
 
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().catch(console.error);
+    }
+
     const handleLiveNotif = (e: Event) => {
       const notif = (e as CustomEvent).detail;
       if (notif.type === "ARTICLE_STATUS_UPDATED") {
@@ -123,6 +128,13 @@ export default function DashboardPage() {
           .catch(() => {});
       }
       setNotifications((prev) => [notif, ...prev]);
+      
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("New Workflow Update", {
+          body: notif.message,
+          icon: "/icon-192.png"
+        });
+      }
     };
     window.addEventListener("live-notification", handleLiveNotif);
 
@@ -139,13 +151,14 @@ export default function DashboardPage() {
         body: JSON.stringify({ status: "IN_PROGRESS", writerId: currentUserId }),
       });
       if (res.ok) {
-        window.location.reload();
+        toast.success("Assignment started!");
+        setTimeout(() => window.location.reload(), 1000);
       } else {
         const err = await res.json();
-        alert(err.error || "Failed to start writing");
+        toast.error(err.error || "Failed to start writing");
       }
     } catch {
-      alert("Failed to start writing");
+      toast.error("Failed to start writing");
     }
   };
 
@@ -609,13 +622,19 @@ export default function DashboardPage() {
 // ─── WRITER WORKSPACE COMPONENTS ──────────────────────────────────────────────────────────
 
 function WriterActiveWorkspace({ article, completedArticles, currentUserId, onSuccess }: any) {
-  const [articleLink, setArticleLink] = useState("");
+  const [articleLink, setArticleLink] = useState(article.articleLink || "");
   const [articleLinkError, setArticleLinkError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalReason, setApprovalReason] = useState("");
 
   const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (article.articleLink) {
+      setArticleLink(article.articleLink);
+    }
+  }, [article.articleLink]);
 
   useEffect(() => {
     if (article.startedAt) {
@@ -648,11 +667,11 @@ const isValidUrl = (url: string) => {
   const handleMarkCompleted = async () => {
     if (!articleLink.trim()) return;
     if (articleLinkError) {
-      alert("Please fix the URL validation error before submitting.");
+      toast.error("Please fix the URL validation error before submitting.");
       return;
     }
     if (!isValidUrl(articleLink)) {
-      alert("Please enter a valid Article Link (must start with http:// or https://)");
+      toast.error("Please enter a valid Article Link (must start with http:// or https://)");
       return;
     }
     setSubmitting(true);
@@ -663,9 +682,10 @@ const isValidUrl = (url: string) => {
         body: JSON.stringify({ status: "COMPLETED", articleLink, callerId: currentUserId }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      onSuccess();
+      toast.success("Article submitted successfully!");
+      setTimeout(() => onSuccess(), 1000);
     } catch (e: any) {
-      alert(e.message || "Failed to submit");
+      toast.error(e.message || "Failed to submit");
       setSubmitting(false);
     }
   };
@@ -681,9 +701,10 @@ const isValidUrl = (url: string) => {
       });
       if (!res.ok) throw new Error((await res.json()).error);
       setShowApprovalModal(false);
-      onSuccess(); // Trigger reload to update UI
+      toast.success("Approval requested!");
+      setTimeout(() => onSuccess(), 1000); // Trigger reload to update UI
     } catch (e: any) {
-      alert(e.message || "Failed to request approval");
+      toast.error(e.message || "Failed to request approval");
       setSubmitting(false);
     }
   };
