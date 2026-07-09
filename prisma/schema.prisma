@@ -62,7 +62,8 @@ model User {
   name      String
   email     String   @unique
   password  String
-  role      Role
+  role      Role?
+  approved  Boolean  @default(false)
   allowLinkLogAccess Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -97,6 +98,9 @@ model User {
   
   // Writers assigned to this Team Lead
   teamMembers     User[]         @relation("TeamMembers")
+
+  // Article histories updated by this user
+  articleHistories ArticleHistory[] @relation("ArticleHistoryUpdatedBy")
 }
 
 // ─────────────────────────────────────────────
@@ -189,6 +193,7 @@ model Article {
 
   reviews          ArticleReview[]
   specialApproval  SpecialApproval?
+  history          ArticleHistory[]
 }
 
 // ─────────────────────────────────────────────
@@ -272,4 +277,22 @@ model Notification {
 
   recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id])
   sender    User @relation("NotificationSender", fields: [senderId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// ARTICLE HISTORY
+// ─────────────────────────────────────────────
+
+model ArticleHistory {
+  id          Int      @id @default(autoincrement())
+  articleId   Int
+  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  updatedById Int
+  updatedBy   User     @relation("ArticleHistoryUpdatedBy", fields: [updatedById], references: [id])
+  oldStatus   String?
+  newStatus   String?
+  oldLink     String?
+  newLink     String?
+  notes       String?  @db.Text
+  updatedAt   DateTime @default(now())
 }

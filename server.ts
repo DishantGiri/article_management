@@ -75,7 +75,7 @@ app.prepare().then(() => {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
       });
-    } else {
+    } else if (!pathname?.startsWith("/_next")) {
       socket.destroy();
     }
   });

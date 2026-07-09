@@ -19,7 +19,7 @@ export async function PATCH(
         select: { role: true },
       });
       if (creator) {
-        creatorRole = creator.role;
+        creatorRole = creator.role || "";
       }
     }
 
@@ -102,7 +102,7 @@ export async function DELETE(
         select: { role: true },
       });
       if (creator) {
-        creatorRole = creator.role;
+        creatorRole = creator.role || "";
       }
     }
 

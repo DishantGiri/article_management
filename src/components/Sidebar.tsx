@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
 
@@ -96,32 +97,30 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [users, setUsers] = useState(MOCK_USERS);
-  const [currentUser, setCurrentUser] = useState(MOCK_USERS[0]);
+  const { data: session, update } = useSession();
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
-
   const [isMounted, setIsMounted] = useState(false);
+
+  const currentUser = session?.user
+    ? {
+        id: session.user.id,
+        name: session.user.name || "User",
+        email: session.user.email || "",
+        role: session.user.role as Role | null,
+      }
+    : {
+        id: 1,
+        name: "Admin User",
+        email: "admin@articlemgmt.com",
+        role: "ADMIN" as Role,
+      };
 
   useEffect(() => {
     setIsMounted(true);
-    const stored = localStorage.getItem("mockUserId");
-    const initialUser = MOCK_USERS.find((u) => u.id === parseInt(stored || "1")) || MOCK_USERS[0];
-    setCurrentUser(initialUser);
+    if (!session?.user?.id) return;
 
-    fetch("/api/users")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setUsers(data);
-          const found = data.find((u: any) => u.id === parseInt(stored || "1")) || data[0];
-          setCurrentUser(found);
-        }
-      })
-      .catch((err) => console.error("Failed to load real users", err));
-
-    const user = initialUser; // Fallback for WebSocket registration before fetch completes
-
+    const userId = session.user.id;
     const audioObj = new Audio("/mixkit-software-interface-back-2575.wav");
     audioObj.load();
 
@@ -142,7 +141,7 @@ export default function Sidebar() {
     const wsHost = window.location.host;
     const ws = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "register", userId: user.id }));
+      ws.send(JSON.stringify({ type: "register", userId }));
     };
     ws.onmessage = (event) => {
       try {
@@ -165,7 +164,7 @@ export default function Sidebar() {
       window.removeEventListener("click", unlockAudio);
       window.removeEventListener("keydown", unlockAudio);
     };
-  }, []);
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!toast) return;
@@ -173,14 +172,7 @@ export default function Sidebar() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const switchUser = (user: typeof MOCK_USERS[0]) => {
-    localStorage.setItem("mockUserId", String(user.id));
-    setCurrentUser(user);
-    setShowSwitcher(false);
-    window.location.reload();
-  };
-
-  const visibleNavItems = NAV_ITEMS.filter((item) => item.roles.includes(currentUser.role));
+  const visibleNavItems = NAV_ITEMS.filter((item) => currentUser.role && item.roles.includes(currentUser.role));
 
   const activeHref = visibleNavItems.reduce((best, item) => {
     if (pathname.startsWith(item.href) && item.href.length > best.length) {
@@ -242,9 +234,15 @@ export default function Sidebar() {
               </div>
               <div className="flex-1 text-left min-w-0">
                 <p className="text-slate-800 text-xs font-bold truncate">{currentUser.name}</p>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${ROLE_COLORS[currentUser.role]}`}>
-                  {currentUser.role.replace("_", " ")}
-                </span>
+                {currentUser.role ? (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${ROLE_COLORS[currentUser.role]}`}>
+                    {currentUser.role.replace("_", " ")}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 border border-slate-200/50 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                    No Role Assigned
+                  </span>
+                )}
               </div>
               <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showSwitcher ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -252,32 +250,76 @@ export default function Sidebar() {
             </button>
 
             {showSwitcher && (
-              <div className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden z-50">
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider px-3 pt-3 pb-1">Switch Role (Dev)</p>
-                <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto">
-                  {users.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => switchUser(u)}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors ${
-                        currentUser.id === u.id ? "bg-violet-50/50" : ""
-                      }`}
-                    >
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 text-violet-700 flex items-center justify-center text-[10px] font-bold">
-                        <span>{u.name.charAt(0)}</span>
-                      </div>
-                      <div>
-                        <p className="text-slate-700 text-xs font-bold">{u.name}</p>
-                        <p className="text-slate-400 text-[10px]">{u.role.replace("_", " ")}</p>
-                      </div>
-                      {currentUser.id === u.id && (
-                        <svg className="w-4 h-4 text-violet-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
+              <div className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden z-50 p-1.5 space-y-1">
+                {/* Dev role switcher */}
+                {process.env.NODE_ENV === "development" && (
+                  <div className="px-3 py-2 border-b border-slate-100 mb-1 text-left">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Dev: Switch Role</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {(["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "LINKER", "WRITER"] as const).map((r) => (
+                        <button
+                          key={r}
+                          onClick={async () => {
+                            try {
+                              const res = await fetch("/api/dev/switch-role", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ userId: currentUser.id, role: r }),
+                              });
+                              if (res.ok) {
+                                await update({ role: r });
+                                window.location.reload();
+                              }
+                            } catch (err) {
+                              console.error("Failed to switch role:", err);
+                            }
+                          }}
+                          className={`px-2 py-1 text-[9px] font-bold rounded text-center transition cursor-pointer border ${
+                            currentUser.role === r
+                              ? "bg-slate-900 border-slate-900 text-white"
+                              : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                          }`}
+                        >
+                          {r.replace("_", " ")}
+                        </button>
+                      ))}
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/api/dev/switch-role", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ userId: currentUser.id, role: null }),
+                            });
+                            if (res.ok) {
+                              await update({ role: null });
+                              window.location.reload();
+                            }
+                          } catch (err) {
+                            console.error("Failed to switch role:", err);
+                          }
+                        }}
+                        className={`col-span-2 px-2 py-1 text-[9px] font-bold rounded text-center transition cursor-pointer border ${
+                          currentUser.role === null
+                            ? "bg-slate-900 border-slate-900 text-white"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        No Role (Null)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-700 font-semibold text-xs transition cursor-pointer"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Sign Out
+                </button>
               </div>
             )}
           </>

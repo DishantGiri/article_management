@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 interface Site {
   id: number;
@@ -72,6 +73,7 @@ function StepIndicator({ step }: { step: number }) {
 }
 
 export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClose: () => void, onSuccess?: () => void }) {
+  const { data: session } = useSession();
   const [step, setStep] = useState(1);
   const [sites, setSites] = useState<Site[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -170,7 +172,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
           trendLink: form.trendLink || null,
           previewLink: form.previewLink || null,
           remarks: form.remarks || null,
-          addedById: typeof window !== "undefined" ? parseInt(localStorage.getItem("mockUserId") || "1") : 1,
+          addedById: session?.user?.id || 1,
         }),
       });
 

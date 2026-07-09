@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, LayoutGrid, Globe, ExternalLink, Copy, Clock, CheckCircle2, Flag, Lock, Shield, User, Calendar } from "lucide-react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 interface Article {
   id: number;
@@ -25,6 +26,7 @@ interface Article {
   writer?: { id: number; name: string };
   reviews: { id: number; suggestion?: string; approved: boolean; reviewedBy: { id: number; name: string }; reviewedAt: string }[];
   specialApproval?: { reason: string; approvedBy: { name: string }; approvedAt: string };
+  history: { id: number; notes: string; updatedAt: string; updatedBy: { id: number; name: string } }[];
 }
 
 const ensureExternalUrl = (url: string | null | undefined) => {
@@ -44,13 +46,13 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const { data: session } = useSession();
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "2" : "2";
-    const uId = parseInt(stored);
+    if (!session?.user?.id) return;
+    const uId = session.user.id;
     setCurrentUserId(uId);
-    const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
-    const uRole = roles[stored] || "WRITER";
+    const uRole = session.user.role || "WRITER";
     setCurrentUserRole(uRole);
 
     if (uRole === "WRITER") {
@@ -70,7 +72,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
       })
       .catch(() => setError("Failed to fetch article details"))
       .finally(() => setLoading(false));
-  }, [id, router]);
+  }, [id, router, session?.user?.id]);
 
   if (loading) {
     return (
@@ -313,9 +315,30 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                         ))}
                       </div>
                    </div>
-                 )}
-              </div>
-           </div>
+                  )}
+
+                  {/* Article Update History */}
+                  {article.history && article.history.length > 0 && (
+                    <div className="pt-4 border-t border-slate-100">
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Update History</p>
+                       <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                         {article.history.map((h) => (
+                           <div key={h.id} className="relative pl-4 border-l border-slate-200 py-0.5 text-left">
+                             <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-slate-300 border border-white" />
+                             <div className="flex items-center justify-between gap-2 mb-0.5">
+                               <p className="text-[10px] font-bold text-slate-700 truncate">{h.updatedBy.name}</p>
+                               <span className="text-[9px] text-slate-400 font-semibold flex-shrink-0">
+                                 {new Date(h.updatedAt).toLocaleDateString()} {new Date(h.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                               </span>
+                             </div>
+                             <p className="text-[11px] text-slate-500 font-medium leading-normal">{h.notes}</p>
+                           </div>
+                         ))}
+                       </div>
+                    </div>
+                  )}
+               </div>
+            </div>
         </div>
       </div>
     </div>

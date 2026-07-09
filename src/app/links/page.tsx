@@ -5,6 +5,7 @@ import { Search, Plus, Download, MoreHorizontal, ExternalLink, AlertTriangle, Ne
 import AddLinkModal from "@/components/AddLinkModal";
 import EditLinkModal from "@/components/EditLinkModal";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 interface LinkLog {
   id: number;
@@ -42,6 +43,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function LinksPageContent() {
+  const { data: session } = useSession();
   const searchParams = useSearchParams();
   const urlProductId = searchParams.get("productId");
 
@@ -57,7 +59,7 @@ function LinksPageContent() {
 
   const handleDeleteLink = async (linkId: number) => {
     if (confirm("Are you sure you want to delete this link log?")) {
-      const uId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+      const uId = session?.user?.id || 2;
       try {
         const res = await fetch(`/api/links/${linkId}?callerId=${uId}`, {
           method: "DELETE",
@@ -76,11 +78,10 @@ function LinksPageContent() {
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    const uId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "2" : "2";
-    
-    // Determine Role
-    const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
-    setCurrentUserRole(roles[uId] || "WRITER");
+    if (!session?.user?.id) return;
+    const uId = session.user.id;
+    const uRole = session.user.role || "WRITER";
+    setCurrentUserRole(uRole);
 
     Promise.all([
       fetch(`/api/links?userId=${uId}`).then((r) => r.json()),
@@ -89,7 +90,7 @@ function LinksPageContent() {
       setLinks(Array.isArray(linksData) ? linksData : []);
       setStats(dashboardData);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [session?.user?.id]);
 
   const [userFilter, setUserFilter] = useState("");
   const [startDate, setStartDate] = useState("");

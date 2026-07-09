@@ -33,6 +33,10 @@ export async function GET(
       specialApproval: {
         include: { approvedBy: { select: { name: true } } },
       },
+      history: {
+        include: { updatedBy: { select: { id: true, name: true } } },
+        orderBy: { updatedAt: "desc" },
+      },
     },
   });
 
@@ -48,7 +52,7 @@ export async function GET(
       select: { role: true },
     });
 
-    if (user?.role === "WRITER") {
+    if (user?.role === "WRITER" || user?.role === "TEAM_LEAD") {
       const access = await prisma.siteAccess.findUnique({
         where: {
           userId_siteId: {
@@ -93,12 +97,12 @@ export async function PATCH(
         select: { role: true },
       });
       if (user) {
-        activeUserRole = user.role;
+        activeUserRole = user.role || "";
       }
     }
 
-    // Site access check for WRITER
-    if (activeUserRole === "WRITER") {
+    // Site access check for WRITER & TEAM_LEAD
+    if (activeUserRole === "WRITER" || activeUserRole === "TEAM_LEAD") {
       const access = await prisma.siteAccess.findUnique({
         where: {
           userId_siteId: {
@@ -112,9 +116,16 @@ export async function PATCH(
       }
     }
 
-    // Prevent writer from editing someone else's article
-    if (activeUserRole === "WRITER" && existing.writerId && existing.writerId !== Number(activeUserId)) {
-      return NextResponse.json({ error: "This article is already in progress or completed by another writer." }, { status: 403 });
+    // Prevent writer/team lead from editing someone else's article (unless the caller is the writer's team lead)
+    if ((activeUserRole === "WRITER" || activeUserRole === "TEAM_LEAD") && existing.writerId && existing.writerId !== Number(activeUserId)) {
+      const writer = await prisma.user.findUnique({
+        where: { id: existing.writerId },
+        select: { teamLeadId: true },
+      });
+      const isCallerTeamLead = writer && writer.teamLeadId === Number(activeUserId);
+      if (activeUserRole === "WRITER" || !isCallerTeamLead) {
+        return NextResponse.json({ error: "This article is already in progress or completed by another writer." }, { status: 403 });
+      }
     }
 
     // Priority change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN
@@ -126,9 +137,9 @@ export async function PATCH(
 
     // Business rules
     if (status === "IN_PROGRESS" && writerId) {
-      if (activeUserRole !== "WRITER") {
+      if (activeUserRole !== "WRITER" && activeUserRole !== "TEAM_LEAD") {
         return NextResponse.json(
-          { error: "Only Writers can write articles." },
+          { error: "Only Writers and Team Leads can write articles." },
           { status: 403 }
         );
       }
@@ -219,6 +230,43 @@ export async function PATCH(
         }),
       }).catch((e) => console.error("WS Notification failed", e));
     } catch (e) {}
+
+    // Record to Article History
+    try {
+      const changeNotes: string[] = [];
+      if (existing.status !== updated.status) {
+        changeNotes.push(`Status changed from ${existing.status} to ${updated.status}`);
+      }
+      if (existing.articleLink !== updated.articleLink) {
+        changeNotes.push(`Article Link updated to ${updated.articleLink || "none"}`);
+      }
+      if (existing.writerId !== updated.writerId) {
+        const newWriterName = updated.writer?.name || "none";
+        changeNotes.push(`Writer changed to ${newWriterName}`);
+      }
+      if (existing.priority !== updated.priority) {
+        changeNotes.push(`Priority changed from ${existing.priority} to ${updated.priority}`);
+      }
+      if (existing.specialApprovalRequested !== updated.specialApprovalRequested) {
+        changeNotes.push(updated.specialApprovalRequested ? "Requested special approval" : "Cleared special approval request");
+      }
+
+      if (changeNotes.length > 0) {
+        await prisma.articleHistory.create({
+          data: {
+            articleId: updated.id,
+            updatedById: Number(activeUserId),
+            oldStatus: existing.status,
+            newStatus: updated.status,
+            oldLink: existing.articleLink,
+            newLink: updated.articleLink,
+            notes: changeNotes.join(", "),
+          },
+        });
+      }
+    } catch (historyErr) {
+      console.error("Failed to write article history:", historyErr);
+    }
 
     return NextResponse.json(updated);
   } catch (err) {

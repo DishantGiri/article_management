@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Search, Plus, Pencil, Trash2, X, Users } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 interface Site {
   id: number;
@@ -48,8 +49,9 @@ export default function UsersPage() {
   const itemsPerPage = 10;
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
 
+  const [currentUserRole, setCurrentUserRole] = useState("ADMIN");
   const [currentUserId, setCurrentUserId] = useState<number>(1);
-  const [currentUserRole, setCurrentUserRole] = useState<string>("ADMIN");
+  const { data: session } = useSession();
 
   const [form, setForm] = useState({
     name: "",
@@ -65,10 +67,11 @@ export default function UsersPage() {
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
-    setCurrentUserId(parseInt(stored));
-    const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
-    setCurrentUserRole(roles[stored] || "ADMIN");
+    if (!session?.user?.id) return;
+    const stored = session.user.id;
+    setCurrentUserId(stored);
+    const uRole = session.user.role || "ADMIN";
+    setCurrentUserRole(uRole);
 
     Promise.all([
       fetch("/api/users").then((r) => r.json()),
@@ -79,7 +82,7 @@ export default function UsersPage() {
       setSites(Array.isArray(sitesData) ? sitesData : []);
       setStats(dashboardData);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [session?.user?.id]);
 
   const openAddModal = () => {
     setEditingUserId(null);

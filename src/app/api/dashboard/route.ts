@@ -20,12 +20,12 @@ export async function GET(req: NextRequest) {
         select: { role: true },
       });
       if (user) {
-        role = user.role;
+        role = user.role || "";
       }
     }
 
-    // Fetch writer's site access
-    if (role === "WRITER") {
+    // Fetch writer & team lead site access
+    if (role === "WRITER" || role === "TEAM_LEAD") {
       const accesses = await prisma.siteAccess.findMany({
         where: { userId },
         select: { siteId: true },
@@ -91,8 +91,8 @@ export async function GET(req: NextRequest) {
         take: 5,
       }),
 
-      // WRITER: Pending articles on their assigned sites
-      role === "WRITER"
+      // WRITER & TEAM_LEAD: Pending articles on their assigned sites
+      role === "WRITER" || role === "TEAM_LEAD"
         ? prisma.article.findMany({
             where: { status: "PENDING", product: { siteId: { in: allowedSiteIds } } },
             include: {

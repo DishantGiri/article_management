@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 
 interface Product {
   id: number;
@@ -49,6 +50,7 @@ const isValidUrl = (url: string) => {
 };
 
 export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: EditLinkModalProps) {
+  const { data: session } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -83,7 +85,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       setBridgePageLinkError("");
       setBuyLinkError("");
 
-      const mockUserId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+      const mockUserId = session?.user?.id || 1;
       setLoadingProducts(true);
       fetch(`/api/products?userId=${mockUserId}`)
         .then((r) => r.json())
@@ -136,7 +138,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
     setError("");
 
     try {
-      const mockUserId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+      const mockUserId = session?.user?.id || 1;
       const res = await fetch(`/api/links/${link.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -149,7 +151,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           status,
           linkerRemarks: linkerRemarks || null,
           geos,
-          callerId: parseInt(mockUserId),
+          callerId: mockUserId,
         }),
       });
 

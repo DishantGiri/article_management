@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 
 interface Product {
   id: number;
@@ -39,6 +40,7 @@ const isValidUrl = (url: string) => {
 };
 
 export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedProductId }: AddLinkModalProps) {
+  const { data: session } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   
@@ -74,7 +76,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
       setAffiliateLinkError("");
       setSiteLinkErrors({});
       
-      const mockUserId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+      const mockUserId = session?.user?.id || 1;
       setLoadingProducts(true);
       fetch(`/api/products?userId=${mockUserId}`)
         .then(r => r.json())
@@ -181,7 +183,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
     setError("");
 
     try {
-      const mockUserId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+      const mockUserId = session?.user?.id || 1;
       
       // Save link log for each matching site in parallel
       await Promise.all(
@@ -192,7 +194,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               productId: p.id,
-              addedById: parseInt(mockUserId),
+              addedById: mockUserId,
               bridgePageLink: links.bridgePageLink || null,
               buyLink: links.buyLink || null,
               affiliateName,

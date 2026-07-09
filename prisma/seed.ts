@@ -32,19 +32,19 @@ async function main() {
   // 1. Users
   console.log("Creating Users...");
   const superAdmin = await prisma.user.create({
-    data: { id: 5, name: "Super Admin", email: "superadmin@articlemgmt.com", password: "superadmin123", role: "SUPER_ADMIN" },
+    data: { id: 5, name: "Super Admin", email: "superadmin@articlemgmt.com", password: "superadmin123", role: "SUPER_ADMIN", approved: true },
   });
   const admin = await prisma.user.create({
-    data: { id: 1, name: "Admin User", email: "admin@articlemgmt.com", password: "admin123", role: "ADMIN" },
+    data: { id: 1, name: "Admin User", email: "admin@articlemgmt.com", password: "admin123", role: "ADMIN", approved: true },
   });
   const linker = await prisma.user.create({
-    data: { id: 2, name: "John Linker", email: "linker@articlemgmt.com", password: "linker123", role: "LINKER" },
+    data: { id: 2, name: "John Linker", email: "linker@articlemgmt.com", password: "linker123", role: "LINKER", approved: true },
   });
   const teamLead = await prisma.user.create({
-    data: { id: 4, name: "Team Lead", email: "lead@articlemgmt.com", password: "lead123", role: "TEAM_LEAD" },
+    data: { id: 4, name: "Team Lead", email: "lead@articlemgmt.com", password: "lead123", role: "TEAM_LEAD", approved: true },
   });
   const writer = await prisma.user.create({
-    data: { id: 3, name: "Jane Writer", email: "writer@articlemgmt.com", password: "writer123", role: "WRITER", teamLeadId: 4 },
+    data: { id: 3, name: "Jane Writer", email: "writer@articlemgmt.com", password: "writer123", role: "WRITER", teamLeadId: 4, approved: true },
   });
 
   // 2. Sites

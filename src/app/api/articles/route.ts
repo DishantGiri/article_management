@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const productId = searchParams.get("productId");
   const userIdStr = searchParams.get("userId");
 
-  let allowedSiteIds: number[] | undefined = undefined;
+  let allowedFilter: any = {};
 
   if (userIdStr) {
     const userId = parseInt(userIdStr);
@@ -18,12 +18,28 @@ export async function GET(req: NextRequest) {
       select: { role: true },
     });
 
-    if (user?.role === "WRITER") {
+    if (user?.role === "TEAM_LEAD") {
       const accesses = await prisma.siteAccess.findMany({
         where: { userId },
         select: { siteId: true },
       });
-      allowedSiteIds = accesses.map((a) => a.siteId);
+      const siteIds = accesses.map((a) => a.siteId);
+      allowedFilter = {
+        OR: [
+          { writerId: userId },
+          { writer: { teamLeadId: userId } },
+          { status: "PENDING", product: { siteId: { in: siteIds } } }
+        ]
+      };
+    } else if (user?.role === "WRITER") {
+      const accesses = await prisma.siteAccess.findMany({
+        where: { userId },
+        select: { siteId: true },
+      });
+      const siteIds = accesses.map((a) => a.siteId);
+      allowedFilter = {
+        product: { siteId: { in: siteIds } }
+      };
     }
   }
 
@@ -32,7 +48,7 @@ export async function GET(req: NextRequest) {
       ...(writerId ? { writerId: parseInt(writerId) } : {}),
       ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" } : {}),
       ...(productId ? { productId: parseInt(productId) } : {}),
-      ...(allowedSiteIds !== undefined ? { product: { siteId: { in: allowedSiteIds } } } : {}),
+      ...allowedFilter,
     },
     include: {
       product: {

@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         select: { role: true },
       });
       if (creator) {
-        creatorRole = creator.role;
+        creatorRole = creator.role || "";
       }
     }
 

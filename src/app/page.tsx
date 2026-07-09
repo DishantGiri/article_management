@@ -72,8 +72,11 @@ function StatCard({ label, value, sub, color, icon }: { label: string; value: nu
   );
 }
 
+import { useSession } from "next-auth/react";
+
 export default function DashboardPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState<string>("ADMIN");
@@ -82,14 +85,16 @@ export default function DashboardPage() {
   const [showBellDropdown, setShowBellDropdown] = useState(false);
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
-    let uId = parseInt(stored);
-    if (isNaN(uId)) uId = 1;
-    
+    if (!session?.user?.id) return;
+    const uId = session.user.id;
     setCurrentUserId(uId);
 
+    setLoading(true);
     fetch(`/api/dashboard?userId=${uId}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch dashboard");
+        return r.json();
+      })
       .then((resData) => {
         setData(resData);
         setCurrentUserRole(resData.role);
@@ -98,16 +103,17 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
 
     fetch(`/api/notifications?userId=${uId}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch notifications");
+        return r.json();
+      })
       .then(setNotifications)
       .catch((e) => console.error("Failed to load notifications", e));
 
     const handleLiveNotif = (e: Event) => {
       const notif = (e as CustomEvent).detail;
-      // If article status changed, re-fetch dashboard data to reflect new state
       if (notif.type === "ARTICLE_STATUS_UPDATED") {
-        const stored2 = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
-        fetch(`/api/dashboard?userId=${stored2}`)
+        fetch(`/api/dashboard?userId=${uId}`)
           .then((r) => r.json())
           .then((resData) => {
             setData(resData);
@@ -121,7 +127,7 @@ export default function DashboardPage() {
     return () => {
       window.removeEventListener("live-notification", handleLiveNotif);
     };
-  }, []);
+  }, [session?.user?.id]);
 
   const handleStartWriting = async (articleId: number) => {
     try {
@@ -555,8 +561,8 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* ─── ROLE-SPECIFIC VIEW: WRITER ─────────────────────────────────── */}
-      {currentUserRole === "WRITER" && (
+      {/* ─── ROLE-SPECIFIC VIEW: WRITER & TEAM_LEAD ─────────────────────── */}
+      {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD") && (
         <>
           {data.writerInProgressArticles && data.writerInProgressArticles.length > 0 ? (
             // STATE 2: ACTIVE ASSIGNMENT

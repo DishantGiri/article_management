@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 
 interface Site {
   id: number;
@@ -39,6 +40,7 @@ const isValidUrl = (url: string) => {
 };
 
 export default function EditProductModal({ isOpen, onClose, onSuccess, product }: EditProductModalProps) {
+  const { data: session } = useSession();
   const [sites, setSites] = useState<Site[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -108,7 +110,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
     setError("");
 
     try {
-      const mockUserId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+      const mockUserId = session?.user?.id || 1;
       const res = await fetch(`/api/products/${product.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -119,7 +121,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
           trendLink: trendLink || null,
           previewLink: previewLink || null,
           remarks: remarks || null,
-          callerId: parseInt(mockUserId),
+          callerId: mockUserId,
         }),
       });
 

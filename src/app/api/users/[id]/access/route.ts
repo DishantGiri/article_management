@@ -22,7 +22,7 @@ export async function POST(
         select: { role: true },
       });
       if (caller) {
-        callerRole = caller.role;
+        callerRole = caller.role || "";
       }
     }
 
@@ -75,7 +75,7 @@ export async function DELETE(
         select: { role: true },
       });
       if (caller) {
-        callerRole = caller.role;
+        callerRole = caller.role || "";
       }
     }
 

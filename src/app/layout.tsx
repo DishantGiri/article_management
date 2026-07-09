@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import Providers from "@/components/Providers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
@@ -10,16 +13,21 @@ export const metadata: Metadata = {
   description: "Product & article workflow management for Linkers, Writers, and Team Leads.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
+  const showSidebar = session && session.user.approved !== false;
+
   return (
     <html lang="en" className={`${geist.variable} h-full`} suppressHydrationWarning>
       <body className="h-full bg-slate-50 antialiased" suppressHydrationWarning>
-        <div className="flex h-full" suppressHydrationWarning>
-          <Sidebar />
-          <main className="flex-1 ml-64 min-h-screen overflow-y-auto" suppressHydrationWarning>
-            {children}
-          </main>
-        </div>
+        <Providers>
+          <div className="flex h-full" suppressHydrationWarning>
+            {showSidebar && <Sidebar />}
+            <main className={`flex-1 min-h-screen overflow-y-auto ${showSidebar ? "ml-64" : ""}`} suppressHydrationWarning>
+              {children}
+            </main>
+          </div>
+        </Providers>
       </body>
     </html>
   );

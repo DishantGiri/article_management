@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 interface Article {
   id: number;
@@ -34,11 +35,13 @@ export default function ArticlesPage() {
 
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const [stats, setStats] = useState<any>(null);
+  const { data: session } = useSession();
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
-    const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
-    setCurrentUserRole(roles[stored] || "WRITER");
+    if (!session?.user?.id) return;
+    const stored = session.user.id;
+    const uRole = session.user.role || "WRITER";
+    setCurrentUserRole(uRole);
 
     Promise.all([
       fetch(`/api/articles?userId=${stored}`).then((r) => r.json()),
@@ -47,7 +50,7 @@ export default function ArticlesPage() {
       setArticles(Array.isArray(articlesData) ? articlesData : []);
       setStats(dashboardData);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [session?.user?.id]);
 
   const uniqueWriters = Array.from(new Set(articles.map((a) => a.writer?.name).filter(Boolean))) as string[];
   const uniqueSites = Array.from(new Set(articles.map((a) => a.product.site.name).filter(Boolean))) as string[];

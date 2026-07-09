@@ -6,6 +6,7 @@ import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileTe
 import AddProductModal from "@/components/AddProductModal";
 import EditProductModal from "@/components/EditProductModal";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 interface Category {
   id: number;
@@ -37,6 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ProductsPage() {
+  const { data: session } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ export default function ProductsPage() {
 
   const handleDeleteProduct = async (productId: number, productName: string) => {
     if (confirm(`Are you sure you want to delete "${productName}"? This will also delete all associated article tracking and link log entries.`)) {
-      const uId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
+      const uId = session?.user?.id || 1;
       try {
         const res = await fetch(`/api/products/${productId}?callerId=${uId}`, {
           method: "DELETE",
@@ -76,10 +78,12 @@ export default function ProductsPage() {
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    const mockUserId = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
-    const roles: Record<string, string> = { "1": "ADMIN", "2": "LINKER", "3": "WRITER", "4": "TEAM_LEAD", "5": "SUPER_ADMIN" };
-    setCurrentUserRole(roles[mockUserId] || "WRITER");
+    if (!session?.user?.id) return;
+    const mockUserId = session.user.id;
+    const uRole = session.user.role || "WRITER";
+    setCurrentUserRole(uRole);
 
+    setLoading(true);
     Promise.all([
       fetch(`/api/products?userId=${mockUserId}`).then((r) => r.json()),
       fetch("/api/categories").then((r) => r.json()),
@@ -103,7 +107,7 @@ export default function ProductsPage() {
       const wsHost = window.location.host;
       ws = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
       ws.onopen = () => {
-        ws?.send(JSON.stringify({ type: "register", userId: parseInt(mockUserId) }));
+        ws?.send(JSON.stringify({ type: "register", userId: mockUserId }));
       };
       ws.onmessage = (event) => {
         try {
@@ -146,7 +150,7 @@ export default function ProductsPage() {
     return () => {
       ws?.close();
     };
-  }, []);
+  }, [session?.user?.id]);
 
   const uniqueAdders = Array.from(new Set(products.map((p) => p.addedBy?.name).filter(Boolean))) as string[];
 
@@ -470,15 +474,15 @@ export default function ProductsPage() {
                             </button>
                           )}
 
-                          {/* WRITER: Write button — always shown, disabled unless PENDING */}
-                          {currentUserRole === "WRITER" && (
+                          {/* WRITER & TEAM_LEAD: Write button — always shown, disabled unless PENDING */}
+                          {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD") && (
                             <button
                               disabled={status !== "PENDING"}
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 if (!p.article || status !== "PENDING") return;
                                 try {
-                                  const uId = localStorage.getItem("mockUserId") || "1";
+                                  const uId = session?.user?.id || 1;
                                   const res = await fetch(`/api/articles/${p.article.id}`, {
                                     method: "PATCH",
                                     headers: { "Content-Type": "application/json" },
@@ -642,12 +646,12 @@ export default function ProductsPage() {
             <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
               <button onClick={() => setSelectedProduct(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-white transition">Close</button>
               
-              {currentUserRole === "WRITER" && selectedProduct.article?.status === "PENDING" && (
+              {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD") && selectedProduct.article?.status === "PENDING" && (
                 <button 
                   onClick={async () => {
                     if (!selectedProduct.article) return;
                     try {
-                      const uId = localStorage.getItem("mockUserId") || "1";
+                      const uId = session?.user?.id || 1;
                       const res = await fetch(`/api/articles/${selectedProduct.article.id}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
