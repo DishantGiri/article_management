@@ -75,16 +75,43 @@ export async function PATCH(
     });
 
     const { issueMessage } = body;
-    if (issueMessage && teamLeadId) {
-      const notif = await prisma.notification.create({
-        data: {
-          recipientId: existing.addedById,
-          senderId: parseInt(teamLeadId),
-          type: "LINK_ISSUE",
-          message: `Team Lead flagged an issue with link "${existing.affiliateName}": "${issueMessage}"`,
-        },
-      });
-      await sendRealtimeNotification(existing.addedById, notif);
+    if (issueMessage && activeUserId) {
+      try {
+        const caller = await prisma.user.findUnique({
+          where: { id: Number(activeUserId) },
+          select: { name: true, role: true },
+        });
+
+        const callerLabel = caller
+          ? `${caller.name} (${caller.role ? caller.role.replace("_", " ") : "USER"})`
+          : "Someone";
+
+        const currentRemarks = updated.linkerRemarks || "";
+        const formattedRemark = `[Flagged by ${callerLabel}]: ${issueMessage}${
+          currentRemarks ? ` \n${currentRemarks}` : ""
+        }`;
+
+        // Set status to ISSUE and append remarks
+        await prisma.linkLog.update({
+          where: { id: parseInt(id) },
+          data: {
+            status: "ISSUE",
+            linkerRemarks: formattedRemark,
+          },
+        });
+
+        const notif = await prisma.notification.create({
+          data: {
+            recipientId: existing.addedById,
+            senderId: Number(activeUserId),
+            type: "LINK_ISSUE",
+            message: `${callerLabel} flagged an issue with link "${existing.affiliateName}": "${issueMessage}"`,
+          },
+        });
+        await sendRealtimeNotification(existing.addedById, notif);
+      } catch (notifErr) {
+        console.error("Failed to process link issue flagging:", notifErr);
+      }
     }
 
     return NextResponse.json(updated);

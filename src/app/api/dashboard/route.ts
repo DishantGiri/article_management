@@ -243,6 +243,11 @@ export async function GET(req: NextRequest) {
               },
             },
             writer: { select: { name: true } },
+            history: {
+              orderBy: { updatedAt: "desc" },
+              take: 1,
+              select: { notes: true }
+            }
           },
         }),
       ]);
@@ -256,13 +261,19 @@ export async function GET(req: NextRequest) {
           .map((w) => ({ name: w.name, completed: w._count.articles }))
           .sort((a, b) => b.completed - a.completed)
           .slice(0, 6),
-        reviewQueue: reviewQueueArticles.map((a) => ({
-          id: a.id,
-          product: a.product.name,
-          writer: a.writer?.name || "Unassigned",
-          site: a.product.site.name,
-          completedAt: a.completedAt,
-        })),
+        reviewQueue: reviewQueueArticles.map((a) => {
+          const latestHistory = a.history?.[0]?.notes || "";
+          const hasRemarks = latestHistory.includes("Writer remarks:");
+          const remark = hasRemarks ? latestHistory.split("Writer remarks:")[1].trim() : null;
+          return {
+            id: a.id,
+            product: a.product.name,
+            writer: a.writer?.name || "Unassigned",
+            site: a.product.site.name,
+            completedAt: a.completedAt,
+            remark,
+          };
+        }),
       };
     }
 

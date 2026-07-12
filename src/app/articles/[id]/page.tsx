@@ -457,18 +457,28 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                     <div className="pt-4 border-t border-slate-100">
                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Update History</p>
                        <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                         {article.history.map((h) => (
-                           <div key={h.id} className="relative pl-4 border-l border-slate-200 py-0.5 text-left">
-                             <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-slate-300 border border-white" />
-                             <div className="flex items-center justify-between gap-2 mb-0.5">
-                               <p className="text-[10px] font-bold text-slate-700 truncate">{h.updatedBy.name}</p>
-                               <span className="text-[9px] text-slate-400 font-semibold flex-shrink-0">
-                                 {new Date(h.updatedAt).toLocaleDateString()} {new Date(h.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                               </span>
-                             </div>
-                             <p className="text-[11px] text-slate-500 font-medium leading-normal">{h.notes}</p>
-                           </div>
-                         ))}
+                          {article.history.map((h) => {
+                            const hasRemarks = h.notes.includes("Writer remarks:");
+                            const parts = hasRemarks ? h.notes.split("Writer remarks:") : [h.notes, ""];
+                            
+                            return (
+                              <div key={h.id} className="relative pl-4 border-l border-slate-200 py-0.5 text-left">
+                                <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-slate-300 border border-white" />
+                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                  <p className="text-[10px] font-bold text-slate-700 truncate">{h.updatedBy.name}</p>
+                                  <span className="text-[9px] text-slate-400 font-semibold flex-shrink-0">
+                                    {new Date(h.updatedAt).toLocaleDateString()} {new Date(h.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 font-medium leading-normal">{parts[0]}</p>
+                                {hasRemarks && (
+                                  <div className="mt-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-lg text-[11px] text-indigo-700 font-medium">
+                                    <span className="font-bold">Remarks:</span> "{parts[1].trim()}"
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                        </div>
                     </div>
                   )}

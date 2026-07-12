@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -36,7 +37,7 @@ interface DashboardData {
     specialApprovals: number;
     issueLinks: number;
     writerPerformance: { name: string; completed: number }[];
-    reviewQueue: { id: number; product: string; writer: string; site: string; completedAt: string | null }[];
+    reviewQueue: { id: number; product: string; writer: string; site: string; completedAt: string | null; remark?: string | null }[];
   };
   superAdmin?: {
     totalWriters: number;
@@ -551,7 +552,7 @@ export default function DashboardPage() {
               </div>
               <div className="divide-y divide-slate-50">
                 {data.linkerProducts.length === 0 ? (
-                  <p className="p-8 text-center text-slate-400 text-xs">You haven't added any products yet.</p>
+                  <p className="p-8 text-center text-slate-400 text-xs">You haven&apos;t added any products yet.</p>
                 ) : (
                   data.linkerProducts.map((p) => (
                     <div key={p.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors">
@@ -770,7 +771,7 @@ const isValidUrl = (url: string) => {
               </p>
               {article.reviews[0].suggestion && (
                 <p className="text-xs text-rose-700 italic bg-rose-50 p-3 rounded-xl border border-rose-100">
-                  "{article.reviews[0].suggestion}"
+                  &quot;{article.reviews[0].suggestion}&quot;
                 </p>
               )}
               {article.updateTimeMin !== undefined && article.updateTimeMin !== null && (
@@ -809,7 +810,44 @@ const isValidUrl = (url: string) => {
                   <div key={log.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                     <div className="flex justify-between items-start mb-2">
                       <p className="font-bold text-slate-800 text-sm">{log.affiliateName}</p>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{log.status}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          log.status === "ISSUE" ? "bg-rose-100 text-rose-700" : "bg-blue-50 text-blue-700 border border-blue-200/50"
+                        }`}>
+                          {log.status}
+                        </span>
+                        {log.status !== "ISSUE" && (
+                          <button
+                            onClick={async () => {
+                              const issue = prompt(`Describe the issue with link "${log.affiliateName}":`);
+                              if (!issue || !issue.trim()) return;
+                              try {
+                                const res = await fetch(`/api/links/${log.id}`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    status: "ISSUE",
+                                    issueMessage: issue,
+                                    callerId: currentUserId
+                                  })
+                                });
+                                if (res.ok) {
+                                  toast.success("Link issue flagged successfully!");
+                                  setTimeout(() => window.location.reload(), 1000);
+                                } else {
+                                  const err = await res.json();
+                                  toast.error(err.error || "Failed to flag link issue");
+                                }
+                              } catch (e: any) {
+                                toast.error(e.message || "Failed to flag link issue");
+                              }
+                            }}
+                            className="text-[10px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-0.5 rounded border border-rose-200/50 transition cursor-pointer"
+                          >
+                            Flag Issue
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-1.5 mb-2">
                       {log.affiliateLink && (
