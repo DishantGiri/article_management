@@ -133,7 +133,7 @@ export default function CategoriesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Global Categories</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Web Categories</h1>
           <p className="text-slate-500 text-sm mt-0.5 font-medium">Manage categories that can be assigned across multiple sites</p>
         </div>
         <button
