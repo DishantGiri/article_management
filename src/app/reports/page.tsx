@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Download, FileText, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
 import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
+import { toast } from "react-hot-toast";
 
 interface ReportData {
   metrics: {
@@ -36,6 +37,35 @@ export default function ReportsPage() {
     );
   }
 
+  const handleExportCSV = () => {
+    if (!data) return;
+    const headers = ["Writer", "Email", "Articles Completed", "Avg Writing Time (Hours)", "Status", "Performance Score"];
+    const rows = data.writerProductivity.map((w: any) => [
+      w.writer,
+      w.email,
+      w.articles.toString(),
+      w.avgTime.toString(),
+      w.status,
+      `${w.performance}%`
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(val => `"${(val || "").replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `writer_productivity_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("CSV exported successfully!");
+  };
+
   const COLORS = data.statusDistribution.map((s: any) => s.color);
 
   return (
@@ -47,7 +77,9 @@ export default function ReportsPage() {
           <p className="text-slate-500 text-sm mt-0.5 font-medium">Comprehensive performance reports</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
             <Download className="w-4 h-4 text-slate-500" />
             Export CSV
           </button>

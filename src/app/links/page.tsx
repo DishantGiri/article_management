@@ -58,6 +58,38 @@ function LinksPageContent() {
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const itemsPerPage = 10;
 
+  const handleExportCSV = () => {
+    const headers = ["ID", "Product", "Article Link", "Bridge Page", "Affiliate Name", "Affiliate Link", "Geos", "Status", "Added By", "Date"];
+    const rows = filtered.map((l) => [
+      l.id.toString(),
+      l.product.name,
+      l.product.article?.articleLink || "",
+      l.bridgePageLink || "",
+      l.affiliateName,
+      l.affiliateLink,
+      (l.geos || []).map(g => g.geo).join("; "),
+      l.status,
+      l.addedBy?.name || "",
+      new Date(l.addedAt).toLocaleDateString()
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(val => `"${(val || "").replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `links_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("CSV exported successfully!");
+  };
+
   const handleDeleteLink = async (linkId: number) => {
     if (confirm("Are you sure you want to delete this link log?")) {
       const uId = session?.user?.id || 2;
@@ -187,7 +219,9 @@ function LinksPageContent() {
               Add Link
             </button>
           )}
-          <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
             <Download className="w-4 h-4 text-slate-500" />
             Export
           </button>

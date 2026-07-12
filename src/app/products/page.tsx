@@ -6,6 +6,7 @@ import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileTe
 import { toast } from "react-hot-toast";
 import AddProductModal from "@/components/AddProductModal";
 import EditProductModal from "@/components/EditProductModal";
+import ImportProductModal from "@/components/ImportProductModal";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -48,11 +49,45 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const itemsPerPage = 10;
   const router = useRouter();
+
+  const handleExportCSV = () => {
+    const headers = ["ID", "Name", "Site", "Category", "Trend Link", "Preview Link", "Remarks", "Status", "Links Count", "Added By", "Added At"];
+    const rows = filtered.map((p) => [
+      p.id.toString(),
+      p.name,
+      p.site.name,
+      p.category.name,
+      p.trendLink || "",
+      p.previewLink || "",
+      p.remarks || "",
+      p.article?.status || "PENDING",
+      (p.linkLogs?.length || 0).toString(),
+      p.addedBy?.name || "",
+      new Date(p.addedAt).toLocaleDateString()
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(val => `"${(val || "").replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `products_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("CSV exported successfully!");
+  };
 
   const handleDeleteProduct = async (productId: number, productName: string) => {
     if (confirm(`Are you sure you want to delete "${productName}"? This will also delete all associated article tracking and link log entries.`)) {
@@ -249,11 +284,17 @@ export default function ProductsPage() {
               Add Product
             </button>
           )}
-          <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
-            <Upload className="w-4 h-4 text-slate-500" />
-            Import
-          </button>
-          <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
+          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+            <button 
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
+              <Upload className="w-4 h-4 text-slate-500" />
+              Import
+            </button>
+          )}
+          <button 
+            onClick={handleExportCSV}
+            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
             <Download className="w-4 h-4 text-slate-500" />
             Export
           </button>
@@ -559,6 +600,15 @@ export default function ProductsPage() {
           window.location.reload();
         }}
         product={editingProduct}
+      />
+
+      <ImportProductModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => {
+          window.location.reload();
+        }}
+        userId={session?.user?.id ? Number(session.user.id) : 1}
       />
 
       {selectedProduct && (

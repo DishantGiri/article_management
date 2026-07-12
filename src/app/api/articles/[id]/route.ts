@@ -79,7 +79,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, callerId } = body;
+    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, callerId, notes } = body;
 
     const activeUserId = writerId || callerId;
 
@@ -285,7 +285,11 @@ export async function PATCH(
         changeNotes.push(updated.specialApprovalRequested ? "Requested special approval" : "Cleared special approval request");
       }
 
-      if (changeNotes.length > 0) {
+      if (changeNotes.length > 0 || notes) {
+        const finalNotes = notes
+          ? `${changeNotes.join(", ")}${changeNotes.length > 0 ? ". " : ""}Writer remarks: ${notes}`
+          : changeNotes.join(", ");
+
         await prisma.articleHistory.create({
           data: {
             articleId: updated.id,
@@ -294,7 +298,7 @@ export async function PATCH(
             newStatus: updated.status,
             oldLink: existing.articleLink,
             newLink: updated.articleLink,
-            notes: changeNotes.join(", "),
+            notes: finalNotes,
           },
         });
       }

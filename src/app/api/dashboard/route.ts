@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -171,6 +172,100 @@ export async function GET(req: NextRequest) {
     // ROLE SPECIFIC DATA FETCHING
     // ─────────────────────────────────────────────
 
+    // ─── TEAM_LEAD specific data ───
+    let teamLeadData = null;
+    if (role === "TEAM_LEAD") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const [
+        pendingReviewArticles,
+        completedTodayCount,
+        specialApprovalsCount,
+        teamLeadWriters,
+        reviewQueueArticles,
+      ] = await Promise.all([
+        // Articles submitted (COMPLETED) waiting for team lead approval on their sites
+        prisma.article.count({
+          where: {
+            status: "COMPLETED",
+            product: allowedSiteIds.length > 0 ? { siteId: { in: allowedSiteIds } } : {},
+          },
+        }),
+
+        // Articles approved today on their sites
+        prisma.article.count({
+          where: {
+            status: "APPROVED",
+            completedAt: { gte: today },
+            product: allowedSiteIds.length > 0 ? { siteId: { in: allowedSiteIds } } : {},
+          },
+        }),
+
+        // Articles with special approval requested on their sites
+        prisma.article.count({
+          where: {
+            specialApprovalRequested: true,
+            status: { notIn: ["APPROVED"] },
+            product: allowedSiteIds.length > 0 ? { siteId: { in: allowedSiteIds } } : {},
+          },
+        }),
+
+        // Writer performance: writers with completed articles on team lead's sites
+        prisma.user.findMany({
+          where: { role: "WRITER" },
+          include: {
+            _count: {
+              select: {
+                articles: {
+                  where: {
+                    status: { in: ["COMPLETED", "APPROVED"] },
+                    ...(allowedSiteIds.length > 0 ? { product: { siteId: { in: allowedSiteIds } } } : {}),
+                  },
+                },
+              },
+            },
+          },
+        }),
+
+        // Review queue: recent COMPLETED articles awaiting review
+        prisma.article.findMany({
+          where: {
+            status: "COMPLETED",
+            product: allowedSiteIds.length > 0 ? { siteId: { in: allowedSiteIds } } : {},
+          },
+          orderBy: { completedAt: "desc" },
+          take: 6,
+          include: {
+            product: {
+              include: {
+                site: { select: { name: true } },
+              },
+            },
+            writer: { select: { name: true } },
+          },
+        }),
+      ]);
+
+      teamLeadData = {
+        pendingReview: pendingReviewArticles,
+        completedToday: completedTodayCount,
+        specialApprovals: specialApprovalsCount,
+        issueLinks: issueLinks,
+        writerPerformance: teamLeadWriters
+          .map((w) => ({ name: w.name, completed: w._count.articles }))
+          .sort((a, b) => b.completed - a.completed)
+          .slice(0, 6),
+        reviewQueue: reviewQueueArticles.map((a) => ({
+          id: a.id,
+          product: a.product.name,
+          writer: a.writer?.name || "Unassigned",
+          site: a.product.site.name,
+          completedAt: a.completedAt,
+        })),
+      };
+    }
+
     let superAdminData = null;
     let superAdminError = null;
 
@@ -300,6 +395,7 @@ export async function GET(req: NextRequest) {
       },
       superAdmin: superAdminData,
       superAdminError,
+      teamLead: teamLeadData,
       recentProducts,
       recentArticles,
       unlinkedProducts,

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -112,6 +114,35 @@ export default function ArticlesPage() {
     );
   };
 
+  const handleExportCSV = () => {
+    const headers = ["ID", "Product", "Site", "Category", "Writer", "Status", "Article Link", "Date"];
+    const rows = filtered.map((a) => [
+      a.id.toString(),
+      a.product.name,
+      a.product.site.name,
+      a.product.category.name,
+      a.writer?.name || "Unassigned",
+      a.status,
+      a.articleLink || "",
+      new Date(a.updatedAt).toLocaleDateString()
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(val => `"${(val || "").replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `articles_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const ensureExternalUrl = (url: string | null | undefined) => {
     if (!url) return "";
     const trimmed = url.trim();
@@ -132,7 +163,9 @@ export default function ArticlesPage() {
           <p className="text-slate-500 text-sm mt-0.5 font-medium">All article submissions and their statuses</p>
         </div>
         <div>
-          <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
             <Download className="w-4 h-4 text-slate-500" />
             Export
           </button>

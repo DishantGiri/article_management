@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -29,6 +30,14 @@ interface DashboardData {
   writerCompletedArticles: any[];
   linkerProducts: any[];
   linkerLinks: any[];
+  teamLead?: {
+    pendingReview: number;
+    completedToday: number;
+    specialApprovals: number;
+    issueLinks: number;
+    writerPerformance: { name: string; completed: number }[];
+    reviewQueue: { id: number; product: string; writer: string; site: string; completedAt: string | null }[];
+  };
   superAdmin?: {
     totalWriters: number;
     totalLinkers: number;
@@ -382,118 +391,128 @@ export default function DashboardPage() {
       )}
 
       {/* ─── ROLE-SPECIFIC VIEW: TEAM_LEAD ───────────────────────── */}
-      {currentUserRole === "TEAM_LEAD" && (
-        <>
-          {/* Stat Cards Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
-              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 mb-2">
-                <ClipboardList className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-slate-800">17</p>
-                <p className="text-[11px] font-semibold text-slate-400 mt-1">Pending Review</p>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 mb-2">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-slate-800">9</p>
-                <p className="text-[11px] font-semibold text-slate-400 mt-1">Completed Today</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
-              <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center text-violet-500 mb-2">
-                <Star className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-slate-800">3</p>
-                <p className="text-[11px] font-semibold text-slate-400 mt-1">Special Approvals</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32 relative">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500">
-                  <AlertTriangle className="w-4 h-4" />
+      {currentUserRole === "TEAM_LEAD" && (() => {
+        const tl = data.teamLead || { pendingReview: 0, completedToday: 0, specialApprovals: 0, issueLinks: 0, writerPerformance: [], reviewQueue: [] };
+        return (
+          <>
+            {/* Stat Cards Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 mb-2">
+                  <ClipboardList className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">↘ 2</span>
+                <div>
+                  <p className="text-3xl font-bold text-slate-800">{tl.pendingReview}</p>
+                  <p className="text-[11px] font-semibold text-slate-400 mt-1">Pending Review</p>
+                </div>
               </div>
-              <div>
-                <p className="text-3xl font-bold text-slate-800">5</p>
-                <p className="text-[11px] font-semibold text-slate-400 mt-1">Link Issues</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Main Grid: Writer Performance & Review Queue */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            
-            {/* Writer Performance Bar Chart */}
-            <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-800 mb-6">Writer Performance</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart 
-                    data={[
-                      { name: 'Sarah', completed: 42 },
-                      { name: 'James', completed: 38 },
-                      { name: 'Aisha', completed: 50 },
-                      { name: 'Tom', completed: 28 },
-                      { name: 'Elena', completed: 44 },
-                      { name: 'Marcus', completed: 32 },
-                    ]} 
-                    margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <Tooltip 
-                      cursor={{fill: '#f8fafc'}}
-                      contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Bar dataKey="completed" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 mb-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-slate-800">{tl.completedToday}</p>
+                  <p className="text-[11px] font-semibold text-slate-400 mt-1">Completed Today</p>
+                </div>
               </div>
-            </div>
 
-            {/* Review Queue List */}
-            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm flex flex-col">
-              <h3 className="text-sm font-bold text-slate-800 mb-4">Review Queue (Top 6)</h3>
-              <div className="divide-y divide-slate-100 flex-1">
-                {[
-                  { product: "PureEnergy Plus", writer: "Elena Vasquez", site: "WellnessHub.org" },
-                  { product: "CalmMind Blend", writer: "Carlos Rivera", site: "MegaStore.org" },
-                  { product: "SleepWell Ultra", writer: "Unassigned", site: "GrabIt.net" },
-                  { product: "BrainFuel Elite", writer: "Carlos Rivera", site: "BodyFuel.io" },
-                  { product: "B12 Energy Boost", writer: "Elena Vasquez", site: "WellnessHub.org" },
-                  { product: "AntioxiBlend Ultra", writer: "Carlos Rivera", site: "MegaStore.org" },
-                ].map((item, idx) => (
-                  <div key={idx} className="py-3 flex items-center justify-between group">
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">{item.product}</p>
-                      <p className="text-[10px] text-slate-400 font-medium">{item.writer} - {item.site}</p>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-100">
-                      <button className="text-emerald-500 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      </button>
-                      <button className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors">
-                        <X className="w-3.5 h-3.5 stroke-[3]" />
-                      </button>
-                    </div>
+              <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center text-violet-500 mb-2">
+                  <Star className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-slate-800">{tl.specialApprovals}</p>
+                  <p className="text-[11px] font-semibold text-slate-400 mt-1">Special Approvals</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32 relative">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500">
+                    <AlertTriangle className="w-4 h-4" />
                   </div>
-                ))}
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-slate-800">{tl.issueLinks}</p>
+                  <p className="text-[11px] font-semibold text-slate-400 mt-1">Link Issues</p>
+                </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
+
+            {/* Main Grid: Writer Performance & Review Queue */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+              {/* Writer Performance Bar Chart */}
+              <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-slate-800 mb-6">Writer Performance</h3>
+                <div className="h-64">
+                  {tl.writerPerformance.length === 0 ? (
+                    <p className="text-center text-slate-400 text-xs pt-20">No writer data available.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={tl.writerPerformance}
+                        margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                        <Tooltip
+                          cursor={{ fill: '#f8fafc' }}
+                          contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Bar dataKey="completed" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={40} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+
+              {/* Review Queue List */}
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm flex flex-col">
+                <h3 className="text-sm font-bold text-slate-800 mb-4">Review Queue (Top {tl.reviewQueue.length})</h3>
+                <div className="divide-y divide-slate-100 flex-1">
+                  {tl.reviewQueue.length === 0 ? (
+                    <p className="text-center text-slate-400 text-xs py-8">No articles pending review.</p>
+                  ) : (
+                    tl.reviewQueue.map((item) => (
+                      <div key={item.id} className="py-3 flex items-center justify-between group">
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">{item.product}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">{item.writer} — {item.site}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={async () => {
+                              const res = await fetch(`/api/articles/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "APPROVED", callerId: currentUserId }) });
+                              if (res.ok) { toast.success("Article approved!"); setTimeout(() => window.location.reload(), 800); }
+                              else { const e = await res.json(); toast.error(e.error || "Failed to approve"); }
+                            }}
+                            className="text-emerald-500 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              const res = await fetch(`/api/articles/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "REDO", callerId: currentUserId }) });
+                              if (res.ok) { toast.success("Article sent for redo!"); setTimeout(() => window.location.reload(), 800); }
+                              else { const e = await res.json(); toast.error(e.error || "Failed to reject"); }
+                            }}
+                            className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5 stroke-[3]" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* ─── ROLE-SPECIFIC VIEW: LINKER ─────────────────────────────────── */}
       {currentUserRole === "LINKER" && (
@@ -624,6 +643,7 @@ export default function DashboardPage() {
 function WriterActiveWorkspace({ article, completedArticles, currentUserId, onSuccess }: any) {
   const [articleLink, setArticleLink] = useState(article.articleLink || "");
   const [articleLinkError, setArticleLinkError] = useState("");
+  const [writerNotes, setWriterNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalReason, setApprovalReason] = useState("");
@@ -679,10 +699,11 @@ const isValidUrl = (url: string) => {
       const res = await fetch(`/api/articles/${article.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "COMPLETED", articleLink, callerId: currentUserId }),
+        body: JSON.stringify({ status: "COMPLETED", articleLink, callerId: currentUserId, notes: writerNotes }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       toast.success("Article submitted successfully!");
+      setWriterNotes("");
       setTimeout(() => onSuccess(), 1000);
     } catch (e: any) {
       toast.error(e.message || "Failed to submit");
@@ -861,6 +882,17 @@ const isValidUrl = (url: string) => {
                {articleLinkError && (
                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{articleLinkError}</p>
                )}
+             </div>
+
+             <div className="mb-6">
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Remarks / Comments (optional)</label>
+               <textarea 
+                 value={writerNotes}
+                 onChange={e => setWriterNotes(e.target.value)}
+                 placeholder="Tell the team lead about your updates or changes..."
+                 rows={3}
+                 className="w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none transition bg-slate-50 focus:bg-white border-slate-200 focus:ring-2 focus:ring-indigo-500"
+               />
              </div>
 
             <div className="space-y-3">
