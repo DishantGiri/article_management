@@ -26,7 +26,6 @@ const LINK_STATUSES = [
   { value: "REDIRECTED", label: "Redirected" },
 ];
 
-const COMMON_GEOS = ["US", "UK", "CA", "AU", "DE", "FR", "GLOBAL"];
 
 const isValidUrl = (url: string) => {
   if (!url) return true;
@@ -57,6 +56,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
   const [affiliateLinkError, setAffiliateLinkError] = useState("");
   const [siteLinkErrors, setSiteLinkErrors] = useState<Record<string, { bridgePageLink?: string; buyLink?: string }>>({});
   const [dbAffiliates, setDbAffiliates] = useState<{ id: number; name: string }[]>([]);
+  const [dbGeos, setDbGeos] = useState<string[]>([]);
 
   // Get unique product names for the dropdown list
   const uniqueProductNames = Array.from(new Set(products.map((p) => p.name)));
@@ -65,15 +65,19 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
   const matchingProducts = products.filter((p) => p.name === selectedProductName);
 
   const allAffiliates = dbAffiliates.map(a => a.name);
+  const allGeos = dbGeos;
 
   useEffect(() => {
     if (isOpen) {
       fetch("/api/affiliates")
         .then(r => r.json())
-        .then(data => {
-          setDbAffiliates(Array.isArray(data) ? data : []);
-        })
+        .then(data => { setDbAffiliates(Array.isArray(data) ? data : []); })
         .catch(e => console.error("Failed to load affiliates", e));
+
+      fetch("/api/geos")
+        .then(r => r.json())
+        .then(data => { setDbGeos(Array.isArray(data) ? data.map((g: any) => g.code) : []); })
+        .catch(e => console.error("Failed to load geos", e));
       setSelectedProductName("");
       setSiteLinks({});
       setAffiliateName("");
@@ -404,7 +408,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Geos (Multi-select)</label>
             <div className="flex flex-wrap gap-2">
-              {COMMON_GEOS.map(geo => (
+              {allGeos.map(geo => (
                 <button
                   key={geo}
                   type="button"

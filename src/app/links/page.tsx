@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { Search, Plus, Download, Tag, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import AddLinkModal from "@/components/AddLinkModal";
 import EditLinkModal from "@/components/EditLinkModal";
 import AffiliateManageModal from "@/components/AffiliateManageModal";
+import GeoManageModal from "@/components/GeoManageModal";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -61,6 +62,7 @@ function LinksPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
   const [isAffiliateModalOpen, setIsAffiliateModalOpen] = useState(false);
+  const [isGeoModalOpen, setIsGeoModalOpen] = useState(false);
   const [editingLink, setEditingLink] = useState<any>(null);
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const itemsPerPage = 10;
@@ -245,6 +247,13 @@ function LinksPageContent() {
         <div className="flex items-center gap-3">
           {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
             <>
+              <button
+                onClick={() => setIsGeoModalOpen(true)}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2"
+              >
+                <Globe className="w-4 h-4 text-emerald-500" />
+                GEOs
+              </button>
               <button
                 onClick={() => setIsAffiliateModalOpen(true)}
                 className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2"
@@ -535,6 +544,11 @@ function LinksPageContent() {
           </div>
         )}
       </div>
+
+      <GeoManageModal
+        isOpen={isGeoModalOpen}
+        onClose={() => setIsGeoModalOpen(false)}
+      />
 
       <AffiliateManageModal
         isOpen={isAffiliateModalOpen}

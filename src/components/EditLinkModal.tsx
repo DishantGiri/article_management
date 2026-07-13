@@ -36,7 +36,6 @@ const LINK_STATUSES = [
   { value: "REDIRECTED", label: "Redirected" },
 ];
 
-const COMMON_GEOS = ["US", "UK", "CA", "AU", "DE", "FR", "GLOBAL"];
 
 const isValidUrl = (url: string) => {
   if (!url) return true;
@@ -54,6 +53,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [dbAffiliates, setDbAffiliates] = useState<{ id: number; name: string }[]>([]);
+  const [dbGeos, setDbGeos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -85,10 +85,13 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
       fetch("/api/affiliates")
         .then(r => r.json())
-        .then(data => {
-          setDbAffiliates(Array.isArray(data) ? data : []);
-        })
+        .then(data => { setDbAffiliates(Array.isArray(data) ? data : []); })
         .catch(e => console.error("Failed to load affiliates", e));
+
+      fetch("/api/geos")
+        .then(r => r.json())
+        .then(data => { setDbGeos(Array.isArray(data) ? data.map((g: any) => g.code) : []); })
+        .catch(e => console.error("Failed to load geos", e));
 
       setError("");
       setAffiliateLinkError("");
@@ -113,6 +116,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   };
 
   const allAffiliates = dbAffiliates.map(a => a.name);
+  const allGeos = dbGeos;
 
   const handleSubmit = async () => {
     if (!link) return;
@@ -321,7 +325,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Geos (Multi-select)</label>
             <div className="flex flex-wrap gap-2">
-              {COMMON_GEOS.map((geo) => (
+              {allGeos.map((geo) => (
                 <button
                   key={geo}
                   type="button"
