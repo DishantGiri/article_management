@@ -273,28 +273,28 @@ export default function ProductsPage() {
           <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
             <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 mb-2"><Clock className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.unlinkedProducts?.length || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.general.pendingArticles || 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Pending Products</p>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
             <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 mb-2"><Calendar className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.todaysProducts || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.general.todaysProducts || 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Today's Products</p>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
             <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-500 mb-2"><Globe className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.totalSites || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.general.totalSites || 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Sites</p>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
             <div className="w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center text-sky-500 mb-2"><LayoutGrid className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.totalCategories || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.general.totalCategories || 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Categories</p>
             </div>
           </div>

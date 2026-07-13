@@ -33,6 +33,9 @@ export async function GET(req: NextRequest) {
       allowedSiteIds = accesses.map((a) => a.siteId);
     }
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const [
       totalProducts,
       pendingArticles,
@@ -50,6 +53,9 @@ export async function GET(req: NextRequest) {
       writerCompletedArticles,
       linkerProducts,
       linkerLinks,
+      todaysProducts,
+      totalSites,
+      totalCategories,
     ] = await Promise.all([
       // General counts
       prisma.product.count(),
@@ -165,6 +171,11 @@ export async function GET(req: NextRequest) {
             take: 5,
           })
         : Promise.resolve([]),
+
+      // Global counts for all roles
+      prisma.product.count({ where: { addedAt: { gte: today } } }),
+      prisma.site.count(),
+      prisma.category.count(),
     ]);
 
     // ─────────────────────────────────────────────
@@ -297,6 +308,9 @@ export async function GET(req: NextRequest) {
         requestedLinks,
         acceptedLinks,
         issueLinks,
+        todaysProducts,
+        totalSites,
+        totalCategories,
       },
       superAdmin: superAdminData,
       superAdminError,

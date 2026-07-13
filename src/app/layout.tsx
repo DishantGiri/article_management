@@ -8,11 +8,14 @@ import { authOptions } from "@/lib/auth";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
+export const viewport = {
+  themeColor: "#4f46e5",
+};
+
 export const metadata: Metadata = {
   title: "ArticleMgmt — Workflow System",
   description: "Product & article workflow management for Linkers, Writers, and Team Leads.",
   manifest: "/manifest.json",
-  themeColor: "#4f46e5",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
