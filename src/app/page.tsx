@@ -161,8 +161,9 @@ export default function DashboardPage() {
         body: JSON.stringify({ status: "IN_PROGRESS", writerId: currentUserId }),
       });
       if (res.ok) {
-        toast.success("Assignment started!");
-        setTimeout(() => window.location.reload(), 1000);
+        toast.success("Assignment started! Redirecting to tracker...");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setTimeout(() => window.location.reload(), 600);
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to start writing");
@@ -344,12 +345,32 @@ export default function DashboardPage() {
                 {notifications.length === 0 ? (
                   <p className="text-xs text-slate-400 italic text-center py-4">No notifications</p>
                 ) : (
-                  notifications.map((n) => (
-                    <div key={n.id} className="p-3 bg-slate-50 rounded-xl border border-slate-250/30 text-xs flex flex-col gap-1">
-                      <p className="font-semibold text-slate-700 leading-snug">{n.message}</p>
-                      <span className="text-[10px] text-slate-400 font-medium self-end">{new Date(n.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  ))
+                  notifications.map((n) => {
+                    const match = n.message.match(/"([^"]+)"/);
+                    const prodName = match ? match[1] : "";
+                    
+                    let linkUrl = "";
+                    if (prodName) {
+                      if (currentUserRole === "WRITER") {
+                        linkUrl = `/articles?search=${encodeURIComponent(prodName)}`;
+                      } else {
+                        linkUrl = `/links?search=${encodeURIComponent(prodName)}`;
+                      }
+                    } else {
+                      linkUrl = currentUserRole === "WRITER" ? "/articles" : "/links";
+                    }
+
+                    return (
+                      <Link 
+                        key={n.id} 
+                        href={linkUrl}
+                        className="p-3 bg-slate-50 hover:bg-indigo-50/40 rounded-xl border border-slate-200/50 text-xs flex flex-col gap-1 transition-colors block cursor-pointer"
+                      >
+                        <p className="font-semibold text-slate-700 leading-snug">{n.message}</p>
+                        <span className="text-[10px] text-slate-400 font-medium self-end">{new Date(n.createdAt).toLocaleDateString()}</span>
+                      </Link>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -601,12 +622,14 @@ export default function DashboardPage() {
         <>
           {data.writerInProgressArticles && data.writerInProgressArticles.length > 0 ? (
             // STATE 2: ACTIVE ASSIGNMENT
-            <WriterActiveWorkspace 
-              article={data.writerInProgressArticles[0]} 
-              completedArticles={data.writerCompletedArticles || []}
-              currentUserId={currentUserId}
-              onSuccess={() => window.location.reload()}
-            />
+            <div id="writer-tracker">
+              <WriterActiveWorkspace 
+                article={data.writerInProgressArticles[0]} 
+                completedArticles={data.writerCompletedArticles || []}
+                currentUserId={currentUserId}
+                onSuccess={() => window.location.reload()}
+              />
+            </div>
           ) : (
             // STATE 1: NO ACTIVE ASSIGNMENT (AVAILABLE PRODUCTS)
             <WriterAvailableAssignments 
@@ -650,6 +673,10 @@ function WriterActiveWorkspace({ article, completedArticles, currentUserId, onSu
   const [approvalReason, setApprovalReason] = useState("");
 
   const [elapsed, setElapsed] = useState(0);
+
+  const [reportingLink, setReportingLink] = useState<any>(null);
+  const [issueMessage, setIssueMessage] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   useEffect(() => {
     if (article.articleLink) {
@@ -818,29 +845,9 @@ const isValidUrl = (url: string) => {
                         </span>
                         {log.status !== "ISSUE" && (
                           <button
-                            onClick={async () => {
-                              const issue = prompt(`Describe the issue with link "${log.affiliateName}":`);
-                              if (!issue || !issue.trim()) return;
-                              try {
-                                const res = await fetch(`/api/links/${log.id}`, {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    status: "ISSUE",
-                                    issueMessage: issue,
-                                    callerId: currentUserId
-                                  })
-                                });
-                                if (res.ok) {
-                                  toast.success("Link issue flagged successfully!");
-                                  setTimeout(() => window.location.reload(), 1000);
-                                } else {
-                                  const err = await res.json();
-                                  toast.error(err.error || "Failed to flag link issue");
-                                }
-                              } catch (e: any) {
-                                toast.error(e.message || "Failed to flag link issue");
-                              }
+                            onClick={() => {
+                              setReportingLink(log);
+                              setIssueMessage("");
                             }}
                             className="text-[10px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-0.5 rounded border border-rose-200/50 transition cursor-pointer"
                           >
@@ -972,6 +979,84 @@ const isValidUrl = (url: string) => {
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowApprovalModal(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold">Cancel</button>
               <button onClick={handleRequestApproval} disabled={submitting || !approvalReason.trim()} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">Submit Request</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Link Issue Modal */}
+      {reportingLink && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col p-6 space-y-4 border border-slate-100 transform transition-all duration-200 scale-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+                <AlertTriangle className="w-5 h-5 text-rose-500" />
+                Report Link Issue
+              </h3>
+              <button 
+                onClick={() => setReportingLink(null)} 
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500 font-medium">
+                Describe the issue with the affiliate link <strong className="text-slate-800 font-semibold">"{reportingLink.affiliateName}"</strong>:
+              </p>
+              <textarea
+                value={issueMessage}
+                onChange={(e) => setIssueMessage(e.target.value)}
+                placeholder="Describe what's wrong (e.g. 404 page down, incorrect redirect)..."
+                rows={4}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-205 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl text-sm text-slate-900 focus:outline-none transition-all resize-none placeholder-slate-400 font-medium"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setReportingLink(null)}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!issueMessage.trim()) {
+                    toast.error("Please enter a description of the issue.");
+                    return;
+                  }
+                  setSubmittingReport(true);
+                  try {
+                    const res = await fetch(`/api/links/${reportingLink.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        status: "ISSUE",
+                        issueMessage: issueMessage,
+                        callerId: currentUserId
+                      })
+                    });
+                    if (res.ok) {
+                      toast.success("Link issue flagged successfully!");
+                      setReportingLink(null);
+                      onSuccess();
+                    } else {
+                      const err = await res.json();
+                      toast.error(err.error || "Failed to flag link issue");
+                    }
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to flag link issue");
+                  } finally {
+                    setSubmittingReport(false);
+                  }
+                }}
+                disabled={submittingReport}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-sm shadow-rose-100 hover:shadow-none disabled:opacity-50 transition text-xs cursor-pointer"
+              >
+                {submittingReport ? "Submitting..." : "Submit Report"}
+              </button>
             </div>
           </div>
         </div>

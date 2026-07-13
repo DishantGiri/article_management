@@ -78,6 +78,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Bridge Page Link is required before setting status to Accepted." }, { status: 400 });
     }
 
+    // Business rule: buyLink requires bridgePageLink
+    if (buyLink && !bridgePageLink) {
+      return NextResponse.json({ error: "Bridge Page Link is required before adding a Buy Link." }, { status: 400 });
+    }
+
     const link = await prisma.linkLog.create({
       data: {
         productId: parseInt(productId),

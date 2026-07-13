@@ -53,6 +53,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   const { data: session } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [dbAffiliates, setDbAffiliates] = useState<{ id: number; name: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -80,6 +81,15 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       setLinkerRemarks(link.linkerRemarks || "");
       setGeos(link.geos?.map((g) => g.geo) || []);
 
+
+
+      fetch("/api/affiliates")
+        .then(r => r.json())
+        .then(data => {
+          setDbAffiliates(Array.isArray(data) ? data : []);
+        })
+        .catch(e => console.error("Failed to load affiliates", e));
+
       setError("");
       setAffiliateLinkError("");
       setBridgePageLinkError("");
@@ -90,7 +100,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       fetch(`/api/products?userId=${mockUserId}`)
         .then((r) => r.json())
         .then((data) => {
-          setProducts(Array.isArray(data) ? data : []);
+          const fetchedProds = Array.isArray(data) ? data : [];
+          setProducts(fetchedProds);
         })
         .catch(() => setError("Failed to load products"))
         .finally(() => setLoadingProducts(false));
@@ -100,6 +111,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   const toggleGeo = (geo: string) => {
     setGeos((prev) => (prev.includes(geo) ? prev.filter((g) => g !== geo) : [...prev, geo]));
   };
+
+  const allAffiliates = dbAffiliates.map(a => a.name);
 
   const handleSubmit = async () => {
     if (!link) return;
@@ -126,6 +139,11 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
     if (buyLink && !isValidUrl(buyLink)) {
       setError("Please enter a valid Buy Link URL");
+      return;
+    }
+
+    if (buyLink && !bridgePageLink) {
+      setError("Bridge Page Link is required before a Buy Link can be added.");
       return;
     }
 
@@ -210,13 +228,17 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Affiliate Name *</label>
-              <input
-                type="text"
+              <select
                 value={affiliateName}
-                onChange={(e) => setAffiliateName(e.target.value)}
-                placeholder="e.g. Amazon, ClickBank"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
-              />
+                onChange={e => setAffiliateName(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
+              >
+                <option value="">Select Affiliate Name...</option>
+                {allAffiliates.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Affiliate Link *</label>
@@ -252,6 +274,9 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                 onChange={(e) => {
                   const val = e.target.value;
                   setBridgePageLink(val);
+                  if (!val) {
+                    setBuyLink(""); // Clear buy link if bridge page is cleared
+                  }
                   if (val && !isValidUrl(val)) {
                     setBridgePageLinkError("Must start with http:// or https:// and be a valid URL");
                   } else {
@@ -272,6 +297,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               <input
                 type="url"
                 value={buyLink}
+                disabled={!bridgePageLink}
                 onChange={(e) => {
                   const val = e.target.value;
                   setBuyLink(val);
@@ -281,8 +307,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                     setBuyLinkError("");
                   }
                 }}
-                placeholder="https://..."
-                className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
+                placeholder={bridgePageLink ? "https://..." : "Add bridge page first"}
+                className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors disabled:bg-slate-100 disabled:text-slate-400 ${
                   buyLinkError ? "border-rose-400 focus:border-rose-500" : "border-slate-200 focus:border-indigo-500"
                 }`}
               />

@@ -51,6 +51,8 @@ export async function GET(req: NextRequest) {
       writerCompletedArticles,
       linkerProducts,
       linkerLinks,
+      affiliateNetworksGroup,
+      deadLinksCount,
     ] = await Promise.all([
       // General counts
       prisma.product.count(),
@@ -166,6 +168,22 @@ export async function GET(req: NextRequest) {
             take: 5,
           })
         : Promise.resolve([]),
+
+      // Unique affiliateName groups
+      prisma.linkLog.groupBy({ by: ['affiliateName'] }),
+
+      // Dead links
+      prisma.linkLog.count({
+        where: {
+          status: "ISSUE",
+          OR: [
+            { linkerRemarks: { contains: "dead" } },
+            { linkerRemarks: { contains: "down" } },
+            { linkerRemarks: { contains: "404" } },
+            { linkerRemarks: { contains: "broken" } }
+          ]
+        }
+      })
     ]);
 
     // ─────────────────────────────────────────────
@@ -301,7 +319,17 @@ export async function GET(req: NextRequest) {
           prisma.site.count(),
           prisma.category.count(),
           prisma.linkLog.groupBy({ by: ['affiliateName'] }),
-          prisma.linkLog.count({ where: { status: "ISSUE", linkerRemarks: { contains: "dead" } } }),
+          prisma.linkLog.count({
+            where: {
+              status: "ISSUE",
+              OR: [
+                { linkerRemarks: { contains: "dead" } },
+                { linkerRemarks: { contains: "down" } },
+                { linkerRemarks: { contains: "404" } },
+                { linkerRemarks: { contains: "broken" } }
+              ]
+            }
+          }),
           prisma.linkLog.count({ where: { status: "ISSUE" } }),
           prisma.product.count({ where: { addedAt: { gte: today } } }),
           prisma.article.findMany({ where: { status: { in: ["COMPLETED", "APPROVED"] }, writingTimeMin: { not: null } }, select: { writingTimeMin: true } }),
@@ -403,6 +431,11 @@ export async function GET(req: NextRequest) {
         requestedLinks,
         acceptedLinks,
         issueLinks,
+      },
+      linkStats: {
+        affiliateNetworks: affiliateNetworksGroup.length,
+        deadLinks: deadLinksCount,
+        issueLinks: issueLinks,
       },
       superAdmin: superAdminData,
       superAdminError,

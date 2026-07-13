@@ -30,7 +30,10 @@ export async function PATCH(
         select: { role: true, allowLinkLogAccess: true },
       });
       if (user?.role === "WRITER" && !user.allowLinkLogAccess) {
-        return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
+        const isReportingIssue = status === "ISSUE" && body.issueMessage;
+        if (!isReportingIssue) {
+          return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
+        }
       }
     }
 
@@ -38,10 +41,18 @@ export async function PATCH(
     if (!existing) return NextResponse.json({ error: "Link not found" }, { status: 404 });
 
     const updatedBridge = bridgePageLink !== undefined ? bridgePageLink : existing.bridgePageLink;
+    const updatedBuy = buyLink !== undefined ? buyLink : existing.buyLink;
 
     if (status === "ACCEPTED" && !updatedBridge) {
       return NextResponse.json(
         { error: "Bridge Page Link must be present before setting status to Accepted." },
+        { status: 400 }
+      );
+    }
+
+    if (updatedBuy && !updatedBridge) {
+      return NextResponse.json(
+        { error: "Bridge Page Link must be present before adding a Buy Link." },
         { status: 400 }
       );
     }

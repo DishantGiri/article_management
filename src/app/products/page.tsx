@@ -532,8 +532,8 @@ export default function ProductsPage() {
                                     body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
                                   });
                                   if (res.ok) {
-                                    toast.success("Started writing!");
-                                    setTimeout(() => window.location.reload(), 1000);
+                                    toast.success("Started! Redirecting to tracker...");
+                                    setTimeout(() => { window.location.href = "/#writer-tracker"; }, 600);
                                   } else {
                                     const err = await res.json();
                                     toast.error(err.error || "Failed to start writing");
@@ -715,8 +715,8 @@ export default function ProductsPage() {
                         body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
                       });
                       if (res.ok) {
-                        toast.success("Started writing!");
-                        setTimeout(() => window.location.reload(), 1000);
+                        toast.success("Started! Redirecting to tracker...");
+                        setTimeout(() => { window.location.href = "/#writer-tracker"; }, 600);
                       } else {
                         const err = await res.json();
                         toast.error(err.error || "Failed to start writing");

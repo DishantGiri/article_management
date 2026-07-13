@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { Search, Plus, Download, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Download, Tag, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import AddLinkModal from "@/components/AddLinkModal";
 import EditLinkModal from "@/components/EditLinkModal";
-import { useSearchParams } from "next/navigation";
+import AffiliateManageModal from "@/components/AffiliateManageModal";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 interface LinkLog {
@@ -14,6 +15,8 @@ interface LinkLog {
   affiliateName: string;
   affiliateLink: string;
   bridgePageLink?: string;
+  buyLink?: string;
+  linkerRemarks?: string | null;
   status: string;
   addedAt: string;
   geos: { geo: string }[];
@@ -46,17 +49,27 @@ const STATUS_LABELS: Record<string, string> = {
 function LinksPageContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const urlProductId = searchParams.get("productId");
+  const urlSearch = searchParams.get("search");
 
   const [links, setLinks] = useState<LinkLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(urlSearch || "");
   const [statusFilter, setStatusFilter] = useState("");
+  const [showOnlyDeadLinks, setShowOnlyDeadLinks] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
+  const [isAffiliateModalOpen, setIsAffiliateModalOpen] = useState(false);
   const [editingLink, setEditingLink] = useState<any>(null);
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const itemsPerPage = 10;
+
+  useEffect(() => {
+    if (urlProductId) {
+      setIsAddLinkOpen(true);
+    }
+  }, [urlProductId]);
 
   const handleExportCSV = () => {
     const headers = ["ID", "Product", "Article Link", "Bridge Page", "Affiliate Name", "Affiliate Link", "Geos", "Status", "Added By", "Date"];
@@ -153,7 +166,13 @@ function LinksPageContent() {
       if (d > e) matchDate = false;
     }
 
-    return matchSearch && matchStatus && matchUser && matchDate;
+    const matchDeadOnly = !showOnlyDeadLinks || (
+      l.status === "ISSUE" &&
+      l.linkerRemarks &&
+      /dead|down|404|broken/i.test(l.linkerRemarks)
+    );
+
+    return matchSearch && matchStatus && matchUser && matchDate && matchDeadOnly;
   });
 
   const missingBridgeCount = links.filter(l => !l.bridgePageLink).length;
@@ -161,8 +180,22 @@ function LinksPageContent() {
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const renderPagination = () => {
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (currentPage <= 3) {
+      startPage = 1;
+      endPage = Math.min(5, totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      startPage = Math.max(1, totalPages - 4);
+      endPage = totalPages;
+    }
+
     const pages = [];
-    for (let i = 1; i <= Math.min(5, totalPages); i++) pages.push(i);
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
     return (
       <div className="flex items-center justify-between mt-4 py-3 px-2 border-t border-slate-100">
         <p className="text-xs font-semibold text-slate-400">
@@ -211,13 +244,22 @@ function LinksPageContent() {
         </div>
         <div className="flex items-center gap-3">
           {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
-            <button 
-              onClick={() => setIsAddLinkOpen(true)}
-              className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 shadow-sm transition flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Link
-            </button>
+            <>
+              <button
+                onClick={() => setIsAffiliateModalOpen(true)}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2"
+              >
+                <Tag className="w-4 h-4 text-indigo-500" />
+                Affiliates
+              </button>
+              <button 
+                onClick={() => setIsAddLinkOpen(true)}
+                className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 shadow-sm transition flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Link
+              </button>
+            </>
           )}
           <button 
             onClick={handleExportCSV}
@@ -231,16 +273,39 @@ function LinksPageContent() {
       {/* Metric Cards Row */}
       {stats && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "LINKER") && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+          <div 
+            onClick={() => {
+              setStatusFilter("");
+              setShowOnlyDeadLinks(false);
+              setCurrentPage(1);
+            }}
+            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${
+              !statusFilter && !showOnlyDeadLinks 
+                ? "border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50/5" 
+                : "border-slate-200/60 hover:border-indigo-300"
+            }`}
+          >
             <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 mb-2">
               <Network className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.affiliateNetworks || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.linkStats?.affiliateNetworks || 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Affiliate Networks</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32 relative">
+
+          <div 
+            onClick={() => {
+              setStatusFilter("");
+              setShowOnlyDeadLinks(true);
+              setCurrentPage(1);
+            }}
+            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 relative cursor-pointer transition-all border ${
+              showOnlyDeadLinks 
+                ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/5" 
+                : "border-slate-200/60 hover:border-rose-300"
+            }`}
+          >
             <div className="flex items-center justify-between mb-2">
               <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
                 <AlertTriangle className="w-4 h-4" />
@@ -248,16 +313,28 @@ function LinksPageContent() {
               <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full flex items-center gap-1">↓ 2</span>
             </div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.deadLinks || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.linkStats?.deadLinks || 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Dead Links</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+
+          <div 
+            onClick={() => {
+              setStatusFilter("ISSUE");
+              setShowOnlyDeadLinks(false);
+              setCurrentPage(1);
+            }}
+            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${
+              statusFilter === "ISSUE" && !showOnlyDeadLinks 
+                ? "border-amber-500 ring-1 ring-amber-500 bg-amber-50/5" 
+                : "border-slate-200/60 hover:border-amber-300"
+            }`}
+          >
             <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 mb-2">
               <AlertTriangle className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.issueLinks || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.linkStats?.issueLinks || 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Issue Links</p>
             </div>
           </div>
@@ -285,7 +362,7 @@ function LinksPageContent() {
             type="text"
             placeholder="Search link logs..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => { setSearch(e.target.value); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
             className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white placeholder-slate-400 font-medium text-slate-700"
           />
         </div>
@@ -293,7 +370,7 @@ function LinksPageContent() {
         {/* Status Filter */}
         <select
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+          onChange={(e) => { setStatusFilter(e.target.value); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
           className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[120px]"
         >
           <option value="">All Statuses</option>
@@ -459,10 +536,22 @@ function LinksPageContent() {
         )}
       </div>
 
+      <AffiliateManageModal
+        isOpen={isAffiliateModalOpen}
+        onClose={() => setIsAffiliateModalOpen(false)}
+      />
+
       <AddLinkModal 
         isOpen={isAddLinkOpen} 
-        onClose={() => setIsAddLinkOpen(false)} 
-        onSuccess={() => window.location.reload()} 
+        onClose={() => {
+          setIsAddLinkOpen(false);
+          if (urlProductId) {
+            router.replace("/links");
+          }
+        }} 
+        onSuccess={() => {
+          window.location.href = "/links";
+        }} 
         preselectedProductId={urlProductId ? parseInt(urlProductId) : null}
       />
 

@@ -56,6 +56,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
   const [error, setError] = useState("");
   const [affiliateLinkError, setAffiliateLinkError] = useState("");
   const [siteLinkErrors, setSiteLinkErrors] = useState<Record<string, { bridgePageLink?: string; buyLink?: string }>>({});
+  const [dbAffiliates, setDbAffiliates] = useState<{ id: number; name: string }[]>([]);
 
   // Get unique product names for the dropdown list
   const uniqueProductNames = Array.from(new Set(products.map((p) => p.name)));
@@ -63,8 +64,16 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
   // Get matching products for the selected product name
   const matchingProducts = products.filter((p) => p.name === selectedProductName);
 
+  const allAffiliates = dbAffiliates.map(a => a.name);
+
   useEffect(() => {
     if (isOpen) {
+      fetch("/api/affiliates")
+        .then(r => r.json())
+        .then(data => {
+          setDbAffiliates(Array.isArray(data) ? data : []);
+        })
+        .catch(e => console.error("Failed to load affiliates", e));
       setSelectedProductName("");
       setSiteLinks({});
       setAffiliateName("");
@@ -76,17 +85,28 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
       setAffiliateLinkError("");
       setSiteLinkErrors({});
       
+
       const mockUserId = session?.user?.id || 1;
       setLoadingProducts(true);
       fetch(`/api/products?userId=${mockUserId}`)
         .then(r => r.json())
         .then(data => {
           const fetchedProds = Array.isArray(data) ? data : [];
-          setProducts(fetchedProds);
+          
+
+
+          // Only keep products that have no links yet
+          const unlinkedProds = fetchedProds.filter((p: any) => !p.linkLogs || p.linkLogs.length === 0);
+          setProducts(unlinkedProds);
           
           if (preselectedProductId) {
+            // Find in the main list to get its name (even if filtered, we can use it to set the state)
             const found = fetchedProds.find((p: any) => p.id === preselectedProductId);
             if (found) {
+              // Ensure the preselected product is in the products list if not already
+              if (!unlinkedProds.some(p => p.id === preselectedProductId)) {
+                setProducts(prev => [found, ...prev]);
+              }
               setSelectedProductName(found.name);
             }
           }
@@ -112,13 +132,36 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
   };
 
   const updateSiteLink = (productId: number, field: "bridgePageLink" | "buyLink", value: string) => {
-    setSiteLinks((prev) => ({
-      ...prev,
-      [productId]: {
-        ...(prev[productId] || { bridgePageLink: "", buyLink: "" }),
-        [field]: value,
-      },
-    }));
+    setSiteLinks((prev) => {
+      const current = prev[productId] || { bridgePageLink: "", buyLink: "" };
+      const updated = { ...current, [field]: value };
+      
+      // If bridgePageLink is cleared, also clear buyLink
+      if (field === "bridgePageLink" && !value) {
+        updated.buyLink = "";
+      }
+      return {
+        ...prev,
+        [productId]: updated,
+      };
+    });
+
+    if (field === "bridgePageLink" && !value) {
+      setSiteLinkErrors((prev) => {
+        const next = { ...prev };
+        if (next[productId]) {
+          const updatedProductErrors = { ...next[productId] };
+          delete updatedProductErrors.buyLink;
+          delete updatedProductErrors.bridgePageLink;
+          if (Object.keys(updatedProductErrors).length === 0) {
+            delete next[productId];
+          } else {
+            next[productId] = updatedProductErrors;
+          }
+        }
+        return next;
+      });
+    }
 
     // Dynamic Validation
     if (value && !isValidUrl(value)) {
@@ -165,6 +208,10 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
     // Validate site links
     for (const p of matchingProducts) {
       const links = siteLinks[p.id] || { bridgePageLink: "", buyLink: "" };
+      if (links.buyLink && !links.bridgePageLink) {
+        setError(`Bridge Page Link is required for ${p.site.name} before a Buy Link can be added.`);
+        return;
+      }
       if (links.bridgePageLink && !isValidUrl(links.bridgePageLink)) {
         setError(`Please enter a valid Bridge Page Link for ${p.site.name} (must start with http:// or https://)`);
         return;
@@ -179,10 +226,12 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
       }
     }
 
+
     setSubmitting(true);
     setError("");
 
     try {
+
       const mockUserId = session?.user?.id || 1;
       
       // Save link log for each matching site in parallel
@@ -260,13 +309,16 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Affiliate Name *</label>
-              <input
-                type="text"
+              <select
                 value={affiliateName}
                 onChange={e => setAffiliateName(e.target.value)}
-                placeholder="e.g. Amazon, ClickBank"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
-              />
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
+              >
+                <option value="">Select Affiliate Name...</option>
+                {allAffiliates.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Affiliate Link *</label>
@@ -330,8 +382,9 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
                           type="url"
                           value={siteLinks[p.id]?.buyLink || ""}
                           onChange={e => updateSiteLink(p.id, "buyLink", e.target.value)}
-                          placeholder="https://..."
-                          className={`w-full px-2.5 py-1.5 bg-white border rounded-lg text-xs text-slate-900 focus:outline-none transition-colors ${
+                          placeholder={siteLinks[p.id]?.bridgePageLink ? "https://..." : "Add bridge page first"}
+                          disabled={!siteLinks[p.id]?.bridgePageLink}
+                          className={`w-full px-2.5 py-1.5 bg-white border rounded-lg text-xs text-slate-900 focus:outline-none transition-colors disabled:bg-slate-100 disabled:text-slate-400 ${
                             prodErrors.buyLink
                               ? "border-rose-400 focus:border-rose-500 bg-rose-50/10"
                               : "border-slate-200 focus:border-indigo-500"

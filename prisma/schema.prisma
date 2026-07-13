@@ -300,3 +300,9 @@ model ArticleHistory {
   notes       String?  @db.Text
   updatedAt   DateTime @default(now())
 }
+
+model AffiliateName {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
