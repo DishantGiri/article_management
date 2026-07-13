@@ -78,6 +78,6 @@ export default withAuth(
 export const config = {
   matcher: [
     // Protect all routes except signin page, api/auth routes, and static assets
-    "/((?!api/auth|auth/signin|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon-192.png|icon-512.png).*)",
+    "/((?!api/auth|auth/signin|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon-192.png|icon-512.png|404.svg|file.svg|globe.svg|next.svg|vercel.svg|window.svg|mixkit-software-interface-back-2575.wav).*)",
   ],
 };
