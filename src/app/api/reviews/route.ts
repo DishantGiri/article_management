@@ -5,7 +5,7 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 // POST /api/reviews — Team Lead submits a review remark (Approve or Redo)
 export async function POST(req: NextRequest) {
   try {
-    const { articleId, reviewedById, suggestion, approved } = await req.json();
+    const { articleId, reviewedById, suggestion, approved, priority } = await req.json();
 
     if (articleId === undefined || !reviewedById || approved === undefined) {
       return NextResponse.json(
@@ -51,11 +51,15 @@ export async function POST(req: NextRequest) {
     const newStatus = approved ? "APPROVED" : "REDO";
 
     // 3. Update the Article status
+    // On REDO: null out startedAt so timer does NOT auto-start — writer must click "Start Revision"
     const updatedArticle = await prisma.article.update({
       where: { id: Number(articleId) },
       data: {
         status: newStatus,
-        ...(newStatus === "REDO" ? { startedAt: new Date() } : {}),
+        ...(newStatus === "REDO" ? { startedAt: null } : {}),
+        ...(priority && ["LOW", "MEDIUM", "HIGH"].includes(priority)
+          ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" }
+          : {}),
       },
       include: {
         product: { select: { name: true } },

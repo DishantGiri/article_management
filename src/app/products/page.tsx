@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import FormattedRemarks from "@/components/FormattedRemarks";
 import AddProductModal from "@/components/AddProductModal";
 import EditProductModal from "@/components/EditProductModal";
 import ImportProductModal from "@/components/ImportProductModal";
@@ -682,9 +683,7 @@ export default function ProductsPage() {
                               <a href={log.buyLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.buyLink}</a>
                             </div>
                           )}
-                          {log.linkerRemarks && (
-                            <div className="mt-1.5 bg-slate-100 p-1.5 rounded text-[10px] text-slate-600"><span className="font-bold">Remarks:</span> {log.linkerRemarks}</div>
-                          )}
+                          <FormattedRemarks remarks={log.linkerRemarks} textClass="text-[10px]" />
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {log.geos?.map((g: any) => (
@@ -731,7 +730,7 @@ export default function ProductsPage() {
                 </button>
               )}
 
-              {currentUserRole !== "WRITER" && selectedProduct.article && (
+              {currentUserRole !== "WRITER" && currentUserRole !== "LINKER" && selectedProduct.article && (
                 <Link 
                   href={`/articles/${selectedProduct.article.id}`}
                   className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition flex items-center gap-2"

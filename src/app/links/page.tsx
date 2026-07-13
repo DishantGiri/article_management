@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import AddLinkModal from "@/components/AddLinkModal";
+import FormattedRemarks from "@/components/FormattedRemarks";
 import EditLinkModal from "@/components/EditLinkModal";
 import AffiliateManageModal from "@/components/AffiliateManageModal";
 import GeoManageModal from "@/components/GeoManageModal";
@@ -133,10 +134,19 @@ function LinksPageContent() {
       fetch(`/api/links?userId=${uId}`).then((r) => r.json()),
       fetch(`/api/dashboard?userId=${uId}`).then((r) => r.json()),
     ]).then(([linksData, dashboardData]) => {
-      setLinks(Array.isArray(linksData) ? linksData : []);
+      const arr = Array.isArray(linksData) ? linksData : [];
+      setLinks(arr);
       setStats(dashboardData);
+
+      const editIdParam = searchParams.get("editLinkId");
+      if (editIdParam) {
+        const matched = arr.find((l: any) => l.id === parseInt(editIdParam));
+        if (matched) {
+          setEditingLink(matched);
+        }
+      }
     }).finally(() => setLoading(false));
-  }, [session?.user?.id]);
+  }, [session?.user?.id, searchParams]);
 
   const [userFilter, setUserFilter] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -360,6 +370,55 @@ function LinksPageContent() {
         </div>
       )}
 
+      {/* Tabs Selector for Links */}
+      <div className="flex border-b border-slate-200 mb-6 gap-2">
+        <button
+          onClick={() => { setStatusFilter(""); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all ${
+            !statusFilter && !showOnlyDeadLinks
+              ? "border-indigo-500 text-indigo-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          All Links
+        </button>
+        <button
+          onClick={() => { setStatusFilter("ISSUE"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+            statusFilter === "ISSUE"
+              ? "border-rose-500 text-rose-600 font-bold"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <span>Flagged Links</span>
+          {links.filter(l => l.status === "ISSUE").length > 0 && (
+            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700 rounded-full">
+              {links.filter(l => l.status === "ISSUE").length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => { setStatusFilter("REQUESTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all ${
+            statusFilter === "REQUESTED"
+              ? "border-amber-500 text-amber-600 font-bold"
+              : "border-transparent text-slate-500 hover:text-slate-750"
+          }`}
+        >
+          Pending Requests
+        </button>
+        <button
+          onClick={() => { setStatusFilter("ACCEPTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all ${
+            statusFilter === "ACCEPTED"
+              ? "border-emerald-500 text-emerald-650 font-bold"
+              : "border-transparent text-slate-500 hover:text-slate-750"
+          }`}
+        >
+          Accepted Links
+        </button>
+      </div>
+
       {/* Filters Bar */}
       <div className="flex flex-wrap items-center gap-3 mb-6 bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
         {/* Search */}
@@ -458,8 +517,15 @@ function LinksPageContent() {
                   
                   return (
                     <tr key={l.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-3 py-3.5">
-                        <span className="text-[13px] font-semibold text-slate-800">{l.product.name}</span>
+                      <td className="px-3 py-3.5 max-w-[240px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[13px] font-semibold text-slate-800 break-words block">{l.product.name}</span>
+                          {l.status === "ISSUE" && (
+                            <span className="inline-flex items-center text-rose-500 hover:text-rose-700 cursor-pointer" title="Flagged Link Issue">
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-3.5">
                         {l.product.article?.articleLink ? (
@@ -571,8 +637,16 @@ function LinksPageContent() {
 
       <EditLinkModal
         isOpen={!!editingLink}
-        onClose={() => setEditingLink(null)}
-        onSuccess={() => window.location.reload()}
+        onClose={() => {
+          setEditingLink(null);
+          if (searchParams.get("editLinkId")) {
+            router.replace("/links");
+          }
+        }}
+        onSuccess={() => {
+          router.replace("/links");
+          window.location.reload();
+        }}
         link={editingLink}
       />
     </div>

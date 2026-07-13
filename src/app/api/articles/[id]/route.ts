@@ -79,7 +79,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, callerId, notes } = body;
+    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, callerId, notes, redoStarted } = body;
 
     const activeUserId = writerId || callerId;
 
@@ -195,6 +195,7 @@ export async function PATCH(
         ...(specialApprovalRequestReason !== undefined ? { specialApprovalRequestReason } : {}),
         ...(status === "COMPLETED" ? { specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
         ...(status === "IN_PROGRESS" && !existing.startedAt ? { startedAt: new Date() } : {}),
+        ...(redoStarted && existing.status === "REDO" && !existing.startedAt ? { startedAt: new Date() } : {}),
         ...(completedAt ? { completedAt } : {}),
         ...(writingTimeMin !== undefined ? { writingTimeMin } : {}),
         ...(updateTimeMin !== undefined ? { updateTimeMin } : {}),

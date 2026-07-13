@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import FormattedRemarks from "@/components/FormattedRemarks";
 
 interface Product {
   id: number;
@@ -78,7 +79,12 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       setBridgePageLink(link.bridgePageLink || "");
       setBuyLink(link.buyLink || "");
       setStatus(link.status || "REQUESTED");
-      setLinkerRemarks(link.linkerRemarks || "");
+      const cleanRemarks = (link.linkerRemarks || "")
+        .split('\n')
+        .filter(line => !line.trim().startsWith("[Flagged by"))
+        .join('\n')
+        .trim();
+      setLinkerRemarks(cleanRemarks);
       setGeos(link.geos?.map((g) => g.geo) || []);
 
 
@@ -209,6 +215,12 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           {error && (
             <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-2">
               <span className="font-bold">!</span> {error}
+            </div>
+          )}
+
+          {link.status === "ISSUE" && link.linkerRemarks && (
+            <div className="mb-2">
+              <FormattedRemarks remarks={link.linkerRemarks} />
             </div>
           )}
 

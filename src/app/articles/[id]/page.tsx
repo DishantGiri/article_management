@@ -49,6 +49,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [remark, setRemark] = useState("");
+  const [redoPriority, setRedoPriority] = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [editLinkMode, setEditLinkMode] = useState(false);
   const [newLinkValue, setNewLinkValue] = useState("");
@@ -62,7 +63,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
     const uRole = session.user.role || "WRITER";
     setCurrentUserRole(uRole);
 
-    if (uRole === "WRITER") {
+    if (uRole === "WRITER" || uRole === "LINKER") {
       router.push("/");
       return;
     }
@@ -104,6 +105,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
           reviewedById: currentUserId,
           suggestion: remark,
           approved,
+          ...(!approved ? { priority: redoPriority } : {}),
         }),
       });
       const data = await res.json();
@@ -287,8 +289,8 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Right Sidebar: Tracking Info & Workflow */}
-        <div className="space-y-6">
-           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-6">
+        <div className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto pr-2 pb-6 scrollbar-thin" style={{ scrollbarWidth: 'thin' }}>
+           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
               <h3 className="text-lg font-bold text-slate-900 mb-4">Tracking Details</h3>
               
               <div className="space-y-4">
@@ -436,7 +438,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                  {article.reviews && article.reviews.length > 0 && (
                    <div className="pt-4 border-t border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Team Lead Reviews</p>
-                      <div className="space-y-3">
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
                         {article.reviews.map((r) => (
                           <div key={r.id} className={`p-3 rounded-xl ${r.approved ? "bg-emerald-50 border border-emerald-200" : "bg-rose-50 border border-rose-200"}`}>
                             <div className="flex items-center justify-between mb-1">
@@ -507,6 +509,34 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
                       placeholder="Enter feedback or change requests for the writer..."
                       className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition"
                     />
+                  </div>
+
+                  {/* Priority picker — only shown when requesting redo */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Set Priority for Writer
+                    </label>
+                    <div className="flex gap-2">
+                      {(["LOW", "MEDIUM", "HIGH"] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setRedoPriority(p)}
+                          className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${
+                            redoPriority === p
+                              ? p === "HIGH"
+                                ? "bg-rose-500 text-white border-rose-600"
+                                : p === "MEDIUM"
+                                ? "bg-amber-400 text-white border-amber-500"
+                                : "bg-slate-400 text-white border-slate-500"
+                              : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300"
+                          }`}
+                        >
+                          {p === "HIGH" ? "🔴 High" : p === "MEDIUM" ? "🟡 Medium" : "⚪ Low"}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1.5">Only applied when requesting a redo.</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

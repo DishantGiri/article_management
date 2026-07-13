@@ -4,16 +4,32 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity } from "lucide-react";
+import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { toast } from "react-hot-toast";
 
 interface Article {
   id: number;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO";
+  priority: "LOW" | "MEDIUM" | "HIGH";
   updatedAt: string;
   articleLink?: string;
   product: { id: number; name: string; site: { name: string }; category: { name: string } };
   writer?: { id: number; name: string };
+}
+
+function PriorityBadge({ priority }: { priority: "LOW" | "MEDIUM" | "HIGH" }) {
+  if (priority === "HIGH") return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">
+      <Flame className="w-2.5 h-2.5" /> HIGH
+    </span>
+  );
+  if (priority === "LOW") return (
+    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">LOW</span>
+  );
+  return (
+    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">MED</span>
+  );
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -37,6 +53,10 @@ export default function ArticlesPage() {
 
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const [stats, setStats] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [updatingArticle, setUpdatingArticle] = useState<Article | null>(null);
+  const [updateLink, setUpdateLink] = useState("");
+  const [submittingUpdate, setSubmittingUpdate] = useState(false);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -44,6 +64,7 @@ export default function ArticlesPage() {
     const stored = session.user.id;
     const uRole = session.user.role || "WRITER";
     setCurrentUserRole(uRole);
+    setCurrentUserId(stored);
 
     Promise.all([
       fetch(`/api/articles?userId=${stored}`).then((r) => r.json()),
@@ -281,9 +302,10 @@ export default function ArticlesPage() {
                 <tr className="border-b border-slate-100">
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[25%]">Product</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[20%]">Site</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[20%]">Writer</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[15%]">Status</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[15%]">Date</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[15%]">Writer</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Priority</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[12%]">Status</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[13%]">Date</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[5%]">Link</th>
                   {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
                     <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left w-[10%]">Actions</th>
@@ -316,6 +338,9 @@ export default function ArticlesPage() {
                         )}
                       </td>
                       <td className="px-4 py-3.5">
+                        <PriorityBadge priority={(a as any).priority || "MEDIUM"} />
+                      </td>
+                      <td className="px-4 py-3.5">
                         <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${statusColor}`}>
                           {status === "IN_PROGRESS" ? "In Progress" : status.charAt(0) + status.slice(1).toLowerCase()}
                         </span>
@@ -345,6 +370,17 @@ export default function ArticlesPage() {
                           </Link>
                         </td>
                       )}
+                      {currentUserRole === "WRITER" && status === "REDO" && (
+                        <td className="px-4 py-3.5">
+                          <button
+                            onClick={() => { setUpdatingArticle(a as Article); setUpdateLink((a as any).articleLink || ""); }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            Update
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -354,6 +390,86 @@ export default function ArticlesPage() {
           </div>
         )}
       </div>
+
+      {/* Writer update modal for REDO articles */}
+      {updatingArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="px-6 py-5 border-b border-slate-100">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                  Needs Changes
+                </span>
+                {(updatingArticle as any).priority === "HIGH" && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">
+                    <Flame className="w-2.5 h-2.5" /> HIGH PRIORITY
+                  </span>
+                )}
+              </div>
+              <h2 className="text-[15px] font-bold text-slate-900">{updatingArticle.product.name}</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{updatingArticle.product.site.name}</p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Updated Article Link
+                </label>
+                <input
+                  type="url"
+                  value={updateLink}
+                  onChange={(e) => setUpdateLink(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setUpdatingArticle(null); setUpdateLink(""); }}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={submittingUpdate || !updateLink.trim()}
+                  onClick={async () => {
+                    if (!updateLink.trim() || !currentUserId) return;
+                    setSubmittingUpdate(true);
+                    try {
+                      const res = await fetch(`/api/articles/${updatingArticle.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          articleLink: updateLink,
+                          status: "COMPLETED",
+                          callerId: currentUserId,
+                        }),
+                      });
+                      if (!res.ok) {
+                        const d = await res.json();
+                        toast.error(d.error || "Failed to update article.");
+                        return;
+                      }
+                      toast.success("Article updated and marked as completed!");
+                      setUpdatingArticle(null);
+                      setUpdateLink("");
+                      // Refresh articles list
+                      const refreshed = await fetch(`/api/articles?userId=${currentUserId}`).then(r => r.json());
+                      setArticles(Array.isArray(refreshed) ? refreshed : []);
+                    } catch {
+                      toast.error("Something went wrong.");
+                    } finally {
+                      setSubmittingUpdate(false);
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingUpdate ? "Submitting..." : "Submit Update"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

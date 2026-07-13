@@ -10,6 +10,7 @@ import { Package, Clock, CheckCircle2, PlayCircle, FileText, Users, UserCheck, C
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
 import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
 import { toast } from "react-hot-toast";
+import FormattedRemarks from "@/components/FormattedRemarks";
 
 interface DashboardData {
   role: "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -31,6 +32,7 @@ interface DashboardData {
   writerCompletedArticles: any[];
   linkerProducts: any[];
   linkerLinks: any[];
+  flaggedLinks?: any[];
   teamLead?: {
     pendingReview: number;
     completedToday: number;
@@ -412,6 +414,38 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Flagged Alert Warning (Linkers only) */}
+      {currentUserRole === "LINKER" && data.flaggedLinks && data.flaggedLinks.length > 0 && (
+        <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl shadow-sm mt-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 border border-rose-200/50">
+              <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="font-bold text-rose-800 text-sm">Action Required: Flagged Link Issues</h2>
+              <p className="text-xs text-rose-600/80 mt-0.5">Writers have reported issues with the following links. Click on any link to view details and update it.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {data.flaggedLinks.map((l: any) => (
+                  <Link
+                    key={l.id}
+                    href={`/links?editLinkId=${l.id}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-rose-100/50 border border-rose-200/50 text-rose-700 text-xs font-semibold rounded-xl transition-colors shadow-sm"
+                  >
+                    <span>⚠️ {l.affiliateName}</span>
+                    <span className="text-[10px] opacity-60">({l.product.name})</span>
+                    <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── ROLE-SPECIFIC VIEW: TEAM_LEAD ───────────────────────── */}
       {currentUserRole === "TEAM_LEAD" && (() => {
         const tl = data.teamLead || { pendingReview: 0, completedToday: 0, specialApprovals: 0, issueLinks: 0, writerPerformance: [], reviewQueue: [] };
@@ -557,8 +591,8 @@ export default function DashboardPage() {
             />
             <StatCard
               label="Link Flag Issues"
-              value={data.linkerLinks.filter((l: any) => l.status === "ISSUE").length}
-              sub="flagged by Team Lead"
+              value={data.general.issueLinks || 0}
+              sub="flagged by Writers"
               color="bg-white text-slate-800"
               icon={<svg className="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01" /></svg>}
             />
@@ -673,6 +707,9 @@ function WriterActiveWorkspace({ article, completedArticles, currentUserId, onSu
   const [approvalReason, setApprovalReason] = useState("");
 
   const [elapsed, setElapsed] = useState(0);
+  const [startingRevision, setStartingRevision] = useState(false);
+
+  const revisionStarted = article.status !== "REDO" || !!article.startedAt;
 
   const [reportingLink, setReportingLink] = useState<any>(null);
   const [issueMessage, setIssueMessage] = useState("");
@@ -693,6 +730,23 @@ function WriterActiveWorkspace({ article, completedArticles, currentUserId, onSu
       return () => clearInterval(interval);
     }
   }, [article.startedAt]);
+
+  const handleStartRevision = async () => {
+    setStartingRevision(true);
+    try {
+      const res = await fetch(`/api/articles/${article.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ redoStarted: true, callerId: currentUserId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Revision started! Timer is running.");
+      setTimeout(() => onSuccess(), 600);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to start revision");
+      setStartingRevision(false);
+    }
+  };
 
   const formatTime = (secs: number) => {
     const h = Math.floor(secs / 3600);
@@ -768,22 +822,38 @@ const isValidUrl = (url: string) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative">
           <div className="flex items-center justify-between mb-6">
-            {article.status === 'REDO' ? (
-              <span className="px-3 py-1 bg-rose-50 text-rose-700 border border-rose-200/40 rounded-full text-xs font-bold flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-                Needs Changes
-              </span>
-            ) : (
-              <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200/40 rounded-full text-xs font-bold flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                In Progress
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {article.status === 'REDO' ? (
+                <span className="px-3 py-1 bg-rose-50 text-rose-700 border border-rose-200/40 rounded-full text-xs font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  Needs Changes
+                </span>
+              ) : (
+                <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200/40 rounded-full text-xs font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  In Progress
+                </span>
+              )}
+              {article.priority === "HIGH" && (
+                <span className="px-2.5 py-1 bg-rose-500 text-white rounded-full text-[10px] font-bold flex items-center gap-1 animate-pulse">
+                  🔴 HIGH PRIORITY
+                </span>
+              )}
+              {article.priority === "LOW" && (
+                <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full text-[10px] font-bold">⚪ LOW</span>
+              )}
+            </div>
             <div className="text-right">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                {article.status === 'REDO' ? 'Revision Timer' : 'Writing Timer'}
-              </p>
-              <p className="text-xl font-bold text-slate-800 font-mono tracking-tight">{formatTime(elapsed)}</p>
+              {article.status === 'REDO' && !article.startedAt ? (
+                <span className="text-xs font-semibold text-slate-400">Timer not started</span>
+              ) : (
+                <>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                    {article.status === 'REDO' ? 'Revision Timer' : 'Writing Timer'}
+                  </p>
+                  <p className="text-xl font-bold text-slate-800 font-mono tracking-tight">{formatTime(elapsed)}</p>
+                </>
+              )}
             </div>
           </div>
 
@@ -806,6 +876,22 @@ const isValidUrl = (url: string) => {
                   Total Redo Time from Previous Rounds: {article.updateTimeMin >= 60 ? `${Math.floor(article.updateTimeMin / 60)}h ${article.updateTimeMin % 60}m` : `${article.updateTimeMin}m`}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* START REVISION CTA — shown only when REDO and timer not started */}
+          {article.status === 'REDO' && !article.startedAt && (
+            <div className="mb-6 flex flex-col items-center gap-3 py-8 border border-dashed border-rose-200 rounded-2xl bg-rose-50/40">
+              <p className="text-sm font-semibold text-slate-600">Ready to work on the revision?</p>
+              <button
+                onClick={handleStartRevision}
+                disabled={startingRevision}
+                className="px-6 py-2.5 bg-rose-500 text-white font-bold text-sm rounded-xl hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2 shadow-sm"
+              >
+                <PlayCircle className="w-4 h-4" />
+                {startingRevision ? "Starting..." : "Start Revision"}
+              </button>
+              <p className="text-[10px] text-slate-400 font-medium">Timer starts when you click. Your revision time will be tracked.</p>
             </div>
           )}
 
@@ -878,9 +964,7 @@ const isValidUrl = (url: string) => {
                           </div>
                         </div>
                       )}
-                      {log.linkerRemarks && (
-                        <div className="mt-2 bg-slate-100 p-2 rounded text-xs text-slate-600"><span className="font-bold">Remarks:</span> {log.linkerRemarks}</div>
-                      )}
+                      <FormattedRemarks remarks={log.linkerRemarks} />
                     </div>
                     {log.geos?.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
@@ -903,10 +987,17 @@ const isValidUrl = (url: string) => {
             <h3 className="text-lg font-bold text-slate-900 mb-2">Submit Work</h3>
             <p className="text-xs text-slate-500 mb-6">Paste your document URL below to complete this assignment.</p>
             
+            {!revisionStarted && (
+              <div className="mb-6 p-3 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-700 font-semibold text-center animate-pulse">
+                ⚠️ Click &quot;Start Revision&quot; above to unlock submission and start the timer.
+              </div>
+            )}
+            
              <div className="mb-6">
                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Article URL (GDocs/WP)</label>
                <input 
                  type="url"
+                 disabled={!revisionStarted}
                  value={articleLink}
                  onChange={e => {
                    const val = e.target.value;
@@ -922,7 +1013,7 @@ const isValidUrl = (url: string) => {
                    articleLinkError
                      ? "border-rose-400 focus:ring-2 focus:ring-rose-400"
                      : "border-slate-200 focus:ring-2 focus:ring-indigo-500"
-                 }`}
+                 } ${!revisionStarted ? "opacity-50 cursor-not-allowed" : ""}`}
                />
                {articleLinkError && (
                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{articleLinkError}</p>
@@ -932,18 +1023,19 @@ const isValidUrl = (url: string) => {
              <div className="mb-6">
                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Remarks / Comments (optional)</label>
                <textarea 
+                 disabled={!revisionStarted}
                  value={writerNotes}
                  onChange={e => setWriterNotes(e.target.value)}
                  placeholder="Tell the team lead about your updates or changes..."
                  rows={3}
-                 className="w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none transition bg-slate-50 focus:bg-white border-slate-200 focus:ring-2 focus:ring-indigo-500"
+                 className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none transition bg-slate-50 focus:bg-white border-slate-200 focus:ring-2 focus:ring-indigo-500 ${!revisionStarted ? "opacity-50 cursor-not-allowed" : ""}`}
                />
              </div>
 
             <div className="space-y-3">
               <button 
                 onClick={handleMarkCompleted}
-                disabled={!articleLink.trim() || submitting}
+                disabled={!revisionStarted || !articleLink.trim() || submitting}
                 className="w-full py-3 bg-black hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition"
               >
                 <CheckCircle2 className="w-5 h-5" /> {article.status === 'REDO' ? 'Submit Update' : 'Mark Completed'}
@@ -951,7 +1043,7 @@ const isValidUrl = (url: string) => {
               
               <button 
                 onClick={() => setShowApprovalModal(true)}
-                disabled={submitting || article.specialApprovalRequested}
+                disabled={!revisionStarted || submitting || article.specialApprovalRequested}
                 className="w-full py-3 bg-white hover:bg-slate-50 border border-slate-200 disabled:opacity-50 text-slate-700 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition"
               >
                 <Flag className="w-4 h-4" /> {article.specialApprovalRequested ? "Approval Pending..." : "Request Special Approval"}
@@ -1067,6 +1159,9 @@ const isValidUrl = (url: string) => {
 
 function WriterAvailableAssignments({ pendingArticles, completedArticles, currentUserId, onStartWriting }: any) {
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
+  const [reportingLink, setReportingLink] = useState<any>(null);
+  const [issueMessage, setIssueMessage] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -1151,7 +1246,25 @@ function WriterAvailableAssignments({ pendingArticles, completedArticles, curren
                       <div key={log.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <div className="flex justify-between items-start mb-1">
                           <p className="font-bold text-slate-800 text-xs">{log.affiliateName}</p>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{log.status}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              log.status === "ISSUE" ? "bg-rose-100 text-rose-700" : "bg-blue-50 text-blue-700 border border-blue-200/50"
+                            }`}>
+                              {log.status}
+                            </span>
+                            {log.status !== "ISSUE" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReportingLink(log);
+                                  setIssueMessage("");
+                                }}
+                                className="text-[10px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-0.5 rounded border border-rose-200/50 transition cursor-pointer"
+                              >
+                                Flag Issue
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div className="space-y-1 mb-2">
                           {log.affiliateLink && (
@@ -1175,9 +1288,7 @@ function WriterAvailableAssignments({ pendingArticles, completedArticles, curren
                               <a href={log.buyLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.buyLink}</a>
                             </div>
                           )}
-                          {log.linkerRemarks && (
-                            <div className="mt-1.5 bg-slate-100 p-1.5 rounded text-[10px] text-slate-600"><span className="font-bold">Remarks:</span> {log.linkerRemarks}</div>
-                          )}
+                          <FormattedRemarks remarks={log.linkerRemarks} textClass="text-[10px]" />
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {log.geos?.map((g: any) => (
@@ -1197,6 +1308,85 @@ function WriterAvailableAssignments({ pendingArticles, completedArticles, curren
               <button onClick={() => setSelectedArticle(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-white transition">Close</button>
               <button onClick={() => onStartWriting(selectedArticle.id)} className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition flex items-center gap-2">
                 <PlayCircle className="w-4 h-4" /> Start Writing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Link Issue Modal */}
+      {reportingLink && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col p-6 space-y-4 border border-slate-100 transform transition-all duration-200 scale-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+                <AlertTriangle className="w-5 h-5 text-rose-500" />
+                Report Link Issue
+              </h3>
+              <button 
+                onClick={() => setReportingLink(null)} 
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500 font-medium">
+                Describe the issue with the affiliate link <strong className="text-slate-800 font-semibold">"{reportingLink.affiliateName}"</strong>:
+              </p>
+              <textarea
+                value={issueMessage}
+                onChange={(e) => setIssueMessage(e.target.value)}
+                placeholder="Describe what's wrong (e.g. 404 page down, incorrect redirect)..."
+                rows={4}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-205 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl text-sm text-slate-900 focus:outline-none transition-all resize-none placeholder-slate-400 font-medium"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setReportingLink(null)}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!issueMessage.trim()) {
+                    toast.error("Please enter a description of the issue.");
+                    return;
+                  }
+                  setSubmittingReport(true);
+                  try {
+                    const res = await fetch(`/api/links/${reportingLink.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        status: "ISSUE",
+                        issueMessage: issueMessage,
+                        callerId: currentUserId
+                      })
+                    });
+                    if (res.ok) {
+                      toast.success("Link issue flagged successfully!");
+                      setReportingLink(null);
+                      setSelectedArticle(null); // Close assignment details to reload
+                      window.location.reload();
+                    } else {
+                      const err = await res.json();
+                      toast.error(err.error || "Failed to flag link issue");
+                    }
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to flag link issue");
+                  } finally {
+                    setSubmittingReport(false);
+                  }
+                }}
+                disabled={submittingReport}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-sm shadow-rose-100 hover:shadow-none disabled:opacity-50 transition text-xs cursor-pointer"
+              >
+                {submittingReport ? "Submitting..." : "Submit Report"}
               </button>
             </div>
           </div>

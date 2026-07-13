@@ -111,15 +111,27 @@ export async function PATCH(
           },
         });
 
-        const notif = await prisma.notification.create({
-          data: {
-            recipientId: existing.addedById,
-            senderId: Number(activeUserId),
-            type: "LINK_ISSUE",
-            message: `${callerLabel} flagged an issue with link "${existing.affiliateName}": "${issueMessage}"`,
-          },
+        const linkers = await prisma.user.findMany({
+          where: { role: "LINKER" },
+          select: { id: true }
         });
-        await sendRealtimeNotification(existing.addedById, notif);
+
+        const recipientIds = Array.from(new Set([
+          ...linkers.map((l: any) => l.id),
+          existing.addedById
+        ]));
+
+        for (const rId of recipientIds) {
+          const notif = await prisma.notification.create({
+            data: {
+              recipientId: rId,
+              senderId: Number(activeUserId),
+              type: "LINK_ISSUE",
+              message: `${callerLabel} flagged an issue with link "${existing.affiliateName}": "${issueMessage}"`,
+            },
+          });
+          await sendRealtimeNotification(rId, notif);
+        }
       } catch (notifErr) {
         console.error("Failed to process link issue flagging:", notifErr);
       }

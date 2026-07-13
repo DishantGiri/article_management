@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
       linkerLinks,
       affiliateNetworksGroup,
       deadLinksCount,
+      flaggedLinks,
     ] = await Promise.all([
       // General counts
       prisma.product.count(),
@@ -183,7 +184,16 @@ export async function GET(req: NextRequest) {
             { linkerRemarks: { contains: "broken" } }
           ]
         }
-      })
+      }),
+
+      // Flagged links for linker warnings
+      role === "LINKER"
+        ? prisma.linkLog.findMany({
+            where: { status: "ISSUE" },
+            select: { id: true, affiliateName: true, product: { select: { name: true, site: { select: { name: true } } } } },
+            take: 10,
+          })
+        : Promise.resolve([]),
     ]);
 
     // ─────────────────────────────────────────────
@@ -448,6 +458,7 @@ export async function GET(req: NextRequest) {
       writerCompletedArticles,
       linkerProducts,
       linkerLinks,
+      flaggedLinks,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message, stack: e.stack }, { status: 500 });
