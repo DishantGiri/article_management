@@ -8,12 +8,13 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parseInt(rawId.split("-")[0]);
   const { searchParams } = new URL(req.url);
   const userIdStr = searchParams.get("userId");
 
   const article = await prisma.article.findUnique({
-    where: { id: parseInt(id) },
+    where: { id },
     include: {
       product: {
         include: {
@@ -77,14 +78,15 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = parseInt(rawId.split("-")[0]);
     const body = await req.json();
     const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, callerId, notes, redoStarted } = body;
 
     const activeUserId = writerId || callerId;
 
     const existing = await prisma.article.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: { product: true }
     });
     if (!existing) {
@@ -146,7 +148,7 @@ export async function PATCH(
       }
       // Check writer doesn't already have an in-progress article
       const inProgress = await prisma.article.findFirst({
-        where: { writerId: parseInt(writerId), status: "IN_PROGRESS", id: { not: parseInt(id) } },
+        where: { writerId: parseInt(writerId), status: "IN_PROGRESS", id: { not: id } },
       });
       if (inProgress) {
         return NextResponse.json(
@@ -158,7 +160,7 @@ export async function PATCH(
 
     if (status === "COMPLETED" && !articleLink && !existing.articleLink) {
       // Check if special approval exists
-      const approval = await prisma.specialApproval.findUnique({ where: { articleId: parseInt(id) } });
+      const approval = await prisma.specialApproval.findUnique({ where: { articleId: id } });
       if (!approval) {
         return NextResponse.json(
           { error: "Article Link is required to mark as Completed, or request Team Lead approval." },
@@ -185,7 +187,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.article.update({
-      where: { id: parseInt(id) },
+      where: { id },
       data: {
         ...(status ? { status } : {}),
         ...(writerId ? { writerId: parseInt(writerId) } : {}),

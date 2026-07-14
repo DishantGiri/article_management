@@ -205,7 +205,16 @@ export async function GET(
 
   const link = await prisma.linkLog.findUnique({
     where: { id: parseInt(id) },
-    include: { geos: true, addedBy: { select: { name: true } }, product: { select: { name: true } } },
+    include: { 
+      geos: true, 
+      addedBy: { select: { name: true } }, 
+      product: { 
+        select: { 
+          name: true, 
+          site: { select: { name: true } } 
+        } 
+      } 
+    },
   });
   if (!link) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(link);

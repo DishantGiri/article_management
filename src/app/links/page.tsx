@@ -23,7 +23,7 @@ interface LinkLog {
   addedAt: string;
   geos: { geo: string }[];
   addedBy: { name: string };
-  product: { name: string; article?: { articleLink?: string | null } };
+  product: { name: string; site?: { name: string }; article?: { articleLink?: string | null } };
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -75,10 +75,11 @@ function LinksPageContent() {
   }, [urlProductId]);
 
   const handleExportCSV = () => {
-    const headers = ["ID", "Product", "Article Link", "Bridge Page", "Affiliate Name", "Affiliate Link", "Geos", "Status", "Added By", "Date"];
+    const headers = ["ID", "Product", "Site", "Article Link", "Bridge Page", "Affiliate Name", "Affiliate Link", "Geos", "Status", "Added By", "Date", "Remarks"];
     const rows = filtered.map((l) => [
       l.id.toString(),
       l.product.name,
+      l.product.site?.name || "",
       l.product.article?.articleLink || "",
       l.bridgePageLink || "",
       l.affiliateName,
@@ -86,7 +87,8 @@ function LinksPageContent() {
       (l.geos || []).map(g => g.geo).join("; "),
       l.status,
       l.addedBy?.name || "",
-      new Date(l.addedAt).toLocaleDateString()
+      new Date(l.addedAt).toLocaleDateString(),
+      l.linkerRemarks || "",
     ]);
 
     const csvContent = [
@@ -498,6 +500,7 @@ function LinksPageContent() {
               <thead>
                 <tr className="border-b border-slate-100">
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Article Link</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bridge Page</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Affiliate</th>
@@ -505,6 +508,7 @@ function LinksPageContent() {
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Added By</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Remarks</th>
                   {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
                     <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center"></th>
                   )}
@@ -526,6 +530,12 @@ function LinksPageContent() {
                             </span>
                           )}
                         </div>
+                      </td>
+                      {/* Fix 2: Site Name column */}
+                      <td className="px-3 py-3.5">
+                        <span className="text-[12px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                          {l.product.site?.name || "—"}
+                        </span>
                       </td>
                       <td className="px-3 py-3.5">
                         {l.product.article?.articleLink ? (
@@ -580,6 +590,19 @@ function LinksPageContent() {
                         <span className="text-[12px] font-medium text-slate-500">
                           {new Date(l.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
+                      </td>
+                      {/* Fix 4: Remarks column */}
+                      <td className="px-3 py-3.5 max-w-[200px]">
+                        {l.linkerRemarks ? (
+                          <span
+                            className="text-[12px] text-slate-600 italic block truncate max-w-[180px] cursor-help"
+                            title={l.linkerRemarks}
+                          >
+                            {l.linkerRemarks}
+                          </span>
+                        ) : (
+                          <span className="text-[12px] font-semibold text-slate-300">—</span>
+                        )}
                       </td>
                       {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
                         <td className="px-3 py-3.5 text-center">

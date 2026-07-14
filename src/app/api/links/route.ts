@@ -36,7 +36,13 @@ export async function GET(req: NextRequest) {
     include: {
       geos: true,
       addedBy: { select: { name: true } },
-      product: { select: { name: true, article: { select: { articleLink: true } } } },
+      product: { 
+        select: { 
+          name: true, 
+          site: { select: { name: true } },
+          article: { select: { articleLink: true } } 
+        } 
+      },
     },
     orderBy: { addedAt: "desc" },
   });
@@ -51,6 +57,11 @@ export async function POST(req: NextRequest) {
 
     if (!productId || !addedById || !affiliateName || !affiliateLink) {
       return NextResponse.json({ error: "productId, addedById, affiliateName, affiliateLink are required" }, { status: 400 });
+    }
+
+    // Fix 1: Compulsory Geo selection
+    if (!geos || !Array.isArray(geos) || geos.length === 0) {
+      return NextResponse.json({ error: "At least one GEO must be selected." }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({

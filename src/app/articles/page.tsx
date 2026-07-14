@@ -14,8 +14,16 @@ interface Article {
   priority: "LOW" | "MEDIUM" | "HIGH";
   updatedAt: string;
   articleLink?: string;
-  product: { id: number; name: string; site: { name: string }; category: { name: string } };
+  product: { 
+    id: number; 
+    name: string; 
+    remarks?: string | null;
+    site: { name: string }; 
+    category: { name: string };
+    linkLogs?: { linkerRemarks?: string | null; addedAt: string }[];
+  };
   writer?: { id: number; name: string };
+  history?: { notes?: string | null; updatedAt: string }[];
 }
 
 function PriorityBadge({ priority }: { priority: "LOW" | "MEDIUM" | "HIGH" }) {
@@ -38,6 +46,13 @@ const STATUS_COLORS: Record<string, string> = {
   COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/50",
   APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/50",
   REDO: "bg-rose-50 text-rose-700 border border-rose-200/50",
+};
+
+const generateSlug = (productName: string) => {
+  return productName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
 };
 
 export default function ArticlesPage() {
@@ -135,8 +150,33 @@ export default function ArticlesPage() {
     );
   };
 
+  const getWriterRemarks = (article: any) => {
+    if (!article.history || !Array.isArray(article.history)) return "";
+    for (const h of article.history) {
+      if (h.notes && h.notes.includes("Writer remarks:")) {
+        const parts = h.notes.split("Writer remarks:");
+        const remarks = parts[parts.length - 1].trim();
+        if (remarks) return remarks;
+      }
+    }
+    return "";
+  };
+
+  const getLinkerRemarks = (article: any) => {
+    const logs = article.product?.linkLogs || [];
+    const latestLogWithRemarks = logs.find((l: any) => l.linkerRemarks);
+    const linkerRemark = latestLogWithRemarks?.linkerRemarks;
+    const productRemark = article.product?.remarks;
+    if (linkerRemark && productRemark) {
+      return `Linker: ${linkerRemark} | Product: ${productRemark}`;
+    }
+    if (linkerRemark) return linkerRemark;
+    if (productRemark) return productRemark;
+    return "";
+  };
+
   const handleExportCSV = () => {
-    const headers = ["ID", "Product", "Site", "Category", "Writer", "Status", "Article Link", "Date"];
+    const headers = ["ID", "Product", "Site", "Category", "Writer", "Status", "Article Link", "Date", "Writer Remarks", "Linker Remarks"];
     const rows = filtered.map((a) => [
       a.id.toString(),
       a.product.name,
@@ -145,7 +185,9 @@ export default function ArticlesPage() {
       a.writer?.name || "Unassigned",
       a.status,
       a.articleLink || "",
-      new Date(a.updatedAt).toLocaleDateString()
+      new Date(a.updatedAt).toLocaleDateString(),
+      getWriterRemarks(a),
+      getLinkerRemarks(a)
     ]);
 
     const csvContent = [
@@ -300,12 +342,13 @@ export default function ArticlesPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[25%]">Product</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[20%]">Site</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[15%]">Writer</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Priority</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[12%]">Status</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[13%]">Date</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[20%]">Product</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[15%]">Site</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[13%]">Writer</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[8%]">Priority</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Status</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Date</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[18%]">Remarks</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[5%]">Link</th>
                   {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
                     <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left w-[10%]">Actions</th>
@@ -316,6 +359,8 @@ export default function ArticlesPage() {
                 {paginated.map((a: any) => {
                   const status = a.status || "PENDING";
                   const statusColor = STATUS_COLORS[status] || STATUS_COLORS.PENDING;
+                  const writerRemarks = getWriterRemarks(a);
+                  const linkerRemarks = getLinkerRemarks(a);
                   
                   return (
                     <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -350,6 +395,26 @@ export default function ArticlesPage() {
                           {new Date(a.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       </td>
+                      {/* Writer's and Linker's Remarks cell */}
+                      <td className="px-4 py-3.5 max-w-[220px]">
+                        <div className="flex flex-col gap-1 text-[11px]">
+                          {writerRemarks && (
+                            <div className="flex items-start gap-1" title={`Writer: ${writerRemarks}`}>
+                              <span className="font-bold text-amber-600 bg-amber-50 px-1 rounded flex-shrink-0 text-[10px]">Writer:</span>
+                              <span className="text-slate-600 truncate max-w-[140px]">{writerRemarks}</span>
+                            </div>
+                          )}
+                          {linkerRemarks && (
+                            <div className="flex items-start gap-1" title={`Linker: ${linkerRemarks}`}>
+                              <span className="font-bold text-indigo-600 bg-indigo-50 px-1 rounded flex-shrink-0 text-[10px]">Linker:</span>
+                              <span className="text-slate-600 truncate max-w-[140px]">{linkerRemarks}</span>
+                            </div>
+                          )}
+                          {!writerRemarks && !linkerRemarks && (
+                            <span className="text-slate-350 font-semibold">—</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3.5 text-center">
                         {a.articleLink ? (
                           <a href={ensureExternalUrl(a.articleLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition">
@@ -362,7 +427,7 @@ export default function ArticlesPage() {
                       {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
                         <td className="px-4 py-3.5">
                           <Link
-                            href={`/articles/${a.id}`}
+                            href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
                           >
                             <FileText className="w-3.5 h-3.5" />

@@ -39,7 +39,8 @@ const ensureExternalUrl = (url: string | null | undefined) => {
 };
 
 export default function ArticleDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+  const resolvedParams = use(params);
+  const id = parseInt(resolvedParams.id.split("-")[0]);
   const router = useRouter();
 
   const [article, setArticle] = useState<Article | null>(null);

@@ -45,6 +45,8 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
   
   const [selectedProductName, setSelectedProductName] = useState<string>("");
   const [siteLinks, setSiteLinks] = useState<Record<number, { bridgePageLink: string; buyLink: string }>>({});
+  // Per-site selection checkboxes (Fix 3: multi-site attribution bug)
+  const [selectedSites, setSelectedSites] = useState<Record<number, boolean>>({});
   const [affiliateName, setAffiliateName] = useState("");
   const [affiliateLink, setAffiliateLink] = useState("");
   const [geos, setGeos] = useState<string[]>([]);
@@ -63,6 +65,8 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
 
   // Get matching products for the selected product name
   const matchingProducts = products.filter((p) => p.name === selectedProductName);
+  // Only submit for sites the linker has checked
+  const activeProducts = matchingProducts.filter((p) => selectedSites[p.id]);
 
   const allAffiliates = dbAffiliates.map(a => a.name);
   const allGeos = dbGeos;
@@ -80,6 +84,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
         .catch(e => console.error("Failed to load geos", e));
       setSelectedProductName("");
       setSiteLinks({});
+      setSelectedSites({});
       setAffiliateName("");
       setAffiliateLink("");
       setGeos([]);
@@ -124,15 +129,23 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
   useEffect(() => {
     const matching = products.filter((p) => p.name === selectedProductName);
     const initialInputs: Record<number, { bridgePageLink: string; buyLink: string }> = {};
+    const initialSelection: Record<number, boolean> = {};
     matching.forEach((p) => {
       initialInputs[p.id] = { bridgePageLink: "", buyLink: "" };
+      // If a specific product was preselected, only check that site; else check all
+      initialSelection[p.id] = preselectedProductId ? p.id === preselectedProductId : true;
     });
     setSiteLinks(initialInputs);
+    setSelectedSites(initialSelection);
     setSiteLinkErrors({});
   }, [selectedProductName, products]);
 
   const toggleGeo = (geo: string) => {
     setGeos(prev => prev.includes(geo) ? prev.filter(g => g !== geo) : [...prev, geo]);
+  };
+
+  const toggleSite = (productId: number) => {
+    setSelectedSites(prev => ({ ...prev, [productId]: !prev[productId] }));
   };
 
   const updateSiteLink = (productId: number, field: "bridgePageLink" | "buyLink", value: string) => {
@@ -199,6 +212,17 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
       return;
     }
 
+    // Fix 1: Compulsory Geo selection
+    if (geos.length === 0) {
+      setError("At least one GEO must be selected.");
+      return;
+    }
+
+    if (activeProducts.length === 0) {
+      setError("Please select at least one site to add the link to.");
+      return;
+    }
+
     if (affiliateLinkError || Object.keys(siteLinkErrors).length > 0) {
       setError("Please fix all URL validation errors before submitting.");
       return;
@@ -209,8 +233,8 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
       return;
     }
     
-    // Validate site links
-    for (const p of matchingProducts) {
+    // Validate site links only for selected sites
+    for (const p of activeProducts) {
       const links = siteLinks[p.id] || { bridgePageLink: "", buyLink: "" };
       if (links.buyLink && !links.bridgePageLink) {
         setError(`Bridge Page Link is required for ${p.site.name} before a Buy Link can be added.`);
@@ -238,9 +262,9 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
 
       const mockUserId = session?.user?.id || 1;
       
-      // Save link log for each matching site in parallel
+      // Save link log only for selected sites
       await Promise.all(
-        matchingProducts.map((p) => {
+        activeProducts.map((p) => {
           const links = siteLinks[p.id] || { bridgePageLink: "", buyLink: "" };
           return fetch("/api/links", {
             method: "POST",
@@ -356,49 +380,60 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
               <label className="block text-[11px] font-bold text-slate-500 uppercase">Configure Site-Specific Links</label>
               {matchingProducts.map((p) => {
                 const prodErrors = siteLinkErrors[p.id] || {};
+                const isChecked = !!selectedSites[p.id];
                 return (
-                  <div key={p.id} className="p-4 bg-slate-50 border border-slate-200/50 rounded-xl space-y-3">
+                  <div key={p.id} className={`p-4 border rounded-xl space-y-3 transition-colors ${isChecked ? "bg-slate-50 border-slate-200/50" : "bg-slate-50/40 border-slate-200/30 opacity-60"}`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-indigo-700">{p.site.name}</span>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSite(p.id)}
+                          className="w-3.5 h-3.5 rounded accent-indigo-600 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-indigo-700">{p.site.name}</span>
+                      </label>
                       <span className="text-[10px] text-slate-400 font-semibold">Product ID: {p.id}</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bridge Page Link</label>
-                        <input
-                          type="url"
-                          value={siteLinks[p.id]?.bridgePageLink || ""}
-                          onChange={e => updateSiteLink(p.id, "bridgePageLink", e.target.value)}
-                          placeholder="https://..."
-                          className={`w-full px-2.5 py-1.5 bg-white border rounded-lg text-xs text-slate-900 focus:outline-none transition-colors ${
-                            prodErrors.bridgePageLink
-                              ? "border-rose-400 focus:border-rose-500 bg-rose-50/10"
-                              : "border-slate-200 focus:border-indigo-500"
-                          }`}
-                        />
-                        {prodErrors.bridgePageLink && (
-                          <p className="text-[10px] font-semibold text-rose-500 mt-1">{prodErrors.bridgePageLink}</p>
-                        )}
+                    {isChecked && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bridge Page Link</label>
+                          <input
+                            type="url"
+                            value={siteLinks[p.id]?.bridgePageLink || ""}
+                            onChange={e => updateSiteLink(p.id, "bridgePageLink", e.target.value)}
+                            placeholder="https://..."
+                            className={`w-full px-2.5 py-1.5 bg-white border rounded-lg text-xs text-slate-900 focus:outline-none transition-colors ${
+                              prodErrors.bridgePageLink
+                                ? "border-rose-400 focus:border-rose-500 bg-rose-50/10"
+                                : "border-slate-200 focus:border-indigo-500"
+                            }`}
+                          />
+                          {prodErrors.bridgePageLink && (
+                            <p className="text-[10px] font-semibold text-rose-500 mt-1">{prodErrors.bridgePageLink}</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Buy Link</label>
+                          <input
+                            type="url"
+                            value={siteLinks[p.id]?.buyLink || ""}
+                            onChange={e => updateSiteLink(p.id, "buyLink", e.target.value)}
+                            placeholder={siteLinks[p.id]?.bridgePageLink ? "https://..." : "Add bridge page first"}
+                            disabled={!siteLinks[p.id]?.bridgePageLink}
+                            className={`w-full px-2.5 py-1.5 bg-white border rounded-lg text-xs text-slate-900 focus:outline-none transition-colors disabled:bg-slate-100 disabled:text-slate-400 ${
+                              prodErrors.buyLink
+                                ? "border-rose-400 focus:border-rose-500 bg-rose-50/10"
+                                : "border-slate-200 focus:border-indigo-500"
+                            }`}
+                          />
+                          {prodErrors.buyLink && (
+                            <p className="text-[10px] font-semibold text-rose-500 mt-1">{prodErrors.buyLink}</p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Buy Link</label>
-                        <input
-                          type="url"
-                          value={siteLinks[p.id]?.buyLink || ""}
-                          onChange={e => updateSiteLink(p.id, "buyLink", e.target.value)}
-                          placeholder={siteLinks[p.id]?.bridgePageLink ? "https://..." : "Add bridge page first"}
-                          disabled={!siteLinks[p.id]?.bridgePageLink}
-                          className={`w-full px-2.5 py-1.5 bg-white border rounded-lg text-xs text-slate-900 focus:outline-none transition-colors disabled:bg-slate-100 disabled:text-slate-400 ${
-                            prodErrors.buyLink
-                              ? "border-rose-400 focus:border-rose-500 bg-rose-50/10"
-                              : "border-slate-200 focus:border-indigo-500"
-                          }`}
-                        />
-                        {prodErrors.buyLink && (
-                          <p className="text-[10px] font-semibold text-rose-500 mt-1">{prodErrors.buyLink}</p>
-                        )}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -406,7 +441,12 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
           )}
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Geos (Multi-select)</label>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">
+              Geos (Multi-select) <span className="text-rose-500">*</span>
+            </label>
+            {geos.length === 0 && (
+              <p className="text-[10px] text-rose-500 font-semibold mb-1.5">At least one GEO is required.</p>
+            )}
             <div className="flex flex-wrap gap-2">
               {allGeos.map(geo => (
                 <button

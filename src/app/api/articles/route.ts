@@ -50,6 +50,10 @@ export async function GET(req: NextRequest) {
         include: {
           site: { select: { id: true, name: true } },
           category: { select: { name: true } },
+          linkLogs: {
+            select: { linkerRemarks: true, addedAt: true },
+            orderBy: { addedAt: "desc" }
+          }
         },
       },
       writer: { select: { id: true, name: true } },
@@ -58,6 +62,10 @@ export async function GET(req: NextRequest) {
         orderBy: { reviewedAt: "desc" },
         take: 1,
       },
+      history: {
+        select: { notes: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" }
+      }
     },
     orderBy: { updatedAt: "desc" },
   });

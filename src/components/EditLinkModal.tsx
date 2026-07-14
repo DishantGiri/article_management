@@ -132,6 +132,12 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       return;
     }
 
+    // Fix 1: Compulsory Geo selection
+    if (geos.length === 0) {
+      setError("At least one GEO must be selected.");
+      return;
+    }
+
     if (affiliateLinkError || bridgePageLinkError || buyLinkError) {
       setError("Please fix all URL validation errors before submitting.");
       return;
@@ -335,7 +341,12 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Geos (Multi-select)</label>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">
+              Geos (Multi-select) <span className="text-rose-500">*</span>
+            </label>
+            {geos.length === 0 && (
+              <p className="text-[10px] text-rose-500 font-semibold mb-1.5">At least one GEO is required.</p>
+            )}
             <div className="flex flex-wrap gap-2">
               {allGeos.map((geo) => (
                 <button
