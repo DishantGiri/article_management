@@ -14,14 +14,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
 
-    // Update the user's role in the database
-    // (role can be one of the Role enum values or null)
-    const updatedUser = await prisma.user.update({
-      where: { id: Number(userId) },
-      data: {
-        role: role || null,
-      },
-    });
+    // Check if user exists. If not, auto-create a mock user with that ID so the developer switch doesn't fail after a seed/reset.
+    const existingUser = await prisma.user.findUnique({ where: { id: Number(userId) } });
+    let updatedUser;
+    if (!existingUser) {
+      updatedUser = await prisma.user.create({
+        data: {
+          id: Number(userId),
+          name: `Dev User ${userId}`,
+          email: `devuser${userId}@example.com`,
+          role: role || null,
+          approved: true,
+        }
+      });
+    } else {
+      updatedUser = await prisma.user.update({
+        where: { id: Number(userId) },
+        data: {
+          role: role || null,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, role: updatedUser.role });
   } catch (err: any) {

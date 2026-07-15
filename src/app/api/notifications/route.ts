@@ -16,9 +16,18 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(notifications);
 }
 
-// PATCH /api/notifications — mark all read for a user
+// PATCH /api/notifications — mark all read for a user, or a single notification
 export async function PATCH(req: NextRequest) {
-  const { userId } = await req.json();
+  const { userId, notificationId } = await req.json();
+
+  if (notificationId) {
+    await prisma.notification.update({
+      where: { id: parseInt(notificationId) },
+      data: { isRead: true },
+    });
+    return NextResponse.json({ success: true });
+  }
+
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
 
   await prisma.notification.updateMany({

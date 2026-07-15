@@ -60,7 +60,6 @@ export const authOptions: NextAuthOptions = {
             data: {
               name: user.name || "Google User",
               email: user.email,
-              password: "", // password is not used with OAuth provider
               role: null, // No role assigned initially
               approved: false, // Wait for admin approval
               image: user.image || null,

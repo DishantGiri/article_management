@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Bell, Check, Trash2, CheckCircle2, Package, AlertTriangle, Eye, FileText, Star } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 interface Notification {
   id: number;
@@ -17,17 +19,16 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
+  const router = useRouter();
+  const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<number>(1);
   const [marking, setMarking] = useState(false);
 
-  useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("mockUserId") || "1" : "1";
-    setCurrentUserId(parseInt(stored));
-  }, []);
+  const currentUserId = session?.user?.id ? Number(session.user.id) : null;
 
   const fetchNotifications = async () => {
+    if (!currentUserId) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/notifications?userId=${currentUserId}`);
@@ -43,11 +44,13 @@ export default function NotificationsPage() {
   };
 
   useEffect(() => {
-    fetchNotifications();
+    if (currentUserId) {
+      fetchNotifications();
+    }
   }, [currentUserId]);
 
   const markAllAsRead = async () => {
-    if (marking) return;
+    if (!currentUserId || marking) return;
     setMarking(true);
     try {
       const res = await fetch("/api/notifications", {
@@ -59,11 +62,59 @@ export default function NotificationsPage() {
         setNotifications((prev) =>
           prev.map((n) => ({ ...n, isRead: true }))
         );
+        window.dispatchEvent(new CustomEvent("notifications-marked-read"));
       }
     } catch (error) {
       console.error("Failed to mark notifications as read:", error);
     } finally {
       setMarking(false);
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
+    // 1. Mark as read in DB if it's currently unread
+    if (!notification.isRead) {
+      try {
+        const res = await fetch("/api/notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationId: notification.id }),
+        });
+        if (res.ok) {
+          // Update local state
+          setNotifications((prev) =>
+            prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
+          );
+          // Tell Sidebar to refetch
+          window.dispatchEvent(new CustomEvent("notifications-updated"));
+        }
+      } catch (err) {
+        console.error("Failed to mark single notification as read:", err);
+      }
+    }
+
+    // 2. Redirect based on notification type and message content
+    const msg = notification.message;
+    const match = msg.match(/"([^"]+)"/);
+    const productName = match ? match[1] : null;
+    
+    // Determine user role
+    const userRole = session?.user?.role || "WRITER";
+
+    if (productName) {
+      const searchParam = encodeURIComponent(productName);
+      if (notification.type === "LINK_ISSUE" || msg.toLowerCase().includes("link")) {
+        router.push(`/links?search=${searchParam}`);
+      } else {
+        router.push(`/articles?search=${searchParam}`);
+      }
+    } else {
+      // Fallbacks
+      if (userRole === "LINKER") {
+        router.push("/links");
+      } else {
+        router.push("/articles");
+      }
     }
   };
 
@@ -135,7 +186,8 @@ export default function NotificationsPage() {
               return (
                 <div
                   key={notification.id}
-                  className="bg-white border border-slate-200/60 rounded-xl p-4 flex items-center gap-4 hover:border-indigo-200 hover:shadow-sm transition-all"
+                  onClick={() => handleNotificationClick(notification)}
+                  className="bg-white border border-slate-200/60 rounded-xl p-4 flex items-center gap-4 hover:border-indigo-200 hover:shadow-sm transition-all cursor-pointer hover:bg-slate-50/50"
                 >
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}>
                     <Icon className="w-5 h-5" />

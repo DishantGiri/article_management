@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import "dotenv/config";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -14,8 +15,15 @@ const adapter = new PrismaMariaDb({
 
 const prisma = new PrismaClient({ adapter });
 
+const generateSlug = (productName: string) => {
+  return productName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+};
+
 async function main() {
-  console.log("🌱 Clean seeding database...");
+  console.log("🌱 Clean seeding database with custom values and programmatically generated products...");
 
   // Clear existing data in reverse order of dependencies to avoid foreign key violations
   await prisma.notification.deleteMany({});
@@ -29,314 +37,340 @@ async function main() {
   await prisma.category.deleteMany({});
   await prisma.site.deleteMany({});
   await prisma.user.deleteMany({});
+  await prisma.geo.deleteMany({});
+  await prisma.affiliateName.deleteMany({});
 
-  // 1. Users
-  console.log("Creating Users...");
+  // 0. Seed basic Affiliates and GEOs
+  console.log("Creating Affiliates and GEOs...");
+  const geoUS = await prisma.geo.create({ data: { code: "US" } });
+  const geoUK = await prisma.geo.create({ data: { code: "UK" } });
+  const geoCA = await prisma.geo.create({ data: { code: "CA" } });
+  const geoDE = await prisma.geo.create({ data: { code: "DE" } });
+  const geoFR = await prisma.geo.create({ data: { code: "FR" } });
+  const geoGlobal = await prisma.geo.create({ data: { code: "GLOBAL" } });
+
+  await prisma.affiliateName.create({ data: { name: "Amazon Associates" } });
+  await prisma.affiliateName.create({ data: { name: "ShareASale" } });
+  await prisma.affiliateName.create({ data: { name: "Admitad" } });
+  await prisma.affiliateName.create({ data: { name: "ClickBank" } });
+  await prisma.affiliateName.create({ data: { name: "CJ Affiliate" } });
+
+  // 1. Core Users (Super Admin & Admin)
+  console.log("Creating Admin Users...");
   const superAdmin = await prisma.user.create({
-    data: { id: 5, name: "Super Admin", email: "superadmin@articlemgmt.com", password: "superadmin123", role: "SUPER_ADMIN", approved: true },
+    data: { name: "Super Admin", email: "superadmin@articlemgmt.com", role: "SUPER_ADMIN", approved: true },
   });
   const admin = await prisma.user.create({
-    data: { id: 1, name: "Admin User", email: "admin@articlemgmt.com", password: "admin123", role: "ADMIN", approved: true },
+    data: { name: "Admin User", email: "admin@articlemgmt.com", role: "ADMIN", approved: true },
   });
-  const linker = await prisma.user.create({
-    data: { id: 2, name: "John Linker", email: "linker@articlemgmt.com", password: "linker123", role: "LINKER", approved: true },
-  });
-  const teamLead = await prisma.user.create({
-    data: { id: 4, name: "Team Lead", email: "lead@articlemgmt.com", password: "lead123", role: "TEAM_LEAD", approved: true },
-  });
-  const writer = await prisma.user.create({
-    data: { id: 3, name: "Jane Writer", email: "writer@articlemgmt.com", password: "writer123", role: "WRITER", teamLeadId: 4, approved: true },
+  const extraAdmin = await prisma.user.create({
+    data: { name: "Shiridhar", email: "shiridhar@fishtailinfosolutions.com", role: "ADMIN", approved: true },
   });
 
-  // 2. Sites
+  // 2. Team Leads
+  console.log("Creating Team Leads...");
+  const leadSujata = await prisma.user.create({
+    data: { name: "Sujata", email: "sujata@fishtailinfosolutions.com", role: "TEAM_LEAD", approved: true },
+  });
+  const leadSabina = await prisma.user.create({
+    data: { name: "Sabina", email: "sabina@fishtailinfosolutions.com", role: "TEAM_LEAD", approved: true },
+  });
+
+  // 3. Linkers
+  console.log("Creating Linkers...");
+  const linkerAnjali = await prisma.user.create({
+    data: { name: "Anjali", email: "anjali@fishtailinfosolutions.com", role: "LINKER", approved: true },
+  });
+  const linkerMuna = await prisma.user.create({
+    data: { name: "Muna", email: "muna@fishtailinfosolutions.com", role: "LINKER", approved: true },
+  });
+  const linkerSamiksya = await prisma.user.create({
+    data: { name: "Samiksya", email: "samikshya@fishtailinfosolutions.com", role: "LINKER", approved: true },
+  });
+
+  const linkers = [linkerAnjali, linkerMuna, linkerSamiksya];
+
+  // 4. Writers (Associated with their respective Team Leads)
+  console.log("Creating Writers...");
+  const writerNirajan = await prisma.user.create({
+    data: { name: "Nirajan", email: "nirajan@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSujata.id, approved: true },
+  });
+  const writerIshika = await prisma.user.create({
+    data: { name: "Ishika", email: "ishika@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSujata.id, approved: true },
+  });
+  const writerParash = await prisma.user.create({
+    data: { name: "Parash", email: "parash@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSujata.id, approved: true },
+  });
+  const writerDipesh = await prisma.user.create({
+    data: { name: "Dipesh", email: "dipesh@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSujata.id, approved: true },
+  });
+
+  const writerSamir = await prisma.user.create({
+    data: { name: "Samir", email: "samir@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSabina.id, approved: true },
+  });
+  const writerSayal = await prisma.user.create({
+    data: { name: "Sayal", email: "sayal@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSabina.id, approved: true },
+  });
+  const writerSagar = await prisma.user.create({
+    data: { name: "Sagar", email: "sagar@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSabina.id, approved: true },
+  });
+  const writerManish = await prisma.user.create({
+    data: { name: "Manish", email: "manish@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSabina.id, approved: true },
+  });
+  const writerPrashant = await prisma.user.create({
+    data: { name: "Prashant", email: "prashant@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSabina.id, approved: true },
+  });
+  const writerPosa = await prisma.user.create({
+    data: { name: "Posa", email: "posa@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSabina.id, approved: true },
+  });
+  const writerShrisha = await prisma.user.create({
+    data: { name: "Shrisha", email: "shrisha@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSabina.id, approved: true },
+  });
+  const writerNirjala = await prisma.user.create({
+    data: { name: "Nirjala", email: "nirjala@fishtailinfosolutions.com", role: "WRITER", teamLeadId: leadSabina.id, approved: true },
+  });
+
+  // 5. Sites
   console.log("Creating Sites...");
-  const site1 = await prisma.site.create({
-    data: { name: "NutraVital", url: "https://nutravital.com" },
+  const siteTBR = await prisma.site.create({
+    data: { name: "TBR", url: "https://www.thebuyersreviews.com/" },
   });
-  const site2 = await prisma.site.create({
-    data: { name: "EcomStore", url: "https://ecomstore.com" },
+  const siteST = await prisma.site.create({
+    data: { name: "ST", url: "https://supplementtiger.com/" },
   });
-  const site3 = await prisma.site.create({
-    data: { name: "TechGadgets", url: "https://techgadgets.com" },
+  const siteSP = await prisma.site.create({
+    data: { name: "SP", url: "https://supplementsandpowders.com/" },
+  });
+  const siteSD = await prisma.site.create({
+    data: { name: "SD", url: "https://www.supplementdolphin.com/" },
+  });
+  const siteDHS = await prisma.site.create({
+    data: { name: "DHS", url: "https://www.dailyhealthsupplement.com/" },
+  });
+  const siteMag = await prisma.site.create({
+    data: { name: "Mag", url: "https://www.supplementmag.com/" },
+  });
+  const siteSV = await prisma.site.create({
+    data: { name: "SV", url: "https://supplementvibes.com/" },
+  });
+  const siteBHFR = await prisma.site.create({
+    data: { name: "BHFR", url: "https://www.beautyhealthfitnessremedies.com/" },
+  });
+  const siteGRC = await prisma.site.create({
+    data: { name: "GRC", url: "https://www.gurureviewclub.com/" },
   });
 
-  // 3. Site Access
-  console.log("Creating Site Access...");
-  await prisma.siteAccess.create({ data: { userId: writer.id, siteId: site1.id } });
-  await prisma.siteAccess.create({ data: { userId: writer.id, siteId: site2.id } });
-  await prisma.siteAccess.create({ data: { userId: writer.id, siteId: site3.id } });
+  const allSites = [siteTBR, siteST, siteSP, siteSD, siteDHS, siteMag, siteSV, siteBHFR, siteGRC];
 
-  // 4. Categories
+  // 6. Site Access Setup
+  console.log("Setting up Site Access...");
+  // Linkers and Team Leads have access to all sites
+  const allUsersWithAccessToAll = [superAdmin, admin, extraAdmin, leadSujata, leadSabina, linkerAnjali, linkerMuna, linkerSamiksya];
+  for (const u of allUsersWithAccessToAll) {
+    for (const s of allSites) {
+      await prisma.siteAccess.create({ data: { userId: u.id, siteId: s.id } });
+    }
+  }
+
+  // Writers have specific site access:
+  const writerAccessSpecs = [
+    { writer: writerNirajan, site: siteTBR },
+    { writer: writerIshika, site: siteTBR },
+    { writer: writerParash, site: siteST },
+    { writer: writerDipesh, site: siteSP },
+    { writer: writerSamir, site: siteSD },
+    { writer: writerSayal, site: siteDHS },
+    { writer: writerSagar, site: siteDHS },
+    { writer: writerManish, site: siteMag },
+    { writer: writerPrashant, site: siteSP },
+    { writer: writerPosa, site: siteSV },
+    { writer: writerShrisha, site: siteBHFR },
+    { writer: writerNirjala, site: siteGRC },
+  ];
+
+  for (const spec of writerAccessSpecs) {
+    await prisma.siteAccess.create({ data: { userId: spec.writer.id, siteId: spec.site.id } });
+  }
+
+  // 7. Categories
   console.log("Creating Categories...");
-  const catProtein = await prisma.category.create({
-    data: { name: "Protein", sites: { connect: [{ id: site1.id }] } },
+  const catSupplements = await prisma.category.create({
+    data: { name: "Supplements", sites: { connect: allSites.map(s => ({ id: s.id })) } },
   });
-  const catVitamins = await prisma.category.create({
-    data: { name: "Vitamins", sites: { connect: [{ id: site1.id }] } },
-  });
-  const catElectronics = await prisma.category.create({
-    data: { name: "Electronics", sites: { connect: [{ id: site2.id }, { id: site3.id }] } },
-  });
-  const catBeauty = await prisma.category.create({
-    data: { name: "Beauty", sites: { connect: [{ id: site2.id }] } },
+  const catSkincare = await prisma.category.create({
+    data: { name: "Skincare", sites: { connect: [siteBHFR, siteGRC].map(s => ({ id: s.id })) } },
   });
 
-  // 5. Products
-  console.log("Creating Products...");
-  const p1 = await prisma.product.create({
-    data: {
-      name: "Gold Standard Whey",
-      siteId: site1.id,
-      categoryId: catProtein.id,
-      trendLink: "https://trends.google.com",
-      previewLink: "https://amazon.com/whey",
-      remarks: "High demand product for bodybuilders.",
-      addedById: linker.id,
-    },
-  });
+  // 8. Programmatic Product & Article Generation (10 per writer)
+  console.log("Creating Programmatic Products and Articles (10 per writer)...");
+  const writerSiteSpecs = [
+    { writer: writerNirajan, site: siteTBR, prefix: "TBR Supplement" },
+    { writer: writerIshika, site: siteTBR, prefix: "TBR Skincare" },
+    { writer: writerParash, site: siteST, prefix: "ST Tiger Whey" },
+    { writer: writerDipesh, site: siteSP, prefix: "SP Powder Amino" },
+    { writer: writerSamir, site: siteSD, prefix: "SD Dolphin Fit" },
+    { writer: writerSayal, site: siteDHS, prefix: "DHS Daily Vit" },
+    { writer: writerSagar, site: siteDHS, prefix: "DHS Health Herb" },
+    { writer: writerManish, site: siteMag, prefix: "Mag Supplement" },
+    { writer: writerPrashant, site: siteSP, prefix: "SP Mass Gainer" },
+    { writer: writerPosa, site: siteSV, prefix: "SV Vibes Boost" },
+    { writer: writerShrisha, site: siteBHFR, prefix: "BHFR Remedies" },
+    { writer: writerNirjala, site: siteGRC, prefix: "GRC Review Item" },
+  ];
 
-  const p2 = await prisma.product.create({
-    data: {
-      name: "Organic Vitamin D3",
-      siteId: site1.id,
-      categoryId: catVitamins.id,
-      trendLink: "https://trends.google.com",
-      previewLink: "https://amazon.com/vitamins",
-      remarks: "Good search volume during winter.",
-      addedById: linker.id,
-    },
-  });
+  for (const spec of writerSiteSpecs) {
+    for (let i = 1; i <= 10; i++) {
+      const linker = linkers[(spec.writer.id + i) % linkers.length];
+      const prodName = `${spec.prefix} ${i}`;
 
-  const p3 = await prisma.product.create({
-    data: {
-      name: "Wireless Charging Pad",
-      siteId: site3.id,
-      categoryId: catElectronics.id,
-      trendLink: "https://trends.google.com",
-      previewLink: "https://amazon.com/charger",
-      remarks: "Fast charging, sleek design.",
-      addedById: admin.id,
-    },
-  });
+      const p = await prisma.product.create({
+        data: {
+          name: prodName,
+          siteId: spec.site.id,
+          categoryId: catSupplements.id,
+          trendLink: "https://trends.google.com",
+          previewLink: "https://amazon.com",
+          remarks: `Seeded product ${prodName} for ${spec.writer.name}`,
+          addedById: linker.id,
+        }
+      });
 
-  const p4 = await prisma.product.create({
-    data: {
-      name: "Hydrating Facial Serum",
-      siteId: site2.id,
-      categoryId: catBeauty.id,
-      trendLink: "https://trends.google.com",
-      previewLink: "https://amazon.com/serum",
-      remarks: "Top selling skincare item.",
-      addedById: linker.id,
-    },
-  });
+      // Distribute statuses:
+      // i = 1, 2, 3 -> APPROVED
+      // i = 4, 5, 6 -> COMPLETED
+      // i = 7, 8 -> REDO
+      // i = 9, 10 -> IN_PROGRESS
+      let status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO" = "IN_PROGRESS";
+      let articleLink: string | null = null;
+      let completedAt: Date | null = null;
+      let writingTimeMin: number | null = null;
 
-  const p5 = await prisma.product.create({
-    data: {
-      name: "Ergonomic Mechanical Keyboard",
-      siteId: site3.id,
-      categoryId: catElectronics.id,
-      trendLink: "https://trends.google.com",
-      previewLink: "https://amazon.com/keyboard",
-      remarks: "Popular gaming keyboard with cherry switches.",
-      addedById: linker.id,
-    },
-  });
+      if (i <= 3) {
+        status = "APPROVED";
+        articleLink = `https://docs.google.com/document/d/mock-${spec.writer.name.toLowerCase()}-${i}`;
+        completedAt = new Date(Date.now() - 3600 * 1000 * 24 * i); // i days ago
+        writingTimeMin = 90 + i * 10;
+      } else if (i <= 6) {
+        status = "COMPLETED";
+        articleLink = `https://docs.google.com/document/d/mock-${spec.writer.name.toLowerCase()}-${i}`;
+        completedAt = new Date(Date.now() - 3600 * 1000 * i); // i hours ago
+        writingTimeMin = 80 + i * 10;
+      } else if (i <= 8) {
+        status = "REDO";
+      }
 
-  // 6. Articles
-  console.log("Creating Articles...");
-  // P1: Completed Article
-  const art1 = await prisma.article.create({
-    data: {
-      productId: p1.id,
-      writerId: writer.id,
-      status: "COMPLETED",
-      articleLink: "https://docs.google.com/document/d/1",
-      startedAt: new Date(Date.now() - 3600 * 1000 * 3), // 3 hours ago
-      completedAt: new Date(Date.now() - 3600 * 1000 * 1), // 1 hour ago
-      writingTimeMin: 120,
-      priority: "HIGH",
-    },
-  });
+      const startedAt = new Date(Date.now() - 3600 * 1000 * 48); // 2 days ago
 
-  // P2: In Progress Article
-  const art2 = await prisma.article.create({
-    data: {
-      productId: p2.id,
-      writerId: writer.id,
-      status: "IN_PROGRESS",
-      startedAt: new Date(Date.now() - 3600 * 1000), // 1 hour ago
-      priority: "MEDIUM",
-    },
-  });
+      const art = await prisma.article.create({
+        data: {
+          productId: p.id,
+          writerId: spec.writer.id,
+          status: status as any,
+          articleLink,
+          startedAt: status === "REDO" ? null : startedAt,
+          completedAt,
+          writingTimeMin,
+          priority: i % 3 === 0 ? "HIGH" : i % 3 === 1 ? "MEDIUM" : "LOW",
+        }
+      });
 
-  // P3: Pending Article (not assigned yet)
-  const art3 = await prisma.article.create({
-    data: {
-      productId: p3.id,
-      status: "PENDING",
-      priority: "LOW",
-    },
-  });
+      // For REDO status, add a review
+      if (status === "REDO") {
+        await prisma.articleReview.create({
+          data: {
+            articleId: art.id,
+            reviewedById: spec.writer.teamLeadId || leadSujata.id,
+            suggestion: `Please improve formatting and readability for product ${prodName}.`,
+            approved: false,
+          }
+        });
+      }
 
-  // P4: Completed Special Approval Article
-  const art4 = await prisma.article.create({
-    data: {
-      productId: p4.id,
-      writerId: writer.id,
-      status: "COMPLETED",
-      startedAt: new Date(Date.now() - 3600 * 1000 * 5),
-      completedAt: new Date(Date.now() - 3600 * 1000 * 4),
-      writingTimeMin: 60,
-      priority: "MEDIUM",
-      specialApprovalRequested: true,
-      specialApprovalRequestReason: "No suitable public doc link available for this brand.",
-    },
-  });
+      // Add a link log for completed/approved articles to make them realistic
+      if (status === "COMPLETED" || status === "APPROVED") {
+        const lLog = await prisma.linkLog.create({
+          data: {
+            productId: p.id,
+            addedById: linker.id,
+            bridgePageLink: `${spec.site.url}best-guides/${generateSlug(prodName)}`,
+            buyLink: "https://amazon.com/dp/B07G222543",
+            affiliateName: "Amazon Associates",
+            affiliateLink: "https://amzn.to/mockaff",
+            status: "ACCEPTED",
+            linkerRemarks: `Link log for ${prodName} configured.`,
+          }
+        });
 
-  // P5: Completed Article with revisions suggestion
-  const art5 = await prisma.article.create({
-    data: {
-      productId: p5.id,
-      writerId: writer.id,
-      status: "IN_PROGRESS",
-      startedAt: new Date(Date.now() - 3600 * 1000 * 10),
-      priority: "HIGH",
-    },
-  });
+        // Add Geos
+        await prisma.linkGeo.create({ data: { linkLogId: lLog.id, geo: "US" } });
+        if (i % 2 === 0) {
+          await prisma.linkGeo.create({ data: { linkLogId: lLog.id, geo: "CA" } });
+        }
+      }
+    }
+  }
 
-  // 7. Article Reviews
-  console.log("Creating Article Reviews...");
-  await prisma.articleReview.create({
-    data: {
-      articleId: art1.id,
-      reviewedById: teamLead.id,
-      suggestion: "Great article structure, nice keyword density.",
-      approved: true,
-    },
-  });
-
-  await prisma.articleReview.create({
-    data: {
-      articleId: art5.id,
-      reviewedById: teamLead.id,
-      suggestion: "Please optimize key terms and add more details to the intro section.",
-      approved: false,
-    },
-  });
-
-  // 8. Special Approvals
-  console.log("Creating Special Approvals...");
-  await prisma.specialApproval.create({
-    data: {
-      articleId: art4.id,
-      approvedById: teamLead.id,
-      writerName: writer.name,
-      productName: p4.name,
-      reason: "Writer has submitted proof via Slack. Approved.",
-    },
-  });
-
-  // 9. Link Logs
-  console.log("Creating Link Logs...");
-  // Link for Product 1 (Whey)
-  const l1 = await prisma.linkLog.create({
-    data: {
-      productId: p1.id,
-      addedById: linker.id,
-      bridgePageLink: "https://nutravital.com/best-whey-protein",
-      buyLink: "https://amazon.com/gp/product/B000GIPJSA",
-      affiliateName: "Amazon Associates",
-      affiliateLink: "https://amzn.to/bestwhey",
-      status: "ACCEPTED",
-      linkerRemarks: "Inserted to main whey article.",
-    },
-  });
-
-  // Link for Product 3 (Charging Pad)
-  const l2 = await prisma.linkLog.create({
-    data: {
-      productId: p3.id,
-      addedById: linker.id,
-      bridgePageLink: "https://techgadgets.com/top-chargers",
-      buyLink: "https://amazon.com/gp/product/B07G222543",
-      affiliateName: "ShareASale",
-      affiliateLink: "https://shareasale.com/r?u=123&m=456",
-      status: "REDIRECTED",
-      linkerRemarks: "Setup custom redirect page.",
-    },
-  });
-
-  // Link for Product 4 (Serum) with dead/issue status
-  const l3 = await prisma.linkLog.create({
-    data: {
-      productId: p4.id,
-      addedById: linker.id,
-      bridgePageLink: "https://ecomstore.com/best-serums",
-      buyLink: "https://broken-seller-link.com/out-of-stock",
-      affiliateName: "Admitad",
-      affiliateLink: "https://admitad.com/g/123",
-      status: "ISSUE",
-      linkerRemarks: "Seller link page is down, shows 404.",
-    },
-  });
-
-  // 10. Link Geos
-  console.log("Creating Link Geos...");
-  await prisma.linkGeo.create({ data: { linkLogId: l1.id, geo: "US" } });
-  await prisma.linkGeo.create({ data: { linkLogId: l1.id, geo: "CA" } });
-  await prisma.linkGeo.create({ data: { linkLogId: l1.id, geo: "UK" } });
-  await prisma.linkGeo.create({ data: { linkLogId: l2.id, geo: "US" } });
-  await prisma.linkGeo.create({ data: { linkLogId: l3.id, geo: "GLOBAL" } });
-
-  // 11. Notifications
+  // 9. Notifications
   console.log("Creating Notifications...");
+  // Writer Nirajan
   await prisma.notification.create({
     data: {
-      recipientId: writer.id,
-      senderId: linker.id,
+      recipientId: writerNirajan.id,
+      senderId: linkerAnjali.id,
       type: "PRODUCT_ADDED",
-      message: `New product "Gold Standard Whey" has been added to site "NutraVital".`,
+      message: `New product "TBR Supplement 1" has been added to site "TBR".`,
       isRead: false,
     },
   });
-
   await prisma.notification.create({
     data: {
-      recipientId: writer.id,
-      senderId: teamLead.id,
+      recipientId: writerNirajan.id,
+      senderId: leadSujata.id,
       type: "ARTICLE_SUGGESTION",
-      message: `Team Lead suggested improvements on article for "Ergonomic Mechanical Keyboard".`,
+      message: `Team Lead suggested improvements on article for "TBR Supplement 7".`,
       isRead: false,
     },
   });
 
+  // Writer Ishika
   await prisma.notification.create({
     data: {
-      recipientId: linker.id,
-      senderId: admin.id,
-      type: "LINK_ISSUE",
-      message: `Dead affiliate link detected on "Hydrating Facial Serum". Please verify seller link.`,
+      recipientId: writerIshika.id,
+      senderId: linkerAnjali.id,
+      type: "PRODUCT_ADDED",
+      message: `New product "TBR Skincare 1" has been added to site "TBR".`,
       isRead: false,
     },
   });
 
+  // Team Lead Sujata
   await prisma.notification.create({
     data: {
-      recipientId: writer.id,
-      senderId: teamLead.id,
+      recipientId: leadSujata.id,
+      senderId: writerNirajan.id,
       type: "APPROVAL_GRANTED",
-      message: `Special approval granted for "Hydrating Facial Serum" without documentation link.`,
-      isRead: true,
+      message: `Writer Nirajan submitted completed article for "TBR Supplement 4".`,
+      isRead: false,
     },
   });
 
-  console.log("✅ Seed complete!");
-  console.log(`   SuperAdmin: superadmin@articlemgmt.com`);
-  console.log(`   Admin:      admin@articlemgmt.com`);
-  console.log(`   Linker:     linker@articlemgmt.com`);
-  console.log(`   Writer:     writer@articlemgmt.com`);
-  console.log(`   TeamLead:   lead@articlemgmt.com`);
+  // Linker Anjali
+  await prisma.notification.create({
+    data: {
+      recipientId: linkerAnjali.id,
+      senderId: leadSujata.id,
+      type: "LINK_ISSUE",
+      message: `Dead affiliate link detected on "TBR Supplement 4". Please verify seller link.`,
+      isRead: false,
+    },
+  });
+
+  console.log("✅ Custom Seed complete!");
+  console.log(`   Shiridhar:   shiridhar@fishtailinfosolutions.com`);
+  console.log(`   SuperAdmin:  superadmin@articlemgmt.com`);
+  console.log(`   Admin:       admin@articlemgmt.com`);
+  console.log(`   Team Lead Sujata: sujata@fishtailinfosolutions.com`);
+  console.log(`   Team Lead Sabina: sabina@fishtailinfosolutions.com`);
 }
 
 main()

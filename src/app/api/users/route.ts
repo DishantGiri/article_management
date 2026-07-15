@@ -20,10 +20,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, password, role, siteIds, allowLinkLogAccess, creatorId, teamLeadId, approved } = body;
-
-    // Use provided password or fallback to default
-    const finalPassword = password || "DefaultPass123!";
+    const { name, email, role, siteIds, allowLinkLogAccess, creatorId, teamLeadId, approved } = body;
 
     if (!name || !email || !role) {
       return NextResponse.json({ error: "name, email, and role are required" }, { status: 400 });
@@ -60,7 +57,6 @@ export async function POST(req: NextRequest) {
       data: {
         name,
         email,
-        password: finalPassword,
         role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD",
         allowLinkLogAccess: role === "WRITER" ? !!allowLinkLogAccess : false,
         teamLeadId: role === "WRITER" && teamLeadId ? Number(teamLeadId) : null,

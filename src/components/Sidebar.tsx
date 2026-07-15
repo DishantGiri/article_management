@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import Link from "next/link";
@@ -110,6 +112,7 @@ const NAV_ITEMS: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session, update } = useSession();
+  const [unreadCount, setUnreadCount] = useState(0);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -138,6 +141,16 @@ export default function Sidebar() {
     const audioObj = new Audio("/mixkit-software-interface-back-2575.wav");
     audioObj.load();
 
+    // Fetch initial unread count
+    fetch(`/api/notifications?userId=${userId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setUnreadCount(data.filter((n: any) => !n.isRead).length);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch initial notification count:", err));
+
     const unlockAudio = () => {
       audioObj.play()
         .then(() => {
@@ -161,6 +174,7 @@ export default function Sidebar() {
       try {
         const notif = JSON.parse(event.data);
         setToast({ message: notif.message });
+        setUnreadCount((prev) => prev + 1);
         audioObj.currentTime = 0;
         audioObj.play().catch((e) => console.log("Failed to play notification sound:", e));
         const customEvent = new CustomEvent("live-notification", { detail: notif });
@@ -177,6 +191,30 @@ export default function Sidebar() {
       ws.close();
       window.removeEventListener("click", unlockAudio);
       window.removeEventListener("keydown", unlockAudio);
+    };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const userId = session.user.id;
+
+    const refreshCount = () => {
+      fetch(`/api/notifications?userId=${userId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setUnreadCount(data.filter((n: any) => !n.isRead).length);
+          }
+        })
+        .catch((err) => console.error("Failed to fetch notification count:", err));
+    };
+
+    window.addEventListener("notifications-marked-read", refreshCount);
+    window.addEventListener("notifications-updated", refreshCount);
+    
+    return () => {
+      window.removeEventListener("notifications-marked-read", refreshCount);
+      window.removeEventListener("notifications-updated", refreshCount);
     };
   }, [session?.user?.id]);
 
@@ -229,7 +267,14 @@ export default function Sidebar() {
               <span className={active ? "text-slate-900" : "text-slate-400 group-hover:text-slate-600 transition-colors"}>
                 <item.icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
               </span>
-              {item.label}
+              <div className="flex-1 flex items-center justify-between">
+                <span>{item.label}</span>
+                {item.label === "Notifications" && unreadCount > 0 && (
+                  <span className="bg-rose-500 text-white font-bold text-[9px] px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm animate-pulse mr-2">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
             </Link>
           );
         })}

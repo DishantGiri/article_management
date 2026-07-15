@@ -53,8 +53,8 @@ export default withAuth(
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // 4. Enforce role-based path authorization (pages only, bypass api paths)
-    if (token && isApproved && hasRole && !pathname.startsWith("/api/")) {
+    // 4. Enforce role-based path authorization (pages only, bypass api paths and websocket)
+    if (token && isApproved && hasRole && !pathname.startsWith("/api/") && pathname !== "/ws") {
       if (!isRouteAllowed(pathname, token.role)) {
         console.log(`Access Denied: Role ${token.role} cannot access route ${pathname}`);
         return NextResponse.redirect(new URL("/", req.url));

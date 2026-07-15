@@ -3,13 +3,13 @@ import { prisma } from "@/lib/prisma";
 import moment from "moment";
 import { sendRealtimeNotification } from "@/lib/notifier";
 
-// GET /api/articles/[id]
+// GET /api/articles/[slug]
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { id: rawId } = await params;
-  const id = parseInt(rawId.split("-")[0]);
+  const { slug: rawSlug } = await params;
+  const id = parseInt(rawSlug.split("-")[0]);
   const { searchParams } = new URL(req.url);
   const userIdStr = searchParams.get("userId");
 
@@ -72,14 +72,14 @@ export async function GET(
   return NextResponse.json(article);
 }
 
-// PATCH /api/articles/[id] — update status, writer, article link, priority, special approval request
+// PATCH /api/articles/[slug] — update status, writer, article link, priority, special approval request
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const { id: rawId } = await params;
-    const id = parseInt(rawId.split("-")[0]);
+    const { slug: rawSlug } = await params;
+    const id = parseInt(rawSlug.split("-")[0]);
     const body = await req.json();
     const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, callerId, notes, redoStarted } = body;
 
@@ -197,6 +197,7 @@ export async function PATCH(
         ...(specialApprovalRequestReason !== undefined ? { specialApprovalRequestReason } : {}),
         ...(status === "COMPLETED" ? { specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
         ...(status === "IN_PROGRESS" && !existing.startedAt ? { startedAt: new Date() } : {}),
+        ...(status === "REDO" ? { startedAt: null } : {}),
         ...(redoStarted && existing.status === "REDO" && !existing.startedAt ? { startedAt: new Date() } : {}),
         ...(completedAt ? { completedAt } : {}),
         ...(writingTimeMin !== undefined ? { writingTimeMin } : {}),

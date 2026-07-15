@@ -2,7 +2,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -55,10 +56,12 @@ const generateSlug = (productName: string) => {
     .replace(/(^-|-$)+/g, "");
 };
 
-export default function ArticlesPage() {
+function ArticlesContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -72,7 +75,25 @@ export default function ArticlesPage() {
   const [updatingArticle, setUpdatingArticle] = useState<Article | null>(null);
   const [updateLink, setUpdateLink] = useState("");
   const [submittingUpdate, setSubmittingUpdate] = useState(false);
+  const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; linker: string; productName: string } | null>(null);
   const { data: session } = useSession();
+
+  const handleStartRevision = async (articleId: number) => {
+    const callerId = session?.user?.id || currentUserId;
+    if (!callerId) return;
+    try {
+      const res = await fetch(`/api/articles/${articleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ redoStarted: true, callerId: Number(callerId) }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Revision started! Timer is running.");
+      router.push("/");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to start revision");
+    }
+  };
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -168,7 +189,7 @@ export default function ArticlesPage() {
     const linkerRemark = latestLogWithRemarks?.linkerRemarks;
     const productRemark = article.product?.remarks;
     if (linkerRemark && productRemark) {
-      return `Linker: ${linkerRemark} | Product: ${productRemark}`;
+      return `${linkerRemark} (Product: ${productRemark})`;
     }
     if (linkerRemark) return linkerRemark;
     if (productRemark) return productRemark;
@@ -342,13 +363,13 @@ export default function ArticlesPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[20%]">Product</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[15%]">Site</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[13%]">Writer</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[22%]">Product</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[18%]">Site</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[15%]">Writer</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[8%]">Priority</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Status</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Date</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[18%]">Remarks</th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[12%]">Remarks</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[5%]">Link</th>
                   {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
                     <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left w-[10%]">Actions</th>
@@ -396,24 +417,21 @@ export default function ArticlesPage() {
                         </span>
                       </td>
                       {/* Writer's and Linker's Remarks cell */}
-                      <td className="px-4 py-3.5 max-w-[220px]">
-                        <div className="flex flex-col gap-1 text-[11px]">
-                          {writerRemarks && (
-                            <div className="flex items-start gap-1" title={`Writer: ${writerRemarks}`}>
-                              <span className="font-bold text-amber-600 bg-amber-50 px-1 rounded flex-shrink-0 text-[10px]">Writer:</span>
-                              <span className="text-slate-600 truncate max-w-[140px]">{writerRemarks}</span>
-                            </div>
-                          )}
-                          {linkerRemarks && (
-                            <div className="flex items-start gap-1" title={`Linker: ${linkerRemarks}`}>
-                              <span className="font-bold text-indigo-600 bg-indigo-50 px-1 rounded flex-shrink-0 text-[10px]">Linker:</span>
-                              <span className="text-slate-600 truncate max-w-[140px]">{linkerRemarks}</span>
-                            </div>
-                          )}
-                          {!writerRemarks && !linkerRemarks && (
-                            <span className="text-slate-350 font-semibold">—</span>
-                          )}
-                        </div>
+                      <td className="px-4 py-3.5 text-center">
+                        {(writerRemarks || linkerRemarks) ? (
+                          <button
+                            onClick={() => setSelectedRemarks({ writer: writerRemarks, linker: linkerRemarks, productName: a.product.name })}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-650 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all text-[10px] font-bold cursor-pointer shadow-sm"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            View
+                          </button>
+                        ) : (
+                          <span className="text-slate-300 font-semibold text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         {a.articleLink ? (
@@ -438,7 +456,7 @@ export default function ArticlesPage() {
                       {currentUserRole === "WRITER" && status === "REDO" && (
                         <td className="px-4 py-3.5">
                           <button
-                            onClick={() => { setUpdatingArticle(a as Article); setUpdateLink((a as any).articleLink || ""); }}
+                            onClick={() => handleStartRevision(a.id)}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
                           >
                             <FileText className="w-3.5 h-3.5" />
@@ -535,6 +553,65 @@ export default function ArticlesPage() {
           </div>
         </div>
       )}
+      {/* View Remarks Modal */}
+      {selectedRemarks && (
+        <div 
+          onClick={() => setSelectedRemarks(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+          >
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Remarks: {selectedRemarks.productName}</h2>
+              <button onClick={() => setSelectedRemarks(null)} className="text-slate-400 hover:text-slate-600 transition">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {selectedRemarks.writer && (
+                <div className="space-y-1">
+                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">WRITER REMARKS</span>
+                  <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap leading-relaxed">
+                    {selectedRemarks.writer}
+                  </p>
+                </div>
+              )}
+              {selectedRemarks.linker && (
+                <div className="space-y-1">
+                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200">LINKER REMARKS</span>
+                  <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap leading-relaxed">
+                    {selectedRemarks.linker}
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex justify-end">
+              <button
+                onClick={() => setSelectedRemarks(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function ArticlesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center py-20 min-h-screen">
+        <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />
+      </div>
+    }>
+      <ArticlesContent />
+    </Suspense>
   );
 }
