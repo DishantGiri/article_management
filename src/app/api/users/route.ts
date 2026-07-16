@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 // GET /api/users — list all users with their accesses
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Only Admin or Super Admin can view all users list
+  if (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const users = await prisma.user.findMany({
     include: {
       siteAccess: {
@@ -19,24 +31,19 @@ export async function GET() {
 // POST /api/users — create a new user and optionally setup site access
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
-    const { name, email, role, siteIds, allowLinkLogAccess, creatorId, teamLeadId, approved } = body;
+    const { name, email, role, siteIds, allowLinkLogAccess, teamLeadId, approved } = body;
 
     if (!name || !email || !role) {
       return NextResponse.json({ error: "name, email, and role are required" }, { status: 400 });
     }
 
-    // Get creator role
-    let creatorRole = "ADMIN";
-    if (creatorId) {
-      const creator = await prisma.user.findUnique({
-        where: { id: Number(creatorId) },
-        select: { role: true },
-      });
-      if (creator) {
-        creatorRole = creator.role || "";
-      }
-    }
+    const creatorRole = session.user.role || "";
 
     // Only SUPER_ADMIN can create ADMIN
     if (role === "ADMIN" && creatorRole !== "SUPER_ADMIN") {

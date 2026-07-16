@@ -1,27 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 // POST /api/products  — create a new product
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
-    const { name, categoryIds, trendLink, previewLink, remarks, addedById } = body;
+    const { name, categoryIds, trendLink, previewLink, remarks } = body;
 
     // Basic validation
-    if (!name || !categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0 || !addedById) {
+    if (!name || !categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
       return NextResponse.json(
-        { error: "name, categoryIds array, and addedById are required" },
+        { error: "name and categoryIds array are required" },
         { status: 400 }
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: Number(addedById) },
-      select: { role: true },
-    });
+    const activeUserId = session.user.id;
+    const activeUserRole = session.user.role;
 
-    if (!user || (user.role !== "LINKER" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
+    if (activeUserRole !== "LINKER" && activeUserRole !== "ADMIN" && activeUserRole !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Only Linkers, Admins, and Super Admins can add products." },
         { status: 403 }
@@ -47,7 +52,7 @@ export async function POST(req: NextRequest) {
           trendLink: trendLink || null,
           previewLink: previewLink || null,
           remarks: remarks || null,
-          addedById: Number(addedById),
+          addedById: activeUserId,
         });
       }
     }
@@ -88,7 +93,7 @@ export async function POST(req: NextRequest) {
         const notif = await prisma.notification.create({
           data: {
             recipientId: access.userId,
-            senderId: Number(addedById),
+            senderId: activeUserId,
             type: "PRODUCT_ADDED",
             message: `New product "${p.name}" has been added to site "${p.site.name}".`,
           },
@@ -106,29 +111,28 @@ export async function POST(req: NextRequest) {
 
 // GET /api/products?siteId=1  — list products (optionally filtered by site, role site-access rules enforced)
 export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const siteId = searchParams.get("siteId");
   const categoryId = searchParams.get("categoryId");
-  const userIdStr = searchParams.get("userId");
 
   let allowedSiteIds: number[] | undefined = undefined;
   let onlyPending = false;
 
-  if (userIdStr) {
-    const userId = parseInt(userIdStr);
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
+  const userId = session.user.id;
+  const userRole = session.user.role;
 
-    if (user?.role === "WRITER") {
-      onlyPending = true;
-      const accesses = await prisma.siteAccess.findMany({
-        where: { userId },
-        select: { siteId: true },
-      });
-      allowedSiteIds = accesses.map((a) => a.siteId);
-    }
+  if (userRole === "WRITER") {
+    onlyPending = true;
+    const accesses = await prisma.siteAccess.findMany({
+      where: { userId },
+      select: { siteId: true },
+    });
+    allowedSiteIds = accesses.map((a) => a.siteId);
   }
 
   const products = await prisma.product.findMany({

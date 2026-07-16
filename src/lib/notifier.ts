@@ -4,9 +4,13 @@ export async function sendRealtimeNotification(
 ) {
   try {
     const port = process.env.PORT || "3022";
+    const secret = process.env.NEXTAUTH_SECRET;
     await fetch(`http://localhost:${port}/notify`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${secret}`,
+      },
       body: JSON.stringify({
         recipientId,
         id: notification.id,

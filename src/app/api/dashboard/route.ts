@@ -1,29 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
-// GET /api/dashboard?userId=X — role-aware stats
+// GET /api/dashboard — role-aware stats
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userIdStr = searchParams.get("userId");
-
-    let role = "ADMIN";
-    let allowedSiteIds: number[] = [];
-    let userId = 1;
-
-    if (userIdStr) {
-      userId = parseInt(userIdStr);
-      if (isNaN(userId)) userId = 1;
-      
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { role: true },
-      });
-      if (user) {
-        role = user.role || "";
-      }
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const role = session.user.role || "ADMIN";
+    let allowedSiteIds: number[] = [];
+    const userId = session.user.id;
 
     // Fetch writer & team lead site access
     if (role === "WRITER" || role === "TEAM_LEAD") {

@@ -1,30 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 // POST /api/reviews — Team Lead submits a review remark (Approve or Redo)
 export async function POST(req: NextRequest) {
   try {
-    const { articleId, reviewedById, suggestion, approved, priority } = await req.json();
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (articleId === undefined || !reviewedById || approved === undefined) {
+    const { articleId, suggestion, approved, priority } = await req.json();
+
+    if (articleId === undefined || approved === undefined) {
       return NextResponse.json(
-        { error: "articleId, reviewedById, and approved are required fields" },
+        { error: "articleId and approved are required fields" },
         { status: 400 }
       );
     }
 
-    // Validate reviewer exists and has review rights
-    const reviewer = await prisma.user.findUnique({
-      where: { id: Number(reviewedById) },
-      select: { name: true, role: true },
-    });
+    const reviewedById = Number(session.user.id);
+    const reviewerRole = session.user.role;
 
-    if (!reviewer || (reviewer.role !== "TEAM_LEAD" && reviewer.role !== "ADMIN" && reviewer.role !== "SUPER_ADMIN")) {
+    if (reviewerRole !== "TEAM_LEAD" && reviewerRole !== "ADMIN" && reviewerRole !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Only Team Leads and Admins can submit article reviews." },
         { status: 403 }
       );
+    }
+
+    // Get reviewer details
+    const reviewer = await prisma.user.findUnique({
+      where: { id: reviewedById },
+      select: { name: true },
+    });
+
+    if (!reviewer) {
+      return NextResponse.json({ error: "Reviewer not found" }, { status: 404 });
     }
 
     // Validate article exists
@@ -108,9 +122,13 @@ export async function POST(req: NextRequest) {
     // 6. Broadcast general status update via WebSockets
     try {
       const port = process.env.PORT || "3022";
+      const secret = process.env.NEXTAUTH_SECRET;
       fetch(`http://localhost:${port}/notify`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${secret}`
+        },
         body: JSON.stringify({
           broadcast: true,
           type: "ARTICLE_STATUS_UPDATED",

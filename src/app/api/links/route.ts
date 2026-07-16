@@ -1,31 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
-// GET /api/links?productId=X&userId=Y
+// GET /api/links?productId=X
 export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const productId = searchParams.get("productId");
-  const userId = searchParams.get("userId");
 
   let allowedSiteIds: number[] | undefined = undefined;
 
-  if (userId) {
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-      select: { role: true, allowLinkLogAccess: true },
+  const userId = session.user.id;
+  const userRole = session.user.role;
+  const allowLinkLogAccess = session.user.approved && session.user.role !== "WRITER"; // Standard check or check DB user
+
+  // Check database for allowLinkLogAccess flag for WRITER
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, allowLinkLogAccess: true },
+  });
+
+  if (dbUser?.role === "WRITER" && !dbUser.allowLinkLogAccess) {
+    return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
+  }
+  
+  // Team lead restrictions
+  if (dbUser?.role === "TEAM_LEAD") {
+    const accesses = await prisma.siteAccess.findMany({
+      where: { userId },
+      select: { siteId: true },
     });
-    if (user?.role === "WRITER" && !user.allowLinkLogAccess) {
-      return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
-    }
-    
-    // Team lead restrictions
-    if (user?.role === "TEAM_LEAD") {
-      const accesses = await prisma.siteAccess.findMany({
-        where: { userId: parseInt(userId) },
-        select: { siteId: true },
-      });
-      allowedSiteIds = accesses.map((a) => a.siteId);
-    }
+    allowedSiteIds = accesses.map((a) => a.siteId);
   }
 
   const links = await prisma.linkLog.findMany({
@@ -52,11 +62,16 @@ export async function GET(req: NextRequest) {
 // POST /api/links — create a new link log entry
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { productId, addedById, bridgePageLink, buyLink, affiliateName, affiliateLink, geos, status, linkerRemarks } = body;
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!productId || !addedById || !affiliateName || !affiliateLink) {
-      return NextResponse.json({ error: "productId, addedById, affiliateName, affiliateLink are required" }, { status: 400 });
+    const body = await req.json();
+    const { productId, bridgePageLink, buyLink, affiliateName, affiliateLink, geos, status, linkerRemarks } = body;
+
+    if (!productId || !affiliateName || !affiliateLink) {
+      return NextResponse.json({ error: "productId, affiliateName, affiliateLink are required" }, { status: 400 });
     }
 
     // Fix 1: Compulsory Geo selection
@@ -64,20 +79,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "At least one GEO must be selected." }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: Number(addedById) },
+    const addedById = session.user.id;
+
+    const dbUser = await prisma.user.findUnique({
+      where: { id: addedById },
       select: { role: true, allowLinkLogAccess: true },
     });
 
-    if (!user) {
+    if (!dbUser) {
       return NextResponse.json({ error: "User not found" }, { status: 401 });
     }
 
-    if (user.role === "WRITER" && !user.allowLinkLogAccess) {
+    if (dbUser.role === "WRITER" && !dbUser.allowLinkLogAccess) {
       return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
     }
 
-    if (user.role !== "LINKER" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    if (dbUser.role !== "LINKER" && dbUser.role !== "ADMIN" && dbUser.role !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Only Linkers, Admins, and Super Admins can add links." },
         { status: 403 }
@@ -97,7 +114,7 @@ export async function POST(req: NextRequest) {
     const link = await prisma.linkLog.create({
       data: {
         productId: parseInt(productId),
-        addedById: parseInt(addedById),
+        addedById: addedById,
         bridgePageLink: bridgePageLink || null,
         buyLink: buyLink || null,
         affiliateName,
@@ -115,7 +132,7 @@ export async function POST(req: NextRequest) {
     await prisma.linkHistory.create({
       data: {
         linkLogId: link.id,
-        updatedById: parseInt(addedById),
+        updatedById: addedById,
         newBridgeLink: link.bridgePageLink,
         newBuyLink: link.buyLink,
         newAffiliateLink: link.affiliateLink,

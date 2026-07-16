@@ -3,12 +3,15 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 
-export const authOptions: NextAuthOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    }),
+const providers: any[] = [
+  GoogleProvider({
+    clientId: process.env.GOOGLE_CLIENT_ID || "",
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+  }),
+];
+
+if (process.env.NODE_ENV === "development") {
+  providers.push(
     CredentialsProvider({
       name: "Testing",
       credentials: {
@@ -16,17 +19,42 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email) return null;
+
+        // Enforce email domain restriction
+        if (!credentials.email.endsWith("@fishtailinfosolutions.com")) {
+          return null;
+        }
+
+        let user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              name: credentials.email.split("@")[0],
+              email: credentials.email,
+              role: null,
+              approved: false,
+            },
+          });
+        }
+
         return {
-          id: "test",
-          email: credentials.email,
-          name: credentials.email.split("@")[0],
-          image: null,
-          role: null,
-          approved: false,
-        } as any; // Cast as any or specific type to bypass NextAuth internal User type clash, since signIn callback catches it
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+          role: user.role,
+          approved: user.approved,
+        } as any;
       },
-    }),
-  ],
+    })
+  );
+}
+
+export const authOptions: NextAuthOptions = {
+  providers,
   session: {
     strategy: "jwt",
   },
@@ -109,8 +137,9 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || "f6c8d76d49ba9c32e987c674251df8ae",
+  secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: "/auth/signin",
   },
 };
+

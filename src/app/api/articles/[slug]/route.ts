@@ -2,16 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import moment from "moment";
 import { sendRealtimeNotification } from "@/lib/notifier";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 // GET /api/articles/[slug]
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { slug: rawSlug } = await params;
   const id = parseInt(rawSlug.split("-")[0]);
-  const { searchParams } = new URL(req.url);
-  const userIdStr = searchParams.get("userId");
 
   const article = await prisma.article.findUnique({
     where: { id },
@@ -47,25 +52,20 @@ export async function GET(
   }
 
   // Authorize check: only WRITER is restricted by SiteAccess
-  if (userIdStr) {
-    const userId = parseInt(userIdStr);
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
+  const userId = session.user.id;
+  const userRole = session.user.role;
 
-    if (user?.role === "WRITER") {
-      const access = await prisma.siteAccess.findUnique({
-        where: {
-          userId_siteId: {
-            userId,
-            siteId: article.product.siteId,
-          },
+  if (userRole === "WRITER") {
+    const access = await prisma.siteAccess.findUnique({
+      where: {
+        userId_siteId: {
+          userId,
+          siteId: article.product.siteId,
         },
-      });
-      if (!access) {
-        return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
-      }
+      },
+    });
+    if (!access) {
+      return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
     }
   }
 
@@ -78,12 +78,18 @@ export async function PATCH(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { slug: rawSlug } = await params;
     const id = parseInt(rawSlug.split("-")[0]);
     const body = await req.json();
-    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, callerId, notes, redoStarted } = body;
+    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted } = body;
 
-    const activeUserId = writerId || callerId;
+    const activeUserId = session.user.id;
+    const activeUserRole = session.user.role || "";
 
     const existing = await prisma.article.findUnique({
       where: { id },
@@ -93,23 +99,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
-    let activeUserRole = "";
-    if (activeUserId) {
-      const user = await prisma.user.findUnique({
-        where: { id: Number(activeUserId) },
-        select: { role: true },
-      });
-      if (user) {
-        activeUserRole = user.role || "";
-      }
-    }
-
     // Site access check: only WRITER is restricted by SiteAccess
     if (activeUserRole === "WRITER") {
       const access = await prisma.siteAccess.findUnique({
         where: {
           userId_siteId: {
-            userId: Number(activeUserId),
+            userId: activeUserId,
             siteId: existing.product.siteId,
           },
         },
@@ -120,12 +115,12 @@ export async function PATCH(
     }
 
     // Prevent writer/team lead from editing someone else's article (unless the caller is the writer's team lead)
-    if ((activeUserRole === "WRITER" || activeUserRole === "TEAM_LEAD") && existing.writerId && existing.writerId !== Number(activeUserId)) {
+    if ((activeUserRole === "WRITER" || activeUserRole === "TEAM_LEAD") && existing.writerId && existing.writerId !== activeUserId) {
       const writer = await prisma.user.findUnique({
         where: { id: existing.writerId },
         select: { teamLeadId: true },
       });
-      const isCallerTeamLead = writer && writer.teamLeadId === Number(activeUserId);
+      const isCallerTeamLead = writer && writer.teamLeadId === activeUserId;
       if (activeUserRole === "WRITER" || !isCallerTeamLead) {
         return NextResponse.json({ error: "This article is already in progress or completed by another writer." }, { status: 403 });
       }
@@ -229,9 +224,13 @@ export async function PATCH(
 
     try {
       const port = process.env.PORT || "3022";
+      const secret = process.env.NEXTAUTH_SECRET;
       fetch(`http://localhost:${port}/notify`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${secret}`
+        },
         body: JSON.stringify({
           broadcast: true,
           type: "ARTICLE_STATUS_UPDATED",

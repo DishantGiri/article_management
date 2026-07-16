@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 // POST /api/approvals — team lead grants special completion without article link
 export async function POST(req: NextRequest) {
   try {
-    const { articleId, approvedById, reason } = await req.json();
-    if (!articleId || !approvedById || !reason) {
-      return NextResponse.json({ error: "articleId, approvedById, and reason are required" }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const approver = await prisma.user.findUnique({
-      where: { id: Number(approvedById) },
-      select: { role: true },
-    });
-    if (!approver || (approver.role !== "TEAM_LEAD" && approver.role !== "ADMIN" && approver.role !== "SUPER_ADMIN")) {
+    const { articleId, reason } = await req.json();
+    if (!articleId || !reason) {
+      return NextResponse.json({ error: "articleId and reason are required" }, { status: 400 });
+    }
+
+    const approvedById = session.user.id;
+    const userRole = session.user.role;
+
+    if (userRole !== "TEAM_LEAD" && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Only Team Leads or Admins can grant special approvals." }, { status: 403 });
     }
 
@@ -27,7 +33,7 @@ export async function POST(req: NextRequest) {
     const approval = await prisma.specialApproval.create({
       data: {
         articleId: parseInt(articleId),
-        approvedById: parseInt(approvedById),
+        approvedById: approvedById,
         writerName: article.writer?.name || "Unknown",
         productName: article.product.name,
         reason,
@@ -48,7 +54,7 @@ export async function POST(req: NextRequest) {
       const notif = await prisma.notification.create({
         data: {
           recipientId: article.writer.id,
-          senderId: parseInt(approvedById),
+          senderId: approvedById,
           type: "APPROVAL_GRANTED",
           message: `Special approval granted for "${article.product.name}". Reason: ${reason}`,
         },
@@ -65,6 +71,16 @@ export async function POST(req: NextRequest) {
 
 // GET /api/approvals
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userRole = session.user.role;
+  if (userRole !== "TEAM_LEAD" && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const approvals = await prisma.specialApproval.findMany({
     include: { approvedBy: { select: { name: true } } },
     orderBy: { approvedAt: "desc" },

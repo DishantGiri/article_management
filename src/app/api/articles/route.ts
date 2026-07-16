@@ -1,41 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 // GET /api/articles — list articles
 export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const writerId = searchParams.get("writerId");
   const status = searchParams.get("status");
   const productId = searchParams.get("productId");
-  const userIdStr = searchParams.get("userId");
 
   let allowedFilter: any = {};
+  const userId = session.user.id;
+  const userRole = session.user.role;
 
-  if (userIdStr) {
-    const userId = parseInt(userIdStr);
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
+  if (userRole === "TEAM_LEAD") {
+    allowedFilter = {
+      OR: [
+        { writerId: userId },
+        { writer: { teamLeadId: userId } },
+        { status: "PENDING" }
+      ]
+    };
+  } else if (userRole === "WRITER") {
+    const accesses = await prisma.siteAccess.findMany({
+      where: { userId },
+      select: { siteId: true },
     });
-
-    if (user?.role === "TEAM_LEAD") {
-      allowedFilter = {
-        OR: [
-          { writerId: userId },
-          { writer: { teamLeadId: userId } },
-          { status: "PENDING" }
-        ]
-      };
-    } else if (user?.role === "WRITER") {
-      const accesses = await prisma.siteAccess.findMany({
-        where: { userId },
-        select: { siteId: true },
-      });
-      const siteIds = accesses.map((a) => a.siteId);
-      allowedFilter = {
-        product: { siteId: { in: siteIds } }
-      };
-    }
+    const siteIds = accesses.map((a) => a.siteId);
+    allowedFilter = {
+      product: { siteId: { in: siteIds } }
+    };
   }
 
   const articles = await prisma.article.findMany({

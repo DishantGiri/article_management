@@ -9,6 +9,15 @@ const server = createServer((req, res) => {
     });
     req.on("end", () => {
       try {
+        const authHeader = req.headers["authorization"];
+        const secret = process.env.NEXTAUTH_SECRET;
+
+        if (!authHeader || authHeader !== `Bearer ${secret}`) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Unauthorized" }));
+          return;
+        }
+
         const payload = JSON.parse(body);
         const { recipientId, message, id, createdAt, type, broadcast, data } = payload;
         
