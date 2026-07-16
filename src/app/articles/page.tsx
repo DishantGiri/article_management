@@ -238,6 +238,10 @@ function ArticlesContent() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
+  const hasActiveAssignment = articles.some(
+    (art) => art.writer?.id === currentUserId && (art.status === "IN_PROGRESS" || art.status === "REDO")
+  );
+
   return (
     <div className="p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]" suppressHydrationWarning>
       {/* Header */}
@@ -371,7 +375,7 @@ function ArticlesContent() {
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Date</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[12%]">Remarks</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[5%]">Link</th>
-                  {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
+                  {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "WRITER") && (
                     <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left w-[10%]">Actions</th>
                   )}
                 </tr>
@@ -453,15 +457,79 @@ function ArticlesContent() {
                           </Link>
                         </td>
                       )}
-                      {currentUserRole === "WRITER" && status === "REDO" && (
+                      {currentUserRole === "WRITER" && (
                         <td className="px-4 py-3.5">
-                          <button
-                            onClick={() => handleStartRevision(a.id)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            Update
-                          </button>
+                          {status === "PENDING" && (
+                            <button
+                              disabled={hasActiveAssignment}
+                              onClick={async () => {
+                                if (!currentUserId) return;
+                                try {
+                                  const res = await fetch(`/api/articles/${a.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ status: "IN_PROGRESS", writerId: currentUserId, callerId: currentUserId }),
+                                  });
+                                  if (res.ok) {
+                                    toast.success("Started writing! Redirecting to dashboard...");
+                                    router.push("/");
+                                  } else {
+                                    const err = await res.json();
+                                    toast.error(err.error || "Failed to start writing");
+                                  }
+                                } catch {
+                                  toast.error("Failed to start writing");
+                                }
+                              }}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold whitespace-nowrap transition-all ${
+                                !hasActiveAssignment
+                                  ? "bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
+                                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                              }`}
+                            >
+                              <PlayCircle className="w-3.5 h-3.5" />
+                              Write
+                            </button>
+                          )}
+                          {status === "IN_PROGRESS" && a.writer?.id === currentUserId && (
+                            <button
+                              onClick={() => {
+                                setUpdatingArticle(a);
+                                setUpdateLink(a.articleLink || "");
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              Update
+                            </button>
+                          )}
+                          {status === "REDO" && a.writer?.id === currentUserId && (
+                            <>
+                              {!a.startedAt ? (
+                                <button
+                                  onClick={() => handleStartRevision(a.id)}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
+                                >
+                                  <PlayCircle className="w-3.5 h-3.5" />
+                                  Start Revision
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setUpdatingArticle(a);
+                                    setUpdateLink(a.articleLink || "");
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  Update
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {a.writer?.id !== currentUserId && (status === "IN_PROGRESS" || status === "REDO" || status === "COMPLETED" || status === "APPROVED") && (
+                            <span className="text-[11px] font-medium text-slate-400">Locked</span>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -474,15 +542,21 @@ function ArticlesContent() {
         )}
       </div>
 
-      {/* Writer update modal for REDO articles */}
+      {/* Writer update modal */}
       {updatingArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="px-6 py-5 border-b border-slate-100">
               <div className="flex items-center gap-2 mb-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
-                  Needs Changes
-                </span>
+                {updatingArticle.status === "REDO" ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                    Needs Changes
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                    In Progress
+                  </span>
+                )}
                 {(updatingArticle as any).priority === "HIGH" && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">
                     <Flame className="w-2.5 h-2.5" /> HIGH PRIORITY

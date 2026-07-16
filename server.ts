@@ -1,11 +1,48 @@
 import { createServer } from "http";
-import { parse } from "url";
+import { UrlWithParsedQuery } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = parseInt(process.env.PORT || "3022", 10);
+
+const parseUrl = (urlStr: string): UrlWithParsedQuery => {
+  const isAbsolute = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(urlStr) || urlStr.startsWith("//");
+  if (isAbsolute) {
+    const url = new URL(urlStr.startsWith("//") ? `http:${urlStr}` : urlStr);
+    return {
+      query: Object.fromEntries(url.searchParams),
+      pathname: url.pathname,
+      search: url.search || null,
+      hash: url.hash || null,
+      href: url.href,
+      port: url.port || null,
+      hostname: url.hostname || null,
+      host: url.host || null,
+      protocol: url.protocol || null,
+      auth: url.username ? `${url.username}:${url.password}` : null,
+      slashes: true,
+      path: url.pathname + url.search,
+    };
+  } else {
+    const url = new URL(urlStr, "http://localhost");
+    return {
+      query: Object.fromEntries(url.searchParams),
+      pathname: url.pathname,
+      search: url.search || null,
+      hash: url.hash || null,
+      href: urlStr,
+      port: null,
+      hostname: null,
+      host: null,
+      protocol: null,
+      auth: null,
+      slashes: null,
+      path: url.pathname + url.search,
+    };
+  }
+};
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -15,7 +52,7 @@ app.prepare().then(() => {
   const clients = new Map<number, Set<WebSocket>>();
 
   const server = createServer((req, res) => {
-    const parsedUrl = parse(req.url || "", true);
+    const parsedUrl = parseUrl(req.url || "");
     const { pathname } = parsedUrl;
 
     // Handle WebSocket notification triggers via HTTP POST /notify
@@ -68,7 +105,7 @@ app.prepare().then(() => {
   });
 
   server.on("upgrade", (request, socket, head) => {
-    const parsedUrl = parse(request.url || "", true);
+    const parsedUrl = parseUrl(request.url || "");
     const { pathname } = parsedUrl;
 
     if (pathname === "/ws") {

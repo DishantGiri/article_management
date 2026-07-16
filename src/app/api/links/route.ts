@@ -111,6 +111,19 @@ export async function POST(req: NextRequest) {
       include: { geos: true, addedBy: { select: { name: true } } },
     });
 
+    // Log creation history
+    await prisma.linkHistory.create({
+      data: {
+        linkLogId: link.id,
+        updatedById: parseInt(addedById),
+        newBridgeLink: link.bridgePageLink,
+        newBuyLink: link.buyLink,
+        newAffiliateLink: link.affiliateLink,
+        newStatus: link.status,
+        newRemarks: link.linkerRemarks,
+      },
+    });
+
     return NextResponse.json(link, { status: 201 });
   } catch (err) {
     console.error("[POST /api/links]", err);

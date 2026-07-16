@@ -103,6 +103,7 @@ model User {
 
   // Article histories updated by this user
   articleHistories ArticleHistory[] @relation("ArticleHistoryUpdatedBy")
+  linkHistories    LinkHistory[]    @relation("LinkHistoryUpdatedBy")
 }
 
 // ─────────────────────────────────────────────
@@ -252,6 +253,7 @@ model LinkLog {
 
   product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   addedBy  User    @relation("LinkAddedBy", fields: [addedById], references: [id])
+  history  LinkHistory[]
 }
 
 // GEO entries for a link (multi-select support)
@@ -310,4 +312,23 @@ model Geo {
   id        Int      @id @default(autoincrement())
   code      String   @unique
   createdAt DateTime @default(now())
+}
+
+model LinkHistory {
+  id               Int      @id @default(autoincrement())
+  linkLogId        Int
+  linkLog          LinkLog  @relation(fields: [linkLogId], references: [id], onDelete: Cascade)
+  updatedById      Int
+  updatedBy        User     @relation("LinkHistoryUpdatedBy", fields: [updatedById], references: [id])
+  oldBridgeLink    String?
+  newBridgeLink    String?
+  oldBuyLink       String?
+  newBuyLink       String?
+  oldAffiliateLink String?
+  newAffiliateLink String?
+  oldStatus        String?
+  newStatus        String?
+  oldRemarks       String?  @db.Text
+  newRemarks       String?  @db.Text
+  updatedAt        DateTime @default(now())
 }

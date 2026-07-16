@@ -10,12 +10,13 @@ const adapter = new PrismaMariaDb({
   database: process.env.DATABASE_NAME,
   port: process.env.DATABASE_PORT ? parseInt(process.env.DATABASE_PORT) : 3306,
   connectionLimit: 5,
+  allowPublicKeyRetrieval: true,
 });
 
 // Prevent multiple instances in Next.js dev (hot-reload)
-const globalForPrisma = globalThis as unknown as { prisma_v6: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma_v7: PrismaClient };
 
 export const prisma =
-  globalForPrisma.prisma_v6 ?? new PrismaClient({ adapter });
+  globalForPrisma.prisma_v7 ?? new PrismaClient({ adapter });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma_v6 = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma_v7 = prisma;

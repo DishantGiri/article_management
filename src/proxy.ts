@@ -26,12 +26,17 @@ export default withAuth(
     const token = req.nextauth.token;
     const { pathname } = req.nextUrl;
 
-    // 1. Handle unauthenticated API requests cleanly (instead of NextAuth redirecting them to signin HTML)
+    // 1. Redirect logged-in users away from sign-in page to the home page (dashboard)
+    if (token && pathname === "/auth/signin") {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+
+    // 2. Handle unauthenticated API requests cleanly (instead of NextAuth redirecting them to signin HTML)
     if (!token && pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Check if user is approved and has an assigned role
+    // 3. Check if user is approved and has an assigned role
     const isApproved = token && token.approved === true;
     const hasRole = token && !!token.role;
 
@@ -45,7 +50,7 @@ export default withAuth(
       return;
     }
 
-    // 3. Prevent access to pending page for approved/activated users
+    // 4. Prevent access to pending page for approved/activated users
     if (token && isApproved && hasRole && pathname === "/auth/pending") {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Access Denied" }, { status: 403 });
@@ -53,7 +58,7 @@ export default withAuth(
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // 4. Enforce role-based path authorization (pages only, bypass api paths and websocket)
+    // 5. Enforce role-based path authorization (pages only, bypass api paths and websocket)
     if (token && isApproved && hasRole && !pathname.startsWith("/api/") && pathname !== "/ws") {
       if (!isRouteAllowed(pathname, token.role)) {
         console.log(`Access Denied: Role ${token.role} cannot access route ${pathname}`);
@@ -65,8 +70,8 @@ export default withAuth(
     callbacks: {
       authorized: ({ req, token }) => {
         const { pathname } = req.nextUrl;
-        // Let middleware function handle authentication checks on API paths
-        if (pathname.startsWith("/api/")) {
+        // Let middleware function handle authentication checks on API paths and signin page
+        if (pathname === "/auth/signin" || pathname.startsWith("/api/")) {
           return true;
         }
         return !!token;
@@ -77,7 +82,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    // Protect all routes except signin page, api/auth routes, and static assets
-    "/((?!api/auth|auth/signin|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon-192.png|icon-512.png|404.svg|file.svg|globe.svg|next.svg|vercel.svg|window.svg|mixkit-software-interface-back-2575.wav).*)",
+    // Protect all routes except api/auth routes and static assets
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon-192.png|icon-512.png|404.svg|file.svg|globe.svg|next.svg|vercel.svg|window.svg|mixkit-software-interface-back-2575.wav).*)",
   ],
 };

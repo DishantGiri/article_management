@@ -137,7 +137,41 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json(updated);
+    // Fetch final updated link log and log history
+    const finalLinkLog = await prisma.linkLog.findUnique({
+      where: { id: parseInt(id) },
+      include: { geos: true },
+    });
+
+    if (finalLinkLog && activeUserId) {
+      const hasChanges =
+        finalLinkLog.bridgePageLink !== existing.bridgePageLink ||
+        finalLinkLog.buyLink !== existing.buyLink ||
+        finalLinkLog.affiliateLink !== existing.affiliateLink ||
+        finalLinkLog.status !== existing.status ||
+        finalLinkLog.linkerRemarks !== existing.linkerRemarks;
+
+      if (hasChanges) {
+        await prisma.linkHistory.create({
+          data: {
+            linkLogId: finalLinkLog.id,
+            updatedById: Number(activeUserId),
+            oldBridgeLink: existing.bridgePageLink,
+            newBridgeLink: finalLinkLog.bridgePageLink,
+            oldBuyLink: existing.buyLink,
+            newBuyLink: finalLinkLog.buyLink,
+            oldAffiliateLink: existing.affiliateLink,
+            newAffiliateLink: finalLinkLog.affiliateLink,
+            oldStatus: existing.status,
+            newStatus: finalLinkLog.status,
+            oldRemarks: existing.linkerRemarks,
+            newRemarks: finalLinkLog.linkerRemarks,
+          },
+        });
+      }
+    }
+
+    return NextResponse.json(finalLinkLog || updated);
   } catch (err) {
     console.error("[PATCH /api/links/:id]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
