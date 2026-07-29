@@ -9,50 +9,50 @@ const providers: any[] = [
     clientId: process.env.GOOGLE_CLIENT_ID || "",
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   }),
-];
+  CredentialsProvider({
+    name: "Email",
+    credentials: {
+      email: { label: "Email", type: "text" },
+    },
+    async authorize(credentials) {
+      if (!credentials?.email) return null;
 
-if (process.env.NODE_ENV === "development") {
-  providers.push(
-    CredentialsProvider({
-      name: "Testing",
-      credentials: {
-        email: { label: "Email", type: "email" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email) return null;
+      let email = credentials.email.trim().toLowerCase();
+      if (!email.includes("@")) {
+        email = `${email}@fishtailinfosolutions.com`;
+      }
 
-        // Enforce email domain restriction
-        if (!credentials.email.endsWith("@fishtailinfosolutions.com")) {
-          return null;
-        }
+      // Enforce email domain restriction
+      if (!email.endsWith("@fishtailinfosolutions.com")) {
+        return null;
+      }
 
-        let user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+      let user = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            name: email.split("@")[0],
+            email: email,
+            role: null,
+            approved: false,
+          },
         });
+      }
 
-        if (!user) {
-          user = await prisma.user.create({
-            data: {
-              name: credentials.email.split("@")[0],
-              email: credentials.email,
-              role: null,
-              approved: false,
-            },
-          });
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          role: user.role,
-          approved: user.approved,
-        } as any;
-      },
-    })
-  );
-}
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        role: user.role,
+        approved: user.approved,
+      } as any;
+    },
+  }),
+];
 
 export const authOptions: NextAuthOptions = {
   providers,

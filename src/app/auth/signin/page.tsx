@@ -58,7 +58,7 @@ function SignInContent() {
         </p>
       </div>
 
-      {/* Email Testing Login Form */}
+      {/* Email Login Form */}
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -75,10 +75,10 @@ function SignInContent() {
         className="space-y-3"
       >
         <input
-          type="email"
+          type="text"
           name="email"
           required
-          placeholder="test@fishtailinfosolutions.com"
+          placeholder="Enter email or username"
           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder:text-slate-400"
         />
         <button
@@ -89,7 +89,7 @@ function SignInContent() {
           {loading ? (
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
-            "Sign in with Email (Test)"
+            "Sign in with Email"
           )}
         </button>
       </form>

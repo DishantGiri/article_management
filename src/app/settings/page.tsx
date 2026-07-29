@@ -115,8 +115,8 @@ export default function SettingsPage() {
                 {name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'JD'}
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900">{name || 'John Doe'}</h2>
-                <p className="text-sm text-slate-500 mb-2">{email || 'john@example.com'}</p>
+                <h2 className="text-lg font-bold text-slate-900">{name || 'Your Name'}</h2>
+                <p className="text-sm text-slate-500 mb-2">{email || 'yourmail@example.com'}</p>
                 <button type="button" className="text-xs font-medium px-3 py-1 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
                   Change Photo
                 </button>
@@ -133,7 +133,7 @@ export default function SettingsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                  placeholder="John Doe"
+                  placeholder="Your Name"
                   required
                 />
               </div>
