@@ -62,13 +62,13 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/sites",
     label: "Sites",
-    roles: ["SUPER_ADMIN", "ADMIN"],
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
     icon: Globe,
   },
   {
     href: "/categories",
     label: "Categories",
-    roles: ["SUPER_ADMIN", "ADMIN"],
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
     icon: Tags,
   },
   {

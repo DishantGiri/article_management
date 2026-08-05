@@ -90,10 +90,76 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
     remarks: "",
   });
 
+  // Inline creation states
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [addingCat, setAddingCat] = useState(false);
+
+  const [showAddSite, setShowAddSite] = useState(false);
+  const [newSiteName, setNewSiteName] = useState("");
+  const [newSiteUrl, setNewSiteUrl] = useState("");
+  const [addingSite, setAddingSite] = useState(false);
+
+  const handleInlineAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    setAddingCat(true);
+    setError("");
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCatName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create category");
+      setCategories((prev) => [...prev, data]);
+      setForm((prev) => ({ ...prev, categoryIds: [...prev.categoryIds, data.id] }));
+      setNewCatName("");
+      setShowAddCat(false);
+    } catch (err: any) {
+      setError(err.message || "Failed to add category");
+    } finally {
+      setAddingCat(false);
+    }
+  };
+
+  const handleInlineAddSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSiteName.trim()) return;
+    setAddingSite(true);
+    setError("");
+    try {
+      const res = await fetch("/api/sites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newSiteName.trim(),
+          url: newSiteUrl.trim() || null,
+          categoryIds: form.categoryIds,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create site");
+      const sitesRes = await fetch("/api/sites");
+      const sitesData = await sitesRes.json();
+      setSites(Array.isArray(sitesData) ? sitesData : []);
+      setNewSiteName("");
+      setNewSiteUrl("");
+      setShowAddSite(false);
+    } catch (err: any) {
+      setError(err.message || "Failed to add site");
+    } finally {
+      setAddingSite(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       setStep(1);
       setSuccessState(false);
+      setShowAddCat(false);
+      setShowAddSite(false);
       setForm({ categoryIds: [], name: "", trendLink: "", previewLink: "", remarks: "" });
       setLoading(true);
       Promise.all([
@@ -259,11 +325,41 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
               {/* STEP 1 */}
               {step === 1 && (
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-800">Select Categories</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-800">Select Categories</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCat(!showAddCat)}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1"
+                    >
+                      {showAddCat ? "Cancel" : "+ Add Category"}
+                    </button>
+                  </div>
+
+                  {showAddCat && (
+                    <form onSubmit={handleInlineAddCategory} className="p-3 bg-slate-50 rounded-lg border border-indigo-100 flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="New category name..."
+                        value={newCatName}
+                        onChange={(e) => setNewCatName(e.target.value)}
+                        className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        autoFocus
+                      />
+                      <button
+                        type="submit"
+                        disabled={addingCat || !newCatName.trim()}
+                        className="px-3 py-1.5 bg-indigo-600 text-white rounded text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 transition shrink-0"
+                      >
+                        {addingCat ? "..." : "Add"}
+                      </button>
+                    </form>
+                  )}
+
                   {loading ? (
                     <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" /></div>
                   ) : categories.length === 0 ? (
-                    <div className="text-center py-4 text-slate-500 text-sm">No categories found.</div>
+                    <div className="text-center py-4 text-slate-500 text-sm">No categories found. Click "+ Add Category" above to create one.</div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                       {categories.map((cat) => {
@@ -271,6 +367,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
                         return (
                           <button
                             key={cat.id}
+                            type="button"
                             onClick={() => {
                               setForm((prev) => ({
                                 ...prev,
@@ -310,10 +407,51 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
               {/* STEP 2 */}
               {step === 2 && (
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-800">Preview Websites</h3>
-                  <p className="text-xs text-slate-500">The product will be automatically added to these websites.</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800">Preview Websites</h3>
+                      <p className="text-xs text-slate-500">The product will be automatically added to these websites.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddSite(!showAddSite)}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1 shrink-0"
+                    >
+                      {showAddSite ? "Cancel" : "+ Add Website"}
+                    </button>
+                  </div>
+
+                  {showAddSite && (
+                    <form onSubmit={handleInlineAddSite} className="p-3 bg-slate-50 rounded-lg border border-indigo-100 space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Website Name (e.g. Health Daily)"
+                        value={newSiteName}
+                        onChange={(e) => setNewSiteName(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        autoFocus
+                      />
+                      <input
+                        type="url"
+                        placeholder="Website URL (optional)"
+                        value={newSiteUrl}
+                        onChange={(e) => setNewSiteUrl(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          type="submit"
+                          disabled={addingSite || !newSiteName.trim()}
+                          className="px-3 py-1.5 bg-indigo-600 text-white rounded text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 transition"
+                        >
+                          {addingSite ? "..." : "Add & Assign"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
                   {previewSites.length === 0 ? (
-                    <div className="text-center py-4 text-slate-500 text-sm">No websites found for the selected categories.</div>
+                    <div className="text-center py-4 text-slate-500 text-sm">No websites found for the selected categories. Click "+ Add Website" above to add one.</div>
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-100">
                       {previewSites.map((site: any) => (

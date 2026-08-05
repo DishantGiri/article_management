@@ -5,7 +5,7 @@ const ROLE_ROUTES: Record<string, string[]> = {
   SUPER_ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members"],
   ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members"],
   TEAM_LEAD: ["/", "/products", "/articles", "/links", "/reports", "/notifications", "/settings", "/team-members"],
-  LINKER: ["/", "/products", "/links", "/notifications", "/settings"],
+  LINKER: ["/", "/products", "/links", "/sites", "/categories", "/notifications", "/settings"],
   WRITER: ["/", "/products", "/articles", "/notifications", "/settings"],
 };
 
