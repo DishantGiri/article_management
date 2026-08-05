@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 interface Product {
   id: number;
   name: string;
+  linkLogs?: any[];
   site: {
     id: number;
     name: string;
@@ -119,17 +120,11 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
         .then(r => r.json())
         .then(data => {
           const fetchedProds = Array.isArray(data) ? data : [];
-
-          // Only keep products that have no links yet
-          const unlinkedProds = fetchedProds.filter((p: any) => !p.linkLogs || p.linkLogs.length === 0);
-          setProducts(unlinkedProds);
+          setProducts(fetchedProds);
           
           if (preselectedProductId) {
             const found = fetchedProds.find((p: any) => p.id === preselectedProductId);
             if (found) {
-              if (!unlinkedProds.some(p => p.id === preselectedProductId)) {
-                setProducts(prev => [found, ...prev]);
-              }
               setSelectedProductName(found.name);
             }
           }
@@ -351,9 +346,14 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
               disabled={loadingProducts || !!preselectedProductId}
             >
               <option value="">Select Product...</option>
-              {uniqueProductNames.map(name => (
-                <option key={name} value={name}>{name}</option>
-              ))}
+              {uniqueProductNames.map(name => {
+                const isUnlinked = products.some(p => p.name === name && (!p.linkLogs || p.linkLogs.length === 0));
+                return (
+                  <option key={name} value={name}>
+                    {name} {isUnlinked ? "⚠️ (Needs Link)" : ""}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
