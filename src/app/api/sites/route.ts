@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
         id: true, 
         name: true, 
         url: true,
+        subId: true,
+        bridgeUrl: true,
         categories: {
           select: { id: true, name: true }
         },
@@ -39,6 +41,8 @@ export async function GET(req: NextRequest) {
         id: site.id,
         name: site.name,
         url: site.url,
+        subId: site.subId,
+        bridgeUrl: site.bridgeUrl,
         categories: site.categories,
         productsCount: site._count.products,
         categoriesCount: site._count.categories,
@@ -57,7 +61,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, url, categoryIds } = body;
+    const { name, url, subId, bridgeUrl, categoryIds } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -67,6 +71,8 @@ export async function POST(req: NextRequest) {
       data: {
         name,
         url,
+        subId: subId || null,
+        bridgeUrl: bridgeUrl || null,
         categories: {
           connect: Array.isArray(categoryIds) ? categoryIds.map((id: number) => ({ id })) : []
         }

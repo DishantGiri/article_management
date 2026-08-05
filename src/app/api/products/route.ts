@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
       ...(onlyPending ? { article: { status: "PENDING" } } : {}),
     },
     include: {
-      site: { select: { name: true, url: true } },
+      site: { select: { name: true, url: true, subId: true, bridgeUrl: true } },
       category: { select: { name: true } },
       addedBy: { select: { name: true } },
       article: { select: { id: true, status: true, writer: { select: { name: true } } } },

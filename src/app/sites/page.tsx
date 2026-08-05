@@ -14,6 +14,8 @@ interface SiteData {
   id: number;
   name: string;
   url: string | null;
+  subId: string | null;
+  bridgeUrl: string | null;
   productsCount: number;
   categoriesCount: number;
   linksCount: number;
@@ -35,6 +37,8 @@ export default function SitesPage() {
   const [form, setForm] = useState({
     name: "",
     url: "",
+    subId: "",
+    bridgeUrl: "",
     categoryIds: [] as number[],
   });
   const [urlError, setUrlError] = useState("");
@@ -62,7 +66,7 @@ export default function SitesPage() {
 
   const openAddModal = () => {
     setEditingSiteId(null);
-    setForm({ name: "", url: "", categoryIds: [] });
+    setForm({ name: "", url: "", subId: "", bridgeUrl: "", categoryIds: [] });
     setError("");
     setUrlError("");
     setShowModal(true);
@@ -73,6 +77,8 @@ export default function SitesPage() {
     setForm({ 
       name: s.name, 
       url: s.url || "",
+      subId: s.subId || "",
+      bridgeUrl: s.bridgeUrl || "",
       categoryIds: s.categories?.map(c => c.id) || []
     });
     setError("");
@@ -219,6 +225,21 @@ const isValidUrl = (url: string) => {
                   </div>
                 </div>
 
+                <div className="mb-3 space-y-1">
+                  {site.subId && (
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      <span className="font-bold text-slate-400 uppercase text-[9px] mr-1">Sub ID:</span>
+                      <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono text-[10px]">{site.subId}</span>
+                    </div>
+                  )}
+                  {site.bridgeUrl && (
+                    <div className="text-[11px] font-semibold text-slate-500 truncate">
+                      <span className="font-bold text-slate-400 uppercase text-[9px] mr-1">Bridge URL:</span>
+                      <span className="text-indigo-600 text-[11px]">{site.bridgeUrl}</span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="mb-4 flex flex-wrap gap-1.5">
                   {site.categories?.map(c => (
                     <span key={c.id} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded">
@@ -299,6 +320,30 @@ const isValidUrl = (url: string) => {
                 {urlError && (
                   <p className="text-[11px] font-semibold text-rose-500 mt-1">{urlError}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sub ID (Site Default)</label>
+                <input
+                  type="text"
+                  value={form.subId}
+                  onChange={(e) => setForm({ ...form, subId: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                  placeholder="e.g. site_sub_01"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Used to auto-fill Sub ID for links created under this site.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Bridge Page Base URL</label>
+                <input
+                  type="url"
+                  value={form.bridgeUrl}
+                  onChange={(e) => setForm({ ...form, bridgeUrl: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. https://mybridge.com/pages"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Product slug will be appended automatically (e.g. https://mybridge.com/pages/product-slug).</p>
               </div>
 
               <div>

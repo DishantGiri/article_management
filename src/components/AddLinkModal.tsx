@@ -6,7 +6,13 @@ import { useSession } from "next-auth/react";
 interface Product {
   id: number;
   name: string;
-  site: { name: string };
+  site: {
+    id: number;
+    name: string;
+    url?: string | null;
+    subId?: string | null;
+    bridgeUrl?: string | null;
+  };
 }
 
 interface AddLinkModalProps {
@@ -26,7 +32,6 @@ const LINK_STATUSES = [
   { value: "REDIRECTED", label: "Redirected" },
 ];
 
-
 const isValidUrl = (url: string) => {
   if (!url) return true;
   try {
@@ -38,14 +43,23 @@ const isValidUrl = (url: string) => {
   }
 };
 
+const slugify = (text: string) => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
+
 export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedProductId }: AddLinkModalProps) {
   const { data: session } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
+  const [globalSettings, setGlobalSettings] = useState<{ defaultSubId?: string; defaultBridgeUrl?: string }>({});
   const [loadingProducts, setLoadingProducts] = useState(false);
   
   const [selectedProductName, setSelectedProductName] = useState<string>("");
   const [siteLinks, setSiteLinks] = useState<Record<number, { bridgePageLink: string; buyLink: string }>>({});
-  // Per-site selection checkboxes (Fix 3: multi-site attribution bug)
   const [selectedSites, setSelectedSites] = useState<Record<number, boolean>>({});
   const [affiliateName, setAffiliateName] = useState("");
   const [affiliateLink, setAffiliateLink] = useState("");
@@ -73,6 +87,11 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
 
   useEffect(() => {
     if (isOpen) {
+      fetch("/api/settings")
+        .then(r => r.json())
+        .then(data => setGlobalSettings(data))
+        .catch(e => console.error("Failed to load settings", e));
+
       fetch("/api/affiliates")
         .then(r => r.json())
         .then(data => { setDbAffiliates(Array.isArray(data) ? data : []); })
@@ -93,7 +112,6 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
       setError("");
       setAffiliateLinkError("");
       setSiteLinkErrors({});
-      
 
       const mockUserId = session?.user?.id || 1;
       setLoadingProducts(true);
@@ -101,18 +119,14 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
         .then(r => r.json())
         .then(data => {
           const fetchedProds = Array.isArray(data) ? data : [];
-          
-
 
           // Only keep products that have no links yet
           const unlinkedProds = fetchedProds.filter((p: any) => !p.linkLogs || p.linkLogs.length === 0);
           setProducts(unlinkedProds);
           
           if (preselectedProductId) {
-            // Find in the main list to get its name (even if filtered, we can use it to set the state)
             const found = fetchedProds.find((p: any) => p.id === preselectedProductId);
             if (found) {
-              // Ensure the preselected product is in the products list if not already
               if (!unlinkedProds.some(p => p.id === preselectedProductId)) {
                 setProducts(prev => [found, ...prev]);
               }
@@ -125,20 +139,29 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
     }
   }, [isOpen, preselectedProductId]);
 
-  // When selected product name changes, initialize the inputs for all its sites
+  // When selected product name changes, initialize the inputs for all its sites with auto-generated bridge link
   useEffect(() => {
     const matching = products.filter((p) => p.name === selectedProductName);
     const initialInputs: Record<number, { bridgePageLink: string; buyLink: string }> = {};
     const initialSelection: Record<number, boolean> = {};
+
     matching.forEach((p) => {
-      initialInputs[p.id] = { bridgePageLink: "", buyLink: "" };
-      // If a specific product was preselected, only check that site; else check all
+      const slug = slugify(p.name);
+      const baseBridge = (p.site?.bridgeUrl || globalSettings.defaultBridgeUrl || p.site?.url || "").trim();
+      let autoBridgeLink = "";
+      if (baseBridge) {
+        const cleanBase = baseBridge.replace(/\/+$/, "");
+        autoBridgeLink = `${cleanBase}/${slug}`;
+      }
+
+      initialInputs[p.id] = { bridgePageLink: autoBridgeLink, buyLink: "" };
       initialSelection[p.id] = preselectedProductId ? p.id === preselectedProductId : true;
     });
+
     setSiteLinks(initialInputs);
     setSelectedSites(initialSelection);
     setSiteLinkErrors({});
-  }, [selectedProductName, products]);
+  }, [selectedProductName, products, globalSettings, preselectedProductId]);
 
   const toggleGeo = (geo: string) => {
     setGeos(prev => prev.includes(geo) ? prev.filter(g => g !== geo) : [...prev, geo]);
@@ -349,7 +372,21 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Affiliate Link *</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-bold text-slate-500 uppercase">Affiliate Link *</label>
+                {globalSettings.defaultSubId && affiliateLink && !affiliateLink.toLowerCase().includes("subid=") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const separator = affiliateLink.includes("?") ? "&" : "?";
+                      setAffiliateLink(`${affiliateLink}${separator}subid=${globalSettings.defaultSubId}`);
+                    }}
+                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline"
+                  >
+                    + Append Sub ID ({globalSettings.defaultSubId})
+                  </button>
+                )}
+              </div>
               <input
                 type="url"
                 value={affiliateLink}
@@ -381,6 +418,8 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
               {matchingProducts.map((p) => {
                 const prodErrors = siteLinkErrors[p.id] || {};
                 const isChecked = !!selectedSites[p.id];
+                const effectiveSubId = p.site.subId || globalSettings.defaultSubId || "";
+
                 return (
                   <div key={p.id} className={`p-4 border rounded-xl space-y-3 transition-colors ${isChecked ? "bg-slate-50 border-slate-200/50" : "bg-slate-50/40 border-slate-200/30 opacity-60"}`}>
                     <div className="flex items-center justify-between">
@@ -393,7 +432,14 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
                         />
                         <span className="text-xs font-bold text-indigo-700">{p.site.name}</span>
                       </label>
-                      <span className="text-[10px] text-slate-400 font-semibold">Product ID: {p.id}</span>
+                      <div className="flex items-center gap-2">
+                        {effectiveSubId && (
+                          <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-mono font-bold">
+                            Sub ID: {effectiveSubId}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-400 font-semibold">Product ID: {p.id}</span>
+                      </div>
                     </div>
                     {isChecked && (
                       <div className="grid grid-cols-2 gap-3">
