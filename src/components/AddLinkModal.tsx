@@ -214,7 +214,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
         autoBridgeLink = `${cleanBase}/${slug}`;
       }
 
-      const baseBuy = (p.site?.buyUrl || "").trim();
+      const baseBuy = (p.site?.buyUrl || p.site?.bridgeUrl || p.site?.url || "").trim();
       let autoBuyLink = "";
       if (baseBuy) {
         const cleanBuyBase = baseBuy.replace(/\/+$/, "");
@@ -250,7 +250,7 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
             newBridge = `${cleanBase}/${slug}`;
           }
 
-          const baseBuy = (p.site?.buyUrl || "").trim();
+          const baseBuy = (p.site?.buyUrl || p.site?.bridgeUrl || p.site?.url || "").trim();
           if (baseBuy) {
             const cleanBuyBase = baseBuy.replace(/\/+$/, "");
             newBuy = `${cleanBuyBase}/${slug}`;
@@ -807,19 +807,22 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
                             <div className="flex items-center justify-between mb-1">
                               <label className="block text-[10px] font-bold text-slate-500 uppercase">Buy Link</label>
                               <div className="flex items-center gap-2">
-                                {p.site?.buyUrl && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const slug = slugify(selectedProductName);
-                                      const cleanBuyBase = p.site.buyUrl!.trim().replace(/\/+$/, "");
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const slug = slugify(selectedProductName);
+                                    const baseBuy = (p.site?.buyUrl || p.site?.bridgeUrl || p.site?.url || "").trim();
+                                    if (baseBuy) {
+                                      const cleanBuyBase = baseBuy.replace(/\/+$/, "");
                                       updateSiteLink(p.id, "buyLink", `${cleanBuyBase}/${slug}`);
-                                    }}
-                                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-0.5 cursor-pointer"
-                                  >
-                                    <Sparkles className="w-3 h-3 text-amber-500" /> Auto-fill
-                                  </button>
-                                )}
+                                    } else {
+                                      toast.error("No base buy URL defined for site");
+                                    }
+                                  }}
+                                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-0.5 cursor-pointer"
+                                >
+                                  <Sparkles className="w-3 h-3 text-amber-500" /> Auto-fill
+                                </button>
                                 {affiliateLink && (
                                   <button
                                     type="button"
