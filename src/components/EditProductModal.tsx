@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import {
+  Package,
+  X,
+  Globe,
+  Tag,
+  TrendingUp,
+  Link2,
+  AlertCircle,
+  Building2,
+  Layers,
+  ChevronDown,
+} from "lucide-react";
 
 interface Site {
   id: number;
@@ -9,6 +21,11 @@ interface Site {
 }
 
 interface Category {
+  id: number;
+  name: string;
+}
+
+interface Affiliate {
   id: number;
   name: string;
 }
@@ -21,6 +38,8 @@ interface EditProductModalProps {
     id: number;
     name: string;
     trendLink?: string | null;
+    trendLevel?: string | null;
+    affiliateName?: string | null;
     previewLink?: string | null;
     remarks?: string | null;
     siteId: number;
@@ -39,10 +58,17 @@ const isValidUrl = (url: string) => {
   }
 };
 
-export default function EditProductModal({ isOpen, onClose, onSuccess, product }: EditProductModalProps) {
+export default function EditProductModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  product,
+}: EditProductModalProps) {
   const { data: session } = useSession();
   const [sites, setSites] = useState<Site[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -51,6 +77,11 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
   const [siteId, setSiteId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [trendLink, setTrendLink] = useState("");
+  const [trendLevel, setTrendLevel] = useState("HIGH");
+  const [affiliateName, setAffiliateName] = useState("");
+  const [customAffiliate, setCustomAffiliate] = useState("");
+  const [showCustomAffiliate, setShowCustomAffiliate] = useState(false);
+
   const [previewLink, setPreviewLink] = useState("");
   const [remarks, setRemarks] = useState("");
 
@@ -63,6 +94,10 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
       setSiteId(product.siteId?.toString() || "");
       setCategoryId(product.categoryId?.toString() || "");
       setTrendLink(product.trendLink || "");
+      setTrendLevel(product.trendLevel || "HIGH");
+      setAffiliateName(product.affiliateName || "");
+      setShowCustomAffiliate(false);
+      setCustomAffiliate("");
       setPreviewLink(product.previewLink || "");
       setRemarks(product.remarks || "");
       setError("");
@@ -73,10 +108,12 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
       Promise.all([
         fetch("/api/categories").then((r) => r.json()),
         fetch("/api/sites").then((r) => r.json()),
+        fetch("/api/affiliates").then((r) => r.json()),
       ])
-        .then(([catsData, sitesData]) => {
+        .then(([catsData, sitesData, affsData]) => {
           setCategories(Array.isArray(catsData) ? catsData : []);
           setSites(Array.isArray(sitesData) ? sitesData : []);
+          setAffiliates(Array.isArray(affsData) ? affsData : []);
         })
         .catch(() => setError("Failed to load initial metadata"))
         .finally(() => setLoading(false));
@@ -109,7 +146,17 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
     setSubmitting(true);
     setError("");
 
+    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim() : affiliateName;
+
     try {
+      if (showCustomAffiliate && customAffiliate.trim()) {
+        fetch("/api/affiliates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: customAffiliate.trim() }),
+        }).catch(() => {});
+      }
+
       const mockUserId = session?.user?.id || 1;
       const res = await fetch(`/api/products/${product.id}`, {
         method: "PATCH",
@@ -119,6 +166,8 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
           siteId: parseInt(siteId),
           categoryId: parseInt(categoryId),
           trendLink: trendLink || null,
+          trendLevel: trendLevel || "HIGH",
+          affiliateName: finalAffiliate || null,
           previewLink: previewLink || null,
           remarks: remarks || null,
           callerId: mockUserId,
@@ -142,21 +191,32 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
   if (!isOpen || !product) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Edit Product</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col border border-slate-100">
+        {/* Modal Header */}
+        <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shadow-inner">
+              <Package className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white tracking-tight">Edit Product Details</h2>
+              <p className="text-xs text-slate-300 font-medium">Update site, category, trend rating & affiliate metadata</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-4">
+        <div className="p-6 overflow-y-auto space-y-4 flex-1">
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-2">
-              <span className="font-bold">!</span> {error}
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
@@ -166,72 +226,179 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
             </div>
           ) : (
             <>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Product Name *</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Alpha Whey"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Site *</label>
-                  <select
-                    value={siteId}
-                    onChange={(e) => setSiteId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-                  >
-                    <option value="">Select Site...</option>
-                    {sites.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
+              {/* Product Name & Affiliate */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-indigo-600" />
+                    Product Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Alpha Whey"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                  />
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Category *</label>
-                  <select
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-                  >
-                    <option value="">Select Category...</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                    Affiliate Network / Name
+                  </label>
+                  {!showCustomAffiliate ? (
+                    <div className="relative">
+                      <select
+                        value={affiliateName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "__NEW__") {
+                            setShowCustomAffiliate(true);
+                            setAffiliateName("");
+                          } else {
+                            setAffiliateName(val);
+                          }
+                        }}
+                        className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+                      >
+                        <option value="" className="text-slate-400 font-medium">Select Affiliate...</option>
+                        {affiliates.map((aff) => (
+                          <option key={aff.id} value={aff.name} className="font-semibold text-slate-800">
+                            {aff.name}
+                          </option>
+                        ))}
+                        <option value="__NEW__" className="font-bold text-indigo-600 bg-indigo-50">
+                          + Add Custom Affiliate...
+                        </option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customAffiliate}
+                        onChange={(e) => setCustomAffiliate(e.target.value)}
+                        placeholder="Enter affiliate name..."
+                        className="flex-1 px-3.5 py-2.5 bg-white border border-indigo-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomAffiliate(false)}
+                        className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Trend Link</label>
-                <input
-                  type="url"
-                  value={trendLink}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setTrendLink(val);
-                    if (val && !isValidUrl(val)) {
-                      setTrendLinkError("Must start with http:// or https:// and be a valid URL");
-                    } else {
-                      setTrendLinkError("");
-                    }
-                  }}
-                  placeholder="https://..."
-                  className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
-                    trendLinkError ? "border-rose-400 focus:border-rose-500" : "border-slate-200 focus:border-indigo-500"
-                  }`}
-                />
-                {trendLinkError && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{trendLinkError}</p>
-                )}
+              {/* Site & Category */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                    Site <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={siteId}
+                      onChange={(e) => setSiteId(e.target.value)}
+                      className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <option value="" className="text-slate-400 font-medium">Select Site...</option>
+                      {sites.map((s) => (
+                        <option key={s.id} value={s.id} className="font-semibold text-slate-800">
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                    Category <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <option value="" className="text-slate-400 font-medium">Select Category...</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id} className="font-semibold text-slate-800">
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Preview Link</label>
+              {/* Trend Level & Trend Link */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                    Trend Level
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={trendLevel}
+                      onChange={(e) => setTrendLevel(e.target.value)}
+                      className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <option value="HIGH">🔥 High Trend</option>
+                      <option value="MODERATE">📈 Moderate Trend</option>
+                      <option value="LOW">📉 Low / Stable</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Link2 className="w-3.5 h-3.5 text-indigo-600" />
+                    Trend Link URL
+                  </label>
+                  <input
+                    type="url"
+                    value={trendLink}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTrendLink(val);
+                      if (val && !isValidUrl(val)) {
+                        setTrendLinkError("Must start with http:// or https:// and be a valid URL");
+                      } else {
+                        setTrendLinkError("");
+                      }
+                    }}
+                    placeholder="https://..."
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
+                      trendLinkError
+                        ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
+                        : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    }`}
+                  />
+                  {trendLinkError && (
+                    <p className="text-xs font-semibold text-rose-500">{trendLinkError}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Preview Link */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                  Preview Link URL
+                </label>
                 <input
                   type="url"
                   value={previewLink}
@@ -245,30 +412,34 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
                     }
                   }}
                   placeholder="https://..."
-                  className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
-                    previewLinkError ? "border-rose-400 focus:border-rose-500" : "border-slate-200 focus:border-indigo-500"
+                  className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
+                    previewLinkError
+                      ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
+                      : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   }`}
                 />
                 {previewLinkError && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{previewLinkError}</p>
+                  <p className="text-xs font-semibold text-rose-500">{previewLinkError}</p>
                 )}
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Remarks</label>
+              {/* Remarks */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Remarks</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+                  placeholder="Optional notes or instructions..."
+                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none shadow-2xs"
                 />
               </div>
 
-              <div className="flex gap-2 pt-4 border-t border-slate-100 justify-end">
+              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 justify-end">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition text-sm"
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition text-xs cursor-pointer shadow-2xs"
                 >
                   Cancel
                 </button>
@@ -276,7 +447,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
                   type="button"
                   disabled={!name.trim() || submitting}
                   onClick={handleSubmit}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50 transition text-sm flex items-center justify-center gap-2"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {submitting ? "Saving..." : "Save Changes"}
                 </button>

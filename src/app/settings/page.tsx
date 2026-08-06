@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { Settings as SettingsIcon, User, Save } from "lucide-react";
 import { useSession } from "next-auth/react";
 
+import AffiliateSettingsTab from "@/components/AffiliateSettingsTab";
+
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"profile" | "linkDefaults">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "linkDefaults" | "affiliates">("profile");
   const [currentUserId, setCurrentUserId] = useState<number>(1);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -121,7 +123,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-900">Settings</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Manage your account and system preferences
+          Manage your account, affiliate networks, and system preferences
         </p>
       </div>
 
@@ -139,6 +141,16 @@ export default function SettingsPage() {
             Profile
           </button>
           <button
+            onClick={() => setActiveTab("affiliates")}
+            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === "affiliates"
+                ? "border-indigo-500 text-indigo-600 font-bold"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            Affiliate Settings & Sub IDs
+          </button>
+          <button
             onClick={() => setActiveTab("linkDefaults")}
             className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === "linkDefaults"
@@ -146,7 +158,7 @@ export default function SettingsPage() {
                 : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             }`}
           >
-            Global Link Defaults (Sub ID & Bridge Page)
+            Global Link Defaults
           </button>
         </nav>
       </div>
@@ -224,6 +236,9 @@ export default function SettingsPage() {
           )}
         </div>
       )}
+
+      {/* Affiliate Settings Tab Content */}
+      {activeTab === "affiliates" && <AffiliateSettingsTab />}
 
       {/* Global Link Defaults Tab Content */}
       {activeTab === "linkDefaults" && (

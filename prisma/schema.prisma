@@ -156,16 +156,18 @@ model Category {
 // ─────────────────────────────────────────────
 
 model Product {
-  id          Int         @id @default(autoincrement())
-  name        String
+  id            Int         @id @default(autoincrement())
+  name          String
 
-  siteId      Int
-  categoryId  Int
-  trendLink   String?
-  previewLink String?
-  remarks     String?     @db.Text
-  addedById   Int
-  addedAt     DateTime    @default(now())
+  siteId        Int
+  categoryId    Int
+  trendLink     String?
+  trendLevel    String?     @default("HIGH") // HIGH, MODERATE, LOW
+  affiliateName String?     // Selected from Affiliate dropdown
+  previewLink   String?
+  remarks       String?     @db.Text
+  addedById     Int
+  addedAt       DateTime    @default(now())
 
   site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -306,9 +308,12 @@ model ArticleHistory {
 }
 
 model AffiliateName {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  createdAt DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  defaultUrl   String?  @db.Text
+  subIdPattern String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 }
 
 model Geo {

@@ -50,7 +50,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { name, siteId, categoryId, trendLink, previewLink, remarks, callerId } = body;
+    const { name, siteId, categoryId, trendLink, trendLevel, affiliateName, previewLink, remarks, callerId } = body;
 
     const callerIdNum = Number(callerId);
     if (!callerIdNum || !(await hasPermission(callerIdNum))) {
@@ -72,6 +72,8 @@ export async function PATCH(
         ...(siteId !== undefined ? { siteId: Number(siteId) } : {}),
         ...(categoryId !== undefined ? { categoryId: Number(categoryId) } : {}),
         ...(trendLink !== undefined ? { trendLink: trendLink || null } : {}),
+        ...(trendLevel !== undefined ? { trendLevel: trendLevel || "HIGH" } : {}),
+        ...(affiliateName !== undefined ? { affiliateName: affiliateName || null } : {}),
         ...(previewLink !== undefined ? { previewLink: previewLink || null } : {}),
         ...(remarks !== undefined ? { remarks: remarks || null } : {}),
       },

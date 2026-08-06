@@ -1,8 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import {
+  Package,
+  X,
+  Globe,
+  Tag,
+  TrendingUp,
+  Link2,
+  Layers,
+  Plus,
+  AlertCircle,
+  Sparkles,
+  Check,
+  ChevronDown,
+} from "lucide-react";
 
 interface Site {
   id: number;
@@ -14,10 +27,17 @@ interface Category {
   name: string;
 }
 
+interface Affiliate {
+  id: number;
+  name: string;
+}
+
 interface FormData {
   categoryIds: number[];
   name: string;
   trendLink: string;
+  trendLevel: string;
+  affiliateName: string;
   previewLink: string;
   remarks: string;
 }
@@ -34,11 +54,11 @@ function StepIndicator({ step }: { step: number }) {
           <div key={idx} className="flex items-center flex-1 last:flex-none">
             <div className="flex flex-col items-center gap-1">
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300 ${
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                   done
                     ? "bg-emerald-500 text-white"
                     : active
-                    ? "bg-indigo-600 text-white ring-2 ring-indigo-200"
+                    ? "bg-indigo-600 text-white ring-4 ring-indigo-100 shadow-xs"
                     : "bg-slate-100 text-slate-400 border border-slate-200"
                 }`}
               >
@@ -51,7 +71,7 @@ function StepIndicator({ step }: { step: number }) {
                 )}
               </div>
               <span
-                className={`text-[10px] font-medium whitespace-nowrap ${
+                className={`text-[10px] font-bold tracking-tight whitespace-nowrap ${
                   active ? "text-indigo-600" : done ? "text-emerald-600" : "text-slate-400"
                 }`}
               >
@@ -72,20 +92,35 @@ function StepIndicator({ step }: { step: number }) {
   );
 }
 
-export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClose: () => void, onSuccess?: () => void }) {
+export default function AddProductModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+}) {
   const { data: session } = useSession();
   const [step, setStep] = useState(1);
   const [sites, setSites] = useState<Site[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [successState, setSuccessState] = useState(false);
 
+  const [customAffiliate, setCustomAffiliate] = useState("");
+  const [showCustomAffiliate, setShowCustomAffiliate] = useState(false);
+
   const [form, setForm] = useState<FormData>({
     categoryIds: [],
     name: "",
     trendLink: "",
+    trendLevel: "HIGH",
+    affiliateName: "",
     previewLink: "",
     remarks: "",
   });
@@ -100,7 +135,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
   const [newSiteUrl, setNewSiteUrl] = useState("");
   const [addingSite, setAddingSite] = useState(false);
 
-  const handleInlineAddCategory = async (e: React.FormEvent) => {
+  const handleInlineAddCat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
     setAddingCat(true);
@@ -160,15 +195,27 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
       setSuccessState(false);
       setShowAddCat(false);
       setShowAddSite(false);
-      setForm({ categoryIds: [], name: "", trendLink: "", previewLink: "", remarks: "" });
+      setShowCustomAffiliate(false);
+      setCustomAffiliate("");
+      setForm({
+        categoryIds: [],
+        name: "",
+        trendLink: "",
+        trendLevel: "HIGH",
+        affiliateName: "",
+        previewLink: "",
+        remarks: "",
+      });
       setLoading(true);
       Promise.all([
         fetch("/api/categories").then((r) => r.json()),
-        fetch("/api/sites").then((r) => r.json())
+        fetch("/api/sites").then((r) => r.json()),
+        fetch("/api/affiliates").then((r) => r.json()),
       ])
-        .then(([catsData, sitesData]) => {
+        .then(([catsData, sitesData, affsData]) => {
           setCategories(Array.isArray(catsData) ? catsData : []);
           setSites(Array.isArray(sitesData) ? sitesData : []);
+          setAffiliates(Array.isArray(affsData) ? affsData : []);
         })
         .catch(() => setError("Failed to load initial data"))
         .finally(() => setLoading(false));
@@ -228,7 +275,17 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
     setSubmitting(true);
     setError("");
 
+    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim() : form.affiliateName;
+
     try {
+      if (showCustomAffiliate && customAffiliate.trim()) {
+        fetch("/api/affiliates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: customAffiliate.trim() }),
+        }).catch(() => {});
+      }
+
       const res = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -236,6 +293,8 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
           name: form.name.trim(),
           categoryIds: form.categoryIds,
           trendLink: form.trendLink || null,
+          trendLevel: form.trendLevel || "HIGH",
+          affiliateName: finalAffiliate || null,
           previewLink: form.previewLink || null,
           remarks: form.remarks || null,
           addedById: session?.user?.id || 1,
@@ -263,50 +322,67 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
       .join(", ");
   };
 
-  const previewSites = sites.filter((site: any) => 
+  const previewSites = sites.filter((site: any) =>
     site.categories?.some((c: any) => form.categoryIds.includes(c.id))
   );
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Add New Product</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col border border-slate-100">
+        {/* Modal Header */}
+        <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shadow-inner">
+              <Package className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white tracking-tight">Add New Product</h2>
+              <p className="text-xs text-slate-300 font-medium">Select categories, websites, trend rating & affiliate info</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto">
+        {/* Modal Content */}
+        <div className="p-6 overflow-y-auto flex-1">
           {successState ? (
-            <div className="text-center py-6">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-200">
+                <Sparkles className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">Product Added!</h3>
-              <p className="text-sm text-slate-500 mb-6">
-                <strong className="text-slate-700">{form.name}</strong> has been successfully added to {getCategoryNames()}.
+              <h3 className="text-lg font-bold text-slate-900 mb-1">Product Added Successfully!</h3>
+              <p className="text-xs text-slate-500 font-medium mb-6">
+                <strong className="text-slate-800">{form.name}</strong> has been added to {getCategoryNames()}.
               </p>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={() => {
-                    setForm({ categoryIds: [], name: "", trendLink: "", previewLink: "", remarks: "" });
+                    setForm({
+                      categoryIds: [],
+                      name: "",
+                      trendLink: "",
+                      trendLevel: "HIGH",
+                      affiliateName: "",
+                      previewLink: "",
+                      remarks: "",
+                    });
                     setStep(1);
                     setSuccessState(false);
                   }}
-                  className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition"
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition cursor-pointer"
                 >
                   Add Another
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+                  className="px-5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition cursor-pointer"
                 >
                   Done
                 </button>
@@ -317,8 +393,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
               <StepIndicator step={step} />
 
               {error && (
-                <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-2">
-                  <span className="font-bold">!</span> {error}
+                <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
@@ -326,81 +403,88 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
               {step === 1 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-800">Select Categories</h3>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                      Select Categories <span className="text-rose-500">*</span>
+                    </label>
                     <button
                       type="button"
                       onClick={() => setShowAddCat(!showAddCat)}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1"
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
                     >
-                      {showAddCat ? "Cancel" : "+ Add Category"}
+                      <Plus className="w-3.5 h-3.5" />
+                      {showAddCat ? "Cancel" : "Add Category"}
                     </button>
                   </div>
 
                   {showAddCat && (
-                    <form onSubmit={handleInlineAddCategory} className="p-3 bg-slate-50 rounded-lg border border-indigo-100 flex gap-2">
+                    <form onSubmit={handleInlineAddCat} className="p-3 bg-indigo-50/40 rounded-xl border border-indigo-100 space-y-2">
                       <input
                         type="text"
-                        placeholder="New category name..."
                         value={newCatName}
                         onChange={(e) => setNewCatName(e.target.value)}
-                        className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        autoFocus
+                        placeholder="Category name (e.g. Skin Care)"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
                       />
                       <button
                         type="submit"
                         disabled={addingCat || !newCatName.trim()}
-                        className="px-3 py-1.5 bg-indigo-600 text-white rounded text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 transition shrink-0"
+                        className="w-full py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
                       >
-                        {addingCat ? "..." : "Add"}
+                        {addingCat ? "Saving..." : "Create & Select"}
                       </button>
                     </form>
                   )}
 
                   {loading ? (
-                    <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" /></div>
+                    <div className="text-center py-8 text-xs text-slate-500 font-semibold">Loading categories...</div>
                   ) : categories.length === 0 ? (
-                    <div className="text-center py-4 text-slate-500 text-sm">No categories found. Click "+ Add Category" above to create one.</div>
+                    <div className="text-center py-6 text-xs text-slate-500 italic">No categories found. Click "+ Add Category" above.</div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                      {categories.map((cat) => {
-                        const isSelected = form.categoryIds.includes(cat.id);
+                    <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 pr-2">
+                      {categories.map((c) => {
+                        const selected = form.categoryIds.includes(c.id);
                         return (
                           <button
-                            key={cat.id}
+                            key={c.id}
                             type="button"
                             onClick={() => {
                               setForm((prev) => ({
                                 ...prev,
-                                categoryIds: isSelected 
-                                  ? prev.categoryIds.filter((id) => id !== cat.id)
-                                  : [...prev.categoryIds, cat.id]
+                                categoryIds: selected
+                                  ? prev.categoryIds.filter((id) => id !== c.id)
+                                  : [...prev.categoryIds, c.id],
                               }));
-                              setError("");
                             }}
-                            className={`p-3 rounded-lg border text-left transition-all flex items-center justify-between ${
-                              isSelected
-                                ? "border-indigo-500 bg-indigo-50"
-                                : "border-slate-200 hover:border-indigo-200 hover:bg-slate-50"
+                            className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                              selected
+                                ? "bg-indigo-50/70 border-indigo-300 text-indigo-900 font-bold shadow-2xs"
+                                : "bg-white border-slate-200 text-slate-700 font-semibold hover:border-slate-300"
                             }`}
                           >
-                            <div className="font-semibold text-slate-800 text-sm truncate">{cat.name}</div>
-                            {isSelected && (
-                              <svg className="w-4 h-4 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
+                            <span className="text-xs truncate">{c.name}</span>
+                            <div
+                              className={`w-4 h-4 rounded-md flex items-center justify-center border transition ${
+                                selected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-300 bg-white"
+                              }`}
+                            >
+                              {selected && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
                           </button>
                         );
                       })}
                     </div>
                   )}
-                  <button
-                    disabled={form.categoryIds.length === 0}
-                    onClick={() => setStep(2)}
-                    className="w-full mt-4 py-2.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50 transition text-sm"
-                  >
-                    Continue
-                  </button>
+
+                  <div className="pt-2">
+                    <button
+                      disabled={form.categoryIds.length === 0}
+                      onClick={() => setStep(2)}
+                      className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer shadow-md shadow-indigo-100"
+                    >
+                      Continue ({form.categoryIds.length} selected)
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -408,74 +492,77 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
               {step === 2 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-800">Preview Websites</h3>
-                      <p className="text-xs text-slate-500">The product will be automatically added to these websites.</p>
-                    </div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                      Associated Websites
+                    </label>
                     <button
                       type="button"
                       onClick={() => setShowAddSite(!showAddSite)}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1 shrink-0"
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
                     >
-                      {showAddSite ? "Cancel" : "+ Add Website"}
+                      <Plus className="w-3.5 h-3.5" />
+                      {showAddSite ? "Cancel" : "Add Website"}
                     </button>
                   </div>
 
                   {showAddSite && (
-                    <form onSubmit={handleInlineAddSite} className="p-3 bg-slate-50 rounded-lg border border-indigo-100 space-y-2">
+                    <form onSubmit={handleInlineAddSite} className="p-3 bg-indigo-50/40 rounded-xl border border-indigo-100 space-y-2">
                       <input
                         type="text"
-                        placeholder="Website Name (e.g. Health Daily)"
                         value={newSiteName}
                         onChange={(e) => setNewSiteName(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        autoFocus
+                        placeholder="Site Name (e.g. Health Daily)"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
                       />
                       <input
                         type="url"
-                        placeholder="Website URL (optional)"
                         value={newSiteUrl}
                         onChange={(e) => setNewSiteUrl(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Site URL (https://...)"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
                       />
-                      <div className="flex justify-end">
-                        <button
-                          type="submit"
-                          disabled={addingSite || !newSiteName.trim()}
-                          className="px-3 py-1.5 bg-indigo-600 text-white rounded text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 transition"
-                        >
-                          {addingSite ? "..." : "Add & Assign"}
-                        </button>
-                      </div>
+                      <button
+                        type="submit"
+                        disabled={addingSite || !newSiteName.trim()}
+                        className="w-full py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
+                      >
+                        {addingSite ? "Saving..." : "Create & Link"}
+                      </button>
                     </form>
                   )}
 
                   {previewSites.length === 0 ? (
-                    <div className="text-center py-4 text-slate-500 text-sm">No websites found for the selected categories. Click "+ Add Website" above to add one.</div>
+                    <div className="text-center py-6 text-xs text-slate-500 italic">
+                      No websites found for selected categories. Click "+ Add Website" above to configure one.
+                    </div>
                   ) : (
-                    <div className="space-y-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="space-y-2 max-h-52 overflow-y-auto p-1 pr-2">
                       {previewSites.map((site: any) => (
                         <div
                           key={site.id}
-                          className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 flex items-center justify-between"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between"
                         >
-                          <span className="font-semibold text-slate-700 text-sm">{site.name}</span>
-                          <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold">Auto-assigned</span>
+                          <span className="font-bold text-slate-800 text-xs">{site.name}</span>
+                          <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-bold border border-indigo-100">
+                            Auto-assigned
+                          </span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-2 mt-4">
+
+                  <div className="flex gap-3 pt-2">
                     <button
                       onClick={() => setStep(1)}
-                      className="flex-1 py-2.5 rounded-lg border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition text-sm"
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition text-xs cursor-pointer"
                     >
                       Back
                     </button>
                     <button
                       disabled={previewSites.length === 0}
                       onClick={() => setStep(3)}
-                      className="flex-1 py-2.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50 transition text-sm"
+                      className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer shadow-md shadow-indigo-100"
                     >
                       Continue
                     </button>
@@ -486,70 +573,169 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: { isOpen
               {/* STEP 3 */}
               {step === 3 && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Product Name *</label>
-                    <input
-                      type="text"
-                      value={form.name}
-                      onChange={(e) => update("name", e.target.value)}
-                      placeholder="e.g. Alpha Whey"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
-                    />
+                  {/* Grid 2-Column: Product Name & Affiliate Dropdown */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Product Name */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Package className="w-3.5 h-3.5 text-indigo-600" />
+                        Product Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={form.name}
+                        onChange={(e) => update("name", e.target.value)}
+                        placeholder="e.g. Alpha Whey"
+                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                      />
+                    </div>
+
+                    {/* Affiliate Network Dropdown */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                        Affiliate Network / Name
+                      </label>
+                      {!showCustomAffiliate ? (
+                        <div className="relative">
+                          <select
+                            value={form.affiliateName}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "__NEW__") {
+                                setShowCustomAffiliate(true);
+                                setForm((prev) => ({ ...prev, affiliateName: "" }));
+                              } else {
+                                setForm((prev) => ({ ...prev, affiliateName: val }));
+                              }
+                            }}
+                            className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+                          >
+                            <option value="" className="text-slate-400 font-medium">Select Affiliate...</option>
+                            {affiliates.map((aff) => (
+                              <option key={aff.id} value={aff.name} className="font-semibold text-slate-800">
+                                {aff.name}
+                              </option>
+                            ))}
+                            <option value="__NEW__" className="font-bold text-indigo-600 bg-indigo-50">
+                              + Add Custom Affiliate...
+                            </option>
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={customAffiliate}
+                            onChange={(e) => setCustomAffiliate(e.target.value)}
+                            placeholder="Enter affiliate name..."
+                            className="flex-1 px-3.5 py-2.5 bg-white border border-indigo-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomAffiliate(false)}
+                            className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Trend Link</label>
-                    <input
-                      type="url"
-                      value={form.trendLink}
-                      onChange={(e) => update("trendLink", e.target.value)}
-                      placeholder="https://..."
-                      className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
-                        fieldErrors.trendLink
-                          ? "border-rose-400 focus:border-rose-500"
-                          : "border-slate-200 focus:border-indigo-500"
-                      }`}
-                    />
-                    {fieldErrors.trendLink && (
-                      <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.trendLink}</p>
-                    )}
+
+                  {/* Grid 2-Column: Trend Level & Trend Link */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Trend Rating Dropdown */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                        Trend Level
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={form.trendLevel}
+                          onChange={(e) => update("trendLevel", e.target.value)}
+                          className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+                        >
+                          <option value="HIGH">🔥 High Trend</option>
+                          <option value="MODERATE">📈 Moderate Trend</option>
+                          <option value="LOW">📉 Low / Stable</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Trend Link */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Link2 className="w-3.5 h-3.5 text-indigo-600" />
+                        Trend Link URL
+                      </label>
+                      <input
+                        type="url"
+                        value={form.trendLink}
+                        onChange={(e) => update("trendLink", e.target.value)}
+                        placeholder="https://..."
+                        className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
+                          fieldErrors.trendLink
+                            ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
+                            : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        }`}
+                      />
+                      {fieldErrors.trendLink && (
+                        <p className="text-xs font-semibold text-rose-500">{fieldErrors.trendLink}</p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Preview Link</label>
+
+                  {/* Preview Link */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                      Preview Link URL
+                    </label>
                     <input
                       type="url"
                       value={form.previewLink}
                       onChange={(e) => update("previewLink", e.target.value)}
                       placeholder="https://..."
-                      className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
+                      className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
                         fieldErrors.previewLink
-                          ? "border-rose-400 focus:border-rose-500"
-                          : "border-slate-200 focus:border-indigo-500"
+                          ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
+                          : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                       }`}
                     />
                     {fieldErrors.previewLink && (
-                      <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.previewLink}</p>
+                      <p className="text-xs font-semibold text-rose-500">{fieldErrors.previewLink}</p>
                     )}
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Remarks</label>
+
+                  {/* Remarks */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Remarks</label>
                     <textarea
                       rows={2}
                       value={form.remarks}
                       onChange={(e) => update("remarks", e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+                      placeholder="Optional notes or instructions..."
+                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none shadow-2xs"
                     />
                   </div>
-                  <div className="flex gap-2 mt-4">
+
+                  <div className="flex gap-3 pt-2">
                     <button
+                      type="button"
                       onClick={() => setStep(2)}
-                      className="flex-1 py-2.5 rounded-lg border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition text-sm"
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition text-xs shadow-2xs cursor-pointer"
                     >
                       Back
                     </button>
                     <button
+                      type="button"
                       disabled={!form.name.trim() || submitting}
                       onClick={handleSubmit}
-                      className="flex-1 py-2.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50 transition text-sm flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-indigo-100 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
                       {submitting ? "Saving..." : "Add Product"}
                     </button>

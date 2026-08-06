@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import AddProductModal from "@/components/AddProductModal";
@@ -370,42 +370,51 @@ export default function ProductsPage() {
         </div>
 
         {/* Status Filter */}
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[120px]"
-        >
-          <option value="">All Statuses</option>
-          <option value="PENDING">Pending</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="COMPLETED">Completed</option>
-          <option value="REJECTED">Rejected</option>
-          <option value="REVIEW">Review</option>
-        </select>
+        <div className="relative min-w-[130px]">
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+            className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+          >
+            <option value="">All Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="REVIEW">Review</option>
+          </select>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        </div>
 
         {/* Category Filter */}
-        <select
-          value={categoryFilter}
-          onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[140px] max-w-xs truncate"
-        >
-          <option value="">All Categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <div className="relative min-w-[140px] max-w-xs">
+          <select
+            value={categoryFilter}
+            onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
+            className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer truncate"
+          >
+            <option value="">All Categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        </div>
 
         {/* Added By User Filter */}
-        <select
-          value={userFilter}
-          onChange={(e) => { setUserFilter(e.target.value); setCurrentPage(1); }}
-          className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[130px]"
-        >
-          <option value="">All Adders</option>
-          {uniqueAdders.map((u) => (
-            <option key={u} value={u}>{u}</option>
-          ))}
-        </select>
+        <div className="relative min-w-[130px]">
+          <select
+            value={userFilter}
+            onChange={(e) => { setUserFilter(e.target.value); setCurrentPage(1); }}
+            className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+          >
+            <option value="">All Adders</option>
+            {uniqueAdders.map((u) => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        </div>
 
         {/* Date Range Start */}
         <div className="flex items-center gap-1.5">
@@ -453,6 +462,8 @@ export default function ProductsPage() {
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Name</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Affiliate</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trend</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Added By</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
                   {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
@@ -488,6 +499,30 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-3 py-3.5">
                         <span className="text-[13px] font-medium text-slate-600">{p.category?.name}</span>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        {p.affiliateName ? (
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100/60">
+                            {p.affiliateName}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3.5">
+                        {p.trendLevel === "MODERATE" ? (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100 flex items-center gap-1 w-fit">
+                            <TrendingUp className="w-3 h-3 text-amber-500" /> Moderate
+                          </span>
+                        ) : p.trendLevel === "LOW" ? (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 inline-block">
+                            Low
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-100 flex items-center gap-1 w-fit">
+                            <Flame className="w-3 h-3 text-rose-500" /> High
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3.5">
                         <span className="text-[13px] font-medium text-slate-600">{p.addedBy?.name}</span>

@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, categoryIds, trendLink, previewLink, remarks } = body;
+    const { name, categoryIds, trendLink, trendLevel, affiliateName, previewLink, remarks } = body;
 
     // Basic validation
     if (!name || !categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
           siteId: site.id,
           categoryId: cat.id,
           trendLink: trendLink || null,
+          trendLevel: trendLevel || "HIGH",
+          affiliateName: affiliateName || null,
           previewLink: previewLink || null,
           remarks: remarks || null,
           addedById: activeUserId,
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
         prisma.product.create({
           data: p,
           include: {
-            site: { select: { name: true, url: true } },
+            site: { select: { name: true, url: true, bridgeUrl: true, buyUrl: true } },
             category: { select: { name: true } },
             addedBy: { select: { name: true } },
           },
@@ -82,6 +84,28 @@ export async function POST(req: NextRequest) {
         })
       )
     );
+
+    // Auto-create LinkLog if affiliateName was provided
+    if (affiliateName && affiliateName.trim()) {
+      for (const p of createdProducts) {
+        const slug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        const bridgeUrl = p.site.bridgeUrl ? `${p.site.bridgeUrl.replace(/\/+$/, "")}/${slug}` : null;
+        const buyUrl = p.site.buyUrl ? `${p.site.buyUrl.replace(/\/+$/, "")}/${slug}` : (p.site.url ? `${p.site.url.replace(/\/+$/, "")}/${slug}` : null);
+
+        await prisma.linkLog.create({
+          data: {
+            productId: p.id,
+            addedById: activeUserId,
+            affiliateName: affiliateName.trim(),
+            affiliateLink: p.previewLink || p.trendLink || "",
+            bridgePageLink: bridgeUrl,
+            buyLink: buyUrl,
+            status: "REQUESTED",
+            linkerRemarks: p.remarks || null,
+          },
+        });
+      }
+    }
 
     // Notify writers who have access to the sites of these products
     for (const p of createdProducts) {
