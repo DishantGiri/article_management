@@ -9,7 +9,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { name, url, subId, bridgeUrl, categoryIds } = body;
+    const { name, url, subId, bridgeUrl, buyUrl, categoryIds } = body;
 
     const updated = await prisma.site.update({
       where: { id: parseInt(id) },
@@ -18,6 +18,7 @@ export async function PATCH(
         ...(url !== undefined ? { url } : {}),
         ...(subId !== undefined ? { subId } : {}),
         ...(bridgeUrl !== undefined ? { bridgeUrl } : {}),
+        ...(buyUrl !== undefined ? { buyUrl } : {}),
         ...(Array.isArray(categoryIds) ? { categories: { set: categoryIds.map((cid: number) => ({ id: cid })) } } : {})
       },
     });

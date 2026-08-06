@@ -16,6 +16,7 @@ interface SiteData {
   url: string | null;
   subId: string | null;
   bridgeUrl: string | null;
+  buyUrl: string | null;
   productsCount: number;
   categoriesCount: number;
   linksCount: number;
@@ -39,6 +40,7 @@ export default function SitesPage() {
     url: "",
     subId: "",
     bridgeUrl: "",
+    buyUrl: "",
     categoryIds: [] as number[],
   });
   const [urlError, setUrlError] = useState("");
@@ -49,7 +51,18 @@ export default function SitesPage() {
     setLoading(true);
     fetch("/api/sites")
       .then((r) => r.json())
-      .then((data) => setSites(data))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setSites(data);
+        } else {
+          setSites([]);
+          if (data && data.error) toast.error(data.error);
+        }
+      })
+      .catch((err) => {
+        setSites([]);
+        console.error("Failed to load sites", err);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -66,7 +79,7 @@ export default function SitesPage() {
 
   const openAddModal = () => {
     setEditingSiteId(null);
-    setForm({ name: "", url: "", subId: "", bridgeUrl: "", categoryIds: [] });
+    setForm({ name: "", url: "", subId: "", bridgeUrl: "", buyUrl: "", categoryIds: [] });
     setError("");
     setUrlError("");
     setShowModal(true);
@@ -79,6 +92,7 @@ export default function SitesPage() {
       url: s.url || "",
       subId: s.subId || "",
       bridgeUrl: s.bridgeUrl || "",
+      buyUrl: s.buyUrl || "",
       categoryIds: s.categories?.map(c => c.id) || []
     });
     setError("");
@@ -177,13 +191,13 @@ const isValidUrl = (url: string) => {
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />
         </div>
-      ) : sites.length === 0 ? (
+      ) : !Array.isArray(sites) || sites.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
           <p className="text-slate-500 font-medium">No sites configured</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {sites.map((site) => (
+          {(Array.isArray(sites) ? sites : []).map((site) => (
             <div key={site.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow group relative flex flex-col justify-between">
               <div>
                 <div className="flex items-start justify-between mb-4">
@@ -344,6 +358,18 @@ const isValidUrl = (url: string) => {
                   placeholder="e.g. https://mybridge.com/pages"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">Product slug will be appended automatically (e.g. https://mybridge.com/pages/product-slug).</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Buy Now Base URL</label>
+                <input
+                  type="url"
+                  value={form.buyUrl}
+                  onChange={(e) => setForm({ ...form, buyUrl: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. https://buy.tbrskincare.com"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Product slug will be appended automatically (e.g. https://buy.tbrskincare.com/product-slug).</p>
               </div>
 
               <div>

@@ -116,6 +116,7 @@ model Site {
   url         String?
   subId       String?
   bridgeUrl   String?
+  buyUrl      String?
 
   createdAt   DateTime    @default(now())
 
