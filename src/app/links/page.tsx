@@ -136,11 +136,13 @@ function LinksPageContent() {
 
   const [stats, setStats] = useState<any>(null);
 
-  useEffect(() => {
+  const refreshLinksData = (showLoading = false) => {
     if (!session?.user?.id) return;
     const uId = session.user.id;
     const uRole = session.user.role || "WRITER";
     setCurrentUserRole(uRole);
+
+    if (showLoading) setLoading(true);
 
     Promise.all([
       fetch(`/api/links?userId=${uId}`).then((r) => (r.ok ? r.json() : [])),
@@ -162,7 +164,13 @@ function LinksPageContent() {
           setEditingLink(matched);
         }
       }
-    }).finally(() => setLoading(false));
+    }).finally(() => {
+      if (showLoading) setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    refreshLinksData(true);
   }, [session?.user?.id, searchParams]);
 
   const [userFilter, setUserFilter] = useState("");
@@ -673,7 +681,12 @@ function LinksPageContent() {
           }
         }} 
         onSuccess={() => {
-          window.location.href = "/links";
+          setIsAddLinkOpen(false);
+          setPreselectedProductId(null);
+          if (urlProductId) {
+            router.replace("/links");
+          }
+          refreshLinksData(false);
         }} 
         preselectedProductId={preselectedProductId}
       />
@@ -687,8 +700,11 @@ function LinksPageContent() {
           }
         }}
         onSuccess={() => {
-          router.replace("/links");
-          window.location.reload();
+          setEditingLink(null);
+          if (searchParams.get("editLinkId")) {
+            router.replace("/links");
+          }
+          refreshLinksData(false);
         }}
         link={editingLink}
       />

@@ -100,12 +100,12 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showBellDropdown, setShowBellDropdown] = useState(false);
 
-  useEffect(() => {
+  const fetchDashboardData = (showLoading = false) => {
     if (!session?.user?.id) return;
     const uId = session.user.id;
     setCurrentUserId(uId);
 
-    setLoading(true);
+    if (showLoading) setLoading(true);
     fetch(`/api/dashboard?userId=${uId}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to fetch dashboard");
@@ -116,7 +116,9 @@ export default function DashboardPage() {
         setCurrentUserRole(resData.role);
       })
       .catch((e) => console.error("Failed to load dashboard data", e))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (showLoading) setLoading(false);
+      });
 
     fetch(`/api/notifications?userId=${uId}`)
       .then((r) => {
@@ -125,6 +127,10 @@ export default function DashboardPage() {
       })
       .then(setNotifications)
       .catch((e) => console.error("Failed to load notifications", e));
+  };
+
+  useEffect(() => {
+    fetchDashboardData(true);
 
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission().catch(console.error);
@@ -133,12 +139,7 @@ export default function DashboardPage() {
     const handleLiveNotif = (e: Event) => {
       const notif = (e as CustomEvent).detail;
       if (notif.type === "ARTICLE_STATUS_UPDATED") {
-        fetch(`/api/dashboard?userId=${uId}`)
-          .then((r) => r.json())
-          .then((resData) => {
-            setData(resData);
-          })
-          .catch(() => {});
+        fetchDashboardData(false);
       }
       setNotifications((prev) => [notif, ...prev]);
       
@@ -166,7 +167,7 @@ export default function DashboardPage() {
       if (res.ok) {
         toast.success("Assignment started! Redirecting to tracker...");
         window.scrollTo({ top: 0, behavior: "smooth" });
-        setTimeout(() => window.location.reload(), 600);
+        fetchDashboardData(false);
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to start writing");
@@ -519,7 +520,7 @@ export default function DashboardPage() {
                           <button
                             onClick={async () => {
                               const res = await fetch(`/api/articles/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "APPROVED", callerId: currentUserId }) });
-                              if (res.ok) { toast.success("Article approved!"); setTimeout(() => window.location.reload(), 800); }
+                              if (res.ok) { toast.success("Article approved!"); fetchDashboardData(false); }
                               else { const e = await res.json(); toast.error(e.error || "Failed to approve"); }
                             }}
                             className="text-emerald-500 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors cursor-pointer"
@@ -529,7 +530,7 @@ export default function DashboardPage() {
                           <button
                             onClick={async () => {
                               const res = await fetch(`/api/articles/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "REDO", callerId: currentUserId }) });
-                              if (res.ok) { toast.success("Article sent for redo!"); setTimeout(() => window.location.reload(), 800); }
+                              if (res.ok) { toast.success("Article sent for redo!"); fetchDashboardData(false); }
                               else { const e = await res.json(); toast.error(e.error || "Failed to reject"); }
                             }}
                             className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors cursor-pointer"
@@ -638,7 +639,7 @@ export default function DashboardPage() {
                 article={data.writerInProgressArticles[0]} 
                 completedArticles={data.writerCompletedArticles || []}
                 currentUserId={currentUserId}
-                onSuccess={() => window.location.reload()}
+                onSuccess={() => fetchDashboardData(false)}
               />
             </div>
           ) : (
@@ -648,6 +649,7 @@ export default function DashboardPage() {
               completedArticles={data.writerCompletedArticles || []}
               currentUserId={currentUserId}
               onStartWriting={handleStartWriting}
+              onRefresh={() => fetchDashboardData(false)}
             />
           )}
         </>
@@ -1134,7 +1136,7 @@ const isValidUrl = (url: string) => {
   );
 }
 
-function WriterAvailableAssignments({ pendingArticles, completedArticles, currentUserId, onStartWriting }: any) {
+function WriterAvailableAssignments({ pendingArticles, completedArticles, currentUserId, onStartWriting, onRefresh }: any) {
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
   const [reportingLink, setReportingLink] = useState<any>(null);
   const [issueMessage, setIssueMessage] = useState("");
@@ -1348,8 +1350,8 @@ function WriterAvailableAssignments({ pendingArticles, completedArticles, curren
                     if (res.ok) {
                       toast.success("Link issue flagged successfully!");
                       setReportingLink(null);
-                      setSelectedArticle(null); // Close assignment details to reload
-                      window.location.reload();
+                      setSelectedArticle(null);
+                      if (onRefresh) onRefresh();
                     } else {
                       const err = await res.json();
                       toast.error(err.error || "Failed to flag link issue");

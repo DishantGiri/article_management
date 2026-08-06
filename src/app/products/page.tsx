@@ -116,12 +116,13 @@ export default function ProductsPage() {
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
+  const refreshProductsData = (showLoading = false) => {
     if (!session?.user?.id) return;
     const mockUserId = session.user.id;
     const uRole = session.user.role || "WRITER";
     setCurrentUserRole(uRole);
 
-    setLoading(true);
+    if (showLoading) setLoading(true);
     Promise.all([
       fetch(`/api/products?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
       fetch("/api/categories").then((r) => (r.ok ? r.json() : [])),
@@ -137,7 +138,14 @@ export default function ProductsPage() {
         setCategories(Array.isArray(categoriesData) ? categoriesData : []);
         setStats(dashboardData);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (showLoading) setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    refreshProductsData(true);
+  }, [session?.user?.id]);
 
     // Live status updates via WebSocket
     let ws: WebSocket | null = null;
@@ -590,8 +598,8 @@ export default function ProductsPage() {
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
         onSuccess={() => {
-          // Trigger a re-fetch of products if needed, or simply let the user close it
-          window.location.reload();
+          setIsAddModalOpen(false);
+          refreshProductsData(false);
         }}
       />
 
@@ -599,7 +607,8 @@ export default function ProductsPage() {
         isOpen={!!editingProduct}
         onClose={() => setEditingProduct(null)}
         onSuccess={() => {
-          window.location.reload();
+          setEditingProduct(null);
+          refreshProductsData(false);
         }}
         product={editingProduct}
       />
@@ -608,7 +617,8 @@ export default function ProductsPage() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={() => {
-          window.location.reload();
+          setIsImportModalOpen(false);
+          refreshProductsData(false);
         }}
         userId={session?.user?.id ? Number(session.user.id) : 1}
       />

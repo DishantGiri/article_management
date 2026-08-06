@@ -62,8 +62,8 @@ export default function SitesPage() {
 
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
 
-  const fetchSites = () => {
-    setLoading(true);
+  const fetchSites = (showLoading = true) => {
+    if (showLoading) setLoading(true);
     fetch("/api/sites")
       .then((r) => r.json())
       .then((data) => {
@@ -78,7 +78,9 @@ export default function SitesPage() {
         setSites([]);
         console.error("Failed to load sites", err);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (showLoading) setLoading(false);
+      });
   };
 
   const fetchCategories = () => {
@@ -88,7 +90,7 @@ export default function SitesPage() {
   };
 
   useEffect(() => {
-    fetchSites();
+    fetchSites(true);
     fetchCategories();
   }, []);
 
@@ -167,7 +169,7 @@ export default function SitesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      fetchSites();
+      fetchSites(false);
       toast.success(editingSiteId ? "Site updated successfully!" : "Site created successfully!");
       setShowModal(false);
     } catch (e: any) {

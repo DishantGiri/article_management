@@ -3,7 +3,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings, Clock } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
@@ -111,6 +111,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session, update } = useSession();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showSwitcher, setShowSwitcher] = useState(false);
@@ -331,7 +332,7 @@ export default function Sidebar() {
                               });
                               if (res.ok) {
                                 await update({ role: r });
-                                window.location.reload();
+                                router.refresh();
                               }
                             } catch (err) {
                               console.error("Failed to switch role:", err);
@@ -356,7 +357,7 @@ export default function Sidebar() {
                             });
                             if (res.ok) {
                               await update({ role: null });
-                              window.location.reload();
+                              router.refresh();
                             }
                           } catch (err) {
                             console.error("Failed to switch role:", err);
