@@ -81,6 +81,7 @@ model User {
 
   // Links added by this linker
   linksAdded      LinkLog[]    @relation("LinkAddedBy")
+  linksUpdated    LinkLog[]    @relation("LinkUpdatedBy")
 
   // Team Lead: articles approved or reviewed
   articleReviews  ArticleReview[] @relation("ReviewedBy")
@@ -114,9 +115,6 @@ model Site {
   id          Int         @id @default(autoincrement())
   name        String
   url         String?
-  subId       String?
-  bridgeUrl   String?
-  buyUrl      String?
 
   createdAt   DateTime    @default(now())
 
@@ -246,6 +244,7 @@ model LinkLog {
   id              Int        @id @default(autoincrement())
   productId       Int
   addedById       Int
+  updatedById     Int?
   bridgePageLink  String?
   buyLink         String?
   affiliateName   String
@@ -256,9 +255,10 @@ model LinkLog {
   addedAt         DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  addedBy  User    @relation("LinkAddedBy", fields: [addedById], references: [id])
-  history  LinkHistory[]
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  addedBy   User     @relation("LinkAddedBy", fields: [addedById], references: [id])
+  updatedBy User?    @relation("LinkUpdatedBy", fields: [updatedById], references: [id])
+  history   LinkHistory[]
 }
 
 // GEO entries for a link (multi-select support)

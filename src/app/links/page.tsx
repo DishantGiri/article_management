@@ -28,6 +28,7 @@ interface LinkLog {
   addedAt: string;
   geos: { geo: string }[];
   addedBy: { name: string };
+  updatedBy?: { name: string } | null;
   product: { name: string; site?: { name: string }; article?: { articleLink?: string | null } };
 }
 
@@ -524,6 +525,7 @@ function LinksPageContent() {
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Geo</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Added By</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Modified By</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Remarks</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[12%]">Actions</th>
@@ -599,7 +601,16 @@ function LinksPageContent() {
                         </span>
                       </td>
                       <td className="px-3 py-3.5">
-                        <span className="text-[13px] font-medium text-slate-600">{l.addedBy.name}</span>
+                        <span className="text-[13px] font-medium text-slate-600">{l.addedBy?.name || "—"}</span>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        {l.updatedBy?.name ? (
+                          <span className="text-[12px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/60">
+                            {l.updatedBy.name}
+                          </span>
+                        ) : (
+                          <span className="text-[12px] text-slate-400 italic">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-3.5">
                         <span className="text-[12px] font-medium text-slate-500">

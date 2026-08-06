@@ -67,6 +67,7 @@ export async function PATCH(
     const updated = await prisma.linkLog.update({
       where: { id: parseInt(id) },
       data: {
+        ...(activeUserId ? { updatedById: Number(activeUserId) } : {}),
         ...(status !== undefined ? { status } : {}),
         ...(bridgePageLink !== undefined ? { bridgePageLink: bridgePageLink || null } : {}),
         ...(buyLink !== undefined ? { buyLink: buyLink || null } : {}),

@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     include: {
       geos: true,
       addedBy: { select: { name: true } },
+      updatedBy: { select: { name: true } },
       product: { 
         select: { 
           name: true, 

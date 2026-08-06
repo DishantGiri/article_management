@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
         prisma.product.create({
           data: p,
           include: {
-            site: { select: { name: true, url: true, bridgeUrl: true, buyUrl: true } },
+            site: { select: { name: true, url: true } },
             category: { select: { name: true } },
             addedBy: { select: { name: true } },
           },
@@ -89,8 +89,7 @@ export async function POST(req: NextRequest) {
     if (affiliateName && affiliateName.trim()) {
       for (const p of createdProducts) {
         const slug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-        const bridgeUrl = p.site.bridgeUrl ? `${p.site.bridgeUrl.replace(/\/+$/, "")}/${slug}` : null;
-        const buyUrl = p.site.buyUrl ? `${p.site.buyUrl.replace(/\/+$/, "")}/${slug}` : (p.site.url ? `${p.site.url.replace(/\/+$/, "")}/${slug}` : null);
+        const buyUrl = p.site.url ? `${p.site.url.replace(/\/+$/, "")}/${slug}` : null;
 
         await prisma.linkLog.create({
           data: {
@@ -98,7 +97,7 @@ export async function POST(req: NextRequest) {
             addedById: activeUserId,
             affiliateName: affiliateName.trim(),
             affiliateLink: p.previewLink || p.trendLink || "",
-            bridgePageLink: bridgeUrl,
+            bridgePageLink: null,
             buyLink: buyUrl,
             status: "REQUESTED",
             linkerRemarks: p.remarks || null,
@@ -167,7 +166,7 @@ export async function GET(req: NextRequest) {
       ...(onlyPending ? { article: { status: "PENDING" } } : {}),
     },
     include: {
-      site: { select: { name: true, url: true, subId: true, bridgeUrl: true, buyUrl: true } },
+      site: { select: { name: true, url: true } },
       category: { select: { name: true } },
       addedBy: { select: { name: true } },
       article: { select: { id: true, status: true, writer: { select: { name: true } } } },
