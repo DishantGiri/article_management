@@ -11,6 +11,7 @@ import { ChartPieInteractive } from "@/components/ChartPieInteractive";
 import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
 import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
+import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
 
 interface DashboardData {
   role: "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -384,34 +385,10 @@ export default function DashboardPage() {
 
       {/* Unlinked Alert Warning (Linkers only) */}
       {currentUserRole === "LINKER" && data.unlinkedProducts && data.unlinkedProducts.length > 0 && (
-        <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 border border-rose-200/50">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="font-bold text-rose-800 text-sm">Action Required: Unimplemented Links</h2>
-              <p className="text-xs text-rose-600/80 mt-0.5">The following products do not have any affiliate links set up. Click to configure links.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {data.unlinkedProducts.map((p) => (
-                  <Link
-                    key={p.id}
-                    href={`/links?productId=${p.id}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-rose-100/50 border border-rose-200/50 text-rose-700 text-xs font-semibold rounded-xl transition-colors"
-                  >
-                    <span>{p.name}</span>
-                    <span className="text-[10px] opacity-60">({p.site.name})</span>
-                    <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <PendingLinkLogsSection
+          products={data.unlinkedProducts}
+          onAddLink={(productId) => router.push(`/links?productId=${productId}`)}
+        />
       )}
 
       {/* Flagged Alert Warning (Linkers only) */}

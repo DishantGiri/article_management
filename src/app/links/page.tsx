@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
@@ -11,6 +12,7 @@ import GeoManageModal from "@/components/GeoManageModal";
 import LinkHistoryModal from "@/components/LinkHistoryModal";
 import DateRangePicker from "@/components/DateRangePicker";
 import CustomSelect from "@/components/CustomSelect";
+import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -385,37 +387,14 @@ function LinksPageContent() {
         </div>
       )}
 
-      {/* Unlinked Products Alert Section */}
-      {unlinkedProducts.length > 0 && (
-        <div className="mb-6 bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-indigo-600" />
-              <h3 className="text-sm font-bold text-slate-800">
-                Products Pending Link Logs ({unlinkedProducts.length})
-              </h3>
-            </div>
-            <span className="text-xs text-indigo-600 font-semibold">Newly added products requiring link logs</span>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {unlinkedProducts.map((p: any) => (
-              <div key={p.id} className="flex items-center gap-2.5 bg-white px-3 py-1.5 rounded-lg border border-indigo-100 shadow-sm text-xs font-semibold text-slate-800">
-                <span>{p.name}</span>
-                <span className="text-[10px] text-slate-400 font-medium">({p.site?.name})</span>
-                <button
-                  onClick={() => {
-                    setPreselectedProductId(p.id);
-                    setIsAddLinkOpen(true);
-                  }}
-                  className="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-[11px] font-bold hover:bg-indigo-700 transition cursor-pointer flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" /> Add Link
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Unlinked Products Section */}
+      <PendingLinkLogsSection
+        products={unlinkedProducts}
+        onAddLink={(productId) => {
+          setPreselectedProductId(productId);
+          setIsAddLinkOpen(true);
+        }}
+      />
 
       {/* Tabs Selector for Links */}
       <div className="flex border-b border-slate-200 mb-6 gap-2">

@@ -75,6 +75,34 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
   const [dbAffiliates, setDbAffiliates] = useState<{ id: number; name: string }[]>([]);
   const [dbGeos, setDbGeos] = useState<string[]>([]);
 
+  const [showAddAffiliate, setShowAddAffiliate] = useState(false);
+  const [newAffiliateName, setNewAffiliateName] = useState("");
+  const [addingAffiliate, setAddingAffiliate] = useState(false);
+
+  const handleInlineAddAffiliate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAffiliateName.trim()) return;
+    setAddingAffiliate(true);
+    setError("");
+    try {
+      const res = await fetch("/api/affiliates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newAffiliateName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add affiliate");
+      setDbAffiliates((prev) => [...prev, data]);
+      setAffiliateName(data.name);
+      setNewAffiliateName("");
+      setShowAddAffiliate(false);
+    } catch (err: any) {
+      setError(err.message || "Failed to add affiliate");
+    } finally {
+      setAddingAffiliate(false);
+    }
+  };
+
   // Get unique product names for the dropdown list
   const uniqueProductNames = Array.from(new Set(products.map((p) => p.name)));
 
@@ -359,7 +387,37 @@ export default function AddLinkModal({ isOpen, onClose, onSuccess, preselectedPr
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Affiliate Name *</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-bold text-slate-500 uppercase">Affiliate Name *</label>
+                <button
+                  type="button"
+                  onClick={() => setShowAddAffiliate(!showAddAffiliate)}
+                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline"
+                >
+                  {showAddAffiliate ? "Cancel" : "+ Add Affiliate"}
+                </button>
+              </div>
+
+              {showAddAffiliate && (
+                <form onSubmit={handleInlineAddAffiliate} className="mb-2 p-2 bg-slate-50 border border-indigo-100 rounded-lg flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="New affiliate name..."
+                    value={newAffiliateName}
+                    onChange={(e) => setNewAffiliateName(e.target.value)}
+                    className="flex-1 px-2.5 py-1 bg-white border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={addingAffiliate || !newAffiliateName.trim()}
+                    className="px-3 py-1 bg-indigo-600 text-white rounded text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 transition"
+                  >
+                    {addingAffiliate ? "..." : "Add"}
+                  </button>
+                </form>
+              )}
+
               <select
                 value={affiliateName}
                 onChange={e => setAffiliateName(e.target.value)}
