@@ -29,9 +29,6 @@ interface SiteData {
   id: number;
   name: string;
   url: string | null;
-  subId: string | null;
-  bridgeUrl: string | null;
-  buyUrl: string | null;
   productsCount: number;
   categoriesCount: number;
   linksCount: number;
@@ -53,9 +50,6 @@ export default function SitesPage() {
   const [form, setForm] = useState({
     name: "",
     url: "",
-    subId: "",
-    bridgeUrl: "",
-    buyUrl: "",
     categoryIds: [] as number[],
   });
   const [urlError, setUrlError] = useState("");
@@ -96,7 +90,7 @@ export default function SitesPage() {
 
   const openAddModal = () => {
     setEditingSiteId(null);
-    setForm({ name: "", url: "", subId: "", bridgeUrl: "", buyUrl: "", categoryIds: [] });
+    setForm({ name: "", url: "", categoryIds: [] });
     setError("");
     setUrlError("");
     setShowModal(true);
@@ -107,9 +101,6 @@ export default function SitesPage() {
     setForm({
       name: s.name,
       url: s.url || "",
-      subId: s.subId || "",
-      bridgeUrl: s.bridgeUrl || "",
-      buyUrl: s.buyUrl || "",
       categoryIds: s.categories?.map((c) => c.id) || [],
     });
     setError("");
@@ -127,8 +118,8 @@ export default function SitesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete site");
 
-      setSites((prev) => prev.filter((s) => s.id !== id));
       toast.success("Site deleted successfully!");
+      fetchSites(false); // Refetch from server to get fresh data
     } catch (e: any) {
       toast.error(e.message || "Failed to delete site");
     }

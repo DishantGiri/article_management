@@ -127,8 +127,8 @@ function LinksPageContent() {
           method: "DELETE",
         });
         if (!res.ok) throw new Error((await res.json()).error || "Failed to delete link");
-        setLinks((prev) => prev.filter((l) => l.id !== linkId));
         toast.success("Link deleted successfully!");
+        refreshLinksData(false); // Refetch from server to get fresh data
       } catch (err: any) {
         toast.error(err.message || "Failed to delete link");
       }

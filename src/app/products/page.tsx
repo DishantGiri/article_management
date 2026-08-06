@@ -101,8 +101,8 @@ export default function ProductsPage() {
           const errData = await res.json();
           throw new Error(errData.error || "Failed to delete product");
         }
-        setProducts((prev) => prev.filter((p) => p.id !== productId));
         toast.success("Product deleted successfully!");
+        refreshProductsData(false); // Refetch from server to get fresh data
       } catch (err: any) {
         toast.error(err.message || "Failed to delete product");
       }
