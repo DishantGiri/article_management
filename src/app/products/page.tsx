@@ -115,7 +115,6 @@ export default function ProductsPage() {
 
   const [stats, setStats] = useState<any>(null);
 
-  useEffect(() => {
   const refreshProductsData = (showLoading = false) => {
     if (!session?.user?.id) return;
     const mockUserId = session.user.id;
@@ -145,7 +144,9 @@ export default function ProductsPage() {
 
   useEffect(() => {
     refreshProductsData(true);
-  }, [session?.user?.id]);
+
+    if (!session?.user?.id) return;
+    const currentUserId = session.user.id;
 
     // Live status updates via WebSocket
     let ws: WebSocket | null = null;
@@ -154,7 +155,7 @@ export default function ProductsPage() {
       const wsHost = window.location.host;
       ws = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
       ws.onopen = () => {
-        ws?.send(JSON.stringify({ type: "register", userId: mockUserId }));
+        ws?.send(JSON.stringify({ type: "register", userId: currentUserId }));
       };
       ws.onmessage = (event) => {
         try {
