@@ -416,26 +416,33 @@ export default function ProductsPage() {
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
 
-        {/* Date Range Start */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold text-slate-400 uppercase">From</span>
+        {/* Date Range Filter */}
+        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs">
+          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 whitespace-nowrap">Date Range</span>
           <input
             type="date"
             value={startDate}
             onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
-            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-2 py-1 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all cursor-pointer"
           />
-        </div>
-
-        {/* Date Range End */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold text-slate-400 uppercase">To</span>
+          <span className="text-slate-300 font-bold text-sm">—</span>
           <input
             type="date"
             value={endDate}
+            min={startDate || undefined}
             onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
-            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-2 py-1 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all cursor-pointer"
           />
+          {(startDate || endDate) && (
+            <button
+              onClick={() => { setStartDate(""); setEndDate(""); setCurrentPage(1); }}
+              className="ml-1 p-0.5 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+              title="Clear date range"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
