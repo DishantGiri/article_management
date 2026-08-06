@@ -242,6 +242,31 @@ export async function PATCH(
       }).catch((e) => console.error("WS Notification failed", e));
     } catch (e) {}
 
+    // Notify Admins and Super Admins if Special Approval / Article Update Approval is requested
+    if (specialApprovalRequested && !existing.specialApprovalRequested) {
+      try {
+        const admins = await prisma.user.findMany({
+          where: { role: { in: ["ADMIN", "SUPER_ADMIN", "TEAM_LEAD"] } },
+          select: { id: true },
+        });
+        const writerName = updated.writer?.name || session.user.name || "A writer";
+        const reasonText = specialApprovalRequestReason || "No reason provided";
+        for (const admin of admins) {
+          const notif = await prisma.notification.create({
+            data: {
+              recipientId: admin.id,
+              senderId: activeUserId,
+              type: "ARTICLE_SUGGESTION",
+              message: `${writerName} requested article update approval for "${updated.product.name}". Reason: ${reasonText}`,
+            },
+          });
+          await sendRealtimeNotification(admin.id, notif);
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify Admins for approval request:", notifErr);
+      }
+    }
+
     // Notify Team Lead if Writer completed the article
     if (status === "COMPLETED" && existing.status !== "COMPLETED") {
       try {

@@ -54,6 +54,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   const [submittingReview, setSubmittingReview] = useState(false);
   const [editLinkMode, setEditLinkMode] = useState(false);
   const [newLinkValue, setNewLinkValue] = useState("");
+  const [updateReason, setUpdateReason] = useState("");
   const [updatingLink, setUpdatingLink] = useState(false);
   const { data: session } = useSession();
 
@@ -342,60 +343,87 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                      </div>
 
                      {editLinkMode ? (
-                       <div className="space-y-2">
-                         <input
-                           type="url"
-                           value={newLinkValue}
-                           onChange={(e) => setNewLinkValue(e.target.value)}
-                           placeholder="https://docs.google.com/..."
-                           className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition"
-                         />
-                         <div className="flex gap-2 justify-end">
-                           <button
-                             onClick={() => setEditLinkMode(false)}
-                             className="px-2.5 py-1.5 border border-slate-200 text-slate-600 rounded-lg text-[11px] font-bold hover:bg-slate-50 transition cursor-pointer"
-                           >
-                             Cancel
-                           </button>
-                           <button
-                             onClick={async () => {
-                               setUpdatingLink(true);
-                               setError("");
-                               setSuccess("");
-                               try {
-                                 const res = await fetch(`/api/articles/${article.id}`, {
-                                   method: "PATCH",
-                                   headers: { "Content-Type": "application/json" },
-                                   body: JSON.stringify({
-                                     articleLink: newLinkValue,
-                                     callerId: currentUserId,
-                                     ...(article.status === "REDO" ? { status: "COMPLETED" } : {}),
-                                   }),
-                                 });
-                                 const data = await res.json();
-                                 if (!res.ok) throw new Error(data.error || "Failed to update link");
-                                 
-                                 setSuccess(article.status === "REDO" ? "Article updated and marked Completed!" : "Article link updated successfully!");
-                                 setEditLinkMode(false);
-                                 
-                                 // Refresh article details
-                                 const refreshRes = await fetch(`/api/articles/${id}?userId=${currentUserId}`);
-                                 const freshData = await refreshRes.json();
-                                 if (!refreshRes.ok) throw new Error(freshData.error);
-                                 setArticle(freshData);
-                               } catch (err: any) {
-                                 setError(err.message || "Failed to update link");
-                               } finally {
-                                 setUpdatingLink(false);
-                               }
-                             }}
-                             disabled={updatingLink}
-                             className="px-2.5 py-1.5 bg-black hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold transition cursor-pointer disabled:opacity-50"
-                           >
-                             Save
-                           </button>
-                         </div>
-                       </div>
+                        <div className="space-y-2">
+                          <input
+                            type="url"
+                            value={newLinkValue}
+                            onChange={(e) => setNewLinkValue(e.target.value)}
+                            placeholder="https://docs.google.com/..."
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition"
+                          />
+                          {currentUserRole === "WRITER" && (
+                            <textarea
+                              rows={2}
+                              value={updateReason}
+                              onChange={(e) => setUpdateReason(e.target.value)}
+                              placeholder="Reason for update (Admin / Super Admin approval required)..."
+                              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition resize-none font-medium"
+                            />
+                          )}
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => { setEditLinkMode(false); setUpdateReason(""); }}
+                              className="px-2.5 py-1.5 border border-slate-200 text-slate-600 rounded-lg text-[11px] font-bold hover:bg-slate-50 transition cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (currentUserRole === "WRITER" && !updateReason.trim()) {
+                                  setError("Please enter a reason for the update.");
+                                  return;
+                                }
+                                setUpdatingLink(true);
+                                setError("");
+                                setSuccess("");
+                                try {
+                                  const isWriter = currentUserRole === "WRITER";
+                                  const res = await fetch(`/api/articles/${article.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      articleLink: newLinkValue,
+                                      callerId: currentUserId,
+                                      ...(isWriter ? {
+                                        specialApprovalRequested: true,
+                                        specialApprovalRequestReason: updateReason.trim(),
+                                        notes: `Requested update approval: ${updateReason.trim()}`
+                                      } : {
+                                        ...(article.status === "REDO" ? { status: "COMPLETED" } : {}),
+                                      }),
+                                    }),
+                                  });
+                                  const data = await res.json();
+                                  if (!res.ok) throw new Error(data.error || "Failed to update link");
+                                  
+                                  setSuccess(
+                                    isWriter
+                                      ? "Update approval requested! Awaiting Admin/SuperAdmin approval."
+                                      : article.status === "REDO"
+                                      ? "Article updated and marked Completed!"
+                                      : "Article link updated successfully!"
+                                  );
+                                  setEditLinkMode(false);
+                                  setUpdateReason("");
+                                  
+                                  // Refresh article details
+                                  const refreshRes = await fetch(`/api/articles/${id}?userId=${currentUserId}`);
+                                  const freshData = await refreshRes.json();
+                                  if (!refreshRes.ok) throw new Error(freshData.error);
+                                  setArticle(freshData);
+                                } catch (err: any) {
+                                  setError(err.message || "Failed to update link");
+                                } finally {
+                                  setUpdatingLink(false);
+                                }
+                              }}
+                              disabled={updatingLink || (currentUserRole === "WRITER" && (!newLinkValue.trim() || !updateReason.trim()))}
+                              className="px-2.5 py-1.5 bg-black hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold transition cursor-pointer disabled:opacity-50"
+                            >
+                              {updatingLink ? "Saving..." : currentUserRole === "WRITER" ? "Request Approval" : "Save"}
+                            </button>
+                          </div>
+                        </div>
                      ) : (
                        article.articleLink ? (
                          <a href={ensureExternalUrl(article.articleLink)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition break-all leading-tight text-center">

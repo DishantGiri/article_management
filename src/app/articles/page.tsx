@@ -74,6 +74,7 @@ function ArticlesContent() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [updatingArticle, setUpdatingArticle] = useState<Article | null>(null);
   const [updateLink, setUpdateLink] = useState("");
+  const [updateReason, setUpdateReason] = useState("");
   const [submittingUpdate, setSubmittingUpdate] = useState(false);
   const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; linker: string; productName: string } | null>(null);
   const { data: session } = useSession();
@@ -569,7 +570,7 @@ function ArticlesContent() {
             <div className="px-6 py-5 space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  Updated Article Link
+                  Updated Article Link <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="url"
@@ -579,25 +580,52 @@ function ArticlesContent() {
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
                 />
               </div>
-              <div className="flex gap-3">
+
+              {currentUserRole === "WRITER" && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                    Reason for Update <span className="text-rose-500">* (Admin / Super Admin Approval Required)</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={updateReason}
+                    onChange={(e) => setUpdateReason(e.target.value)}
+                    placeholder="Provide a clear reason why this article link is being updated..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition resize-none font-medium"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => { setUpdatingArticle(null); setUpdateLink(""); }}
+                  onClick={() => { setUpdatingArticle(null); setUpdateLink(""); setUpdateReason(""); }}
                   className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition"
                 >
                   Cancel
                 </button>
                 <button
-                  disabled={submittingUpdate || !updateLink.trim()}
+                  disabled={submittingUpdate || !updateLink.trim() || (currentUserRole === "WRITER" && !updateReason.trim())}
                   onClick={async () => {
                     if (!updateLink.trim() || !currentUserId) return;
+                    if (currentUserRole === "WRITER" && !updateReason.trim()) {
+                      toast.error("Please provide a reason for the update.");
+                      return;
+                    }
                     setSubmittingUpdate(true);
                     try {
+                      const isWriter = currentUserRole === "WRITER";
                       const res = await fetch(`/api/articles/${updatingArticle.id}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           articleLink: updateLink,
-                          status: "COMPLETED",
+                          ...(isWriter ? {
+                            specialApprovalRequested: true,
+                            specialApprovalRequestReason: updateReason.trim(),
+                            notes: `Requested update approval: ${updateReason.trim()}`
+                          } : {
+                            status: "COMPLETED",
+                          }),
                           callerId: currentUserId,
                         }),
                       });
@@ -606,9 +634,14 @@ function ArticlesContent() {
                         toast.error(d.error || "Failed to update article.");
                         return;
                       }
-                      toast.success("Article updated and marked as completed!");
+                      toast.success(
+                        isWriter
+                          ? "Update request submitted! Admin/SuperAdmin approval pending."
+                          : "Article updated successfully!"
+                      );
                       setUpdatingArticle(null);
                       setUpdateLink("");
+                      setUpdateReason("");
                       // Refresh articles list
                       const refreshed = await fetch(`/api/articles?userId=${currentUserId}`).then(r => r.json());
                       setArticles(Array.isArray(refreshed) ? refreshed : []);
@@ -618,9 +651,9 @@ function ArticlesContent() {
                       setSubmittingUpdate(false);
                     }
                   }}
-                  className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {submittingUpdate ? "Submitting..." : "Submit Update"}
+                  {submittingUpdate ? "Submitting..." : currentUserRole === "WRITER" ? "Request Approval" : "Submit Update"}
                 </button>
               </div>
             </div>
