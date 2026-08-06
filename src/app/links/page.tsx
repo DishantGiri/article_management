@@ -13,6 +13,7 @@ import LinkHistoryModal from "@/components/LinkHistoryModal";
 import DateRangePicker from "@/components/DateRangePicker";
 import CustomSelect from "@/components/CustomSelect";
 import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -78,6 +79,17 @@ function LinksPageContent() {
   const [currentUserRole, setCurrentUserRole] = useState("WRITER");
   const itemsPerPage = 10;
 
+  // Confirm dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+  const [confirmMsg, setConfirmMsg] = useState("");
+
+  const openConfirm = (message: string, action: () => void) => {
+    setConfirmMsg(message);
+    setConfirmAction(() => action);
+    setConfirmOpen(true);
+  };
+
   useEffect(() => {
     if (urlProductId) {
       setPreselectedProductId(parseInt(urlProductId));
@@ -120,19 +132,22 @@ function LinksPageContent() {
   };
 
   const handleDeleteLink = async (linkId: number) => {
-    if (confirm("Are you sure you want to delete this link log?")) {
-      const uId = session?.user?.id || 2;
-      try {
-        const res = await fetch(`/api/links/${linkId}?callerId=${uId}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) throw new Error((await res.json()).error || "Failed to delete link");
-        toast.success("Link deleted successfully!");
-        refreshLinksData(false); // Refetch from server to get fresh data
-      } catch (err: any) {
-        toast.error(err.message || "Failed to delete link");
+    openConfirm(
+      "Are you sure you want to delete this link log? This action cannot be undone.",
+      async () => {
+        const uId = session?.user?.id || 2;
+        try {
+          const res = await fetch(`/api/links/${linkId}?callerId=${uId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error((await res.json()).error || "Failed to delete link");
+          toast.success("Link deleted successfully!");
+          refreshLinksData(false);
+        } catch (err: any) {
+          toast.error(err.message || "Failed to delete link");
+        }
       }
-    }
+    );
   };
 
   const [stats, setStats] = useState<any>(null);
@@ -753,6 +768,19 @@ function LinksPageContent() {
           </div>
         </div>
       )}
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Delete Link Log"
+        message={confirmMsg}
+        confirmLabel="Delete Link"
+        variant="danger"
+        onConfirm={() => {
+          setConfirmOpen(false);
+          confirmAction?.();
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Search, Plus, Pencil, Trash2, X, Users } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Site {
   id: number;
@@ -55,6 +56,10 @@ export default function UsersPage() {
   const [currentUserRole, setCurrentUserRole] = useState("ADMIN");
   const [currentUserId, setCurrentUserId] = useState<number>(1);
   const { data: session } = useSession();
+
+  // Confirm dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmUserId, setConfirmUserId] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -118,12 +123,17 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+    setConfirmUserId(id);
+    setConfirmOpen(true);
+  };
+
+  const doDeleteUser = async () => {
+    if (!confirmUserId) return;
     try {
-      const res = await fetch(`/api/users/${id}?creatorId=${currentUserId}`, { method: "DELETE" });
+      const res = await fetch(`/api/users/${confirmUserId}?creatorId=${currentUserId}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete user");
-      setUsers(prev => prev.filter(u => u.id !== id));
+      setUsers(prev => prev.filter(u => u.id !== confirmUserId));
       toast.success("User deleted successfully!");
     } catch (e: any) {
       toast.error(e.message || "Failed to delete user");
@@ -521,6 +531,16 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Delete User"
+        message="Are you sure you want to delete this user? This action cannot be undone."
+        confirmLabel="Delete User"
+        variant="danger"
+        onConfirm={() => { setConfirmOpen(false); doDeleteUser(); }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

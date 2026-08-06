@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Category {
   id: number;
@@ -39,6 +40,17 @@ export default function SitesPage() {
   const [sites, setSites] = useState<SiteData[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Confirm dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+  const [confirmMsg, setConfirmMsg] = useState("");
+
+  const openConfirm = (message: string, action: () => void) => {
+    setConfirmMsg(message);
+    setConfirmAction(() => action);
+    setConfirmOpen(true);
+  };
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -111,18 +123,21 @@ export default function SitesPage() {
 
   const handleDelete = async (id: number) => {
     setActiveDropdown(null);
-    if (!confirm("Are you sure you want to delete this site? All associated products and data will be lost.")) return;
+    openConfirm(
+      "Are you sure you want to delete this site? All associated products and data will be lost.",
+      async () => {
+        try {
+          const res = await fetch(`/api/sites/${id}`, { method: "DELETE" });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Failed to delete site");
 
-    try {
-      const res = await fetch(`/api/sites/${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete site");
-
-      toast.success("Site deleted successfully!");
-      fetchSites(false); // Refetch from server to get fresh data
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete site");
-    }
+          toast.success("Site deleted successfully!");
+          fetchSites(false);
+        } catch (e: any) {
+          toast.error(e.message || "Failed to delete site");
+        }
+      }
+    );
   };
 
   const isValidUrl = (url: string) => {
@@ -441,6 +456,19 @@ export default function SitesPage() {
           </div>
         </div>
       )}
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Delete Site"
+        message={confirmMsg}
+        confirmLabel="Delete Site"
+        variant="danger"
+        onConfirm={() => {
+          setConfirmOpen(false);
+          confirmAction?.();
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

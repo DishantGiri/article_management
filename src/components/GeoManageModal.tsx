@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, X, Globe } from "lucide-react";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface GeoEntry {
   id: number;
@@ -22,6 +23,10 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
+
+  // Confirm dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingGeo, setPendingGeo] = useState<{ id: number; code: string } | null>(null);
 
   const fetchGeos = async () => {
     setLoading(true);
@@ -73,8 +78,14 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
     }
   };
 
-  const handleDelete = async (id: number, code: string) => {
-    if (!confirm(`Delete GEO "${code}"? It will no longer appear in the selector, but existing link logs keep their value.`)) return;
+  const handleDelete = (id: number, code: string) => {
+    setPendingGeo({ id, code });
+    setConfirmOpen(true);
+  };
+
+  const doDelete = async () => {
+    if (!pendingGeo) return;
+    const { id, code } = pendingGeo;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/geos/${id}`, { method: "DELETE" });
@@ -203,6 +214,15 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Delete GEO"
+        message={`Delete GEO "${pendingGeo?.code}"? It will no longer appear in the selector, but existing link logs keep their value.`}
+        confirmLabel="Delete GEO"
+        variant="warning"
+        onConfirm={() => { setConfirmOpen(false); doDelete(); }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

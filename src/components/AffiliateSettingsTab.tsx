@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 export interface AffiliateItem {
   id: number;
@@ -37,6 +38,10 @@ export default function AffiliateSettingsTab() {
   const [editName, setEditName] = useState("");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Confirm dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
 
   const userRole = session?.user?.role || "WRITER";
   const canManage =
@@ -123,8 +128,14 @@ export default function AffiliateSettingsTab() {
     }
   };
 
-  const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+  const handleDelete = (id: number, name: string) => {
+    setPendingDelete({ id, name });
+    setConfirmOpen(true);
+  };
+
+  const doDelete = async () => {
+    if (!pendingDelete) return;
+    const { id, name } = pendingDelete;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/affiliates/${id}?callerId=${session?.user?.id || 1}`, {
@@ -330,6 +341,15 @@ export default function AffiliateSettingsTab() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Delete Affiliate"
+        message={`Are you sure you want to delete "${pendingDelete?.name}"? This cannot be undone.`}
+        confirmLabel="Delete Affiliate"
+        variant="danger"
+        onConfirm={() => { setConfirmOpen(false); doDelete(); }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

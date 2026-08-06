@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, X, Trash2 } from "lucide-react";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Category {
   id: number;
@@ -23,6 +24,10 @@ export default function CategoriesPage() {
   const [categoryName, setCategoryName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Confirm dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
 
   const fetchCategories = () => {
     setLoading(true);
@@ -92,19 +97,20 @@ export default function CategoriesPage() {
   };
 
   const handleDeleteCategory = async () => {
-    if (!selectedCategory || !confirm("Are you sure you want to delete this category?")) return;
+    if (!selectedCategory) return;
+    setConfirmOpen(true);
+  };
 
+  const doDelete = async () => {
+    if (!selectedCategory) return;
     setIsSubmitting(true);
     setError(null);
-
     try {
       const res = await fetch(`/api/categories/${selectedCategory.id}`, {
         method: "DELETE",
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete category");
-
       setIsEditModalOpen(false);
       setSelectedCategory(null);
       setCategoryName("");
@@ -280,6 +286,16 @@ export default function CategoriesPage() {
           </div>
         </div>
       )}
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Delete Category"
+        message={`Are you sure you want to delete "${selectedCategory?.name}"? This cannot be undone.`}
+        confirmLabel="Delete Category"
+        variant="danger"
+        onConfirm={() => { setConfirmOpen(false); doDelete(); }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

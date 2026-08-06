@@ -10,6 +10,7 @@ import EditProductModal from "@/components/EditProductModal";
 import ImportProductModal from "@/components/ImportProductModal";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Category {
   id: number;
@@ -57,6 +58,17 @@ export default function ProductsPage() {
   const itemsPerPage = 10;
   const router = useRouter();
 
+  // Confirm dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+  const [confirmMsg, setConfirmMsg] = useState("");
+
+  const openConfirm = (message: string, action: () => void) => {
+    setConfirmMsg(message);
+    setConfirmAction(() => action);
+    setConfirmOpen(true);
+  };
+
   const handleExportCSV = () => {
     const headers = ["ID", "Name", "Site", "Category", "Trend Link", "Preview Link", "Remarks", "Status", "Links Count", "Added By", "Added At"];
     const rows = filtered.map((p) => [
@@ -91,22 +103,25 @@ export default function ProductsPage() {
   };
 
   const handleDeleteProduct = async (productId: number, productName: string) => {
-    if (confirm(`Are you sure you want to delete "${productName}"? This will also delete all associated article tracking and link log entries.`)) {
-      const uId = session?.user?.id || 1;
-      try {
-        const res = await fetch(`/api/products/${productId}?callerId=${uId}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || "Failed to delete product");
+    openConfirm(
+      `Are you sure you want to delete "${productName}"? This will also delete all associated article tracking and link log entries.`,
+      async () => {
+        const uId = session?.user?.id || 1;
+        try {
+          const res = await fetch(`/api/products/${productId}?callerId=${uId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || "Failed to delete product");
+          }
+          toast.success("Product deleted successfully!");
+          refreshProductsData(false);
+        } catch (err: any) {
+          toast.error(err.message || "Failed to delete product");
         }
-        toast.success("Product deleted successfully!");
-        refreshProductsData(false); // Refetch from server to get fresh data
-      } catch (err: any) {
-        toast.error(err.message || "Failed to delete product");
       }
-    }
+    );
   };
 
   const [userFilter, setUserFilter] = useState("");
@@ -796,6 +811,19 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Delete Product"
+        message={confirmMsg}
+        confirmLabel="Delete Product"
+        variant="danger"
+        onConfirm={() => {
+          setConfirmOpen(false);
+          confirmAction?.();
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
