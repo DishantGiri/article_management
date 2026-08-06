@@ -252,6 +252,12 @@ const isValidUrl = (url: string) => {
                       <span className="text-indigo-600 text-[11px]">{site.bridgeUrl}</span>
                     </div>
                   )}
+                  {site.buyUrl && (
+                    <div className="text-[11px] font-semibold text-slate-500 truncate">
+                      <span className="font-bold text-slate-400 uppercase text-[9px] mr-1">Buy URL:</span>
+                      <span className="text-emerald-600 text-[11px]">{site.buyUrl}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-4 flex flex-wrap gap-1.5">

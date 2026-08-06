@@ -123,12 +123,13 @@ export default function ProductsPage() {
 
     setLoading(true);
     Promise.all([
-      fetch(`/api/products?userId=${mockUserId}`).then((r) => r.json()),
-      fetch("/api/categories").then((r) => r.json()),
-      fetch(`/api/dashboard?userId=${mockUserId}`).then((r) => r.json()),
+      fetch(`/api/products?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/categories").then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/dashboard?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : null)),
     ])
       .then(([productsData, categoriesData, dashboardData]) => {
-        const mapped = productsData.map((p: any) => ({
+        const prods = Array.isArray(productsData) ? productsData : [];
+        const mapped = prods.map((p: any) => ({
           ...p,
           mockLinksCount: Math.floor(Math.random() * 8) + 1
         }));

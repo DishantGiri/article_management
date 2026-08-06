@@ -143,9 +143,9 @@ function LinksPageContent() {
     setCurrentUserRole(uRole);
 
     Promise.all([
-      fetch(`/api/links?userId=${uId}`).then((r) => r.json()),
-      fetch(`/api/dashboard?userId=${uId}`).then((r) => r.json()),
-      fetch(`/api/products?userId=${uId}`).then((r) => r.json()),
+      fetch(`/api/links?userId=${uId}`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/dashboard?userId=${uId}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/products?userId=${uId}`).then((r) => (r.ok ? r.json() : [])),
     ]).then(([linksData, dashboardData, productsData]) => {
       const arr = Array.isArray(linksData) ? linksData : [];
       setLinks(arr);
