@@ -186,6 +186,17 @@ export default function AddLinkModal({
     setGeos((prev) => (prev.includes(geo) ? prev.filter((g) => g !== geo) : [...prev, geo]));
   };
 
+  // All required fields must be filled before enabling submit
+  const isFormValid =
+    !!selectedProductId &&
+    !!affiliateName.trim() &&
+    !!affiliateLink.trim() &&
+    isValidUrl(affiliateLink) &&
+    !affiliateLinkError &&
+    !bridgeLinkError &&
+    !buyLinkError &&
+    geos.length > 0;
+
   const handleSubmit = async () => {
     if (!selectedProductId || !selectedProduct) {
       setError("Product is required.");
@@ -609,9 +620,10 @@ export default function AddLinkModal({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={submitting || !selectedProductId}
+              disabled={submitting || !isFormValid}
               type="button"
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-indigo-200 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"
+              title={!isFormValid ? "Please fill in all required fields: Product, Affiliate Name, Affiliate Link, and at least one GEO" : undefined}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-indigo-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
             >
               {submitting ? "Saving..." : "Add 1 Link Log"}
             </button>

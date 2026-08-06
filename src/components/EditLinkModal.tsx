@@ -152,6 +152,16 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   const allAffiliates = dbAffiliates.map(a => a.name);
   const allGeos = dbGeos;
 
+  // All required fields must be filled before enabling submit
+  const isFormValid =
+    !!affiliateName.trim() &&
+    !!affiliateLink.trim() &&
+    isValidUrl(affiliateLink) &&
+    !affiliateLinkError &&
+    !bridgePageLinkError &&
+    !buyLinkError &&
+    geos.length > 0;
+
   const handleSubmit = async () => {
     if (!link) return;
 
@@ -457,9 +467,10 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
             </button>
             <button
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || !isFormValid}
               type="button"
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50 transition text-sm flex items-center justify-center gap-2"
+              title={!isFormValid ? "Please fill in all required fields: Affiliate Name, Affiliate Link, and at least one GEO" : undefined}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex items-center justify-center gap-2"
             >
               {submitting ? "Saving..." : "Save Changes"}
             </button>
