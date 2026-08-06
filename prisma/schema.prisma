@@ -308,12 +308,10 @@ model ArticleHistory {
 }
 
 model AffiliateName {
-  id           Int      @id @default(autoincrement())
-  name         String   @unique
-  defaultUrl   String?  @db.Text
-  subIdPattern String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now()) @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Geo {
@@ -339,10 +337,4 @@ model LinkHistory {
   oldRemarks       String?  @db.Text
   newRemarks       String?  @db.Text
   updatedAt        DateTime @default(now())
-}
-
-model GlobalSetting {
-  key       String   @id
-  value     String?  @db.Text
-  updatedAt DateTime @updatedAt
 }

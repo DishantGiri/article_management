@@ -14,7 +14,7 @@ async function hasPermission(userId?: number) {
   );
 }
 
-// PATCH /api/affiliates/:id — update affiliate details (name, defaultUrl, subIdPattern)
+// PATCH /api/affiliates/:id — update affiliate name
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -27,7 +27,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { name, defaultUrl, subIdPattern, callerId } = body;
+    const { name, callerId } = body;
 
     if (callerId && !(await hasPermission(Number(callerId)))) {
       return NextResponse.json(
@@ -40,8 +40,6 @@ export async function PATCH(
       where: { id },
       data: {
         ...(name !== undefined ? { name: name.trim() } : {}),
-        ...(defaultUrl !== undefined ? { defaultUrl: defaultUrl?.trim() || null } : {}),
-        ...(subIdPattern !== undefined ? { subIdPattern: subIdPattern?.trim() || null } : {}),
       },
     });
 

@@ -29,8 +29,6 @@ interface Product {
 interface DbAffiliate {
   id: number;
   name: string;
-  defaultUrl?: string | null;
-  subIdPattern?: string | null;
 }
 
 interface AddLinkModalProps {
@@ -415,19 +413,6 @@ export default function AddLinkModal({
                 }`}
               />
               {affiliateLinkError && <p className="text-xs font-semibold text-rose-500">{affiliateLinkError}</p>}
-              
-              {/* Recommended Format Badge */}
-              {selectedAffiliateObj?.subIdPattern && (
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200/70 mt-1">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span>
-                    Recommended Sub ID Pattern:{" "}
-                    <code className="font-mono text-amber-950 bg-amber-100/90 px-1.5 py-0.5 rounded text-[10px]">
-                      {selectedAffiliateObj.subIdPattern}
-                    </code>
-                  </span>
-                </div>
-              )}
             </div>
           </div>
 
