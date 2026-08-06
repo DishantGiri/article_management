@@ -33,18 +33,18 @@ export default function SettingsPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [usersRes, settingsRes] = await Promise.all([
-          fetch("/api/users"),
+        const [userRes, settingsRes] = await Promise.all([
+          fetch(`/api/users/${currentUserId}`),
           fetch("/api/settings"),
         ]);
         
-        if (usersRes.ok) {
-          const users = await usersRes.json();
-          const user = users.find((u: any) => u.id === currentUserId);
-          if (user) {
-            setName(user.name);
-            setEmail(user.email || "");
-          }
+        if (userRes.ok) {
+          const user = await userRes.json();
+          setName(user.name || session?.user?.name || "");
+          setEmail(user.email || session?.user?.email || "");
+        } else if (session?.user) {
+          setName(session.user.name || "");
+          setEmail(session.user.email || "");
         }
 
         if (settingsRes.ok) {
@@ -61,7 +61,7 @@ export default function SettingsPage() {
     if (currentUserId) {
       fetchData();
     }
-  }, [currentUserId]);
+  }, [currentUserId, session?.user]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

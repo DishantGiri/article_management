@@ -1,5 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+
+// GET /api/users/[id] — get user profile details
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const targetId = parseInt(id);
+    const isSelf = session.user.id === targetId;
+    const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+
+    if (!isSelf && !isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: targetId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        allowLinkLogAccess: true,
+        approved: true,
+        siteAccess: { select: { site: { select: { id: true, name: true } } } },
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(user);
+  } catch (err) {
+    console.error("[GET /api/users/[id]]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
 
 // PATCH /api/users/[id] — update user details, role, and site access
 export async function PATCH(

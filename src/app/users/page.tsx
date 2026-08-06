@@ -74,19 +74,26 @@ export default function UsersPage() {
     if (!session?.user?.id) return;
     const stored = session.user.id;
     setCurrentUserId(stored);
-    const uRole = session.user.role || "ADMIN";
+    const uRole = session.user.role || "WRITER";
     setCurrentUserRole(uRole);
 
+    if (uRole !== "ADMIN" && uRole !== "SUPER_ADMIN") {
+      setLoading(false);
+      return;
+    }
+
     Promise.all([
-      fetch("/api/users").then((r) => r.json()),
-      fetch("/api/sites").then((r) => r.json()),
-      fetch(`/api/dashboard?userId=${stored}`).then((r) => r.json()),
-    ]).then(([usersData, sitesData, dashboardData]) => {
-      setUsers(Array.isArray(usersData) ? usersData : []);
-      setSites(Array.isArray(sitesData) ? sitesData : []);
-      setStats(dashboardData);
-    }).finally(() => setLoading(false));
-  }, [session?.user?.id]);
+      fetch("/api/users").then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/sites").then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/dashboard?userId=${stored}`).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([usersData, sitesData, dashboardData]) => {
+        setUsers(Array.isArray(usersData) ? usersData : []);
+        setSites(Array.isArray(sitesData) ? sitesData : []);
+        setStats(dashboardData);
+      })
+      .finally(() => setLoading(false));
+  }, [session?.user?.id, session?.user?.role]);
 
   const openAddModal = () => {
     setEditingUserId(null);
