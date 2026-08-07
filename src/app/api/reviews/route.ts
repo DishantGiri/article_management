@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       where: { id: Number(articleId) },
       data: {
         status: newStatus,
-        ...(newStatus === "REDO" ? { startedAt: null } : {}),
+        ...(newStatus === "REDO" ? { startedAt: null, specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
         ...(priority && ["LOW", "MEDIUM", "HIGH"].includes(priority)
           ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" }
           : {}),

@@ -581,7 +581,7 @@ function ArticlesContent() {
                 />
               </div>
 
-              {currentUserRole === "WRITER" && (
+              {currentUserRole === "WRITER" && updatingArticle.status !== "REDO" && (
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
                     Reason for Update <span className="text-rose-500">* (Admin / Super Admin Approval Required)</span>
@@ -604,22 +604,22 @@ function ArticlesContent() {
                   Cancel
                 </button>
                 <button
-                  disabled={submittingUpdate || !updateLink.trim() || (currentUserRole === "WRITER" && !updateReason.trim())}
+                  disabled={submittingUpdate || !updateLink.trim() || (currentUserRole === "WRITER" && updatingArticle.status !== "REDO" && !updateReason.trim())}
                   onClick={async () => {
                     if (!updateLink.trim() || !currentUserId) return;
-                    if (currentUserRole === "WRITER" && !updateReason.trim()) {
+                    const isWriterRequestingUpdate = currentUserRole === "WRITER" && updatingArticle.status !== "REDO";
+                    if (isWriterRequestingUpdate && !updateReason.trim()) {
                       toast.error("Please provide a reason for the update.");
                       return;
                     }
                     setSubmittingUpdate(true);
                     try {
-                      const isWriter = currentUserRole === "WRITER";
                       const res = await fetch(`/api/articles/${updatingArticle.id}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           articleLink: updateLink,
-                          ...(isWriter ? {
+                          ...(isWriterRequestingUpdate ? {
                             specialApprovalRequested: true,
                             specialApprovalRequestReason: updateReason.trim(),
                             notes: `Requested update approval: ${updateReason.trim()}`
@@ -635,7 +635,7 @@ function ArticlesContent() {
                         return;
                       }
                       toast.success(
-                        isWriter
+                        isWriterRequestingUpdate
                           ? "Update request submitted! Admin/SuperAdmin approval pending."
                           : "Article updated successfully!"
                       );
@@ -653,7 +653,7 @@ function ArticlesContent() {
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {submittingUpdate ? "Submitting..." : currentUserRole === "WRITER" ? "Request Approval" : "Submit Update"}
+                  {submittingUpdate ? "Submitting..." : (currentUserRole === "WRITER" && updatingArticle.status !== "REDO") ? "Request Approval" : "Submit Update"}
                 </button>
               </div>
             </div>

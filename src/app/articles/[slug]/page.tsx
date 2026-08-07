@@ -351,7 +351,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                             placeholder="https://docs.google.com/..."
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition"
                           />
-                          {currentUserRole === "WRITER" && (
+                          {currentUserRole === "WRITER" && article.status !== "REDO" && (
                             <textarea
                               rows={2}
                               value={updateReason}
@@ -369,7 +369,8 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                             </button>
                             <button
                               onClick={async () => {
-                                if (currentUserRole === "WRITER" && !updateReason.trim()) {
+                                const isWriterRequestingUpdate = currentUserRole === "WRITER" && article.status !== "REDO";
+                                if (isWriterRequestingUpdate && !updateReason.trim()) {
                                   setError("Please enter a reason for the update.");
                                   return;
                                 }
@@ -377,14 +378,13 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                                 setError("");
                                 setSuccess("");
                                 try {
-                                  const isWriter = currentUserRole === "WRITER";
                                   const res = await fetch(`/api/articles/${article.id}`, {
                                     method: "PATCH",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({
                                       articleLink: newLinkValue,
                                       callerId: currentUserId,
-                                      ...(isWriter ? {
+                                      ...(isWriterRequestingUpdate ? {
                                         specialApprovalRequested: true,
                                         specialApprovalRequestReason: updateReason.trim(),
                                         notes: `Requested update approval: ${updateReason.trim()}`
@@ -397,7 +397,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                                   if (!res.ok) throw new Error(data.error || "Failed to update link");
                                   
                                   setSuccess(
-                                    isWriter
+                                    isWriterRequestingUpdate
                                       ? "Update approval requested! Awaiting Admin/SuperAdmin approval."
                                       : article.status === "REDO"
                                       ? "Article updated and marked Completed!"
@@ -417,10 +417,10 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                                   setUpdatingLink(false);
                                 }
                               }}
-                              disabled={updatingLink || (currentUserRole === "WRITER" && (!newLinkValue.trim() || !updateReason.trim()))}
+                              disabled={updatingLink || !newLinkValue.trim() || (currentUserRole === "WRITER" && article.status !== "REDO" && !updateReason.trim())}
                               className="px-2.5 py-1.5 bg-black hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold transition cursor-pointer disabled:opacity-50"
                             >
-                              {updatingLink ? "Saving..." : currentUserRole === "WRITER" ? "Request Approval" : "Save"}
+                              {updatingLink ? "Saving..." : (currentUserRole === "WRITER" && article.status !== "REDO") ? "Request Approval" : "Save"}
                             </button>
                           </div>
                         </div>

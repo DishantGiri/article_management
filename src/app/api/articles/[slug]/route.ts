@@ -192,7 +192,7 @@ export async function PATCH(
         ...(specialApprovalRequestReason !== undefined ? { specialApprovalRequestReason } : {}),
         ...(status === "COMPLETED" ? { specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
         ...(status === "IN_PROGRESS" && !existing.startedAt ? { startedAt: new Date() } : {}),
-        ...(status === "REDO" ? { startedAt: null } : {}),
+        ...(status === "REDO" ? { startedAt: null, specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
         ...(redoStarted && existing.status === "REDO" && !existing.startedAt ? { startedAt: new Date() } : {}),
         ...(completedAt ? { completedAt } : {}),
         ...(writingTimeMin !== undefined ? { writingTimeMin } : {}),
