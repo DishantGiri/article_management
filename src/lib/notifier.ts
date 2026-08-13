@@ -1,6 +1,6 @@
 export async function sendRealtimeNotification(
   recipientId: number,
-  notification: { id: number; message: string; type: string; createdAt: Date }
+  notification: { id: number; message: string; type: string; createdAt: Date; senderId?: number | null }
 ) {
   try {
     const port = process.env.PORT || "3022";
@@ -13,6 +13,7 @@ export async function sendRealtimeNotification(
       },
       body: JSON.stringify({
         recipientId,
+        senderId: notification.senderId,
         id: notification.id,
         message: notification.message,
         type: notification.type,

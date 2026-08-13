@@ -73,8 +73,8 @@ app.prepare().then(() => {
           }
 
           const payload = JSON.parse(body);
-          const { recipientId, message, id, createdAt, type, broadcast, data } = payload;
-          const payloadStr = JSON.stringify({ id, message, createdAt, type, data });
+          const { recipientId, senderId, message, id, createdAt, type, broadcast, data } = payload;
+          const payloadStr = JSON.stringify({ id, senderId, message, createdAt, type, data });
 
           if (broadcast) {
             clients.forEach((sockets) => {

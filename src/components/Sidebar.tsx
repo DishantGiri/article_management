@@ -168,6 +168,10 @@ export default function Sidebar() {
     ws.onmessage = (event) => {
       try {
         const notif = JSON.parse(event.data);
+        // Skip notification sound and toast for actions triggered by the logged-in user themselves
+        if (notif.senderId && userId && Number(notif.senderId) === Number(userId)) {
+          return;
+        }
         setToast({ message: notif.message });
         setUnreadCount((prev) => prev + 1);
         audioObj.currentTime = 0;

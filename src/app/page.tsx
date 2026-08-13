@@ -143,6 +143,42 @@ export default function DashboardPage() {
       .catch((e) => console.error("Failed to load notifications", e));
   };
 
+  const handleMarkAllAsRead = async () => {
+    if (!currentUserId) return;
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUserId }),
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        window.dispatchEvent(new CustomEvent("notifications-marked-read"));
+        toast.success("All notifications marked as read");
+      }
+    } catch (err) {
+      console.error("Failed to mark notifications as read:", err);
+    }
+  };
+
+  const handleNotificationClick = async (n: any) => {
+    if (!n.isRead) {
+      try {
+        await fetch("/api/notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationId: n.id }),
+        });
+        setNotifications((prev) =>
+          prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item))
+        );
+        window.dispatchEvent(new CustomEvent("notifications-updated"));
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData(true);
 
@@ -349,18 +385,33 @@ export default function DashboardPage() {
             className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition duration-150 border border-slate-200/50 shadow-sm bg-white cursor-pointer"
           >
             <Bell className="w-5 h-5" />
-            {notifications.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white" />
+            {notifications.some((n) => !n.isRead) && (
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white animate-pulse" />
             )}
           </button>
 
           {showBellDropdown && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider font-semibold">Notifications</span>
-                <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-full">{notifications.length}</span>
+            <div className="absolute right-0 mt-2 w-84 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</span>
+                  {notifications.filter((n) => !n.isRead).length > 0 && (
+                    <span className="text-[10px] bg-rose-50 text-rose-600 border border-rose-200/50 font-bold px-2 py-0.5 rounded-full">
+                      {notifications.filter((n) => !n.isRead).length} unread
+                    </span>
+                  )}
+                </div>
+                {notifications.some((n) => !n.isRead) && (
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="text-[11px] font-bold text-violet-600 hover:text-violet-700 hover:underline transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Mark all as read
+                  </button>
+                )}
               </div>
-              <div className="max-h-60 overflow-y-auto space-y-2.5">
+              <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
                 {notifications.length === 0 ? (
                   <p className="text-xs text-slate-400 italic text-center py-4">No notifications</p>
                 ) : (
@@ -383,14 +434,33 @@ export default function DashboardPage() {
                       <Link 
                         key={n.id} 
                         href={linkUrl}
-                        className="p-3 bg-slate-50 hover:bg-indigo-50/40 rounded-xl border border-slate-200/50 text-xs flex flex-col gap-1 transition-colors block cursor-pointer"
+                        onClick={() => handleNotificationClick(n)}
+                        className={`p-3 rounded-xl border text-xs flex flex-col gap-1.5 transition-colors block cursor-pointer ${
+                          !n.isRead 
+                            ? "bg-violet-50/70 hover:bg-violet-100/60 border-violet-200/80 font-semibold" 
+                            : "bg-slate-50 hover:bg-slate-100/70 border-slate-200/50 text-slate-600"
+                        }`}
                       >
-                        <p className="font-semibold text-slate-700 leading-snug">{n.message}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={`leading-snug ${!n.isRead ? "text-slate-900 font-bold" : "text-slate-600"}`}>{n.message}</p>
+                          {!n.isRead && (
+                            <span className="w-2 h-2 rounded-full bg-violet-600 flex-shrink-0 mt-1" />
+                          )}
+                        </div>
                         <span className="text-[10px] text-slate-400 font-medium self-end">{new Date(n.createdAt).toLocaleDateString()}</span>
                       </Link>
                     );
                   })
                 )}
+              </div>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                <Link
+                  href="/notifications"
+                  onClick={() => setShowBellDropdown(false)}
+                  className="text-violet-600 hover:text-violet-800 font-bold transition flex items-center gap-1"
+                >
+                  View all notifications →
+                </Link>
               </div>
             </div>
           )}

@@ -108,6 +108,7 @@ export async function POST(req: NextRequest) {
         });
 
         for (const access of accesses) {
+          if (access.userId === Number(addedById)) continue; // Skip logged-in user who imported the product
           const notif = await prisma.notification.create({
             data: {
               recipientId: access.userId,
