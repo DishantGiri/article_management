@@ -112,7 +112,7 @@ const NAV_ITEMS: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session, update } = useSession();
+  const { data: session, status, update } = useSession();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
@@ -126,13 +126,7 @@ export default function Sidebar() {
         role: session.user.role as Role | null,
         image: session.user.image || null,
       }
-    : {
-        id: 1,
-        name: "Admin User",
-        email: "admin@articlemgmt.com",
-        role: "ADMIN" as Role,
-        image: null,
-      };
+    : null;
 
   useEffect(() => {
     setIsMounted(true);
@@ -225,7 +219,9 @@ export default function Sidebar() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const visibleNavItems = NAV_ITEMS.filter((item) => currentUser.role && item.roles.includes(currentUser.role));
+  const visibleNavItems = currentUser?.role
+    ? NAV_ITEMS.filter((item) => currentUser.role && item.roles.includes(currentUser.role))
+    : [];
 
   const activeHref = visibleNavItems.reduce((best, item) => {
     if (pathname.startsWith(item.href) && item.href.length > best.length) {
@@ -253,37 +249,45 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-5 space-y-1 overflow-y-auto pr-4">
-        {visibleNavItems.map((item) => {
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 pl-6 pr-4 py-2.5 text-sm transition-all duration-200 group rounded-r-lg ${
-                active
-                  ? "bg-[#69F0AE] text-slate-900 font-semibold"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium"
-              }`}
-            >
-              <span className={active ? "text-slate-900" : "text-slate-400 group-hover:text-slate-600 transition-colors"}>
-                <item.icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
-              </span>
-              <div className="flex-1 flex items-center justify-between">
-                <span>{item.label}</span>
-                {item.label === "Notifications" && unreadCount > 0 && (
-                  <span className="bg-rose-500 text-white font-bold text-[9px] px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm animate-pulse mr-2">
-                    {unreadCount}
-                  </span>
-                )}
-              </div>
-            </Link>
-          );
-        })}
+        {status === "loading" || !isMounted ? (
+          <div className="space-y-2 px-6">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-9 bg-slate-100/80 rounded-r-lg animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          visibleNavItems.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 pl-6 pr-4 py-2.5 text-sm transition-all duration-200 group rounded-r-lg ${
+                  active
+                    ? "bg-[#69F0AE] text-slate-900 font-semibold"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                }`}
+              >
+                <span className={active ? "text-slate-900" : "text-slate-400 group-hover:text-slate-600 transition-colors"}>
+                  <item.icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
+                </span>
+                <div className="flex-1 flex items-center justify-between">
+                  <span>{item.label}</span>
+                  {item.label === "Notifications" && unreadCount > 0 && (
+                    <span className="bg-rose-500 text-white font-bold text-[9px] px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm animate-pulse mr-2">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            );
+          })
+        )}
       </nav>
 
       {/* User Switcher (mock auth) */}
       <div className="px-3 py-4 border-t border-slate-100 relative bg-slate-50/50" suppressHydrationWarning>
-        {isMounted ? (
+        {isMounted && status !== "loading" && currentUser ? (
           <>
             <button
               onClick={() => setShowSwitcher(!showSwitcher)}

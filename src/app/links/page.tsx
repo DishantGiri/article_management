@@ -76,7 +76,7 @@ function LinksPageContent() {
   const [viewingRemarks, setViewingRemarks] = useState<string | null>(null);
   const [unlinkedProducts, setUnlinkedProducts] = useState<any[]>([]);
   const [preselectedProductId, setPreselectedProductId] = useState<number | null>(urlProductId ? parseInt(urlProductId) : null);
-  const [currentUserRole, setCurrentUserRole] = useState("WRITER");
+  const [currentUserRole, setCurrentUserRole] = useState("");
   const itemsPerPage = 10;
 
   // Confirm dialog state

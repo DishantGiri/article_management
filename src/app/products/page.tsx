@@ -53,7 +53,7 @@ export default function ProductsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState("WRITER");
+  const [currentUserRole, setCurrentUserRole] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const itemsPerPage = 10;
   const router = useRouter();

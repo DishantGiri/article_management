@@ -53,9 +53,9 @@ export default function UsersPage() {
   const itemsPerPage = 10;
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
 
-  const [currentUserRole, setCurrentUserRole] = useState("ADMIN");
-  const [currentUserId, setCurrentUserId] = useState<number>(1);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const [currentUserRole, setCurrentUserRole] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);

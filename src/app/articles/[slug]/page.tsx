@@ -45,8 +45,8 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState(2);
-  const [currentUserRole, setCurrentUserRole] = useState("WRITER");
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [remark, setRemark] = useState("");

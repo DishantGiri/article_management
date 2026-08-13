@@ -69,7 +69,7 @@ function ArticlesContent() {
   const [writerFilter, setWriterFilter] = useState("");
   const [siteFilter, setSiteFilter] = useState("");
 
-  const [currentUserRole, setCurrentUserRole] = useState("WRITER");
+  const [currentUserRole, setCurrentUserRole] = useState("");
   const [stats, setStats] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [updatingArticle, setUpdatingArticle] = useState<Article | null>(null);

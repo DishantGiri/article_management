@@ -92,18 +92,30 @@ import { useSession } from "next-auth/react";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentUserRole, setCurrentUserRole] = useState<string>("ADMIN");
-  const [currentUserId, setCurrentUserId] = useState<number>(1);
+  const [currentUserRole, setCurrentUserRole] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showBellDropdown, setShowBellDropdown] = useState(false);
+
+  useEffect(() => {
+    if (session?.user?.role) {
+      setCurrentUserRole(session.user.role);
+    }
+    if (session?.user?.id) {
+      setCurrentUserId(session.user.id);
+    }
+  }, [session?.user?.role, session?.user?.id]);
 
   const fetchDashboardData = (showLoading = false) => {
     if (!session?.user?.id) return;
     const uId = session.user.id;
     setCurrentUserId(uId);
+    if (session.user.role) {
+      setCurrentUserRole(session.user.role);
+    }
 
     if (showLoading) setLoading(true);
     fetch(`/api/dashboard?userId=${uId}`)
@@ -113,7 +125,9 @@ export default function DashboardPage() {
       })
       .then((resData) => {
         setData(resData);
-        setCurrentUserRole(resData.role);
+        if (resData.role) {
+          setCurrentUserRole(resData.role);
+        }
       })
       .catch((e) => console.error("Failed to load dashboard data", e))
       .finally(() => {
@@ -158,6 +172,7 @@ export default function DashboardPage() {
   }, [session?.user?.id]);
 
   const handleStartWriting = async (articleId: number) => {
+    if (!currentUserId) return;
     try {
       const res = await fetch(`/api/articles/${articleId}`, {
         method: "PATCH",
@@ -177,7 +192,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading) {
+  if (loading || status === "loading" || !currentUserRole) {
     return (
       <div className="min-h-screen flex items-center justify-center" suppressHydrationWarning>
         <div className="w-10 h-10 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin" suppressHydrationWarning />
