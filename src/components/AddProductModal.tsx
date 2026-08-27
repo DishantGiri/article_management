@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import CustomSelect from "@/components/CustomSelect";
 import {
   Package,
   X,
@@ -649,32 +650,22 @@ export default function AddProductModal({
                         Affiliate Network / Name
                       </label>
                       {!showCustomAffiliate ? (
-                        <div className="relative">
-                          <select
-                            value={form.affiliateName}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === "__NEW__") {
-                                setShowCustomAffiliate(true);
-                                setForm((prev) => ({ ...prev, affiliateName: "" }));
-                              } else {
-                                setForm((prev) => ({ ...prev, affiliateName: val }));
-                              }
-                            }}
-                            className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
-                          >
-                            <option value="" className="text-slate-400 font-medium">Select Affiliate...</option>
-                            {affiliates.map((aff) => (
-                              <option key={aff.id} value={aff.name} className="font-semibold text-slate-800">
-                                {aff.name}
-                              </option>
-                            ))}
-                            <option value="__NEW__" className="font-bold text-indigo-600 bg-indigo-50">
-                              + Add Custom Affiliate...
-                            </option>
-                          </select>
-                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
+                        <CustomSelect
+                          value={form.affiliateName}
+                          onChange={(val) => {
+                            if (val === "__NEW__") {
+                              setShowCustomAffiliate(true);
+                              setForm((prev) => ({ ...prev, affiliateName: "" }));
+                            } else {
+                              setForm((prev) => ({ ...prev, affiliateName: val }));
+                            }
+                          }}
+                          placeholder="Select Affiliate..."
+                          options={[
+                            ...affiliates.map((aff) => ({ value: aff.name, label: aff.name })),
+                            { value: "__NEW__", label: "+ Add Custom Affiliate...", isAction: true }
+                          ]}
+                        />
                       ) : (
                         <div className="flex gap-2">
                           <input
@@ -704,18 +695,16 @@ export default function AddProductModal({
                         <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
                         Trend Level
                       </label>
-                      <div className="relative">
-                        <select
-                          value={form.trendLevel}
-                          onChange={(e) => update("trendLevel", e.target.value)}
-                          className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
-                        >
-                          <option value="HIGH">🔥 High Trend</option>
-                          <option value="MODERATE">📈 Moderate Trend</option>
-                          <option value="LOW">📉 Low / Stable</option>
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
+                      <CustomSelect
+                        value={form.trendLevel}
+                        onChange={(val) => update("trendLevel", val)}
+                        placeholder="Select Trend Level..."
+                        options={[
+                          { value: "HIGH", label: "🔥 High Trend" },
+                          { value: "MODERATE", label: "📈 Moderate Trend" },
+                          { value: "LOW", label: "📉 Low / Stable" },
+                        ]}
+                      />
                     </div>
 
                     {/* Trend Link */}

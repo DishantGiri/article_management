@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import CustomSelect from "@/components/CustomSelect";
 import {
   Package,
   X,
@@ -248,32 +249,22 @@ export default function EditProductModal({
                     Affiliate Network / Name
                   </label>
                   {!showCustomAffiliate ? (
-                    <div className="relative">
-                      <select
-                        value={affiliateName}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === "__NEW__") {
-                            setShowCustomAffiliate(true);
-                            setAffiliateName("");
-                          } else {
-                            setAffiliateName(val);
-                          }
-                        }}
-                        className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
-                      >
-                        <option value="" className="text-slate-400 font-medium">Select Affiliate...</option>
-                        {affiliates.map((aff) => (
-                          <option key={aff.id} value={aff.name} className="font-semibold text-slate-800">
-                            {aff.name}
-                          </option>
-                        ))}
-                        <option value="__NEW__" className="font-bold text-indigo-600 bg-indigo-50">
-                          + Add Custom Affiliate...
-                        </option>
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
+                    <CustomSelect
+                      value={affiliateName}
+                      onChange={(val) => {
+                        if (val === "__NEW__") {
+                          setShowCustomAffiliate(true);
+                          setAffiliateName("");
+                        } else {
+                          setAffiliateName(val);
+                        }
+                      }}
+                      placeholder="Select Affiliate..."
+                      options={[
+                        ...affiliates.map((aff) => ({ value: aff.name, label: aff.name })),
+                        { value: "__NEW__", label: "+ Add Custom Affiliate...", isAction: true }
+                      ]}
+                    />
                   ) : (
                     <div className="flex gap-2">
                       <input
@@ -302,21 +293,12 @@ export default function EditProductModal({
                     <Building2 className="w-3.5 h-3.5 text-indigo-600" />
                     Site <span className="text-rose-500">*</span>
                   </label>
-                  <div className="relative">
-                    <select
-                      value={siteId}
-                      onChange={(e) => setSiteId(e.target.value)}
-                      className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
-                    >
-                      <option value="" className="text-slate-400 font-medium">Select Site...</option>
-                      {sites.map((s) => (
-                        <option key={s.id} value={s.id} className="font-semibold text-slate-800">
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
+                  <CustomSelect
+                    value={siteId}
+                    onChange={(val) => setSiteId(val)}
+                    placeholder="Select Site..."
+                    options={sites.map((s) => ({ value: String(s.id), label: s.name }))}
+                  />
                 </div>
 
                 <div className="space-y-1.5">
@@ -324,21 +306,12 @@ export default function EditProductModal({
                     <Layers className="w-3.5 h-3.5 text-indigo-600" />
                     Product Type <span className="text-rose-500">*</span>
                   </label>
-                  <div className="relative">
-                    <select
-                      value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
-                      className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
-                    >
-                      <option value="" className="text-slate-400 font-medium">Select Product Type...</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id} className="font-semibold text-slate-800">
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
+                  <CustomSelect
+                    value={categoryId}
+                    onChange={(val) => setCategoryId(val)}
+                    placeholder="Select Product Type..."
+                    options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
+                  />
                 </div>
               </div>
 
@@ -349,18 +322,16 @@ export default function EditProductModal({
                     <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
                     Trend Level
                   </label>
-                  <div className="relative">
-                    <select
-                      value={trendLevel}
-                      onChange={(e) => setTrendLevel(e.target.value)}
-                      className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
-                    >
-                      <option value="HIGH">🔥 High Trend</option>
-                      <option value="MODERATE">📈 Moderate Trend</option>
-                      <option value="LOW">📉 Low / Stable</option>
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
+                  <CustomSelect
+                    value={trendLevel}
+                    onChange={(val) => setTrendLevel(val)}
+                    placeholder="Select Trend Level..."
+                    options={[
+                      { value: "HIGH", label: "🔥 High Trend" },
+                      { value: "MODERATE", label: "📈 Moderate Trend" },
+                      { value: "LOW", label: "📉 Low / Stable" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1.5">

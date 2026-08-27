@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame } from "lucide-react";
 import { useSession } from "next-auth/react";
+import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
 
 interface Article {
@@ -365,42 +366,44 @@ function ArticlesContent() {
         </div>
 
         {/* Status Filter */}
-        <select
+        <CustomSelect
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-          className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-        >
-          <option value="">All Statuses</option>
-          <option value="PENDING">Pending</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="COMPLETED">Completed</option>
-          <option value="APPROVED">Approved</option>
-          <option value="REDO">Redo / Needs Changes</option>
-        </select>
+          onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+          placeholder="All Statuses"
+          className="min-w-[130px]"
+          options={[
+            { value: "", label: "All Statuses" },
+            { value: "PENDING", label: "Pending" },
+            { value: "IN_PROGRESS", label: "In Progress" },
+            { value: "COMPLETED", label: "Completed" },
+            { value: "APPROVED", label: "Approved" },
+            { value: "REDO", label: "Redo / Needs Changes" },
+          ]}
+        />
 
         {/* Writer Filter */}
-        <select
+        <CustomSelect
           value={writerFilter}
-          onChange={(e) => { setWriterFilter(e.target.value); setCurrentPage(1); }}
-          className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-        >
-          <option value="">All Writers</option>
-          {uniqueWriters.map((writer) => (
-            <option key={writer} value={writer}>{writer}</option>
-          ))}
-        </select>
+          onChange={(val) => { setWriterFilter(val); setCurrentPage(1); }}
+          placeholder="All Writers"
+          className="min-w-[130px]"
+          options={[
+            { value: "", label: "All Writers" },
+            ...uniqueWriters.map((w) => ({ value: w, label: w })),
+          ]}
+        />
 
         {/* Site Filter */}
-        <select
+        <CustomSelect
           value={siteFilter}
-          onChange={(e) => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-          className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-        >
-          <option value="">All Sites</option>
-          {uniqueSites.map((site) => (
-            <option key={site} value={site}>{site}</option>
-          ))}
-        </select>
+          onChange={(val) => { setSiteFilter(val); setCurrentPage(1); }}
+          placeholder="All Sites"
+          className="min-w-[130px]"
+          options={[
+            { value: "", label: "All Sites" },
+            ...uniqueSites.map((s) => ({ value: s, label: s })),
+          ]}
+        />
       </div>
 
       {/* Table Content */}

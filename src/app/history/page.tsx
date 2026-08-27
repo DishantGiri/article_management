@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import CustomSelect from "@/components/CustomSelect";
 import { Search, Clock, ArrowRight, FileText, Link2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -226,18 +227,20 @@ export default function HistoryPage() {
         </div>
 
         {/* Type Filter */}
-        <select
+        <CustomSelect
           value={typeFilter}
-          onChange={(e) => {
-            setTypeFilter(e.target.value as any);
+          onChange={(val) => {
+            setTypeFilter(val as any);
             setCurrentPage(1);
           }}
-          className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
-        >
-          <option value="">All Activity Types</option>
-          <option value="ARTICLE">Article Changes</option>
-          <option value="LINK">Link Log Changes</option>
-        </select>
+          placeholder="All Activity Types"
+          className="min-w-[145px]"
+          options={[
+            { value: "", label: "All Activity Types" },
+            { value: "ARTICLE", label: "Article Changes" },
+            { value: "LINK", label: "Link Log Changes" },
+          ]}
+        />
 
         {/* Date Filters */}
         <div className="flex items-center gap-2 border-l border-slate-100 pl-3">

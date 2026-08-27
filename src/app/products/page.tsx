@@ -10,6 +10,7 @@ import EditProductModal from "@/components/EditProductModal";
 import ImportProductModal from "@/components/ImportProductModal";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import CustomSelect from "@/components/CustomSelect";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Category {
@@ -435,51 +436,44 @@ export default function ProductsPage() {
         </div>
 
         {/* Status Filter */}
-        <div className="relative min-w-[130px]">
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-            className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
-          >
-            <option value="">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="REVIEW">Review</option>
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
+        <CustomSelect
+          value={statusFilter}
+          onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+          placeholder="All Statuses"
+          className="min-w-[130px]"
+          options={[
+            { value: "", label: "All Statuses" },
+            { value: "PENDING", label: "Pending" },
+            { value: "IN_PROGRESS", label: "In Progress" },
+            { value: "COMPLETED", label: "Completed" },
+            { value: "REJECTED", label: "Rejected" },
+            { value: "REVIEW", label: "Review" },
+          ]}
+        />
 
         {/* Category Filter */}
-        <div className="relative min-w-[140px] max-w-xs">
-          <select
-            value={categoryFilter}
-            onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-            className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer truncate"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
+        <CustomSelect
+          value={categoryFilter}
+          onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
+          placeholder="All Categories"
+          className="min-w-[140px]"
+          options={[
+            { value: "", label: "All Categories" },
+            ...categories.map((c) => ({ value: String(c.id), label: c.name })),
+          ]}
+        />
 
         {/* Added By User Filter */}
-        <div className="relative min-w-[130px]">
-          <select
-            value={userFilter}
-            onChange={(e) => { setUserFilter(e.target.value); setCurrentPage(1); }}
-            className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
-          >
-            <option value="">All Adders</option>
-            {uniqueAdders.map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
+        <CustomSelect
+          value={userFilter}
+          onChange={(val) => { setUserFilter(val); setCurrentPage(1); }}
+          placeholder="All Adders"
+          className="min-w-[130px]"
+          options={[
+            { value: "", label: "All Adders" },
+            ...uniqueAdders.map((u) => ({ value: u, label: u })),
+          ]}
+        />
 
         {/* Date Range Filter */}
         <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs">

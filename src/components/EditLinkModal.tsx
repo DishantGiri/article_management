@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import FormattedRemarks from "@/components/FormattedRemarks";
+import CustomSelect from "@/components/CustomSelect";
 
 interface Product {
   id: number;
@@ -270,19 +271,16 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Product *</label>
-            <select
+            <CustomSelect
               value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
+              onChange={(val) => setProductId(val)}
+              placeholder="Select Product..."
               disabled={loadingProducts}
-            >
-              <option value="">Select Product...</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.site.name})
-                </option>
-              ))}
-            </select>
+              options={products.map((p) => ({
+                value: String(p.id),
+                label: `${p.name} (${p.site.name})`
+              }))}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -318,16 +316,12 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                 </form>
               )}
 
-              <select
+              <CustomSelect
                 value={affiliateName}
-                onChange={e => setAffiliateName(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-              >
-                <option value="">Select Affiliate Name...</option>
-                {allAffiliates.map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
+                onChange={(val) => setAffiliateName(val)}
+                placeholder="Select Affiliate Name..."
+                options={allAffiliates.map((name) => ({ value: name, label: name }))}
+              />
 
             </div>
             <div>
@@ -435,15 +429,12 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Link Status</label>
-            <select
+            <CustomSelect
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-            >
-              {LINK_STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+              onChange={(val) => setStatus(val)}
+              placeholder="Select Link Status..."
+              options={LINK_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+            />
           </div>
 
           <div>

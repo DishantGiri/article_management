@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Search, Plus, Pencil, Trash2, X, Users } from "lucide-react";
 import { useSession } from "next-auth/react";
+import CustomSelect from "@/components/CustomSelect";
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -363,16 +364,16 @@ export default function UsersPage() {
           />
         </div>
         <div className="w-px h-6 bg-slate-200 mx-1"></div>
-        <select
+        <CustomSelect
           value={roleFilter}
-          onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
-          className="px-3 py-1.5 rounded-lg border-none text-sm font-semibold text-slate-600 bg-transparent focus:outline-none focus:ring-0 appearance-none cursor-pointer"
-        >
-          <option value="">All Roles</option>
-          {Object.entries(ROLE_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
-          ))}
-        </select>
+          onChange={(val) => { setRoleFilter(val); setCurrentPage(1); }}
+          placeholder="All Roles"
+          className="min-w-[130px]"
+          options={[
+            { value: "", label: "All Roles" },
+            ...Object.entries(ROLE_LABELS).map(([val, label]) => ({ value: val, label })),
+          ]}
+        />
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -500,17 +501,18 @@ export default function UsersPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Role</label>
-                <select
+                <CustomSelect
                   value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-                >
-                  <option value="WRITER">Writer</option>
-                  <option value="LINKER">Linker</option>
-                  <option value="TEAM_LEAD">Team Lead</option>
-                  {currentUserRole === "SUPER_ADMIN" && <option value="ADMIN">Admin</option>}
-                  {form.role === "SUPER_ADMIN" && <option value="SUPER_ADMIN">Super Admin</option>}
-                </select>
+                  onChange={(val) => setForm({ ...form, role: val })}
+                  placeholder="Select Role..."
+                  options={[
+                    { value: "WRITER", label: "Writer" },
+                    { value: "LINKER", label: "Linker" },
+                    { value: "TEAM_LEAD", label: "Team Lead" },
+                    ...(currentUserRole === "SUPER_ADMIN" ? [{ value: "ADMIN", label: "Admin" }] : []),
+                    ...(form.role === "SUPER_ADMIN" ? [{ value: "SUPER_ADMIN", label: "Super Admin" }] : []),
+                  ]}
+                />
               </div>
 
               {(form.role === "WRITER" || form.role === "TEAM_LEAD") && (
@@ -538,16 +540,15 @@ export default function UsersPage() {
               {form.role === "WRITER" && (
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Assign Team Lead</label>
-                  <select
+                  <CustomSelect
                     value={form.teamLeadId}
-                    onChange={(e) => setForm({ ...form, teamLeadId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-                  >
-                    <option value="">No Team Lead</option>
-                    {teamLeads.map((tl) => (
-                      <option key={tl.id} value={tl.id}>{tl.name}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setForm({ ...form, teamLeadId: val })}
+                    placeholder="No Team Lead"
+                    options={[
+                      { value: "", label: "No Team Lead" },
+                      ...teamLeads.map((tl) => ({ value: String(tl.id), label: tl.name })),
+                    ]}
+                  />
                 </div>
               )}
 

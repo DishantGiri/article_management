@@ -1,20 +1,8 @@
-"use client";
-
-import { useState, useEffect, useMemo } from "react";
+import CustomSelect from "@/components/CustomSelect";
+import { Link2, AlertCircle, Tag, X, Plus, Building2, Copy, Globe, Check } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { toast } from "react-hot-toast";
-import {
-  Sparkles,
-  Copy,
-  Plus,
-  Building2,
-  Link2,
-  Check,
-  AlertCircle,
-  Tag,
-  Globe,
-  X,
-} from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import toast from "react-hot-toast";
 
 interface Product {
   id: number;
@@ -348,22 +336,19 @@ export default function AddLinkModal({
               <Tag className="w-3.5 h-3.5 text-indigo-600" />
               Product <span className="text-rose-500">*</span>
             </label>
-            <select
-              value={selectedProductId || ""}
-              onChange={(e) => setSelectedProductId(Number(e.target.value) || null)}
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+            <CustomSelect
+              value={selectedProductId ? String(selectedProductId) : ""}
+              onChange={(val) => setSelectedProductId(val ? Number(val) : null)}
+              placeholder="Select Product..."
               disabled={loadingProducts || !!preselectedProductId}
-            >
-              <option value="">Select Product...</option>
-              {products.map((p) => {
+              options={products.map((p) => {
                 const isUnlinked = !p.linkLogs || p.linkLogs.length === 0;
-                return (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — (Site: {p.site?.name || "Unassigned"}) {isUnlinked ? "⚠️ (Needs Link Logs)" : ""}
-                  </option>
-                );
+                return {
+                  value: String(p.id),
+                  label: `${p.name} — (Site: ${p.site?.name || "Unassigned"}) ${isUnlinked ? "⚠️ (Needs Link Logs)" : ""}`
+                };
               })}
-            </select>
+            />
           </div>
 
           {/* Section 2: Affiliate Info (Supports Multiple Networks per Product) */}
@@ -432,18 +417,12 @@ export default function AddLinkModal({
                           </button>
                         )}
                       </div>
-                      <select
+                      <CustomSelect
                         value={entry.affiliateName}
-                        onChange={(e) => updateAffiliateEntry(idx, "affiliateName", e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
-                      >
-                        <option value="">Select Affiliate Name...</option>
-                        {allAffiliates.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => updateAffiliateEntry(idx, "affiliateName", val)}
+                        placeholder="Select Affiliate Name..."
+                        options={allAffiliates.map((name) => ({ value: name, label: name }))}
+                      />
                     </div>
 
                     {/* Affiliate Link */}
@@ -634,17 +613,12 @@ export default function AddLinkModal({
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Link Status
               </label>
-              <select
+              <CustomSelect
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
-              >
-                {LINK_STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setStatus(val)}
+                placeholder="Select Link Status..."
+                options={LINK_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+              />
             </div>
 
             <div>
