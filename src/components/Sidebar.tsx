@@ -19,11 +19,11 @@ const MOCK_USERS = [
 ];
 
 const ROLE_COLORS: Record<Role, string> = {
-  SUPER_ADMIN: "bg-violet-50 text-violet-700 border border-violet-200/60",
-  ADMIN: "bg-rose-50 text-rose-700 border border-rose-200/60",
-  LINKER: "bg-blue-50 text-blue-700 border border-blue-200/60",
-  WRITER: "bg-emerald-50 text-emerald-700 border border-emerald-200/60",
-  TEAM_LEAD: "bg-amber-50 text-amber-700 border border-amber-200/60",
+  SUPER_ADMIN: "bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30",
+  ADMIN: "bg-[#4A4A4A]/10 text-[#4A4A4A] border border-[#4A4A4A]/25",
+  LINKER: "bg-[#6D8196]/10 text-[#4A4A4A] border border-[#6D8196]/20",
+  WRITER: "bg-[#EAEAEA] text-[#4A4A4A] border border-[#CBCBCB]",
+  TEAM_LEAD: "bg-[#FFFFE3] text-[#4A4A4A] border border-[#CBCBCB]",
 };
 
 interface NavItem {
@@ -266,28 +266,28 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile Top Header */}
-      <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs w-full" suppressHydrationWarning>
+      <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-[#CBCBCB]/40 px-4 py-3 flex items-center justify-between shadow-xs w-full" suppressHydrationWarning>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileOpen(true)}
-            className="p-2 -ml-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="p-2 -ml-2 rounded-lg text-[#4A4A4A] hover:text-slate-900 hover:bg-[#FAF9F5] transition-colors cursor-pointer"
             aria-label="Open navigation menu"
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-[#0f172a] flex items-center justify-center shadow-xs">
+            <div className="w-7 h-7 rounded-md bg-[#4A4A4A] flex items-center justify-center shadow-xs">
               <span className="text-white font-bold text-xs">A</span>
             </div>
             <div>
-              <p className="text-slate-900 font-bold text-xs leading-tight">Article Flow</p>
-              <p className="text-slate-500 text-[9px] font-medium">Enterprise Manager</p>
+              <p className="text-[#4A4A4A] font-bold text-xs leading-tight">Article Flow</p>
+              <p className="text-[#737373] text-[9px] font-medium">Enterprise Manager</p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href="/notifications" className="relative p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+          <Link href="/notifications" className="relative p-2 rounded-lg text-[#4A4A4A] hover:bg-[#FAF9F5] transition-colors">
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 bg-rose-500 text-white font-bold text-[9px] min-w-[14px] h-[14px] px-1 rounded-full flex items-center justify-center animate-pulse">
@@ -296,7 +296,7 @@ export default function Sidebar() {
             )}
           </Link>
           {currentUser && (
-            <div className="w-7 h-7 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold border border-violet-200/50">
+            <div className="w-7 h-7 rounded-full bg-[#6D8196]/15 text-[#3D4F61] flex items-center justify-center text-xs font-bold border border-[#6D8196]/30">
               {currentUser.name.charAt(0)}
             </div>
           )}
@@ -314,26 +314,26 @@ export default function Sidebar() {
 
       {/* Sidebar Drawer */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white flex flex-col border-r border-slate-100 shadow-sm transition-transform duration-300 ease-in-out lg:z-40 lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white flex flex-col border-r border-[#CBCBCB]/50 shadow-xs transition-transform duration-300 ease-in-out lg:z-40 lg:translate-x-0 ${
           isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
         }`}
         suppressHydrationWarning
       >
         {/* Logo Header */}
-        <div className="px-6 py-6 border-b border-slate-100 flex items-center justify-between" suppressHydrationWarning>
+        <div className="px-6 py-6 border-b border-[#CBCBCB]/40 flex items-center justify-between" suppressHydrationWarning>
           <div className="flex items-center gap-3" suppressHydrationWarning>
-            <div className="w-8 h-8 rounded-md bg-[#0f172a] flex items-center justify-center shadow-sm" suppressHydrationWarning>
+            <div className="w-8 h-8 rounded-md bg-[#4A4A4A] flex items-center justify-center shadow-sm" suppressHydrationWarning>
               <span className="text-white font-bold text-sm">A</span>
             </div>
             <div suppressHydrationWarning>
-              <p className="text-slate-900 font-bold text-sm leading-tight">Article Flow</p>
-              <p className="text-slate-500 text-[10px] mt-0.5 font-medium">Enterprise Manager</p>
+              <p className="text-[#4A4A4A] font-bold text-sm leading-tight">Article Flow</p>
+              <p className="text-[#737373] text-[10px] mt-0.5 font-medium">Enterprise Manager</p>
             </div>
           </div>
           {/* Mobile close button */}
           <button
             onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="lg:hidden p-1.5 rounded-lg text-[#737373] hover:text-[#4A4A4A] hover:bg-[#FAF9F5] transition-colors cursor-pointer"
             aria-label="Close navigation menu"
           >
             <X className="w-5 h-5" />
@@ -345,7 +345,7 @@ export default function Sidebar() {
           {status === "loading" || !isMounted ? (
             <div className="space-y-2 px-6">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-9 bg-slate-100/80 rounded-r-lg animate-pulse" />
+                <div key={i} className="h-9 bg-[#FAF9F5] rounded-r-lg animate-pulse" />
               ))}
             </div>
           ) : (
@@ -356,13 +356,13 @@ export default function Sidebar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsMobileOpen(false)}
-                  className={`flex items-center gap-3 pl-6 pr-4 py-2.5 text-sm transition-all duration-200 group rounded-r-lg ${
+                  className={`flex items-center gap-3 pl-6 pr-4 py-2.5 text-sm transition-all duration-200 group rounded-r-xl ${
                     active
-                      ? "bg-[#69F0AE] text-slate-900 font-semibold"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                      ? "bg-[#6D8196] text-white font-semibold shadow-xs"
+                      : "text-[#4A4A4A] hover:text-slate-900 hover:bg-[#FAF9F5] font-medium"
                   }`}
                 >
-                  <span className={active ? "text-slate-900" : "text-slate-400 group-hover:text-slate-600 transition-colors"}>
+                  <span className={active ? "text-white" : "text-[#6D8196]/70 group-hover:text-[#6D8196] transition-colors"}>
                     <item.icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
                   </span>
                   <div className="flex-1 flex items-center justify-between">

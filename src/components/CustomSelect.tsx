@@ -26,8 +26,8 @@ export default function CustomSelect({
   options,
   placeholder = "Select...",
   className = "w-full",
-  triggerClassName = "w-full px-3.5 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs",
-  popupClassName = "w-full bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 max-h-60 overflow-y-auto",
+  triggerClassName = "w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-xl text-xs font-semibold text-[#4A4A4A] shadow-2xs",
+  popupClassName = "w-full bg-white rounded-xl shadow-xl border border-[#CBCBCB]/60 py-1.5 max-h-60 overflow-y-auto",
   disabled = false,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -62,19 +62,19 @@ export default function CustomSelect({
         className={`flex items-center justify-between transition-all cursor-pointer select-none text-left disabled:opacity-50 disabled:cursor-not-allowed ${triggerClassName}`}
       >
         <span className="truncate">
-          {selectedOption ? selectedOption.label : <span className="text-slate-400 font-medium">{placeholder}</span>}
+          {selectedOption ? selectedOption.label : <span className="text-[#737373] font-medium">{placeholder}</span>}
         </span>
-        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isOpen ? "rotate-180 text-indigo-600" : ""}`} />
+        <ChevronDown className={`w-4 h-4 text-[#737373] shrink-0 ml-2 transition-transform duration-200 ${isOpen ? "rotate-180 text-[#6D8196]" : ""}`} />
       </button>
 
       {/* Styled Popup List Dropdown */}
       {isOpen && (
-        <div className={`absolute z-50 mt-1.5 left-0 shadow-xl border border-slate-100 py-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150 ${popupClassName}`}>
+        <div className={`absolute z-50 mt-1.5 left-0 shadow-xl border border-[#CBCBCB]/60 py-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150 ${popupClassName}`}>
           {placeholder && !options.some((o) => o.value === "") && (
             <div
               onClick={() => handleSelect("")}
               className={`px-3.5 py-2 text-xs font-semibold cursor-pointer transition-colors ${
-                !value ? "bg-indigo-50/80 text-indigo-700 font-bold" : "text-slate-500 hover:bg-slate-50"
+                !value ? "bg-[#6D8196]/15 text-[#3D4F61] font-bold" : "text-[#737373] hover:bg-[#FAF9F5]"
               }`}
             >
               {placeholder}
@@ -88,7 +88,7 @@ export default function CustomSelect({
                 <div
                   key={opt.value || idx}
                   onClick={() => handleSelect(opt.value)}
-                  className="px-3.5 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 cursor-pointer border-t border-slate-100 transition-colors"
+                  className="px-3.5 py-2 text-xs font-bold text-[#6D8196] hover:bg-[#6D8196]/10 cursor-pointer border-t border-[#CBCBCB]/40 transition-colors"
                 >
                   {opt.label}
                 </div>
@@ -100,12 +100,12 @@ export default function CustomSelect({
                 onClick={() => handleSelect(opt.value)}
                 className={`px-3.5 py-2 text-xs font-semibold cursor-pointer transition-colors flex items-center justify-between ${
                   isSelected
-                    ? "bg-indigo-50/80 text-indigo-700 font-bold"
-                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-[#6D8196]/15 text-[#3D4F61] font-bold"
+                    : "text-[#4A4A4A] hover:bg-[#FAF9F5] hover:text-[#1F2937]"
                 }`}
               >
                 <span className="truncate">{opt.label}</span>
-                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 shrink-0 ml-2" />}
+                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#6D8196] shrink-0 ml-2" />}
               </div>
             );
           })}

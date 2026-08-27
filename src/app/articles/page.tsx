@@ -295,12 +295,12 @@ function ArticlesContent() {
   );
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]" suppressHydrationWarning>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A]" suppressHydrationWarning>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Articles</h1>
-          <p className="text-slate-500 text-sm mt-0.5 font-medium">All article submissions and their statuses</p>
+          <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">Articles</h1>
+          <p className="text-[#737373] text-sm mt-0.5 font-medium">All article submissions and their statuses</p>
         </div>
         <div>
           <button 

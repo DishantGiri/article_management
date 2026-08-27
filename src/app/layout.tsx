@@ -29,7 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" className={`${inter.variable} font-sans h-full`} suppressHydrationWarning>
-      <body className="h-full bg-slate-50 antialiased" suppressHydrationWarning>
+      <body className="h-full bg-[#FAF9F5] text-[#4A4A4A] antialiased" suppressHydrationWarning>
         <Providers>
           <div className="flex h-full" suppressHydrationWarning>
             {showSidebar && <Sidebar />}
