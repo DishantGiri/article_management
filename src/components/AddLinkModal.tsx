@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Tag,
   Globe,
+  X,
 } from "lucide-react";
 
 interface Product {
@@ -72,15 +73,15 @@ export default function AddLinkModal({
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [bridgePageLink, setBridgePageLink] = useState("");
   const [buyLink, setBuyLink] = useState("");
-  const [affiliateName, setAffiliateName] = useState("");
-  const [affiliateLink, setAffiliateLink] = useState("");
+  const [affiliateEntries, setAffiliateEntries] = useState<
+    Array<{ affiliateName: string; affiliateLink: string; linkError?: string }>
+  >([{ affiliateName: "", affiliateLink: "" }]);
   const [geos, setGeos] = useState<string[]>([]);
   const [status, setStatus] = useState("REQUESTED");
   const [linkerRemarks, setLinkerRemarks] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [affiliateLinkError, setAffiliateLinkError] = useState("");
   const [bridgeLinkError, setBridgeLinkError] = useState("");
   const [buyLinkError, setBuyLinkError] = useState("");
 
@@ -90,6 +91,32 @@ export default function AddLinkModal({
   const [showAddAffiliate, setShowAddAffiliate] = useState(false);
   const [newAffiliateName, setNewAffiliateName] = useState("");
   const [addingAffiliate, setAddingAffiliate] = useState(false);
+
+  const addAffiliateEntry = () => {
+    setAffiliateEntries((prev) => [...prev, { affiliateName: "", affiliateLink: "" }]);
+  };
+
+  const removeAffiliateEntry = (index: number) => {
+    if (affiliateEntries.length <= 1) return;
+    setAffiliateEntries((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateAffiliateEntry = (index: number, field: "affiliateName" | "affiliateLink", value: string) => {
+    setAffiliateEntries((prev) =>
+      prev.map((entry, i) => {
+        if (i !== index) return entry;
+        const updated = { ...entry, [field]: value };
+        if (field === "affiliateLink") {
+          if (value && !isValidUrl(value)) {
+            updated.linkError = "Must start with http:// or https:// and be a valid URL";
+          } else {
+            delete updated.linkError;
+          }
+        }
+        return updated;
+      })
+    );
+  };
 
   const handleInlineAddAffiliate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +132,14 @@ export default function AddLinkModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to add affiliate");
       setDbAffiliates((prev) => [...prev, data]);
-      setAffiliateName(data.name);
+      setAffiliateEntries((prev) => {
+        const next = [...prev];
+        const lastIdx = next.length - 1;
+        if (lastIdx >= 0 && !next[lastIdx].affiliateName) {
+          next[lastIdx] = { ...next[lastIdx], affiliateName: data.name };
+        }
+        return next;
+      });
       setNewAffiliateName("");
       setShowAddAffiliate(false);
       toast.success(`Affiliate "${data.name}" added successfully!`);
@@ -121,61 +155,48 @@ export default function AddLinkModal({
     [products, selectedProductId]
   );
 
-  const selectedAffiliateObj = useMemo(
-    () => dbAffiliates.find((a) => a.name === affiliateName),
-    [dbAffiliates, affiliateName]
-  );
-
   const allAffiliates = useMemo(() => dbAffiliates.map((a) => a.name), [dbAffiliates]);
   const allGeos = dbGeos;
 
   useEffect(() => {
     if (isOpen) {
-      fetch("/api/affiliates")
-        .then((r) => r.json())
-        .then((data) => setDbAffiliates(Array.isArray(data) ? data : []))
-        .catch((e) => console.error("Failed to load affiliates", e));
-
-      fetch("/api/geos")
-        .then((r) => r.json())
-        .then((data) => setDbGeos(Array.isArray(data) ? data.map((g: any) => g.code) : []))
-        .catch((e) => console.error("Failed to load geos", e));
-
-      setSelectedProductId(null);
-      setBridgePageLink("");
-      setBuyLink("");
-      setAffiliateName("");
-      setAffiliateLink("");
-      setGeos([]);
+      setLoadingProducts(true);
+      setError("");
       setStatus("REQUESTED");
       setLinkerRemarks("");
-      setError("");
-      setAffiliateLinkError("");
-      setBridgeLinkError("");
-      setBuyLinkError("");
+      setBridgePageLink("");
+      setBuyLink("");
+      setAffiliateEntries([{ affiliateName: "", affiliateLink: "" }]);
+      setGeos([]);
 
-      const mockUserId = session?.user?.id || 1;
-      setLoadingProducts(true);
-      fetch(`/api/products?userId=${mockUserId}`)
-        .then((r) => r.json())
-        .then((data) => {
-          const fetchedProds = Array.isArray(data) ? data : [];
-          setProducts(fetchedProds);
+      Promise.all([
+        fetch("/api/products").then((r) => r.json()),
+        fetch("/api/affiliates").then((r) => r.json()),
+        fetch("/api/geos").then((r) => r.json()),
+      ])
+        .then(([prodData, affData, geoData]) => {
+          const prods = Array.isArray(prodData) ? prodData : [];
+          setProducts(prods);
+
+          if (Array.isArray(affData)) setDbAffiliates(affData);
+          if (Array.isArray(geoData)) setDbGeos(geoData.map((g: any) => g.name || g.code || g));
 
           if (preselectedProductId) {
-            const found = fetchedProds.find((p: any) => p.id === preselectedProductId);
-            if (found) {
-              setSelectedProductId(found.id);
-            }
+            setSelectedProductId(preselectedProductId);
+          } else if (prods.length > 0) {
+            setSelectedProductId(prods[0].id);
           }
         })
-        .catch(() => setError("Failed to load products"))
+        .catch((err) => {
+          console.error("Failed to load initial data", err);
+          setError("Failed to load products/affiliates list");
+        })
         .finally(() => setLoadingProducts(false));
     }
-  }, [isOpen, preselectedProductId, session?.user?.id]);
+  }, [isOpen, preselectedProductId]);
 
-  // Reset link inputs when product selection changes
   useEffect(() => {
+    if (!selectedProductId) return;
     setBridgePageLink("");
     setBuyLink("");
     setBridgeLinkError("");
@@ -186,13 +207,12 @@ export default function AddLinkModal({
     setGeos((prev) => (prev.includes(geo) ? prev.filter((g) => g !== geo) : [...prev, geo]));
   };
 
-  // All required fields must be filled before enabling submit
   const isFormValid =
     !!selectedProductId &&
-    !!affiliateName.trim() &&
-    !!affiliateLink.trim() &&
-    isValidUrl(affiliateLink) &&
-    !affiliateLinkError &&
+    affiliateEntries.length > 0 &&
+    affiliateEntries.every(
+      (e) => !!e.affiliateName.trim() && !!e.affiliateLink.trim() && isValidUrl(e.affiliateLink) && !e.linkError
+    ) &&
     !bridgeLinkError &&
     !buyLinkError &&
     geos.length > 0;
@@ -203,8 +223,8 @@ export default function AddLinkModal({
       return;
     }
 
-    if (!affiliateName || !affiliateLink) {
-      setError("Affiliate Name and Affiliate Link are required.");
+    if (affiliateEntries.some((e) => !e.affiliateName.trim() || !e.affiliateLink.trim())) {
+      setError("Affiliate Name and Affiliate Link are required for all network entries.");
       return;
     }
 
@@ -213,13 +233,8 @@ export default function AddLinkModal({
       return;
     }
 
-    if (affiliateLinkError || bridgeLinkError || buyLinkError) {
+    if (affiliateEntries.some((e) => e.linkError || !isValidUrl(e.affiliateLink)) || bridgeLinkError || buyLinkError) {
       setError("Please fix all URL validation errors before submitting.");
-      return;
-    }
-
-    if (!isValidUrl(affiliateLink)) {
-      setError("Please enter a valid Affiliate Link URL (must start with http:// or https://)");
       return;
     }
 
@@ -257,8 +272,12 @@ export default function AddLinkModal({
           addedById: mockUserId,
           bridgePageLink: bridgePageLink || null,
           buyLink: buyLink || null,
-          affiliateName,
-          affiliateLink,
+          affiliateEntries: affiliateEntries.map((a) => ({
+            affiliateName: a.affiliateName.trim(),
+            affiliateLink: a.affiliateLink.trim(),
+          })),
+          affiliateName: affiliateEntries[0]?.affiliateName.trim() || "",
+          affiliateLink: affiliateEntries[0]?.affiliateLink.trim() || "",
           geos,
           status,
           linkerRemarks: linkerRemarks || null,
@@ -270,7 +289,7 @@ export default function AddLinkModal({
         throw new Error(errData.error || "Failed to add link");
       }
 
-      toast.success(`Successfully added link log!`);
+      toast.success(`Successfully added ${affiliateEntries.length} link log entry(ies)!`);
       if (onSuccess) onSuccess();
       onClose();
     } catch (e: any) {
@@ -347,83 +366,112 @@ export default function AddLinkModal({
             </select>
           </div>
 
-          {/* Section 2: Affiliate Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Affiliate Name */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Affiliate Name <span className="text-rose-500">*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowAddAffiliate(!showAddAffiliate)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-3 h-3" />
-                  {showAddAffiliate ? "Cancel" : "Add New Affiliate"}
-                </button>
-              </div>
-
-              {showAddAffiliate && (
-                <form onSubmit={handleInlineAddAffiliate} className="p-2 bg-indigo-50/70 border border-indigo-100 rounded-xl flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="New affiliate name..."
-                    value={newAffiliateName}
-                    onChange={(e) => setNewAffiliateName(e.target.value)}
-                    className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    disabled={addingAffiliate || !newAffiliateName.trim()}
-                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
-                  >
-                    {addingAffiliate ? "Saving..." : "Add"}
-                  </button>
-                </form>
-              )}
-
-              <select
-                value={affiliateName}
-                onChange={(e) => setAffiliateName(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
+          {/* Section 2: Affiliate Info (Supports Multiple Networks per Product) */}
+          <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200/70">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Affiliate Network Links <span className="text-rose-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowAddAffiliate(!showAddAffiliate)}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1 cursor-pointer"
               >
-                <option value="">Select Affiliate Name...</option>
-                {allAffiliates.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+                <Plus className="w-3.5 h-3.5" />
+                {showAddAffiliate ? "Cancel" : "Add New Affiliate Name"}
+              </button>
             </div>
 
-            {/* Affiliate Link */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Affiliate Link <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="url"
-                value={affiliateLink}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setAffiliateLink(val);
-                  if (val && !isValidUrl(val)) {
-                    setAffiliateLinkError("Must start with http:// or https:// and be a valid URL");
-                  } else {
-                    setAffiliateLinkError("");
-                  }
-                }}
-                placeholder="https://..."
-                className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
-                  affiliateLinkError
-                    ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                    : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                }`}
-              />
-              {affiliateLinkError && <p className="text-xs font-semibold text-rose-500">{affiliateLinkError}</p>}
+            {showAddAffiliate && (
+              <form onSubmit={handleInlineAddAffiliate} className="p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-xl flex gap-2">
+                <input
+                  type="text"
+                  placeholder="New affiliate name (e.g. Smashloud, ClickBank)..."
+                  value={newAffiliateName}
+                  onChange={(e) => setNewAffiliateName(e.target.value)}
+                  className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={addingAffiliate || !newAffiliateName.trim()}
+                  className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
+                >
+                  {addingAffiliate ? "Saving..." : "Add"}
+                </button>
+              </form>
+            )}
+
+            <div className="space-y-3">
+              {affiliateEntries.map((entry, idx) => (
+                <div key={idx} className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2.5 relative shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">
+                      Affiliate Network #{idx + 1}
+                    </span>
+                    {affiliateEntries.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeAffiliateEntry(idx)}
+                        className="text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                        title="Remove this affiliate network link"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span className="text-[10px]">Remove</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Affiliate Name */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase">
+                        Affiliate Name <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={entry.affiliateName}
+                        onChange={(e) => updateAffiliateEntry(idx, "affiliateName", e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
+                      >
+                        <option value="">Select Affiliate Name...</option>
+                        {allAffiliates.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Affiliate Link */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase">
+                        Affiliate Link <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={entry.affiliateLink}
+                        onChange={(e) => updateAffiliateEntry(idx, "affiliateLink", e.target.value)}
+                        placeholder="https://..."
+                        className={`w-full px-3 py-2 bg-slate-50/50 border rounded-lg text-xs font-medium text-slate-900 focus:outline-none ${
+                          entry.linkError
+                            ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
+                            : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        }`}
+                      />
+                      {entry.linkError && <p className="text-[10px] font-semibold text-rose-500">{entry.linkError}</p>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={addAffiliateEntry}
+                className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Plus className="w-4 h-4 text-indigo-600" />
+                + Add Another Affiliate Network Link
+              </button>
             </div>
           </div>
 
@@ -474,13 +522,13 @@ export default function AddLinkModal({
                     <label className="block text-[10px] font-bold text-slate-500 uppercase">
                       Buy Link
                     </label>
-                    {affiliateLink && (
+                    {affiliateEntries[0]?.affiliateLink && (
                       <button
                         type="button"
-                        onClick={() => setBuyLink(affiliateLink)}
+                        onClick={() => setBuyLink(affiliateEntries[0].affiliateLink)}
                         className="text-[10px] font-bold text-slate-500 hover:text-slate-700 hover:underline flex items-center gap-0.5 cursor-pointer"
                       >
-                        <Copy className="w-3 h-3 text-slate-400" /> Use Affiliate Link
+                        <Copy className="w-3 h-3 text-slate-400" /> Use Primary Affiliate Link
                       </button>
                     )}
                   </div>
