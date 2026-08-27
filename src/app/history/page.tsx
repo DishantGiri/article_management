@@ -91,11 +91,10 @@ export default function HistoryPage() {
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
-    let start = Math.max(1, currentPage - 2);
-    let end = Math.min(totalPages, start + 4);
-    if (end - start < 4) {
-      start = Math.max(1, end - 4);
-    }
+    const pageSize = 5;
+    const currentBlock = Math.floor((currentPage - 1) / pageSize);
+    const start = currentBlock * pageSize + 1;
+    const end = Math.min(totalPages, start + pageSize - 1);
 
     const pages = [];
     for (let i = start; i <= end; i++) {
@@ -117,7 +116,7 @@ export default function HistoryPage() {
           <button
             onClick={() => setCurrentPage(1)}
             disabled={currentPage === 1}
-            className="px-2 h-7 flex items-center justify-center rounded bg-white border border-slate-200 text-[11px] font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
+            className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
             title="First Page"
           >
             First
@@ -125,19 +124,27 @@ export default function HistoryPage() {
           <button
             onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="w-7 h-7 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
             title="Previous Page"
           >
             &lt;
           </button>
 
-          {start > 1 && <span className="text-xs text-slate-400 px-1 font-semibold">...</span>}
+          {start > 1 && (
+            <button
+              onClick={() => setCurrentPage(start - 1)}
+              className="text-xs font-bold text-slate-400 hover:text-indigo-600 px-1 cursor-pointer"
+              title="Previous 5 Pages"
+            >
+              ...
+            </button>
+          )}
 
           {pages.map((p) => (
             <button
               key={p}
               onClick={() => setCurrentPage(p)}
-              className={`w-7 h-7 flex items-center justify-center rounded text-xs font-bold transition cursor-pointer ${
+              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition cursor-pointer ${
                 currentPage === p
                   ? "bg-indigo-600 text-white border border-indigo-600 shadow-xs"
                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -147,14 +154,22 @@ export default function HistoryPage() {
             </button>
           ))}
 
-          {end < totalPages && <span className="text-xs text-slate-400 px-1 font-semibold">...</span>}
+          {end < totalPages && (
+            <button
+              onClick={() => setCurrentPage(end + 1)}
+              className="text-xs font-bold text-slate-400 hover:text-indigo-600 px-1 cursor-pointer"
+              title="Next 5 Pages"
+            >
+              ...
+            </button>
+          )}
 
           <button
             onClick={() =>
               setCurrentPage((prev) => Math.min(totalPages, prev + 1))
             }
             disabled={currentPage === totalPages || totalPages === 0}
-            className="w-7 h-7 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
             title="Next Page"
           >
             &gt;
@@ -162,7 +177,7 @@ export default function HistoryPage() {
           <button
             onClick={() => setCurrentPage(totalPages)}
             disabled={currentPage === totalPages || totalPages === 0}
-            className="px-2 h-7 flex items-center justify-center rounded bg-white border border-slate-200 text-[11px] font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
+            className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
             title="Last Page"
           >
             Last
