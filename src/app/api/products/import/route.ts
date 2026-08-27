@@ -34,7 +34,11 @@ export async function POST(req: NextRequest) {
       const row = products[i];
       const rowNum = i + 1;
 
-      if (!row.name || !row.siteName || !row.categoryName) {
+      const name = (row.name || row["Product Name"] || row.title || "").trim();
+      const siteName = (row.siteName || row.site || row["Site Name"] || row.sitename || row.website || "").trim();
+      const categoryName = (row.categoryName || row.category || row["Category Name"] || row.categoryname || row["Product Type"] || row.type || "").trim();
+
+      if (!name || !siteName || !categoryName) {
         errors.push(`Row ${rowNum}: Name, Site Name, and Category Name are required.`);
         continue;
       }
@@ -42,21 +46,21 @@ export async function POST(req: NextRequest) {
       try {
         // Find or create Category
         let category = await prisma.category.findUnique({
-          where: { name: row.categoryName },
+          where: { name: categoryName },
         });
         if (!category) {
           category = await prisma.category.create({
-            data: { name: row.categoryName },
+            data: { name: categoryName },
           });
         }
 
         // Find or create Site
         let site = await prisma.site.findFirst({
-          where: { name: row.siteName },
+          where: { name: siteName },
         });
         if (!site) {
           site = await prisma.site.create({
-            data: { name: row.siteName },
+            data: { name: siteName },
           });
         }
 

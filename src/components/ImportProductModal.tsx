@@ -45,12 +45,13 @@ function parseCSV(text: string): Record<string, string>[] {
     headers.forEach((header, index) => {
       // normalize column header names
       let key = header;
-      if (header === "product name" || header === "product" || header === "title") key = "name";
-      if (header === "site name" || header === "site url") key = "siteName";
-      if (header === "category name") key = "categoryName";
-      if (header === "trend link" || header === "trend") key = "trendLink";
-      if (header === "preview link" || header === "preview") key = "previewLink";
-      if (header === "remark" || header === "description") key = "remarks";
+      const h = header.replace(/[\s_-]+/g, "");
+      if (h === "name" || h === "productname" || h === "product" || h === "title") key = "name";
+      if (h === "site" || h === "sitename" || h === "siteurl" || h === "website") key = "siteName";
+      if (h === "category" || h === "categoryname" || h === "producttype" || h === "type") key = "categoryName";
+      if (h === "trendlink" || h === "trend") key = "trendLink";
+      if (h === "previewlink" || h === "preview") key = "previewLink";
+      if (h === "remarks" || h === "remark" || h === "description") key = "remarks";
 
       obj[key] = (values[index] || "").trim();
     });
@@ -126,7 +127,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
   };
 
   const downloadTemplate = () => {
-    const headers = ["Name", "SiteName", "CategoryName", "TrendLink", "PreviewLink", "Remarks"];
+    const headers = ["Name", "Site", "Category", "Trend Link", "Preview Link", "Remarks"];
     const sample = [
       ["Super Strength Protein", "NutraVital", "Protein", "https://trends.google.com", "https://amazon.com/protein", "Best seller in sports nutrition"],
       ["Ultimate MultiVitamins", "NutraVital", "Vitamins", "", "https://amazon.com/vitamins", "High margin product"],
