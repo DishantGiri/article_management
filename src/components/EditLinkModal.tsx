@@ -201,7 +201,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       return;
     }
 
-    if (status === "ACCEPTED" && !bridgePageLink) {
+    if (status === "ACCEPTED" && !bridgePageLink?.trim()) {
       setError("Bridge Page Link is required before setting status to Accepted.");
       return;
     }

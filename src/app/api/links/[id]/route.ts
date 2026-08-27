@@ -37,28 +37,56 @@ export async function PATCH(
       }
     }
 
+    const VALID_LINK_STATUSES = [
+      "REQUESTED",
+      "ACCEPTED",
+      "CANCELED",
+      "ISSUE",
+      "NEED_TO_CHECK",
+      "PRESELL_PAGE",
+      "REDIRECTED",
+    ];
+
+    const STATUS_MAP: Record<string, string> = {
+      PENDING: "REQUESTED",
+      Pending: "REQUESTED",
+      REJECTED: "CANCELED",
+      Rejected: "CANCELED",
+    };
+
+    const targetStatus = status ? (STATUS_MAP[status] || status) : undefined;
+
+    if (targetStatus && !VALID_LINK_STATUSES.includes(targetStatus)) {
+      return NextResponse.json(
+        { error: `Invalid status '${status}'. Allowed values are: ${VALID_LINK_STATUSES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
     const existing = await prisma.linkLog.findUnique({ where: { id: parseInt(id) } });
     if (!existing) return NextResponse.json({ error: "Link not found" }, { status: 404 });
 
-    const updatedBridge = bridgePageLink !== undefined ? bridgePageLink : existing.bridgePageLink;
-    const updatedBuy = buyLink !== undefined ? buyLink : existing.buyLink;
+    const updatedBridge = bridgePageLink !== undefined ? (bridgePageLink ? String(bridgePageLink).trim() : null) : existing.bridgePageLink;
+    const updatedBuy = buyLink !== undefined ? (buyLink ? String(buyLink).trim() : null) : existing.buyLink;
+    const checkStatus = targetStatus !== undefined ? targetStatus : existing.status;
 
-    if (status === "ACCEPTED" && !updatedBridge) {
+    if (checkStatus === "ACCEPTED" && !updatedBridge) {
       return NextResponse.json(
-        { error: "Bridge Page Link must be present before setting status to Accepted." },
+        { error: "Bridge Page Link is required before setting status to Accepted." },
         { status: 400 }
       );
     }
 
     if (updatedBuy && !updatedBridge) {
       return NextResponse.json(
-        { error: "Bridge Page Link must be present before adding a Buy Link." },
+        { error: "Bridge Page Link is required before adding a Buy Link." },
         { status: 400 }
       );
     }
 
-    // If geos are being updated, delete old geos first
+    let uniqueGeos: string[] | null = null;
     if (geos && Array.isArray(geos)) {
+      uniqueGeos = Array.from(new Set(geos.map((g: string) => String(g).trim()).filter(Boolean)));
       await prisma.linkGeo.deleteMany({
         where: { linkLogId: parseInt(id) },
       });
@@ -68,17 +96,17 @@ export async function PATCH(
       where: { id: parseInt(id) },
       data: {
         ...(activeUserId ? { updatedById: Number(activeUserId) } : {}),
-        ...(status !== undefined ? { status } : {}),
-        ...(bridgePageLink !== undefined ? { bridgePageLink: bridgePageLink || null } : {}),
-        ...(buyLink !== undefined ? { buyLink: buyLink || null } : {}),
+        ...(targetStatus !== undefined ? { status: targetStatus as any } : {}),
+        ...(bridgePageLink !== undefined ? { bridgePageLink: updatedBridge } : {}),
+        ...(buyLink !== undefined ? { buyLink: updatedBuy } : {}),
         ...(linkerRemarks !== undefined ? { linkerRemarks: linkerRemarks || null } : {}),
         ...(productId !== undefined ? { productId: Number(productId) } : {}),
         ...(affiliateName !== undefined ? { affiliateName } : {}),
         ...(affiliateLink !== undefined ? { affiliateLink } : {}),
-        ...(geos && Array.isArray(geos)
+        ...(uniqueGeos !== null
           ? {
               geos: {
-                create: geos.map((geo: string) => ({ geo })),
+                create: uniqueGeos.map((geo: string) => ({ geo })),
               },
             }
           : {}),

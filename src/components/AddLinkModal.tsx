@@ -253,8 +253,8 @@ export default function AddLinkModal({
       return;
     }
 
-    if (status === "ACCEPTED" && !bridgePageLink) {
-      setError(`Bridge Page Link is required before setting status to Accepted.`);
+    if (status === "ACCEPTED" && !bridgePageLink?.trim()) {
+      setError("Bridge Page Link is required before setting status to Accepted.");
       return;
     }
 

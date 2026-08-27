@@ -71,6 +71,32 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { productId, bridgePageLink, buyLink, affiliateName, affiliateLink, affiliateEntries, geos, status, linkerRemarks } = body;
 
+    const VALID_LINK_STATUSES = [
+      "REQUESTED",
+      "ACCEPTED",
+      "CANCELED",
+      "ISSUE",
+      "NEED_TO_CHECK",
+      "PRESELL_PAGE",
+      "REDIRECTED",
+    ];
+
+    const STATUS_MAP: Record<string, string> = {
+      PENDING: "REQUESTED",
+      Pending: "REQUESTED",
+      REJECTED: "CANCELED",
+      Rejected: "CANCELED",
+    };
+
+    const targetStatus = status ? (STATUS_MAP[status] || status) : "REQUESTED";
+
+    if (!VALID_LINK_STATUSES.includes(targetStatus)) {
+      return NextResponse.json(
+        { error: `Invalid status '${status}'. Allowed values are: ${VALID_LINK_STATUSES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
     const entriesToCreate: Array<{ affiliateName: string; affiliateLink: string }> =
       Array.isArray(affiliateEntries) && affiliateEntries.length > 0
         ? affiliateEntries
@@ -91,6 +117,14 @@ export async function POST(req: NextRequest) {
     // Fix 1: Compulsory Geo selection
     if (!geos || !Array.isArray(geos) || geos.length === 0) {
       return NextResponse.json({ error: "At least one GEO must be selected." }, { status: 400 });
+    }
+
+    const uniqueGeos = Array.from(
+      new Set((geos as string[] || []).map((g: string) => String(g).trim()).filter(Boolean))
+    );
+
+    if (uniqueGeos.length === 0) {
+      return NextResponse.json({ error: "At least one valid GEO must be selected." }, { status: 400 });
     }
 
     const addedById = session.user.id;
@@ -116,12 +150,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Business rule: status ACCEPTED requires bridgePageLink
-    if (status === "ACCEPTED" && !bridgePageLink) {
+    if (targetStatus === "ACCEPTED" && !bridgePageLink?.trim()) {
       return NextResponse.json({ error: "Bridge Page Link is required before setting status to Accepted." }, { status: 400 });
     }
 
     // Business rule: buyLink requires bridgePageLink
-    if (buyLink && !bridgePageLink) {
+    if (buyLink && !bridgePageLink?.trim()) {
       return NextResponse.json({ error: "Bridge Page Link is required before adding a Buy Link." }, { status: 400 });
     }
 
@@ -131,14 +165,14 @@ export async function POST(req: NextRequest) {
           data: {
             productId: parseInt(productId),
             addedById: addedById,
-            bridgePageLink: bridgePageLink || null,
-            buyLink: buyLink || null,
+            bridgePageLink: bridgePageLink?.trim() || null,
+            buyLink: buyLink?.trim() || null,
             affiliateName: entry.affiliateName.trim(),
             affiliateLink: entry.affiliateLink.trim(),
-            status: status || "REQUESTED",
-            linkerRemarks: linkerRemarks || null,
+            status: targetStatus as any,
+            linkerRemarks: linkerRemarks?.trim() || null,
             geos: {
-              create: (geos as string[] || []).map((geo: string) => ({ geo })),
+              create: uniqueGeos.map((geo: string) => ({ geo })),
             },
           },
           include: { geos: true, addedBy: { select: { name: true } } },
@@ -164,8 +198,11 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json(createdLinks.length === 1 ? createdLinks[0] : createdLinks, { status: 201 });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[POST /api/links]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (err?.code === "P2002") {
+      return NextResponse.json({ error: "Duplicate entry or GEO assignment" }, { status: 400 });
+    }
+    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 });
   }
 }
