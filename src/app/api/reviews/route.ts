@@ -51,6 +51,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
+    if (approved && article.status === "APPROVED") {
+      return NextResponse.json(
+        { error: "This article has already been approved." },
+        { status: 400 }
+      );
+    }
+
+    if (approved && article.status === "PENDING") {
+      return NextResponse.json(
+        { error: "Cannot approve an article that has not been started yet." },
+        { status: 400 }
+      );
+    }
+
     // 1. Create the ArticleReview entry
     const review = await prisma.articleReview.create({
       data: {

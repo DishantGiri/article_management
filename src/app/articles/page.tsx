@@ -78,7 +78,44 @@ function ArticlesContent() {
   const [updateReason, setUpdateReason] = useState("");
   const [submittingUpdate, setSubmittingUpdate] = useState(false);
   const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; linker: string; productName: string } | null>(null);
+  const [selectedArticleIds, setSelectedArticleIds] = useState<number[]>([]);
+  const [bulkApproving, setBulkApproving] = useState(false);
   const { data: session } = useSession();
+
+  const isManager = currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD";
+
+  const handleBulkApprove = async () => {
+    if (selectedArticleIds.length === 0 || bulkApproving) return;
+    setBulkApproving(true);
+    try {
+      const promises = selectedArticleIds.map((articleId) =>
+        fetch("/api/reviews", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            articleId,
+            reviewedById: currentUserId,
+            approved: true,
+            suggestion: "Bulk approved by Team Lead",
+          }),
+        }).then((r) => r.json())
+      );
+
+      await Promise.all(promises);
+      toast.success(`Successfully approved ${selectedArticleIds.length} article(s)!`);
+      setSelectedArticleIds([]);
+      const stored = session?.user?.id || currentUserId;
+      if (stored) {
+        const res = await fetch(`/api/articles?userId=${stored}`);
+        const data = await res.json();
+        if (Array.isArray(data)) setArticles(data);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to bulk approve articles");
+    } finally {
+      setBulkApproving(false);
+    }
+  };
 
   const handleStartRevision = async (articleId: number) => {
     const callerId = session?.user?.id || currentUserId;
@@ -406,6 +443,34 @@ function ArticlesContent() {
         />
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedArticleIds.length > 0 && isManager && (
+        <div className="mb-4 p-3.5 bg-white border border-[#6D8196]/40 rounded-2xl flex items-center justify-between shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <span className="px-2.5 py-0.5 rounded-full bg-[#6D8196] text-white text-xs font-bold shadow-2xs">
+              {selectedArticleIds.length}
+            </span>
+            <span className="text-xs font-bold text-[#4A4A4A]">article(s) selected for review</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedArticleIds([])}
+              className="px-3 py-1.5 text-xs font-bold text-[#737373] hover:text-[#4A4A4A] transition cursor-pointer"
+            >
+              Clear Selection
+            </button>
+            <button
+              onClick={handleBulkApprove}
+              disabled={bulkApproving}
+              className="px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer active:scale-[0.98]"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              {bulkApproving ? "Approving..." : `Approve Selected (${selectedArticleIds.length})`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table Content */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-4">
         {loading ? (
@@ -421,6 +486,33 @@ function ArticlesContent() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100">
+                  {isManager && (
+                    <th className="px-3 py-3 w-[4%] text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          paginated.length > 0 &&
+                          paginated.filter((a: any) => a.status !== "APPROVED").length > 0 &&
+                          paginated
+                            .filter((a: any) => a.status !== "APPROVED")
+                            .every((a: any) => selectedArticleIds.includes(a.id))
+                        }
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const eligibleIds = paginated
+                              .filter((a: any) => a.status !== "APPROVED")
+                              .map((a: any) => a.id);
+                            setSelectedArticleIds((prev) => Array.from(new Set([...prev, ...eligibleIds])));
+                          } else {
+                            const pageIds = paginated.map((a: any) => a.id);
+                            setSelectedArticleIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-slate-300 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
+                        title="Select all unapproved on current page"
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[22%]">Product</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[18%]">Site</th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[15%]">Writer</th>
@@ -440,9 +532,28 @@ function ArticlesContent() {
                   const statusColor = STATUS_COLORS[status] || STATUS_COLORS.PENDING;
                   const writerRemarks = getWriterRemarks(a);
                   const linkerRemarks = getLinkerRemarks(a);
+                  const isSelected = selectedArticleIds.includes(a.id);
                   
                   return (
-                    <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <tr key={a.id} className={`hover:bg-slate-50/50 transition-colors group ${isSelected ? "bg-[#FAF9F5]" : ""}`}>
+                      {isManager && (
+                        <td className="px-3 py-3.5 text-center">
+                          {a.status !== "APPROVED" ? (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                setSelectedArticleIds((prev) =>
+                                  prev.includes(a.id) ? prev.filter((id) => id !== a.id) : [...prev, a.id]
+                                );
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
+                            />
+                          ) : (
+                            <span className="text-emerald-600 font-bold text-xs" title="Already Approved">✓</span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-4 py-3.5">
                         <span className="text-[13px] font-semibold text-slate-800">{a.product.name}</span>
                       </td>
