@@ -169,8 +169,8 @@ export async function GET(req: NextRequest) {
           })
         : Promise.resolve([]),
 
-      // Unique affiliateName groups
-      prisma.linkLog.groupBy({ by: ['affiliateName'] }),
+      // Defined affiliate names
+      prisma.affiliateName.findMany({ select: { name: true } }),
 
       // Dead links
       prisma.linkLog.count({
@@ -325,7 +325,7 @@ export async function GET(req: NextRequest) {
           prisma.user.count({ where: { role: "WRITER" } }),
           prisma.user.count({ where: { role: "LINKER" } }),
           prisma.user.count({ where: { role: "TEAM_LEAD" } }),
-          prisma.linkLog.groupBy({ by: ['affiliateName'] }),
+          prisma.affiliateName.findMany({ select: { name: true } }),
           prisma.linkLog.count({
             where: {
               status: "ISSUE",
@@ -411,9 +411,19 @@ export async function GET(req: NextRequest) {
         activityMap.sort((a, b) => b.date.getTime() - a.date.getTime());
         const recentActivity = activityMap.slice(0, 10);
 
+        const DEFAULT_AFFILIATES = [
+          "Admitad", "Amazon Associates", "BuyGoods", "CJ Affiliate", "Clickadv", "ClickBank",
+          "Clickhunts", "Lead Bit", "MaxWeb", "Mediascalers", "SellHealth", "Smartadv",
+          "Smashloud", "TerraLeads", "Traffic Light"
+        ];
+        const superAffiliateNames = new Set([
+          ...DEFAULT_AFFILIATES,
+          ...(affiliateNetworksGroupSuper || []).map((a: any) => a.name)
+        ]);
+
         superAdminData = {
           totalWriters, totalLinkers, totalTeamLeads,
-          totalSites, totalCategories, affiliateNetworks: affiliateNetworksGroupSuper.length,
+          totalSites, totalCategories, affiliateNetworks: superAffiliateNames.size,
           deadLinks: deadLinksSuper, issueLinks: issueLinksSuper, todaysProducts,
           avgWritingTime: avgWritingTime.toFixed(1),
           monthlyData,
@@ -425,6 +435,16 @@ export async function GET(req: NextRequest) {
         superAdminError = e.message;
       }
     }
+
+    const DEFAULT_AFFILIATES = [
+      "Admitad", "Amazon Associates", "BuyGoods", "CJ Affiliate", "Clickadv", "ClickBank",
+      "Clickhunts", "Lead Bit", "MaxWeb", "Mediascalers", "SellHealth", "Smartadv",
+      "Smashloud", "TerraLeads", "Traffic Light"
+    ];
+    const generalAffiliateNames = new Set([
+      ...DEFAULT_AFFILIATES,
+      ...(affiliateNetworksGroup || []).map((a: any) => a.name)
+    ]);
 
     return NextResponse.json({
       role,
@@ -442,7 +462,7 @@ export async function GET(req: NextRequest) {
         totalCategories,
       },
       linkStats: {
-        affiliateNetworks: affiliateNetworksGroup.length,
+        affiliateNetworks: generalAffiliateNames.size,
         deadLinks: deadLinksCount,
         issueLinks: issueLinks,
       },
