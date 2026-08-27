@@ -380,6 +380,7 @@ export default function AddProductModal({
                     setForm({
                       categoryIds: [],
                       name: "",
+                      category: "",
                       trendLink: "",
                       trendLevel: "HIGH",
                       affiliateName: "",

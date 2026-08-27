@@ -37,14 +37,15 @@ export async function POST(req: NextRequest) {
       const name = (row.name || row["Product Name"] || row.title || "").trim();
       const siteName = (row.siteName || row.site || row["Site Name"] || row.sitename || row.website || "").trim();
       const categoryName = (row.categoryName || row.category || row["Category Name"] || row.categoryname || row["Product Type"] || row.type || "").trim();
+      const productCategory = (row.productCategory || row["Product Category"] || row["Product Category Name"] || row.category || "").trim() || null;
 
       if (!name || !siteName || !categoryName) {
-        errors.push(`Row ${rowNum}: Name, Site Name, and Category Name are required.`);
+        errors.push(`Row ${rowNum}: Name, Site Name, and Product Type Name are required.`);
         continue;
       }
 
       try {
-        // Find or create Category
+        // Find or create Category (Product Type)
         let category = await prisma.category.findUnique({
           where: { name: categoryName },
         });
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
             name: row.name,
             siteId: site.id,
             categoryId: category.id,
+            productCategory: productCategory,
             trendLink: row.trendLink || null,
             previewLink: row.previewLink || null,
             remarks: row.remarks || null,

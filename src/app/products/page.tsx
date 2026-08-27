@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown } from "lucide-react";
+import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown, Tag } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import AddProductModal from "@/components/AddProductModal";
@@ -23,11 +23,14 @@ interface Product {
   name: string;
   siteId: number;
   categoryId: number;
+  productCategory?: string | null;
   trendLink?: string;
+  trendLevel?: string;
+  affiliateName?: string | null;
   previewLink?: string;
   remarks?: string;
   addedAt: string;
-  site: { name: string };
+  site: { name: string; url?: string };
   category: { id: number, name: string };
   addedBy: { name: string };
   article?: { id: number; status: string, writer?: { name: string } };

@@ -223,7 +223,7 @@ export default function AddProductPage() {
             <button
               id="btn-add-another"
               onClick={() => {
-                setForm({ categoryId: "", siteId: "", name: "", trendLink: "", previewLink: "", remarks: "" });
+                setForm({ categoryId: "", siteId: "", name: "", category: "", trendLink: "", previewLink: "", remarks: "" });
                 setStep(1);
                 setSuccess(false);
               }}

@@ -300,7 +300,7 @@ export default function SitesPage() {
                   )}
                 </div>
 
-                {/* Category Pills */}
+                {/* Product Type Pills */}
                 <div className="mb-4 flex flex-wrap gap-1.5">
                   {site.categories && site.categories.length > 0 ? (
                     site.categories.map((c) => (
@@ -312,7 +312,7 @@ export default function SitesPage() {
                       </span>
                     ))
                   ) : (
-                    <span className="text-[10px] font-medium text-[#737373] italic">No categories assigned</span>
+                    <span className="text-[10px] font-medium text-[#737373] italic">No product types assigned</span>
                   )}
                 </div>
               </div>
@@ -325,7 +325,7 @@ export default function SitesPage() {
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-bold text-[#4A4A4A]">{site.categoriesCount ?? 0}</p>
-                  <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Categories</p>
+                  <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Product Types</p>
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-bold text-[#4A4A4A]">{site.linksCount ?? 0}</p>
@@ -415,14 +415,14 @@ export default function SitesPage() {
                 </div>
               </div>
 
-              {/* Categories Selector */}
+              {/* Product Types Selector */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
-                  Categories
+                  Product Types
                 </label>
                 {allCategories.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">No categories exist. Create some in the Categories page first.</p>
+                  <p className="text-xs text-slate-500 italic">No product types exist. Create some in the Product Types page first.</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto p-1 pr-2">
                     {allCategories.map((cat) => (
@@ -441,7 +441,7 @@ export default function SitesPage() {
             {/* Modal Footer */}
             <div className="px-6 py-4 bg-[#FAF9F5] border-t border-[#CBCBCB]/40 flex items-center justify-between shrink-0">
               <div className="text-xs font-semibold text-slate-500">
-                {form.categoryIds.length} {form.categoryIds.length === 1 ? "category" : "categories"} selected
+                {form.categoryIds.length} {form.categoryIds.length === 1 ? "product type" : "product types"} selected
               </div>
 
               <div className="flex items-center gap-3">
