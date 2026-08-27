@@ -185,7 +185,7 @@ export default function AffiliateSettingsTab() {
           {canManage && (
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
             >
               {showAddForm ? (
                 <>
@@ -204,10 +204,10 @@ export default function AffiliateSettingsTab() {
         {showAddForm && canManage && (
           <form
             onSubmit={handleCreate}
-            className="p-4 bg-slate-50 border border-indigo-100 rounded-xl space-y-3 animate-fadeIn"
+            className="p-4 bg-[#FAF9F5] border border-[#CBCBCB] rounded-xl space-y-3 animate-fadeIn"
           >
-            <div className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-indigo-600" /> New Affiliate Network
+            <div className="text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-[#6D8196]" /> New Affiliate Network
             </div>
             <div className="flex items-center gap-3">
               <input
@@ -215,19 +215,19 @@ export default function AffiliateSettingsTab() {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="e.g. BuyGoods"
-                className="flex-1 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
+                className="flex-1 px-3.5 py-2 bg-white border border-[#CBCBCB] rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6D8196]"
               />
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-100 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl border border-[#CBCBCB] text-slate-600 text-xs font-bold hover:bg-[#FAF9F5] cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting || !newName.trim()}
-                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#6D8196] text-white text-xs font-bold hover:bg-[#5A6D81] disabled:opacity-50 transition cursor-pointer"
               >
                 {submitting ? "Saving..." : "Save Network"}
               </button>

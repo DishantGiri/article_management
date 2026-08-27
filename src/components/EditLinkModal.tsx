@@ -246,10 +246,10 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Edit Link Log</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden border border-[#CBCBCB]/60">
+        <div className="px-6 py-4 bg-[#4A4A4A] text-white flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white">Edit Link Log</h2>
+          <button onClick={onClose} className="text-white/80 hover:text-white transition cursor-pointer">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -290,26 +290,26 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                 <button
                   type="button"
                   onClick={() => setShowAddAffiliate(!showAddAffiliate)}
-                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline"
+                  className="text-[10px] font-bold text-[#6D8196] hover:text-[#4A4A4A] underline cursor-pointer"
                 >
                   {showAddAffiliate ? "Cancel" : "+ Add Affiliate"}
                 </button>
               </div>
 
               {showAddAffiliate && (
-                <form onSubmit={handleInlineAddAffiliate} className="mb-2 p-2 bg-slate-50 border border-indigo-100 rounded-lg flex gap-2">
+                <form onSubmit={handleInlineAddAffiliate} className="mb-2 p-2 bg-[#FAF9F5] border border-[#CBCBCB] rounded-lg flex gap-2">
                   <input
                     type="text"
                     placeholder="New affiliate name..."
                     value={newAffiliateName}
                     onChange={(e) => setNewAffiliateName(e.target.value)}
-                    className="flex-1 px-2.5 py-1 bg-white border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="flex-1 px-2.5 py-1 bg-white border border-[#CBCBCB] rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
                     autoFocus
                   />
                   <button
                     type="submit"
                     disabled={addingAffiliate || !newAffiliateName.trim()}
-                    className="px-3 py-1 bg-indigo-600 text-white rounded text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 transition"
+                    className="px-3 py-1 bg-[#6D8196] text-white rounded text-xs font-semibold hover:bg-[#5A6D81] disabled:opacity-50 transition cursor-pointer"
                   >
                     {addingAffiliate ? "..." : "Add"}
                   </button>
@@ -415,10 +415,10 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                   key={geo}
                   type="button"
                   onClick={() => toggleGeo(geo)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors cursor-pointer ${
                     geos.includes(geo)
-                      ? "bg-indigo-500 text-white border border-indigo-600"
-                      : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-300 hover:bg-slate-50"
+                      ? "bg-[#6D8196] text-white border border-[#6D8196]"
+                      : "bg-white text-[#4A4A4A] border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5]"
                   }`}
                 >
                   {geo}
@@ -444,15 +444,15 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               value={linkerRemarks}
               onChange={(e) => setLinkerRemarks(e.target.value)}
               placeholder="Any issues or notes..."
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+              className="w-full px-3 py-2 bg-white border border-[#CBCBCB] rounded-lg text-sm text-[#4A4A4A] focus:outline-none focus:border-[#6D8196] transition-colors resize-none"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#CBCBCB]/40">
             <button
               onClick={onClose}
               type="button"
-              className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition text-sm"
+              className="px-4 py-2 rounded-lg border border-[#CBCBCB] text-[#4A4A4A] font-semibold hover:bg-[#FAF9F5] transition text-sm cursor-pointer"
             >
               Cancel
             </button>
@@ -461,7 +461,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               disabled={submitting || !isFormValid}
               type="button"
               title={!isFormValid ? "Please fill in all required fields: Affiliate Name, Affiliate Link, and at least one GEO" : undefined}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex items-center justify-center gap-2"
+              className="px-4 py-2 rounded-lg bg-[#6D8196] text-white font-semibold hover:bg-[#5A6D81] disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex items-center justify-center gap-2 cursor-pointer"
             >
               {submitting ? "Saving..." : "Save Changes"}
             </button>

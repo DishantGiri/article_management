@@ -18,14 +18,14 @@ export default function AffiliateManageModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100">
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 bg-[#4A4A4A] text-white flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-base font-bold text-white tracking-tight">Affiliate Settings & Sub IDs</h2>
-            <p className="text-xs text-slate-300 font-medium">Manage affiliate networks, base URLs, and tracking Sub ID parameters</p>
+            <p className="text-xs text-[#EAEAEA] font-medium">Manage affiliate networks, base URLs, and tracking Sub ID parameters</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
