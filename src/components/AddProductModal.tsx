@@ -57,9 +57,9 @@ function StepIndicator({ step }: { step: number }) {
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                   done
-                    ? "bg-emerald-500 text-white"
+                    ? "bg-[#6D8196] text-white"
                     : active
-                    ? "bg-indigo-600 text-white ring-4 ring-indigo-100 shadow-xs"
+                    ? "bg-[#6D8196] text-white ring-4 ring-[#6D8196]/20 shadow-xs"
                     : "bg-slate-100 text-slate-400 border border-slate-200"
                 }`}
               >
@@ -73,7 +73,7 @@ function StepIndicator({ step }: { step: number }) {
               </div>
               <span
                 className={`text-[10px] font-bold tracking-tight whitespace-nowrap ${
-                  active ? "text-indigo-600" : done ? "text-emerald-600" : "text-slate-400"
+                  active ? "text-[#6D8196]" : done ? "text-[#4A4A4A]" : "text-slate-400"
                 }`}
               >
                 {label}
@@ -469,14 +469,14 @@ export default function AddProductModal({
                             }}
                             className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
                               selected
-                                ? "bg-indigo-50/70 border-indigo-300 text-indigo-900 font-bold shadow-2xs"
+                                ? "bg-[#6D8196]/15 border-[#6D8196]/40 text-[#3D4F61] font-bold shadow-2xs"
                                 : "bg-white border-slate-200 text-slate-700 font-semibold hover:border-slate-300"
                             }`}
                           >
                             <span className="text-xs truncate">{c.name}</span>
                             <div
                               className={`w-4 h-4 rounded-md flex items-center justify-center border transition ${
-                                selected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-300 bg-white"
+                                selected ? "bg-[#6D8196] border-[#6D8196] text-white" : "border-slate-300 bg-white"
                               }`}
                             >
                               {selected && <Check className="w-3 h-3 stroke-[3]" />}
@@ -491,7 +491,7 @@ export default function AddProductModal({
                     <button
                       disabled={form.categoryIds.length === 0}
                       onClick={() => setStep(2)}
-                      className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer shadow-md shadow-indigo-100"
+                      className="w-full py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white font-bold text-xs disabled:opacity-50 transition cursor-pointer shadow-xs"
                     >
                       Continue ({form.categoryIds.length} selected)
                     </button>
@@ -615,7 +615,7 @@ export default function AddProductModal({
                     <button
                       disabled={activeSites.length === 0}
                       onClick={() => setStep(3)}
-                      className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer shadow-md shadow-indigo-100"
+                      className="flex-1 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white font-bold text-xs disabled:opacity-50 transition cursor-pointer shadow-xs"
                     >
                       Continue ({activeSites.length} site{activeSites.length !== 1 ? "s" : ""})
                     </button>
@@ -795,7 +795,7 @@ export default function AddProductModal({
                       type="button"
                       disabled={!form.name.trim() || submitting}
                       onClick={handleSubmit}
-                      className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-indigo-100 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white font-bold text-xs shadow-xs disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
                       {submitting ? "Saving..." : "Add Product"}
                     </button>

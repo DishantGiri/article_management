@@ -293,21 +293,21 @@ export default function AddLinkModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[92vh] border border-slate-100 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 bg-[#4A4A4A] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-[#6D8196]/30 border border-[#6D8196]/40 flex items-center justify-center text-white shadow-inner">
               <Link2 className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
                 Add New Link Log
                 {selectedProduct && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#6D8196]/30 text-white border border-[#6D8196]/40">
                     Site: {selectedProduct.site?.name}
                   </span>
                 )}
               </h2>
-              <p className="text-xs text-slate-300 font-medium">
+              <p className="text-xs text-[#EAEAEA] font-medium">
                 Configure affiliate links and site-specific landing pages
               </p>
             </div>
@@ -661,7 +661,7 @@ export default function AddLinkModal({
               disabled={submitting || !isFormValid}
               type="button"
               title={!isFormValid ? "Please fill in all required fields: Product, Affiliate Name, Affiliate Link, and at least one GEO" : undefined}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-indigo-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white font-bold text-xs shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
             >
               {submitting ? "Saving..." : "Add 1 Link Log"}
             </button>
