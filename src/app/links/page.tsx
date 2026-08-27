@@ -34,14 +34,14 @@ interface LinkLog {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  REQUESTED: "bg-blue-50 text-blue-500",
-  ACCEPTED: "bg-emerald-100 text-emerald-600",
-  CANCELED: "bg-slate-100 text-slate-500",
-  ISSUE: "bg-rose-100 text-rose-500",
-  NEED_TO_CHECK: "bg-amber-100 text-amber-600",
-  PRESELL_PAGE: "bg-purple-100 text-purple-600",
-  REDIRECTED: "bg-yellow-100 text-yellow-600",
-  ALERT: "bg-red-100 text-red-600",
+  REQUESTED: "bg-blue-50 text-blue-700 border border-blue-200/60",
+  ACCEPTED: "bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30",
+  CANCELED: "bg-slate-100 text-slate-600 border border-slate-200",
+  ISSUE: "bg-rose-50 text-rose-700 border border-rose-200/60",
+  NEED_TO_CHECK: "bg-amber-50 text-amber-700 border border-amber-200/60",
+  PRESELL_PAGE: "bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30",
+  REDIRECTED: "bg-yellow-50 text-yellow-800 border border-yellow-200/60",
+  ALERT: "bg-red-50 text-red-700 border border-red-200/60",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -457,23 +457,23 @@ function LinksPageContent() {
       />
 
       {/* Tabs Selector for Links */}
-      <div className="flex border-b border-slate-200 mb-6 gap-2">
+      <div className="flex border-b border-[#CBCBCB]/60 mb-6 gap-2">
         <button
           onClick={() => { setStatusFilter(""); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all ${
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
             !statusFilter && !showOnlyDeadLinks
-              ? "border-indigo-500 text-indigo-600"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-[#6D8196] text-[#6D8196] font-bold"
+              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
           }`}
         >
           All Links
         </button>
         <button
           onClick={() => { setStatusFilter("ISSUE"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
             statusFilter === "ISSUE"
               ? "border-rose-500 text-rose-600 font-bold"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
           }`}
         >
           <span>Flagged Links</span>
@@ -485,20 +485,20 @@ function LinksPageContent() {
         </button>
         <button
           onClick={() => { setStatusFilter("REQUESTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all ${
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
             statusFilter === "REQUESTED"
-              ? "border-amber-500 text-amber-600 font-bold"
-              : "border-transparent text-slate-500 hover:text-slate-750"
+              ? "border-[#6D8196] text-[#6D8196] font-bold"
+              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
           }`}
         >
           Pending Requests
         </button>
         <button
           onClick={() => { setStatusFilter("ACCEPTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all ${
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
             statusFilter === "ACCEPTED"
-              ? "border-emerald-500 text-emerald-650 font-bold"
-              : "border-transparent text-slate-500 hover:text-slate-750"
+              ? "border-[#6D8196] text-[#6D8196] font-bold"
+              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
           }`}
         >
           Accepted Links
@@ -601,13 +601,13 @@ function LinksPageContent() {
                       </td>
                       {/* Fix 2: Site Name column */}
                       <td className="px-3 py-3.5">
-                        <span className="text-[12px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-bold text-[#3D4F61] bg-[#6D8196]/15 border border-[#6D8196]/30 px-2 py-0.5 rounded-full">
                           {l.product.site?.name || "—"}
                         </span>
                       </td>
                       <td className="px-3 py-3.5">
                         {l.product.article?.articleLink ? (
-                          <a href={l.product.article.articleLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-500 hover:text-blue-600 transition">
+                          <a href={l.product.article.articleLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] transition">
                             <ExternalLink className="w-3.5 h-3.5" />
                             Article
                           </a>
@@ -619,7 +619,7 @@ function LinksPageContent() {
                       </td>
                       <td className="px-3 py-3.5">
                         {l.bridgePageLink ? (
-                          <a href={l.bridgePageLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-500 hover:text-blue-600 transition">
+                          <a href={l.bridgePageLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] transition">
                             <ExternalLink className="w-3.5 h-3.5" />
                             Link
                           </a>
@@ -637,7 +637,7 @@ function LinksPageContent() {
                         <div className="flex gap-1 flex-wrap">
                           {l.geos && l.geos.length > 0 ? (
                             l.geos.map(g => (
-                              <span key={g.geo} className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-bold uppercase border border-slate-200">
+                              <span key={g.geo} className="px-1.5 py-0.5 rounded bg-[#FAF9F5] text-[#4A4A4A] text-[10px] font-bold uppercase border border-[#CBCBCB]">
                                 {g.geo}
                               </span>
                             ))
@@ -647,7 +647,7 @@ function LinksPageContent() {
                         </div>
                       </td>
                       <td className="px-3 py-3.5">
-                        <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${statusStyle}`}>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${statusStyle}`}>
                           {statusLabel}
                         </span>
                       </td>
@@ -656,7 +656,7 @@ function LinksPageContent() {
                       </td>
                       <td className="px-3 py-3.5">
                         {l.updatedBy?.name ? (
-                          <span className="text-[12px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/60">
+                          <span className="text-[11px] font-semibold text-[#3D4F61] bg-[#6D8196]/10 px-2 py-0.5 rounded-md border border-[#6D8196]/20">
                             {l.updatedBy.name}
                           </span>
                         ) : (
@@ -673,7 +673,7 @@ function LinksPageContent() {
                         {l.linkerRemarks ? (
                           <button
                             onClick={() => setViewingRemarks(l.linkerRemarks || "")}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-650 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all text-[10px] font-bold cursor-pointer shadow-sm"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[10px] font-bold cursor-pointer shadow-2xs"
                             title="View Remarks Details"
                           >
                             <Info className="w-3.5 h-3.5" />
@@ -687,7 +687,7 @@ function LinksPageContent() {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => setHistoryLinkLog(l)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-650 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all text-[10px] font-bold cursor-pointer shadow-sm"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[10px] font-bold cursor-pointer shadow-2xs"
                             title="View History Details"
                           >
                             <Clock className="w-3.5 h-3.5" />
@@ -697,14 +697,14 @@ function LinksPageContent() {
                             <>
                               <button
                                 onClick={() => setEditingLink(l)}
-                                className="p-1.5 rounded-md border border-slate-200 bg-white text-slate-400 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition cursor-pointer"
+                                className="p-1.5 rounded-md border border-[#CBCBCB] bg-white text-slate-500 hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition cursor-pointer shadow-2xs"
                                 title="Edit Link"
                               >
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleDeleteLink(l.id)}
-                                className="p-1.5 rounded-md border border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition cursor-pointer"
+                                className="p-1.5 rounded-md border border-[#CBCBCB] bg-white text-slate-500 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition cursor-pointer shadow-2xs"
                                 title="Delete Link"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />

@@ -397,9 +397,9 @@ export default function DashboardPage() {
             <div className="absolute right-0 mt-2 w-84 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</span>
+                  <span className="text-xs font-bold text-[#4A4A4A] uppercase tracking-wider">Notifications</span>
                   {notifications.filter((n) => !n.isRead).length > 0 && (
-                    <span className="text-[10px] bg-rose-50 text-rose-600 border border-rose-200/50 font-bold px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30 font-bold px-2 py-0.5 rounded-full">
                       {notifications.filter((n) => !n.isRead).length} unread
                     </span>
                   )}
@@ -407,7 +407,7 @@ export default function DashboardPage() {
                 {notifications.some((n) => !n.isRead) && (
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="text-[11px] font-bold text-violet-600 hover:text-violet-700 hover:underline transition flex items-center gap-1 cursor-pointer"
+                    className="text-[11px] font-bold text-[#6D8196] hover:text-[#4A4A4A] hover:underline transition flex items-center gap-1 cursor-pointer"
                   >
                     <Check className="w-3.5 h-3.5" />
                     Mark all as read
@@ -416,9 +416,9 @@ export default function DashboardPage() {
               </div>
               <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
                 {notifications.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic text-center py-4">No notifications</p>
+                  <p className="text-xs text-slate-400 italic text-center py-4">No notifications in past month</p>
                 ) : (
-                  notifications.map((n) => {
+                  notifications.slice(0, 10).map((n) => {
                     const match = n.message.match(/"([^"]+)"/);
                     const prodName = match ? match[1] : "";
                     
@@ -440,17 +440,17 @@ export default function DashboardPage() {
                         onClick={() => handleNotificationClick(n)}
                         className={`p-3 rounded-xl border text-xs flex flex-col gap-1.5 transition-colors block cursor-pointer ${
                           !n.isRead 
-                            ? "bg-violet-50/70 hover:bg-violet-100/60 border-violet-200/80 font-semibold" 
-                            : "bg-slate-50 hover:bg-slate-100/70 border-slate-200/50 text-slate-600"
+                            ? "bg-white hover:bg-[#FAF9F5] border-[#6D8196]/50 font-semibold shadow-2xs" 
+                            : "bg-[#FAF9F5] hover:bg-white border-[#CBCBCB]/60 text-slate-600"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className={`leading-snug ${!n.isRead ? "text-slate-900 font-bold" : "text-slate-600"}`}>{n.message}</p>
+                          <p className={`leading-snug ${!n.isRead ? "text-[#4A4A4A] font-bold" : "text-slate-600"}`}>{n.message}</p>
                           {!n.isRead && (
-                            <span className="w-2 h-2 rounded-full bg-violet-600 flex-shrink-0 mt-1" />
+                            <span className="w-2 h-2 rounded-full bg-[#6D8196] flex-shrink-0 mt-1" />
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-400 font-medium self-end">{new Date(n.createdAt).toLocaleDateString()}</span>
+                        <span className="text-[10px] text-[#737373] font-medium self-end">{new Date(n.createdAt).toLocaleDateString()}</span>
                       </Link>
                     );
                   })
@@ -460,7 +460,7 @@ export default function DashboardPage() {
                 <Link
                   href="/notifications"
                   onClick={() => setShowBellDropdown(false)}
-                  className="text-violet-600 hover:text-violet-800 font-bold transition flex items-center gap-1"
+                  className="text-[#6D8196] hover:text-[#4A4A4A] font-bold transition flex items-center gap-1"
                 >
                   View all notifications →
                 </Link>

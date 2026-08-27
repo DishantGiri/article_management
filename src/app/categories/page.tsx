@@ -136,16 +136,16 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A]">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Web Categories</h1>
-          <p className="text-slate-500 text-sm mt-0.5 font-medium">Manage categories that can be assigned across multiple sites</p>
+          <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">Web Categories</h1>
+          <p className="text-[#737373] text-sm mt-0.5 font-medium">Manage categories that can be assigned across multiple sites</p>
         </div>
         <button
           onClick={openAddModal}
-          className="px-5 py-2.5 bg-indigo-500 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 shadow-sm transition flex items-center gap-2"
+          className="px-5 py-2.5 bg-[#6D8196] text-white rounded-xl text-sm font-semibold hover:bg-[#5A6D81] shadow-xs transition flex items-center gap-2 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Add Category
@@ -155,23 +155,23 @@ export default function CategoriesPage() {
       {/* Content */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#CBCBCB] border-t-[#6D8196] rounded-full animate-spin" />
         </div>
       ) : categories.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
-          <p className="text-slate-500 font-medium">No categories found.</p>
+        <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-16 text-center shadow-xs">
+          <p className="text-[#737373] font-medium">No categories found.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-6">
+        <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs overflow-hidden p-6">
           <div className="flex flex-wrap gap-3">
             {categories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => openEditModal(cat)}
-                className="group flex flex-col items-start px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-white hover:border-indigo-300 hover:shadow-sm transition-all text-left w-[200px]"
+                className="group flex flex-col items-start px-4 py-3 rounded-xl bg-[#FAF9F5] border border-[#CBCBCB] hover:bg-white hover:border-[#6D8196] hover:shadow-sm transition-all text-left w-[200px] cursor-pointer"
               >
-                <span className="text-[14px] font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{cat.name}</span>
-                <div className="mt-2 flex gap-3 text-[11px] font-medium text-slate-400">
+                <span className="text-[14px] font-bold text-[#4A4A4A] group-hover:text-[#6D8196] transition-colors">{cat.name}</span>
+                <div className="mt-2 flex gap-3 text-[11px] font-medium text-[#737373]">
                   <span>{cat._count?.sites || 0} sites</span>
                   <span>{cat._count?.products || 0} products</span>
                 </div>
@@ -183,43 +183,41 @@ export default function CategoriesPage() {
 
       {/* Add Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-800">Add Web Category</h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
+            <div className="flex items-center justify-between p-5 bg-[#4A4A4A] text-white">
+              <h2 className="text-base font-bold text-white">Add Web Category</h2>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-white/80 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleAddCategory} className="p-5">
-              {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+            <form onSubmit={handleAddCategory} className="p-5 bg-white space-y-4">
+              {error && <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg">{error}</div>}
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Category Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
-                    placeholder="e.g. Weight Loss"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider mb-1.5">Category Name</label>
+                <input
+                  type="text"
+                  required
+                  value={categoryName}
+                  onChange={(e) => setCategoryName(e.target.value)}
+                  placeholder="e.g. Weight Loss"
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                />
               </div>
 
-              <div className="mt-6 flex justify-end gap-3">
+              <div className="pt-2 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                  className="px-4 py-2 text-xs font-bold text-[#4A4A4A] border border-[#CBCBCB] hover:bg-[#FAF9F5] rounded-xl transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#6D8196] hover:bg-[#5A6D81] rounded-xl transition disabled:opacity-50 cursor-pointer shadow-xs"
                 >
                   {isSubmitting ? "Adding..." : "Add Category"}
                 </button>
@@ -231,36 +229,34 @@ export default function CategoriesPage() {
 
       {/* Edit Modal */}
       {isEditModalOpen && selectedCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-800">Edit Category</h2>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
+            <div className="flex items-center justify-between p-5 bg-[#4A4A4A] text-white">
+              <h2 className="text-base font-bold text-white">Edit Category</h2>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-white/80 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleUpdateCategory} className="p-5">
-              {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
+            <form onSubmit={handleUpdateCategory} className="p-5 bg-white space-y-4">
+              {error && <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg">{error}</div>}
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Category Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider mb-1.5">Category Name</label>
+                <input
+                  type="text"
+                  required
+                  value={categoryName}
+                  onChange={(e) => setCategoryName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                />
               </div>
 
-              <div className="mt-6 flex justify-between items-center">
+              <div className="pt-2 flex justify-between items-center">
                 <button
                   type="button"
                   onClick={handleDeleteCategory}
                   disabled={isSubmitting}
-                  className="px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-lg transition flex items-center gap-1 disabled:opacity-50"
+                  className="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete
@@ -269,14 +265,14 @@ export default function CategoriesPage() {
                   <button
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
-                    className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                    className="px-4 py-2 text-xs font-bold text-[#4A4A4A] border border-[#CBCBCB] hover:bg-[#FAF9F5] rounded-xl transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-2 text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition disabled:opacity-50"
+                    className="px-4 py-2 text-xs font-bold text-white bg-[#6D8196] hover:bg-[#5A6D81] rounded-xl transition disabled:opacity-50 cursor-pointer shadow-xs"
                   >
                     {isSubmitting ? "Saving..." : "Save Changes"}
                   </button>

@@ -7,11 +7,21 @@ export async function GET(req: NextRequest) {
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json([]);
 
+  const limitParam = searchParams.get("limit");
+  const take = limitParam ? parseInt(limitParam) : undefined;
+
+  // Restrict to the past 1 month (30 days)
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+
   const notifications = await prisma.notification.findMany({
-    where: { recipientId: parseInt(userId) },
+    where: { 
+      recipientId: parseInt(userId),
+      createdAt: { gte: oneMonthAgo }
+    },
     include: { sender: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
-    take: 20,
+    ...(take ? { take } : {}),
   });
   return NextResponse.json(notifications);
 }

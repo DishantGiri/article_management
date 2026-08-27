@@ -504,7 +504,7 @@ function ArticlesContent() {
                         <td className="px-4 py-3.5">
                           <Link
                             href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
                           >
                             <FileText className="w-3.5 h-3.5" />
                             Review
@@ -537,7 +537,7 @@ function ArticlesContent() {
                               }}
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold whitespace-nowrap transition-all ${
                                 !hasActiveAssignment
-                                  ? "bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
+                                  ? "bg-[#6D8196] text-white hover:bg-[#5A6D81] cursor-pointer shadow-xs"
                                   : "bg-slate-100 text-slate-400 cursor-not-allowed"
                               }`}
                             >
@@ -551,7 +551,7 @@ function ArticlesContent() {
                                 setUpdatingArticle(a);
                                 setUpdateLink(a.articleLink || "");
                               }}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#6D8196]/30 bg-[#6D8196]/15 text-[#3D4F61] hover:bg-[#6D8196]/25 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
                             >
                               <FileText className="w-3.5 h-3.5" />
                               Update

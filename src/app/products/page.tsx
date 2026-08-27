@@ -554,7 +554,7 @@ export default function ProductsPage() {
                             href={p.site.url} 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="text-[13px] font-semibold text-indigo-600 hover:text-indigo-700 hover:underline inline-flex items-center gap-1"
+                            className="text-[13px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] hover:underline inline-flex items-center gap-1"
                           >
                             {p.site.name}
                             <ExternalLink className="w-3 h-3 opacity-60" />
@@ -568,7 +568,7 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-3 py-3.5">
                         {p.affiliateName ? (
-                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100/60">
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30">
                             {p.affiliateName}
                           </span>
                         ) : (
@@ -614,7 +614,7 @@ export default function ProductsPage() {
                           {p.article && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") ? (
                             <Link
                               href={`/articles/${p.article.id}`}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-[11px] font-semibold whitespace-nowrap"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap shadow-2xs"
                             >
                               <FileText className="w-3.5 h-3.5" />
                               Review
@@ -622,7 +622,7 @@ export default function ProductsPage() {
                           ) : (
                             <button
                               onClick={() => setSelectedProduct(p)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
                             >
                               <FileText className="w-3.5 h-3.5" />
                               Preview
