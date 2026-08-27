@@ -330,7 +330,7 @@ export default function EditProductModal({
                       onChange={(e) => setCategoryId(e.target.value)}
                       className="w-full appearance-none pl-3.5 pr-10 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs cursor-pointer"
                     >
-                      <option value="" className="text-slate-400 font-medium">Select Category...</option>
+                      <option value="" className="text-slate-400 font-medium">Select Product Type...</option>
                       {categories.map((c) => (
                         <option key={c.id} value={c.id} className="font-semibold text-slate-800">
                           {c.name}

@@ -28,7 +28,7 @@ interface FormData {
 // ─── Step Indicator ───────────────────────────────────────────────────────────
 
 function StepIndicator({ step }: { step: number }) {
-  const steps = ["Select Category", "Select Site", "Product Details"];
+  const steps = ["Product Type", "Select Site", "Product Details"];
   return (
     <div className="flex items-center gap-0 mb-8">
       {steps.map((label, i) => {
@@ -265,10 +265,10 @@ export default function AddProductPage() {
             </div>
           )}
 
-          {/* ── STEP 1: Category ─────────────────────────────────────── */}
+          {/* ── STEP 1: Product Type ─────────────────────────────────────── */}
           {step === 1 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Category</h2>
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Product Type</h2>
               {loading ? (
                 <div className="flex justify-center py-8">
                   <div className="w-6 h-6 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
