@@ -294,14 +294,14 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]" suppressHydrationWarning>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]" suppressHydrationWarning>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Products</h1>
           <p className="text-slate-500 text-sm mt-0.5 font-medium">{filtered.length} products found</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
             <button 
               onClick={() => setIsAddModalOpen(true)}
@@ -347,21 +347,21 @@ export default function ProductsPage() {
           <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
             <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 mb-2"><Calendar className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.todaysProducts || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.general?.todaysProducts ?? stats.superAdmin?.todaysProducts ?? 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Today's Products</p>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
             <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-500 mb-2"><Globe className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.totalSites || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.general?.totalSites ?? stats.superAdmin?.totalSites ?? 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Sites</p>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
             <div className="w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center text-sky-500 mb-2"><LayoutGrid className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.totalCategories || 0}</p>
+              <p className="text-3xl font-bold text-slate-800">{stats.general?.totalCategories ?? stats.superAdmin?.totalCategories ?? 0}</p>
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Categories</p>
             </div>
           </div>

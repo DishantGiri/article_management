@@ -24,6 +24,9 @@ export async function GET(req: NextRequest) {
       allowedSiteIds = accesses.map((a) => a.siteId);
     }
 
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     const [
       totalProducts,
       pendingArticles,
@@ -33,6 +36,9 @@ export async function GET(req: NextRequest) {
       requestedLinks,
       acceptedLinks,
       issueLinks,
+      todaysProducts,
+      totalSites,
+      totalCategories,
       recentProducts,
       recentArticles,
       unlinkedProducts,
@@ -54,6 +60,9 @@ export async function GET(req: NextRequest) {
       prisma.linkLog.count({ where: { status: "REQUESTED" } }),
       prisma.linkLog.count({ where: { status: "ACCEPTED" } }),
       prisma.linkLog.count({ where: { status: "ISSUE" } }),
+      prisma.product.count({ where: { addedAt: { gte: startOfToday } } }),
+      prisma.site.count(),
+      prisma.category.count(),
 
       // General recent products
       prisma.product.findMany({
@@ -305,8 +314,8 @@ export async function GET(req: NextRequest) {
 
         const [
           totalWriters, totalLinkers, totalTeamLeads,
-          totalSites, totalCategories, affiliateNetworksGroup,
-          deadLinks, issueLinksSuper, todaysProducts,
+          affiliateNetworksGroupSuper,
+          deadLinksSuper, issueLinksSuper,
           completedArticlesList,
           allWriters,
           allProductsRecent,
@@ -316,8 +325,6 @@ export async function GET(req: NextRequest) {
           prisma.user.count({ where: { role: "WRITER" } }),
           prisma.user.count({ where: { role: "LINKER" } }),
           prisma.user.count({ where: { role: "TEAM_LEAD" } }),
-          prisma.site.count(),
-          prisma.category.count(),
           prisma.linkLog.groupBy({ by: ['affiliateName'] }),
           prisma.linkLog.count({
             where: {
@@ -331,7 +338,6 @@ export async function GET(req: NextRequest) {
             }
           }),
           prisma.linkLog.count({ where: { status: "ISSUE" } }),
-          prisma.product.count({ where: { addedAt: { gte: today } } }),
           prisma.article.findMany({ where: { status: { in: ["COMPLETED", "APPROVED"] }, writingTimeMin: { not: null } }, select: { writingTimeMin: true } }),
           prisma.user.findMany({ 
             where: { role: "WRITER" },
@@ -407,8 +413,8 @@ export async function GET(req: NextRequest) {
 
         superAdminData = {
           totalWriters, totalLinkers, totalTeamLeads,
-          totalSites, totalCategories, affiliateNetworks: affiliateNetworksGroup.length,
-          deadLinks, issueLinks: issueLinksSuper, todaysProducts,
+          totalSites, totalCategories, affiliateNetworks: affiliateNetworksGroupSuper.length,
+          deadLinks: deadLinksSuper, issueLinks: issueLinksSuper, todaysProducts,
           avgWritingTime: avgWritingTime.toFixed(1),
           monthlyData,
           writerPerformance,
@@ -431,6 +437,9 @@ export async function GET(req: NextRequest) {
         requestedLinks,
         acceptedLinks,
         issueLinks,
+        todaysProducts,
+        totalSites,
+        totalCategories,
       },
       linkStats: {
         affiliateNetworks: affiliateNetworksGroup.length,

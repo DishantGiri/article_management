@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, categoryIds, trendLink, trendLevel, affiliateName, previewLink, remarks } = body;
+    const { name, categoryIds, excludedSiteIds, trendLink, trendLevel, affiliateName, previewLink, remarks } = body;
+    const excludedSet = new Set(Array.isArray(excludedSiteIds) ? excludedSiteIds.map(Number) : []);
 
     // Basic validation
     if (!name || !categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
@@ -45,6 +46,9 @@ export async function POST(req: NextRequest) {
     const productsToCreate = [];
     for (const cat of categoriesWithSites) {
       for (const site of cat.sites) {
+        if (excludedSet.has(site.id)) {
+          continue;
+        }
         productsToCreate.push({
           name,
           siteId: site.id,

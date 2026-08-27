@@ -24,6 +24,9 @@ interface DashboardData {
     requestedLinks: number;
     acceptedLinks: number;
     issueLinks: number;
+    todaysProducts?: number;
+    totalSites?: number;
+    totalCategories?: number;
   };
   recentProducts: any[];
   recentArticles: any[];
@@ -258,7 +261,7 @@ export default function DashboardPage() {
 
     const writerPerformance = sa.writerPerformance || [];
     return (
-      <div className="p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]" suppressHydrationWarning>
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]" suppressHydrationWarning>
         <div className="mb-8">
           <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">
             {currentUserRole === "SUPER_ADMIN" ? "Super Admin Dashboard" : "Admin Dashboard"}
@@ -364,7 +367,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6" suppressHydrationWarning>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6" suppressHydrationWarning>
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>

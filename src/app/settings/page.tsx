@@ -72,7 +72,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-slate-900">Account Settings</h1>

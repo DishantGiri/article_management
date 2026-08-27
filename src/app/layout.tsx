@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers>
           <div className="flex h-full" suppressHydrationWarning>
             {showSidebar && <Sidebar />}
-            <main className={`flex-1 min-h-screen overflow-y-auto ${showSidebar ? "ml-64" : ""}`} suppressHydrationWarning>
+            <main className={`flex-1 min-h-screen overflow-y-auto ${showSidebar ? "ml-0 lg:ml-64" : ""}`} suppressHydrationWarning>
               {children}
             </main>
           </div>

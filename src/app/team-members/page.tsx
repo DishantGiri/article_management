@@ -88,7 +88,7 @@ export default function TeamMembersPage() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto min-h-screen bg-gray-50 space-y-6 font-sans">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto min-h-screen bg-gray-50 space-y-6 font-sans">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

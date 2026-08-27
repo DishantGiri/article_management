@@ -69,10 +69,23 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { productId, bridgePageLink, buyLink, affiliateName, affiliateLink, geos, status, linkerRemarks } = body;
+    const { productId, bridgePageLink, buyLink, affiliateName, affiliateLink, affiliateEntries, geos, status, linkerRemarks } = body;
 
-    if (!productId || !affiliateName || !affiliateLink) {
-      return NextResponse.json({ error: "productId, affiliateName, affiliateLink are required" }, { status: 400 });
+    const entriesToCreate: Array<{ affiliateName: string; affiliateLink: string }> =
+      Array.isArray(affiliateEntries) && affiliateEntries.length > 0
+        ? affiliateEntries
+        : affiliateName && affiliateLink
+        ? [{ affiliateName, affiliateLink }]
+        : [];
+
+    if (!productId || entriesToCreate.length === 0) {
+      return NextResponse.json({ error: "productId and at least one affiliate network entry (affiliateName & affiliateLink) are required" }, { status: 400 });
+    }
+
+    for (const entry of entriesToCreate) {
+      if (!entry.affiliateName?.trim() || !entry.affiliateLink?.trim()) {
+        return NextResponse.json({ error: "Affiliate Name and Affiliate Link are required for all network entries." }, { status: 400 });
+      }
     }
 
     // Fix 1: Compulsory Geo selection
@@ -112,37 +125,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Bridge Page Link is required before adding a Buy Link." }, { status: 400 });
     }
 
-    const link = await prisma.linkLog.create({
-      data: {
-        productId: parseInt(productId),
-        addedById: addedById,
-        bridgePageLink: bridgePageLink || null,
-        buyLink: buyLink || null,
-        affiliateName,
-        affiliateLink,
-        status: status || "REQUESTED",
-        linkerRemarks: linkerRemarks || null,
-        geos: {
-          create: (geos as string[] || []).map((geo: string) => ({ geo })),
-        },
-      },
-      include: { geos: true, addedBy: { select: { name: true } } },
-    });
+    const createdLinks = await prisma.$transaction(
+      entriesToCreate.map((entry) =>
+        prisma.linkLog.create({
+          data: {
+            productId: parseInt(productId),
+            addedById: addedById,
+            bridgePageLink: bridgePageLink || null,
+            buyLink: buyLink || null,
+            affiliateName: entry.affiliateName.trim(),
+            affiliateLink: entry.affiliateLink.trim(),
+            status: status || "REQUESTED",
+            linkerRemarks: linkerRemarks || null,
+            geos: {
+              create: (geos as string[] || []).map((geo: string) => ({ geo })),
+            },
+          },
+          include: { geos: true, addedBy: { select: { name: true } } },
+        })
+      )
+    );
 
-    // Log creation history
-    await prisma.linkHistory.create({
-      data: {
-        linkLogId: link.id,
-        updatedById: addedById,
-        newBridgeLink: link.bridgePageLink,
-        newBuyLink: link.buyLink,
-        newAffiliateLink: link.affiliateLink,
-        newStatus: link.status,
-        newRemarks: link.linkerRemarks,
-      },
-    });
+    // Log creation history for each created link log
+    await prisma.$transaction(
+      createdLinks.map((link) =>
+        prisma.linkHistory.create({
+          data: {
+            linkLogId: link.id,
+            updatedById: addedById,
+            newBridgeLink: link.bridgePageLink,
+            newBuyLink: link.buyLink,
+            newAffiliateLink: link.affiliateLink,
+            newStatus: link.status,
+            newRemarks: link.linkerRemarks,
+          },
+        })
+      )
+    );
 
-    return NextResponse.json(link, { status: 201 });
+    return NextResponse.json(createdLinks.length === 1 ? createdLinks[0] : createdLinks, { status: 201 });
   } catch (err) {
     console.error("[POST /api/links]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

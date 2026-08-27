@@ -141,7 +141,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   const { product } = article;
 
   return (
-    <div className="p-8 max-w-[1400px] mx-auto min-h-screen bg-slate-50">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto min-h-screen bg-slate-50">
       {/* Header & Back Button */}
       <div className="mb-6 flex items-center justify-between">
         <button onClick={() => router.back()} className="text-sm font-bold text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5">

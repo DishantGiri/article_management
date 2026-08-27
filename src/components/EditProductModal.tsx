@@ -322,7 +322,7 @@ export default function EditProductModal({
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-indigo-600" />
-                    Category <span className="text-rose-500">*</span>
+                    Product Type <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <select

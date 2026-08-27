@@ -69,9 +69,9 @@ export default function ReportsPage() {
   const COLORS = data.statusDistribution.map((s: any) => s.color);
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Reports & Analytics</h1>
           <p className="text-slate-500 text-sm mt-0.5 font-medium">Comprehensive performance reports</p>

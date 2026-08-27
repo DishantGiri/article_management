@@ -43,7 +43,7 @@ interface FormData {
 }
 
 function StepIndicator({ step }: { step: number }) {
-  const steps = ["Categories", "Preview Sites", "Details"];
+  const steps = ["Product Type", "Preview Sites", "Details"];
   return (
     <div className="flex items-center gap-0 mb-6">
       {steps.map((label, i) => {
@@ -102,6 +102,7 @@ export default function AddProductModal({
   onSuccess?: () => void;
 }) {
   const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "ADMIN";
   const [step, setStep] = useState(1);
   const [sites, setSites] = useState<Site[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -124,6 +125,9 @@ export default function AddProductModal({
     previewLink: "",
     remarks: "",
   });
+
+  // Deselected/excluded sites state
+  const [excludedSiteIds, setExcludedSiteIds] = useState<number[]>([]);
 
   // Inline creation states
   const [showAddCat, setShowAddCat] = useState(false);
@@ -197,6 +201,7 @@ export default function AddProductModal({
       setShowAddSite(false);
       setShowCustomAffiliate(false);
       setCustomAffiliate("");
+      setExcludedSiteIds([]);
       setForm({
         categoryIds: [],
         name: "",
@@ -292,6 +297,7 @@ export default function AddProductModal({
         body: JSON.stringify({
           name: form.name.trim(),
           categoryIds: form.categoryIds,
+          excludedSiteIds,
           trendLink: form.trendLink || null,
           trendLevel: form.trendLevel || "HIGH",
           affiliateName: finalAffiliate || null,
@@ -326,6 +332,8 @@ export default function AddProductModal({
     site.categories?.some((c: any) => form.categoryIds.includes(c.id))
   );
 
+  const activeSites = previewSites.filter((site: any) => !excludedSiteIds.includes(site.id));
+
   if (!isOpen) return null;
 
   return (
@@ -339,7 +347,7 @@ export default function AddProductModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">Add New Product</h2>
-              <p className="text-xs text-slate-300 font-medium">Select categories, websites, trend rating & affiliate info</p>
+              <p className="text-xs text-slate-300 font-medium">Select product type, websites, trend rating & affiliate info</p>
             </div>
           </div>
           <button
@@ -405,16 +413,18 @@ export default function AddProductModal({
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-indigo-600" />
-                      Select Categories <span className="text-rose-500">*</span>
+                      Select Product Type <span className="text-rose-500">*</span>
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddCat(!showAddCat)}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      {showAddCat ? "Cancel" : "Add Category"}
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCat(!showAddCat)}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {showAddCat ? "Cancel" : "Add Product Type"}
+                      </button>
+                    )}
                   </div>
 
                   {showAddCat && (
@@ -423,7 +433,7 @@ export default function AddProductModal({
                         type="text"
                         value={newCatName}
                         onChange={(e) => setNewCatName(e.target.value)}
-                        placeholder="Category name (e.g. Skin Care)"
+                        placeholder="Product type name (e.g. Skin Care, Ecomm, Supplements)"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
                       />
                       <button
@@ -437,9 +447,9 @@ export default function AddProductModal({
                   )}
 
                   {loading ? (
-                    <div className="text-center py-8 text-xs text-slate-500 font-semibold">Loading categories...</div>
+                    <div className="text-center py-8 text-xs text-slate-500 font-semibold">Loading product types...</div>
                   ) : categories.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-slate-500 italic">No categories found. Click "+ Add Category" above.</div>
+                    <div className="text-center py-6 text-xs text-slate-500 italic">No product types found. Click "+ Add Product Type" above.</div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 pr-2">
                       {categories.map((c) => {
@@ -496,14 +506,16 @@ export default function AddProductModal({
                       <Globe className="w-3.5 h-3.5 text-indigo-600" />
                       Associated Websites
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddSite(!showAddSite)}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      {showAddSite ? "Cancel" : "Add Website"}
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddSite(!showAddSite)}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {showAddSite ? "Cancel" : "Add Website"}
+                      </button>
+                    )}
                   </div>
 
                   {showAddSite && (
@@ -538,17 +550,57 @@ export default function AddProductModal({
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-52 overflow-y-auto p-1 pr-2">
-                      {previewSites.map((site: any) => (
-                        <div
-                          key={site.id}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between"
-                        >
-                          <span className="font-bold text-slate-800 text-xs">{site.name}</span>
-                          <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-bold border border-indigo-100">
-                            Auto-assigned
-                          </span>
-                        </div>
-                      ))}
+                      {previewSites.map((site: any) => {
+                        const isExcluded = excludedSiteIds.includes(site.id);
+                        return (
+                          <div
+                            key={site.id}
+                            className={`w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                              isExcluded
+                                ? "bg-slate-50/50 border-slate-200 text-slate-400 opacity-60"
+                                : "bg-slate-50 border-slate-200/80 text-slate-800"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`font-bold text-xs truncate ${isExcluded ? "line-through text-slate-400" : "text-slate-800"}`}>
+                                {site.name}
+                              </span>
+                              {isExcluded ? (
+                                <span className="text-[10px] bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md font-bold border border-rose-100 shrink-0">
+                                  Excluded
+                                </span>
+                              ) : (
+                                <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-bold border border-indigo-100 shrink-0">
+                                  Auto-assigned
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExcludedSiteIds((prev) =>
+                                  isExcluded ? prev.filter((id) => id !== site.id) : [...prev, site.id]
+                                );
+                              }}
+                              className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                                isExcluded
+                                  ? "text-indigo-600 hover:bg-indigo-50"
+                                  : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                              }`}
+                              title={isExcluded ? "Re-include this site" : "Remove/Deselect this site"}
+                            >
+                              {isExcluded ? (
+                                <span className="text-[11px] font-bold text-indigo-600">Re-include</span>
+                              ) : (
+                                <>
+                                  <X className="w-4 h-4 text-slate-400 hover:text-rose-600" />
+                                  <span className="text-[11px] font-bold text-slate-500 hover:text-rose-600">Remove</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -560,11 +612,11 @@ export default function AddProductModal({
                       Back
                     </button>
                     <button
-                      disabled={previewSites.length === 0}
+                      disabled={activeSites.length === 0}
                       onClick={() => setStep(3)}
                       className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer shadow-md shadow-indigo-100"
                     >
-                      Continue
+                      Continue ({activeSites.length} site{activeSites.length !== 1 ? "s" : ""})
                     </button>
                   </div>
                 </div>
