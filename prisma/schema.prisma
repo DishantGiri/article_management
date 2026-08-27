@@ -159,6 +159,7 @@ model Product {
 
   siteId        Int
   categoryId    Int
+  productCategory String?   // Defined category for the product (e.g. Skincare, Supplements)
   trendLink     String?
   trendLevel    String?     @default("HIGH") // HIGH, MODERATE, LOW
   affiliateName String?     // Selected from Affiliate dropdown

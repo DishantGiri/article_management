@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, categoryIds, excludedSiteIds, trendLink, trendLevel, affiliateName, previewLink, remarks } = body;
+    const { name, categoryIds, excludedSiteIds, trendLink, trendLevel, affiliateName, previewLink, remarks, productCategory } = body;
     const excludedSet = new Set(Array.isArray(excludedSiteIds) ? excludedSiteIds.map(Number) : []);
 
     // Basic validation
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
           name,
           siteId: site.id,
           categoryId: cat.id,
+          productCategory: productCategory && typeof productCategory === "string" ? productCategory.trim() : null,
           trendLink: trendLink || null,
           trendLevel: trendLevel || "HIGH",
           affiliateName: affiliateName || null,

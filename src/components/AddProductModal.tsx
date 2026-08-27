@@ -36,6 +36,7 @@ interface Affiliate {
 interface FormData {
   categoryIds: number[];
   name: string;
+  category: string;
   trendLink: string;
   trendLevel: string;
   affiliateName: string;
@@ -120,6 +121,7 @@ export default function AddProductModal({
   const [form, setForm] = useState<FormData>({
     categoryIds: [],
     name: "",
+    category: "",
     trendLink: "",
     trendLevel: "HIGH",
     affiliateName: "",
@@ -206,6 +208,7 @@ export default function AddProductModal({
       setForm({
         categoryIds: [],
         name: "",
+        category: "",
         trendLink: "",
         trendLevel: "HIGH",
         affiliateName: "",
@@ -299,6 +302,7 @@ export default function AddProductModal({
           name: form.name.trim(),
           categoryIds: form.categoryIds,
           excludedSiteIds,
+          productCategory: form.category.trim() || null,
           trendLink: form.trendLink || null,
           trendLevel: form.trendLevel || "HIGH",
           affiliateName: finalAffiliate || null,
@@ -735,7 +739,7 @@ export default function AddProductModal({
                     {/* Preview Link */}
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                        <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
                         Preview Link URL
                       </label>
                       <input
@@ -746,7 +750,7 @@ export default function AddProductModal({
                         className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
                           fieldErrors.previewLink
                             ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                            : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                            : "border-slate-200 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
                         }`}
                       />
                       {fieldErrors.previewLink && (
@@ -754,20 +758,35 @@ export default function AddProductModal({
                       )}
                     </div>
 
-                    {/* Category Field */}
+                    {/* New Defined Category Field */}
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                        <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
                         Category
                       </label>
-                      <div className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 flex items-center justify-between min-h-[42px]">
-                        <span className="truncate">
-                          {getCategoryNames() || "None Selected"}
-                        </span>
-                        <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md shrink-0">
-                          Selected
-                        </span>
-                      </div>
+                      <input
+                        type="text"
+                        value={form.category}
+                        onChange={(e) => update("category", e.target.value)}
+                        placeholder="e.g. Skincare, Supplements, Fitness..."
+                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] shadow-2xs transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Product Type (Read-only summary of Step 1 selection) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
+                      Product Type
+                    </label>
+                    <div className="w-full px-3.5 py-2.5 bg-[#FAF9F5] border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 flex items-center justify-between min-h-[42px]">
+                      <span className="truncate">
+                        {getCategoryNames() || "None Selected"}
+                      </span>
+                      <span className="text-[10px] font-bold bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30 px-2 py-0.5 rounded-md shrink-0">
+                        Selected from Step 1
+                      </span>
                     </div>
                   </div>
 
