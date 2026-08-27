@@ -372,14 +372,6 @@ export default function AddLinkModal({
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Affiliate Network Links <span className="text-rose-500">*</span>
               </label>
-              <button
-                type="button"
-                onClick={() => setShowAddAffiliate(!showAddAffiliate)}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                {showAddAffiliate ? "Cancel" : "Add New Affiliate Name"}
-              </button>
             </div>
 
             {showAddAffiliate && (
@@ -425,9 +417,21 @@ export default function AddLinkModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {/* Affiliate Name */}
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-slate-600 uppercase">
-                        Affiliate Name <span className="text-rose-500">*</span>
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase">
+                          Affiliate Name <span className="text-rose-500">*</span>
+                        </label>
+                        {idx === 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAddAffiliate(!showAddAffiliate)}
+                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            {showAddAffiliate ? "Cancel" : "Add New Affiliate"}
+                          </button>
+                        )}
+                      </div>
                       <select
                         value={entry.affiliateName}
                         onChange={(e) => updateAffiliateEntry(idx, "affiliateName", e.target.value)}
@@ -444,9 +448,21 @@ export default function AddLinkModal({
 
                     {/* Affiliate Link */}
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-slate-600 uppercase">
-                        Affiliate Link <span className="text-rose-500">*</span>
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase">
+                          Affiliate Link <span className="text-rose-500">*</span>
+                        </label>
+                        {idx === 0 && (
+                          <button
+                            type="button"
+                            onClick={addAffiliateEntry}
+                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add New Link
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="url"
                         value={entry.affiliateLink}

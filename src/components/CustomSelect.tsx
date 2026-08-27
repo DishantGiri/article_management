@@ -1,27 +1,34 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
-interface CustomSelectOption {
+export interface CustomSelectOption {
   value: string;
-  label: string;
+  label: string | ReactNode;
+  isAction?: boolean;
 }
 
-interface CustomSelectProps {
+export interface CustomSelectProps {
   value: string;
   onChange: (val: string) => void;
   options: CustomSelectOption[];
-  placeholder: string;
-  minWidthClass?: string;
+  placeholder?: string;
+  className?: string;
+  triggerClassName?: string;
+  popupClassName?: string;
+  disabled?: boolean;
 }
 
 export default function CustomSelect({
   value,
   onChange,
   options,
-  placeholder,
-  minWidthClass = "min-w-[145px]"
+  placeholder = "Select...",
+  className = "w-full",
+  triggerClassName = "w-full px-3.5 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs",
+  popupClassName = "w-full bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 max-h-60 overflow-y-auto",
+  disabled = false,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,50 +47,65 @@ export default function CustomSelect({
   const selectedOption = options.find((o) => o.value === value);
 
   const handleSelect = (val: string) => {
+    if (disabled) return;
     onChange(val);
     setIsOpen(false);
   };
 
   return (
-    <div className={`relative ${minWidthClass}`} ref={containerRef}>
+    <div className={`relative ${className}`} ref={containerRef}>
       {/* Selector Trigger Input */}
-      <div
+      <button
+        type="button"
+        disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between border border-slate-200 hover:border-indigo-400 bg-white rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition-all cursor-pointer select-none"
+        className={`flex items-center justify-between transition-all cursor-pointer select-none text-left disabled:opacity-50 disabled:cursor-not-allowed ${triggerClassName}`}
       >
-        <span className={value ? "text-slate-750" : "text-slate-400 font-medium"}>
-          {selectedOption ? selectedOption.label : placeholder}
+        <span className="truncate">
+          {selectedOption ? selectedOption.label : <span className="text-slate-400 font-medium">{placeholder}</span>}
         </span>
-        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-      </div>
+        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${isOpen ? "rotate-180 text-indigo-600" : ""}`} />
+      </button>
 
       {/* Styled Popup List Dropdown */}
       {isOpen && (
-        <div className="absolute z-40 mt-1.5 left-0 w-full bg-white rounded-xl shadow-xl border border-slate-100 py-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
-          {/* Default Placeholder Option */}
-          <div
-            onClick={() => handleSelect("")}
-            className={`px-3.5 py-2 text-xs font-semibold cursor-pointer transition-colors ${
-              !value ? "bg-indigo-50/70 text-indigo-650 font-bold" : "text-slate-650 hover:bg-slate-50"
-            }`}
-          >
-            {placeholder}
-          </div>
+        <div className={`absolute z-50 mt-1.5 left-0 shadow-xl border border-slate-100 py-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150 ${popupClassName}`}>
+          {placeholder && !options.some((o) => o.value === "") && (
+            <div
+              onClick={() => handleSelect("")}
+              className={`px-3.5 py-2 text-xs font-semibold cursor-pointer transition-colors ${
+                !value ? "bg-indigo-50/80 text-indigo-700 font-bold" : "text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              {placeholder}
+            </div>
+          )}
 
-          {/* List Options */}
-          {options.map((opt) => {
+          {options.map((opt, idx) => {
             const isSelected = opt.value === value;
+            if (opt.isAction) {
+              return (
+                <div
+                  key={opt.value || idx}
+                  onClick={() => handleSelect(opt.value)}
+                  className="px-3.5 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 cursor-pointer border-t border-slate-100 transition-colors"
+                >
+                  {opt.label}
+                </div>
+              );
+            }
             return (
               <div
-                key={opt.value}
+                key={opt.value || idx}
                 onClick={() => handleSelect(opt.value)}
-                className={`px-3.5 py-2 text-xs font-semibold cursor-pointer transition-colors ${
+                className={`px-3.5 py-2 text-xs font-semibold cursor-pointer transition-colors flex items-center justify-between ${
                   isSelected
-                    ? "bg-indigo-50/70 text-indigo-650 font-bold"
-                    : "text-slate-650 hover:bg-slate-50"
+                    ? "bg-indigo-50/80 text-indigo-700 font-bold"
+                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
-                {opt.label}
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 shrink-0 ml-2" />}
               </div>
             );
           })}
