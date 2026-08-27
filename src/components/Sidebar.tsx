@@ -67,7 +67,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/categories",
-    label: "Categories",
+    label: "Product Types",
     roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
     icon: Tags,
   },

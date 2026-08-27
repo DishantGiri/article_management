@@ -451,14 +451,14 @@ export default function ProductsPage() {
           ]}
         />
 
-        {/* Category Filter */}
+        {/* Product Type Filter */}
         <CustomSelect
           value={categoryFilter}
           onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
-          placeholder="All Categories"
+          placeholder="All Product Types"
           className="min-w-[140px]"
           options={[
-            { value: "", label: "All Categories" },
+            { value: "", label: "All Product Types" },
             ...categories.map((c) => ({ value: String(c.id), label: c.name })),
           ]}
         />
@@ -528,6 +528,7 @@ export default function ProductsPage() {
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Name</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Type</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Affiliate</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trend</th>
                   <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Added By</th>
@@ -564,11 +565,16 @@ export default function ProductsPage() {
                         )}
                       </td>
                       <td className="px-3 py-3.5">
-                        <span className="text-[13px] font-medium text-slate-600">{p.category?.name}</span>
+                        <span className="text-[13px] font-medium text-slate-700">{p.productCategory || "—"}</span>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30 whitespace-nowrap">
+                          {p.category?.name || "—"}
+                        </span>
                       </td>
                       <td className="px-3 py-3.5">
                         {p.affiliateName ? (
-                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30">
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#FAF9F5] text-[#4A4A4A] border border-[#CBCBCB]">
                             {p.affiliateName}
                           </span>
                         ) : (
@@ -736,9 +742,10 @@ export default function ProductsPage() {
             <div className="p-6 overflow-y-auto space-y-6">
               <div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">{selectedProduct.name}</h3>
-                <div className="flex items-center gap-4 text-sm text-slate-500 font-medium">
-                  <span className="flex items-center gap-1.5"><FileText className="w-4 h-4" /> {selectedProduct.site.name}</span>
-                  <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4" /> {selectedProduct.category.name}</span>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 font-medium">
+                  <span className="flex items-center gap-1.5"><FileText className="w-4 h-4 text-[#6D8196]" /> {selectedProduct.site.name}</span>
+                  <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4 text-[#6D8196]" /> Product Type: {selectedProduct.category?.name || "—"}</span>
+                  <span className="flex items-center gap-1.5"><Tag className="w-4 h-4 text-[#6D8196]" /> Category: {selectedProduct.productCategory || "—"}</span>
                 </div>
               </div>
 

@@ -38,6 +38,7 @@ interface EditProductModalProps {
   product: {
     id: number;
     name: string;
+    productCategory?: string | null;
     trendLink?: string | null;
     trendLevel?: string | null;
     affiliateName?: string | null;
@@ -77,6 +78,7 @@ export default function EditProductModal({
   const [name, setName] = useState("");
   const [siteId, setSiteId] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [category, setCategory] = useState("");
   const [trendLink, setTrendLink] = useState("");
   const [trendLevel, setTrendLevel] = useState("HIGH");
   const [affiliateName, setAffiliateName] = useState("");
@@ -94,6 +96,7 @@ export default function EditProductModal({
       setName(product.name || "");
       setSiteId(product.siteId?.toString() || "");
       setCategoryId(product.categoryId?.toString() || "");
+      setCategory(product.productCategory || "");
       setTrendLink(product.trendLink || "");
       setTrendLevel(product.trendLevel || "HIGH");
       setAffiliateName(product.affiliateName || "");
@@ -125,7 +128,7 @@ export default function EditProductModal({
     if (!product) return;
 
     if (!name.trim() || !siteId || !categoryId) {
-      setError("Product Name, Site, and Category are required.");
+      setError("Product Name, Site, and Product Type are required.");
       return;
     }
 
@@ -166,6 +169,7 @@ export default function EditProductModal({
           name: name.trim(),
           siteId: parseInt(siteId),
           categoryId: parseInt(categoryId),
+          productCategory: category.trim() || null,
           trendLink: trendLink || null,
           trendLevel: trendLevel || "HIGH",
           affiliateName: finalAffiliate || null,
@@ -195,35 +199,36 @@ export default function EditProductModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col border border-slate-100">
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 bg-[#4A4A4A] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-[#6D8196]/30 border border-[#6D8196]/40 flex items-center justify-center text-white shadow-inner">
               <Package className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight">Edit Product Details</h2>
-              <p className="text-xs text-slate-300 font-medium">Update site, category, trend rating & affiliate metadata</p>
+              <h2 className="text-base font-bold text-white tracking-tight">Edit Product</h2>
+              <p className="text-xs text-[#EAEAEA] font-medium">Update details, product type, category & link settings</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-[#EAEAEA] hover:text-white flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-4 flex-1">
+        {/* Modal Body */}
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2 shadow-2xs">
+              <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {loading ? (
-            <div className="flex justify-center py-10">
-              <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+            <div className="flex justify-center py-12">
+              <div className="w-8 h-8 border-4 border-[#CBCBCB] border-t-[#6D8196] rounded-full animate-spin" />
             </div>
           ) : (
             <>
@@ -231,21 +236,21 @@ export default function EditProductModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Package className="w-3.5 h-3.5 text-indigo-600" />
+                    <Package className="w-3.5 h-3.5 text-[#6D8196]" />
                     Product Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Alpha Whey"
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                    placeholder="Product Name"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                    <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
                     Affiliate Network / Name
                   </label>
                   {!showCustomAffiliate ? (
@@ -272,7 +277,7 @@ export default function EditProductModal({
                         value={customAffiliate}
                         onChange={(e) => setCustomAffiliate(e.target.value)}
                         placeholder="Enter affiliate name..."
-                        className="flex-1 px-3.5 py-2.5 bg-white border border-indigo-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                        className="flex-1 px-3.5 py-2.5 bg-white border border-[#6D8196] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
                       />
                       <button
                         type="button"
@@ -286,11 +291,11 @@ export default function EditProductModal({
                 </div>
               </div>
 
-              {/* Site & Category */}
+              {/* Site & Product Type */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                    <Building2 className="w-3.5 h-3.5 text-[#6D8196]" />
                     Site <span className="text-rose-500">*</span>
                   </label>
                   <CustomSelect
@@ -303,7 +308,7 @@ export default function EditProductModal({
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                    <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
                     Product Type <span className="text-rose-500">*</span>
                   </label>
                   <CustomSelect
@@ -315,11 +320,25 @@ export default function EditProductModal({
                 </div>
               </div>
 
-              {/* Trend Level & Trend Link */}
+              {/* Category & Trend Level */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                    <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
+                    Category
+                  </label>
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="e.g. Skincare, Supplements, Fitness..."
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-[#6D8196]" />
                     Trend Level
                   </label>
                   <CustomSelect
@@ -333,10 +352,13 @@ export default function EditProductModal({
                     ]}
                   />
                 </div>
+              </div>
 
+              {/* Trend Link & Preview Link */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Link2 className="w-3.5 h-3.5 text-indigo-600" />
+                    <Link2 className="w-3.5 h-3.5 text-[#6D8196]" />
                     Trend Link URL
                   </label>
                   <input
@@ -355,43 +377,42 @@ export default function EditProductModal({
                     className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
                       trendLinkError
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                        : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        : "border-slate-200 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
                     }`}
                   />
                   {trendLinkError && (
                     <p className="text-xs font-semibold text-rose-500">{trendLinkError}</p>
                   )}
                 </div>
-              </div>
 
-              {/* Preview Link */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-indigo-600" />
-                  Preview Link URL
-                </label>
-                <input
-                  type="url"
-                  value={previewLink}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setPreviewLink(val);
-                    if (val && !isValidUrl(val)) {
-                      setPreviewLinkError("Must start with http:// or https:// and be a valid URL");
-                    } else {
-                      setPreviewLinkError("");
-                    }
-                  }}
-                  placeholder="https://..."
-                  className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
-                    previewLinkError
-                      ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                      : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  }`}
-                />
-                {previewLinkError && (
-                  <p className="text-xs font-semibold text-rose-500">{previewLinkError}</p>
-                )}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
+                    Preview Link URL
+                  </label>
+                  <input
+                    type="url"
+                    value={previewLink}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPreviewLink(val);
+                      if (val && !isValidUrl(val)) {
+                        setPreviewLinkError("Must start with http:// or https:// and be a valid URL");
+                      } else {
+                        setPreviewLinkError("");
+                      }
+                    }}
+                    placeholder="https://..."
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
+                      previewLinkError
+                        ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
+                        : "border-slate-200 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                    }`}
+                  />
+                  {previewLinkError && (
+                    <p className="text-xs font-semibold text-rose-500">{previewLinkError}</p>
+                  )}
+                </div>
               </div>
 
               {/* Remarks */}
@@ -402,7 +423,7 @@ export default function EditProductModal({
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
                   placeholder="Optional notes or instructions..."
-                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none shadow-2xs"
+                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all resize-none shadow-2xs"
                 />
               </div>
 
@@ -418,7 +439,7 @@ export default function EditProductModal({
                   type="button"
                   disabled={!name.trim() || submitting}
                   onClick={handleSubmit}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="px-5 py-2.5 bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white rounded-xl text-xs font-bold shadow-xs disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {submitting ? "Saving..." : "Save Changes"}
                 </button>

@@ -20,6 +20,7 @@ interface FormData {
   categoryId: string;
   siteId: string;
   name: string;
+  category: string;
   trendLink: string;
   previewLink: string;
   remarks: string;
@@ -94,6 +95,7 @@ export default function AddProductPage() {
     categoryId: "",
     siteId: "",
     name: "",
+    category: "",
     trendLink: "",
     previewLink: "",
     remarks: "",
@@ -179,8 +181,8 @@ export default function AddProductPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
-          siteId: parseInt(form.siteId),
-          categoryId: parseInt(form.categoryId),
+          categoryIds: [parseInt(form.categoryId)],
+          productCategory: form.category.trim() || null,
           trendLink: form.trendLink || null,
           previewLink: form.previewLink || null,
           remarks: form.remarks || null,
@@ -424,24 +426,38 @@ export default function AddProductPage() {
                 )}
               </div>
 
-              {/* Preview Link */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Preview Link</label>
-                <input
-                  id="input-preview-link"
-                  type="url"
-                  value={form.previewLink}
-                  onChange={(e) => update("previewLink", e.target.value)}
-                  placeholder="https://..."
-                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${
-                    fieldErrors.previewLink
-                      ? "border-rose-400 focus:ring-2 focus:ring-rose-400"
-                      : "border-gray-300 focus:ring-2 focus:ring-violet-400 focus:border-transparent"
-                  }`}
-                />
-                {fieldErrors.previewLink && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.previewLink}</p>
-                )}
+              {/* Preview Link & Category Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Preview Link</label>
+                  <input
+                    id="input-preview-link"
+                    type="url"
+                    value={form.previewLink}
+                    onChange={(e) => update("previewLink", e.target.value)}
+                    placeholder="https://..."
+                    className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${
+                      fieldErrors.previewLink
+                        ? "border-rose-400 focus:ring-2 focus:ring-rose-400"
+                        : "border-gray-300 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                    }`}
+                  />
+                  {fieldErrors.previewLink && (
+                    <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.previewLink}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+                  <input
+                    id="input-product-category"
+                    type="text"
+                    value={form.category}
+                    onChange={(e) => update("category", e.target.value)}
+                    placeholder="e.g. Skincare, Supplements, Fitness..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition"
+                  />
+                </div>
               </div>
 
               {/* Remarks */}
@@ -461,7 +477,7 @@ export default function AddProductPage() {
 
               {/* Summary chip */}
               <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1 border border-slate-100">
-                <span>Category: <strong className="text-violet-600">{getCategoryName()}</strong></span>
+                <span>Product Type: <strong className="text-[#6D8196]">{getCategoryName()}</strong></span>
                 <span>Site: <strong>{sites.find((s) => String(s.id) === form.siteId)?.name ?? "—"}</strong></span>
               </div>
 
