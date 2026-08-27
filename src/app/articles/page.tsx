@@ -171,7 +171,7 @@ function ArticlesContent() {
           {start > 1 && (
             <button
               onClick={() => setCurrentPage(start - 1)}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 px-1 cursor-pointer"
+              className="text-xs font-bold text-slate-400 hover:text-[#6D8196] px-1 cursor-pointer"
               title="Previous 5 Pages"
             >
               ...
@@ -184,7 +184,7 @@ function ArticlesContent() {
               onClick={() => setCurrentPage(p)}
               className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 currentPage === p 
-                  ? "bg-indigo-600 text-white border border-indigo-600 shadow-xs" 
+                  ? "bg-[#6D8196] text-white border border-[#6D8196] shadow-xs" 
                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
@@ -195,7 +195,7 @@ function ArticlesContent() {
           {end < totalPages && (
             <button
               onClick={() => setCurrentPage(end + 1)}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 px-1 cursor-pointer"
+              className="text-xs font-bold text-slate-400 hover:text-[#6D8196] px-1 cursor-pointer"
               title="Next 5 Pages"
             >
               ...

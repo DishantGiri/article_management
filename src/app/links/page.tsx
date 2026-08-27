@@ -271,7 +271,7 @@ function LinksPageContent() {
           {startPage > 1 && (
             <button
               onClick={() => setCurrentPage(startPage - 1)}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 px-1 cursor-pointer"
+              className="text-xs font-bold text-slate-400 hover:text-[#6D8196] px-1 cursor-pointer"
               title="Previous 5 Pages"
             >
               ...
@@ -284,7 +284,7 @@ function LinksPageContent() {
               onClick={() => setCurrentPage(p)}
               className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 currentPage === p 
-                  ? "bg-indigo-600 text-white border border-indigo-600 shadow-xs" 
+                  ? "bg-[#6D8196] text-white border border-[#6D8196] shadow-xs" 
                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
@@ -295,7 +295,7 @@ function LinksPageContent() {
           {endPage < totalPages && (
             <button
               onClick={() => setCurrentPage(endPage + 1)}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 px-1 cursor-pointer"
+              className="text-xs font-bold text-slate-400 hover:text-[#6D8196] px-1 cursor-pointer"
               title="Next 5 Pages"
             >
               ...
@@ -324,33 +324,33 @@ function LinksPageContent() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#f8fafc]" suppressHydrationWarning>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A]" suppressHydrationWarning>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Link Logs</h1>
-          <p className="text-slate-500 text-sm mt-0.5 font-medium">{links.length} link entries</p>
+          <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">Link Logs</h1>
+          <p className="text-[#737373] text-sm mt-0.5 font-medium">{links.length} link entries</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
             <>
               <button
                 onClick={() => setIsGeoModalOpen(true)}
-                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2"
+                className="px-4 py-2 bg-white border border-slate-200 text-[#4A4A4A] rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] shadow-xs transition flex items-center gap-2 cursor-pointer"
               >
-                <Globe className="w-4 h-4 text-emerald-500" />
+                <Globe className="w-4 h-4 text-[#6D8196]" />
                 GEOs
               </button>
               <button
                 onClick={() => setIsAffiliateModalOpen(true)}
-                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2"
+                className="px-4 py-2 bg-white border border-slate-200 text-[#4A4A4A] rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] shadow-xs transition flex items-center gap-2 cursor-pointer"
               >
-                <Tag className="w-4 h-4 text-indigo-500" />
+                <Tag className="w-4 h-4 text-[#6D8196]" />
                 Affiliates
               </button>
               <button 
                 onClick={() => setIsAddLinkOpen(true)}
-                className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 shadow-sm transition flex items-center gap-2"
+                className="px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white rounded-lg text-sm font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Add Link
