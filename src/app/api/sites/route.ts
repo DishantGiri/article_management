@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // GET /api/sites?categoryId=123  or  GET /api/sites  (all)
 export async function GET(req: NextRequest) {
@@ -53,9 +55,19 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/sites — create a new site
+// POST /api/sites — create a new site (Admin / Super Admin only)
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const role = session.user.role;
+    if (role !== "SUPER_ADMIN" && role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden: Site creation is restricted to Admin role" }, { status: 403 });
+    }
+
     const body = await req.json();
     const { name, url, categoryIds } = body;
 
