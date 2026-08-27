@@ -140,15 +140,15 @@ export default function CategoriesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">Web Categories</h1>
-          <p className="text-[#737373] text-sm mt-0.5 font-medium">Manage categories that can be assigned across multiple sites</p>
+          <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">Product Types</h1>
+          <p className="text-[#737373] text-sm mt-0.5 font-medium">Manage product types that can be assigned across multiple websites</p>
         </div>
         <button
           onClick={openAddModal}
           className="px-5 py-2.5 bg-[#6D8196] text-white rounded-xl text-sm font-semibold hover:bg-[#5A6D81] shadow-xs transition flex items-center gap-2 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          Add Category
+          Add Product Type
         </button>
       </div>
 
@@ -159,7 +159,7 @@ export default function CategoriesPage() {
         </div>
       ) : categories.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-16 text-center shadow-xs">
-          <p className="text-[#737373] font-medium">No categories found.</p>
+          <p className="text-[#737373] font-medium">No product types found.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs overflow-hidden p-6">
@@ -186,7 +186,7 @@ export default function CategoriesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
             <div className="flex items-center justify-between p-5 bg-[#4A4A4A] text-white">
-              <h2 className="text-base font-bold text-white">Add Web Category</h2>
+              <h2 className="text-base font-bold text-white">Add Product Type</h2>
               <button onClick={() => setIsAddModalOpen(false)} className="text-white/80 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
@@ -195,13 +195,13 @@ export default function CategoriesPage() {
               {error && <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg">{error}</div>}
               
               <div>
-                <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider mb-1.5">Category Name</label>
+                <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider mb-1.5">Product Type Name</label>
                 <input
                   type="text"
                   required
                   value={categoryName}
                   onChange={(e) => setCategoryName(e.target.value)}
-                  placeholder="e.g. Weight Loss"
+                  placeholder="e.g. Weight Loss, Ecomm, Nutra"
                   className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
                 />
               </div>
@@ -219,7 +219,7 @@ export default function CategoriesPage() {
                   disabled={isSubmitting}
                   className="px-4 py-2 text-xs font-bold text-white bg-[#6D8196] hover:bg-[#5A6D81] rounded-xl transition disabled:opacity-50 cursor-pointer shadow-xs"
                 >
-                  {isSubmitting ? "Adding..." : "Add Category"}
+                  {isSubmitting ? "Adding..." : "Add Product Type"}
                 </button>
               </div>
             </form>
@@ -232,7 +232,7 @@ export default function CategoriesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
             <div className="flex items-center justify-between p-5 bg-[#4A4A4A] text-white">
-              <h2 className="text-base font-bold text-white">Edit Category</h2>
+              <h2 className="text-base font-bold text-white">Edit Product Type</h2>
               <button onClick={() => setIsEditModalOpen(false)} className="text-white/80 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
@@ -241,7 +241,7 @@ export default function CategoriesPage() {
               {error && <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg">{error}</div>}
               
               <div>
-                <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider mb-1.5">Category Name</label>
+                <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider mb-1.5">Product Type Name</label>
                 <input
                   type="text"
                   required
@@ -285,9 +285,9 @@ export default function CategoriesPage() {
       {/* Confirm Delete Dialog */}
       <ConfirmDialog
         isOpen={confirmOpen}
-        title="Delete Category"
+        title="Delete Product Type"
         message={`Are you sure you want to delete "${selectedCategory?.name}"? This cannot be undone.`}
-        confirmLabel="Delete Category"
+        confirmLabel="Delete Product Type"
         variant="danger"
         onConfirm={() => { setConfirmOpen(false); doDelete(); }}
         onCancel={() => setConfirmOpen(false)}
