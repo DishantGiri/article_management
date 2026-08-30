@@ -88,7 +88,7 @@ export async function PATCH(
     const body = await req.json();
     const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted } = body;
 
-    const activeUserId = session.user.id;
+    const activeUserId = Number(session.user.id);
     const activeUserRole = session.user.role || "";
 
     const existing = await prisma.article.findUnique({
@@ -114,30 +114,28 @@ export async function PATCH(
       }
     }
 
-    // Prevent writer/team lead from editing someone else's article (unless the caller is the writer's team lead)
-    if ((activeUserRole === "WRITER" || activeUserRole === "TEAM_LEAD") && existing.writerId && existing.writerId !== activeUserId) {
-      const writer = await prisma.user.findUnique({
-        where: { id: existing.writerId },
-        select: { teamLeadId: true },
-      });
-      const isCallerTeamLead = writer && writer.teamLeadId === activeUserId;
-      if (activeUserRole === "WRITER" || !isCallerTeamLead) {
-        return NextResponse.json({ error: "This article is already in progress or completed by another writer." }, { status: 403 });
-      }
+    // Prevent writer from editing someone else's active article (allow if PENDING so writer can pick it up)
+    if (activeUserRole === "WRITER" && existing.writerId && existing.writerId !== activeUserId && existing.status !== "PENDING") {
+      return NextResponse.json({ error: "This article is already in progress or assigned to another writer." }, { status: 403 });
+    }
+
+    // Approval / Redo status change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN
+    if ((status === "APPROVED" || status === "REDO") && !["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
+      return NextResponse.json({ error: "Only Team Leads and Admins can approve or request changes for articles." }, { status: 403 });
     }
 
     // Priority change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN
     if (priority !== undefined) {
-      if (activeUserRole !== "TEAM_LEAD" && activeUserRole !== "ADMIN" && activeUserRole !== "SUPER_ADMIN") {
+      if (!["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
         return NextResponse.json({ error: "Only Team Leads and Admins can change article priority." }, { status: 403 });
       }
     }
 
-    // Business rules
+    // Business rules for starting an article
     if (status === "IN_PROGRESS" && writerId) {
-      if (activeUserRole !== "WRITER" && activeUserRole !== "TEAM_LEAD") {
+      if (!["WRITER", "TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
         return NextResponse.json(
-          { error: "Only Writers and Team Leads can write articles." },
+          { error: "You do not have permission to write articles." },
           { status: 403 }
         );
       }
