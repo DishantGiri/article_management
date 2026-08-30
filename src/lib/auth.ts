@@ -26,7 +26,6 @@ const providers: any[] = [
       if (!email.endsWith("@fishtailinfosolutions.com")) {
         return null;
       }
-
       let user = await prisma.user.findUnique({
         where: { email },
       });
@@ -62,10 +61,11 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user }) {
       if (!user.email) return false;
+      const email = user.email.trim().toLowerCase();
 
       // Enforce email domain restriction
-      if (!user.email.endsWith("@fishtailinfosolutions.com")) {
-        console.log(`SignIn Rejected: Email domain not allowed: ${user.email}`);
+      if (!email.endsWith("@fishtailinfosolutions.com")) {
+        console.log(`SignIn Rejected: Email domain not allowed: ${email}`);
         return false;
       }
 
