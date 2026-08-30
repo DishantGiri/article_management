@@ -14,6 +14,7 @@ import DateRangePicker from "@/components/DateRangePicker";
 import CustomSelect from "@/components/CustomSelect";
 import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import LoadingScreen from "@/components/LoadingScreen";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -604,8 +605,12 @@ function LinksPageContent() {
       {/* Table Content */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />
+          <div className="py-12">
+            <LoadingScreen
+              message="Loading affiliate links..."
+              subtext="Fetching tracked networks, bridge URLs, and geo destinations"
+              size="md"
+            />
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">

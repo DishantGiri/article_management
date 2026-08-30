@@ -13,6 +13,7 @@ import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import DateRangePicker from "@/components/DateRangePicker";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface Category {
   id: number;
@@ -31,10 +32,10 @@ interface Product {
   previewLink?: string;
   remarks?: string;
   addedAt: string;
-  site: { name: string; url?: string };
-  category: { id: number, name: string };
-  addedBy: { name: string };
-  article?: { id: number; status: string, writer?: { name: string } };
+  site: { id?: number; name: string; url?: string };
+  category: { id?: number; name: string };
+  addedBy: { id?: number; name: string };
+  article?: { id: number; status: string; writer?: { id?: number; name: string } };
   linkLogs?: any[];
 }
 
@@ -588,8 +589,12 @@ export default function ProductsPage() {
       {/* Table Content */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />
+          <div className="py-12">
+            <LoadingScreen
+              message="Loading products catalog..."
+              subtext="Fetching indexed items, affiliate associations, and writer statuses"
+              size="md"
+            />
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">

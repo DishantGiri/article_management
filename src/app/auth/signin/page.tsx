@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 const DEMO_USERS = [
   { name: "Admin (Shiridhar)", role: "ADMIN", email: "shiridhar@fishtailinfosolutions.com", color: "bg-slate-100 text-slate-800 border-slate-300" },
@@ -251,8 +252,12 @@ export default function SignInPage() {
     <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center p-4 sm:p-6 lg:p-10">
       <Suspense
         fallback={
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="w-10 h-10 border-4 border-slate-200 border-t-[#6D8196] rounded-full animate-spin mx-auto" />
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-10 border border-[#CBCBCB]/60 text-center">
+            <LoadingScreen
+              message="Loading workspace portal..."
+              subtext="Preparing authentication services"
+              size="md"
+            />
           </div>
         }
       >

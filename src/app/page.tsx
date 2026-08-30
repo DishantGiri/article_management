@@ -47,6 +47,7 @@ import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
 import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface DashboardData {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -281,14 +282,12 @@ export default function DashboardPage() {
   // Loading State
   if (loading || status === "loading") {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 space-y-4" suppressHydrationWarning>
-        <div className="relative">
-          <div className="w-12 h-12 rounded-2xl bg-[#6D8196]/10 border border-[#6D8196]/20 flex items-center justify-center animate-pulse">
-            <Sparkles className="w-6 h-6 text-[#6D8196]" />
-          </div>
-          <div className="absolute -inset-1 rounded-2xl border-2 border-[#6D8196] border-t-transparent animate-spin" />
-        </div>
-        <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase">Initializing Workspace...</p>
+      <div className="min-h-[75vh] flex items-center justify-center p-6" suppressHydrationWarning>
+        <LoadingScreen
+          message="Initializing Workspace..."
+          subtext="Synchronizing editorial metrics & real-time queues..."
+          size="lg"
+        />
       </div>
     );
   }
@@ -334,7 +333,7 @@ export default function DashboardPage() {
               Enterprise Active
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2" suppressHydrationWarning>
             {getGreeting()}, {session?.user?.name || "Team Member"}
           </h1>
           <p className="text-xs text-slate-500 font-medium">

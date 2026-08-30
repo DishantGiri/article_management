@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import CustomSelect from "@/components/CustomSelect";
 import { Search, Clock, ArrowRight, FileText, Link2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface HistoryRecord {
   id: string;
@@ -273,8 +274,12 @@ export default function HistoryPage() {
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-24">
-            <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />
+          <div className="py-16">
+            <LoadingScreen
+              message="Loading audit history..."
+              subtext="Retrieving event logs and workflow transitions"
+              size="md"
+            />
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-20 text-center">

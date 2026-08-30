@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { Plus, X, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface Category {
   id: number;
@@ -154,8 +155,12 @@ export default function CategoriesPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-[#CBCBCB] border-t-[#6D8196] rounded-full animate-spin" />
+        <div className="py-16">
+          <LoadingScreen
+            message="Loading product types..."
+            subtext="Retrieving category classifications and site links"
+            size="md"
+          />
         </div>
       ) : categories.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-16 text-center shadow-xs">

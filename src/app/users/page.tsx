@@ -7,6 +7,7 @@ import CustomSelect from "@/components/CustomSelect";
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface Site {
   id: number;
@@ -378,8 +379,12 @@ export default function UsersPage() {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />
+          <div className="py-12">
+            <LoadingScreen
+              message="Loading team members..."
+              subtext="Fetching user profiles, access controls, and role permissions"
+              size="md"
+            />
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">

@@ -5,6 +5,7 @@ import { Download, FileText, CheckCircle2, Clock, TrendingUp } from "lucide-reac
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
 import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
 import { toast } from "react-hot-toast";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface ReportData {
   metrics: {
@@ -31,8 +32,12 @@ export default function ReportsPage() {
 
   if (loading || !data) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-[#f8fafc]">
-        <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />
+      <div className="flex justify-center items-center min-h-[75vh]">
+        <LoadingScreen
+          message="Loading analytical reports..."
+          subtext="Computing productivity velocity and pipeline metrics"
+          size="lg"
+        />
       </div>
     );
   }

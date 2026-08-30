@@ -22,6 +22,7 @@ import { toast } from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useSession } from "next-auth/react";
 import SiteLogo from "@/components/SiteLogo";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface Category {
   id: number;
@@ -223,8 +224,12 @@ export default function SitesPage() {
 
       {/* Grid Content */}
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-[#CBCBCB] border-t-[#6D8196] rounded-full animate-spin" />
+        <div className="py-16">
+          <LoadingScreen
+            message="Loading authorized sites..."
+            subtext="Fetching connected domains and category assignments"
+            size="md"
+          />
         </div>
       ) : !Array.isArray(sites) || sites.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-16 text-center shadow-xs">

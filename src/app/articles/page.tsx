@@ -9,6 +9,7 @@ import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, A
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface Article {
   id: number;
@@ -474,8 +475,12 @@ function ArticlesContent() {
       {/* Table Content */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-4">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin" />
+          <div className="py-12">
+            <LoadingScreen
+              message="Loading articles queue..."
+              subtext="Synchronizing drafts, submissions, and editorial review statuses"
+              size="md"
+            />
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">
