@@ -11,6 +11,7 @@ import ImportProductModal from "@/components/ImportProductModal";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
+import DateRangePicker from "@/components/DateRangePicker";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Category {
@@ -38,11 +39,11 @@ interface Product {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700",
-  IN_PROGRESS: "bg-blue-100 text-blue-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-rose-100 text-rose-700",
-  REVIEW: "bg-cyan-100 text-cyan-700",
+  PENDING: "bg-amber-50 text-amber-700 border border-amber-200/60",
+  IN_PROGRESS: "bg-blue-50 text-blue-700 border border-blue-200/60",
+  COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/60",
+  APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/60",
+  REDO: "bg-rose-50 text-rose-700 border border-rose-200/60",
 };
 
 export default function ProductsPage() {
@@ -51,6 +52,7 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [siteFilter, setSiteFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -219,35 +221,86 @@ export default function ProductsPage() {
     };
   }, [session?.user?.id]);
 
-  const uniqueAdders = Array.from(new Set(products.map((p) => p.addedBy?.name).filter(Boolean))) as string[];
+  const uniqueSites = Array.from(new Set(products.map((p) => p.site?.name).filter(Boolean))) as string[];
+  const uniqueUsers = Array.from(
+    new Set([
+      ...products.map((p) => p.addedBy?.name),
+      ...products.map((p) => p.article?.writer?.name),
+    ].filter(Boolean))
+  ) as string[];
 
   const filtered = products.filter((p) => {
+    const s = search.toLowerCase();
     const matchSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.site.name.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = !categoryFilter || p.category?.id?.toString() === categoryFilter;
-    const matchStatus = !statusFilter || (p.article ? p.article.status === statusFilter : false);
+      !search ||
+      p.name.toLowerCase().includes(s) ||
+      (p.site?.name && p.site.name.toLowerCase().includes(s)) ||
+      (p.category?.name && p.category.name.toLowerCase().includes(s)) ||
+      (p.addedBy?.name && p.addedBy.name.toLowerCase().includes(s));
 
-    // Added By filter
-    const matchUser = !userFilter || p.addedBy?.name === userFilter;
+    const matchSite =
+      !siteFilter ||
+      p.site?.id?.toString() === siteFilter ||
+      p.siteId?.toString() === siteFilter ||
+      (p.site?.name && p.site.name.toLowerCase() === siteFilter.toLowerCase());
+
+    const matchCategory =
+      !categoryFilter ||
+      p.category?.id?.toString() === categoryFilter ||
+      p.categoryId?.toString() === categoryFilter ||
+      (p.category?.name && p.category.name.toLowerCase() === categoryFilter.toLowerCase()) ||
+      (p.productCategory && p.productCategory.toLowerCase() === categoryFilter.toLowerCase());
+    
+    // Status Filter
+    let matchStatus = true;
+    if (statusFilter) {
+      const currentStatus = p.article?.status || "PENDING";
+      matchStatus = currentStatus === statusFilter;
+    }
+
+    // User filter (matches either Adder or Writer)
+    const matchUser =
+      !userFilter ||
+      p.addedBy?.name === userFilter ||
+      p.article?.writer?.name === userFilter;
 
     // Date Range filter
     let matchDate = true;
     if (startDate) {
-      const s = new Date(startDate);
-      s.setHours(0, 0, 0, 0);
+      const sDate = new Date(startDate);
+      sDate.setHours(0, 0, 0, 0);
       const d = new Date(p.addedAt);
-      if (d < s) matchDate = false;
+      if (d < sDate) matchDate = false;
     }
     if (endDate) {
-      const e = new Date(endDate);
-      e.setHours(23, 59, 59, 999);
+      const eDate = new Date(endDate);
+      eDate.setHours(23, 59, 59, 999);
       const d = new Date(p.addedAt);
-      if (d > e) matchDate = false;
+      if (d > eDate) matchDate = false;
     }
 
-    return matchSearch && matchCategory && matchStatus && matchUser && matchDate;
+    return matchSearch && matchSite && matchCategory && matchStatus && matchUser && matchDate;
   });
+
+  const activeFiltersCount = [
+    Boolean(search),
+    Boolean(siteFilter),
+    Boolean(categoryFilter),
+    Boolean(statusFilter),
+    Boolean(userFilter),
+    Boolean(startDate || endDate),
+  ].filter(Boolean).length;
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setSiteFilter("");
+    setCategoryFilter("");
+    setStatusFilter("");
+    setUserFilter("");
+    setStartDate("");
+    setEndDate("");
+    setCurrentPage(1);
+  };
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -423,94 +476,113 @@ export default function ProductsPage() {
       )}
 
       {/* Filters Bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="w-4 h-4 text-slate-400" />
+      <div className="bg-white p-4 rounded-2xl border border-[#CBCBCB]/60 shadow-xs mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-slate-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search products, sites, categories..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6D8196] focus:border-transparent bg-slate-50 focus:bg-white transition"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => { setSearch(""); setCurrentPage(1); }}
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-            className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white placeholder-slate-400 font-medium text-slate-700"
+
+          {/* Status Filter */}
+          <CustomSelect
+            value={statusFilter}
+            onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+            placeholder="All Statuses"
+            className="w-auto min-w-[135px]"
+            triggerClassName="px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+            options={[
+              { value: "", label: "All Statuses" },
+              { value: "PENDING", label: "Pending" },
+              { value: "IN_PROGRESS", label: "In Progress" },
+              { value: "COMPLETED", label: "Completed" },
+              { value: "APPROVED", label: "Approved" },
+              { value: "REDO", label: "Redo / Changes" },
+            ]}
           />
-        </div>
 
-        {/* Status Filter */}
-        <CustomSelect
-          value={statusFilter}
-          onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
-          placeholder="All Statuses"
-          className="min-w-[130px]"
-          options={[
-            { value: "", label: "All Statuses" },
-            { value: "PENDING", label: "Pending" },
-            { value: "IN_PROGRESS", label: "In Progress" },
-            { value: "COMPLETED", label: "Completed" },
-            { value: "REJECTED", label: "Rejected" },
-            { value: "REVIEW", label: "Review" },
-          ]}
-        />
+          {/* Site Filter */}
+          {uniqueSites.length > 0 && (
+            <CustomSelect
+              value={siteFilter}
+              onChange={(val) => { setSiteFilter(val); setCurrentPage(1); }}
+              placeholder="All Sites"
+              className="w-auto min-w-[130px]"
+              triggerClassName="px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+              options={[
+                { value: "", label: "All Sites" },
+                ...uniqueSites.map((s) => ({ value: s, label: s })),
+              ]}
+            />
+          )}
 
-        {/* Product Type Filter */}
-        <CustomSelect
-          value={categoryFilter}
-          onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
-          placeholder="All Product Types"
-          className="min-w-[140px]"
-          options={[
-            { value: "", label: "All Product Types" },
-            ...categories.map((c) => ({ value: String(c.id), label: c.name })),
-          ]}
-        />
-
-        {/* Added By User Filter */}
-        <CustomSelect
-          value={userFilter}
-          onChange={(val) => { setUserFilter(val); setCurrentPage(1); }}
-          placeholder="All Adders"
-          className="min-w-[130px]"
-          options={[
-            { value: "", label: "All Adders" },
-            ...uniqueAdders.map((u) => ({ value: u, label: u })),
-          ]}
-        />
-
-        {/* Date Range Filter */}
-        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs">
-          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 whitespace-nowrap">Date Range</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
-            className="px-2 py-1 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all cursor-pointer"
+          {/* Product Type (Category) Filter */}
+          <CustomSelect
+            value={categoryFilter}
+            onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
+            placeholder="All Product Types"
+            className="w-auto min-w-[145px]"
+            triggerClassName="px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+            options={[
+              { value: "", label: "All Product Types" },
+              ...categories.map((c) => ({ value: String(c.id), label: c.name })),
+            ]}
           />
-          <span className="text-slate-300 font-bold text-sm">—</span>
-          <input
-            type="date"
-            value={endDate}
-            min={startDate || undefined}
-            onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
-            className="px-2 py-1 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all cursor-pointer"
+
+          {/* User Filter */}
+          <CustomSelect
+            value={userFilter}
+            onChange={(val) => { setUserFilter(val); setCurrentPage(1); }}
+            placeholder="All Users"
+            className="w-auto min-w-[130px]"
+            triggerClassName="px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+            options={[
+              { value: "", label: "All Users" },
+              ...uniqueUsers.map((u) => ({ value: u, label: u })),
+            ]}
           />
-          {(startDate || endDate) && (
+
+          {/* Date Range Picker */}
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+              setCurrentPage(1);
+            }}
+            placeholder="Select Date Range"
+          />
+
+          {/* Reset Filters Action */}
+          {activeFiltersCount > 0 && (
             <button
-              onClick={() => { setStartDate(""); setEndDate(""); setCurrentPage(1); }}
-              className="ml-1 p-0.5 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
-              title="Clear date range"
+              type="button"
+              onClick={handleResetFilters}
+              className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <X className="w-3.5 h-3.5" />
+              <span>Reset ({activeFiltersCount})</span>
             </button>
           )}
         </div>
-
-        <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2">
-          <SlidersHorizontal className="w-4 h-4 text-slate-500" />
-          Filters
-        </button>
       </div>
 
       {/* Table Content */}

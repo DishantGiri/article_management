@@ -96,9 +96,9 @@ export async function POST(req: NextRequest) {
             addedById: Number(addedById),
           },
           include: {
-            site: { select: { name: true, url: true } },
-            category: { select: { name: true } },
-            addedBy: { select: { name: true } },
+            site: { select: { id: true, name: true, url: true } },
+            category: { select: { id: true, name: true } },
+            addedBy: { select: { id: true, name: true } },
           },
         });
 

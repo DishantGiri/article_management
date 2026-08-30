@@ -69,8 +69,8 @@ export async function GET(req: NextRequest) {
         take: 5,
         orderBy: { addedAt: "desc" },
         include: {
-          site: { select: { name: true } },
-          category: { select: { name: true } },
+          site: { select: { id: true, name: true } },
+          category: { select: { id: true, name: true } },
           addedBy: { select: { name: true } },
           article: { select: { status: true } },
         },
@@ -104,8 +104,8 @@ export async function GET(req: NextRequest) {
             include: {
               product: {
                 include: { 
-                  site: { select: { name: true } }, 
-                  category: { select: { name: true } },
+                  site: { select: { id: true, name: true } }, 
+                  category: { select: { id: true, name: true } },
                   linkLogs: { include: { geos: true } }
                 },
               },
@@ -125,8 +125,8 @@ export async function GET(req: NextRequest) {
           },
           product: {
             include: { 
-              site: { select: { name: true } }, 
-              category: { select: { name: true } },
+              site: { select: { id: true, name: true } }, 
+              category: { select: { id: true, name: true } },
               linkLogs: { include: { geos: true } }
             },
           },
@@ -150,8 +150,8 @@ export async function GET(req: NextRequest) {
         ? prisma.product.findMany({
             where: { addedById: userId },
             include: {
-              site: { select: { name: true } },
-              category: { select: { name: true } },
+              site: { select: { id: true, name: true } },
+              category: { select: { id: true, name: true } },
               article: { select: { status: true } },
             },
             take: 5,

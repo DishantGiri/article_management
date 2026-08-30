@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
       product: {
         include: {
           site: { select: { id: true, name: true } },
-          category: { select: { name: true } },
+          category: { select: { id: true, name: true } },
           linkLogs: {
             select: { linkerRemarks: true, addedAt: true },
             orderBy: { addedAt: "desc" }

@@ -228,6 +228,24 @@ function LinksPageContent() {
     return matchSearch && matchStatus && matchUser && matchDate && matchDeadOnly;
   });
 
+  const activeFiltersCount = [
+    Boolean(search),
+    Boolean(statusFilter),
+    Boolean(userFilter),
+    Boolean(startDate || endDate),
+    Boolean(showOnlyDeadLinks),
+  ].filter(Boolean).length;
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setUserFilter("");
+    setStartDate("");
+    setEndDate("");
+    setShowOnlyDeadLinks(false);
+    setCurrentPage(1);
+  };
+
   const missingBridgeCount = links.filter(l => !l.bridgePageLink).length;
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -506,40 +524,58 @@ function LinksPageContent() {
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="w-4 h-4 text-slate-400" />
+      <div className="bg-white p-4 rounded-2xl border border-[#CBCBCB]/60 shadow-xs mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-slate-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search link logs, products, networks..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
+              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6D8196] focus:border-transparent bg-slate-50 focus:bg-white transition"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => { setSearch(""); setCurrentPage(1); }}
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-          <input
-            type="text"
-            placeholder="Search link logs..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-            className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white placeholder-slate-400 font-medium text-slate-700"
+
+          {/* Status Filter */}
+          <CustomSelect
+            value={statusFilter}
+            onChange={(val) => { setStatusFilter(val); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
+            options={[
+              { value: "", label: "All Statuses" },
+              ...Object.keys(STATUS_LABELS).map((k) => ({ value: k, label: STATUS_LABELS[k] })),
+            ]}
+            placeholder="All Statuses"
+            className="w-auto min-w-[135px]"
+            triggerClassName="px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
           />
-        </div>
 
-        {/* Status Filter */}
-        <CustomSelect
-          value={statusFilter}
-          onChange={(val) => { setStatusFilter(val); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          options={Object.keys(STATUS_LABELS).map((k) => ({ value: k, label: STATUS_LABELS[k] }))}
-          placeholder="All Statuses"
-        />
+          {/* User Filter */}
+          <CustomSelect
+            value={userFilter}
+            onChange={(val) => { setUserFilter(val); setCurrentPage(1); }}
+            options={[
+              { value: "", label: "All Users" },
+              ...uniqueAdders.map((u) => ({ value: u, label: u })),
+            ]}
+            placeholder="All Users"
+            className="w-auto min-w-[130px]"
+            triggerClassName="px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+          />
 
-        {/* Added By Filter */}
-        <CustomSelect
-          value={userFilter}
-          onChange={(val) => { setUserFilter(val); setCurrentPage(1); }}
-          options={uniqueAdders.map((u) => ({ value: u, label: u }))}
-          placeholder="All Adders"
-        />
-
-        {/* Date Range Picker */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold text-slate-400 uppercase">Date Range</span>
+          {/* Date Range Picker */}
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -548,8 +584,20 @@ function LinksPageContent() {
               setEndDate(end);
               setCurrentPage(1);
             }}
-            placeholder="Select date range"
+            placeholder="Select Date Range"
           />
+
+          {/* Reset Filters Action */}
+          {activeFiltersCount > 0 && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Reset ({activeFiltersCount})</span>
+            </button>
+          )}
         </div>
       </div>
 
