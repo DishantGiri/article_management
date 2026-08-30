@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "articleId and reason are required" }, { status: 400 });
     }
 
-    const approvedById = session.user.id;
+    const approvedById = Number(session.user.id);
     const userRole = session.user.role;
 
     if (userRole !== "TEAM_LEAD" && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
@@ -26,9 +26,15 @@ export async function POST(req: NextRequest) {
 
     const article = await prisma.article.findUnique({
       where: { id: parseInt(articleId) },
-      include: { product: { select: { name: true } }, writer: { select: { id: true, name: true } } },
+      include: { product: { select: { name: true } }, writer: { select: { id: true, name: true, teamLeadId: true } } },
     });
     if (!article) return NextResponse.json({ error: "Article not found" }, { status: 404 });
+
+    if (userRole === "TEAM_LEAD" && article.writerId && article.writerId !== approvedById) {
+      if (article.writer?.teamLeadId !== approvedById) {
+        return NextResponse.json({ error: "Access denied: This writer is not assigned to your team." }, { status: 403 });
+      }
+    }
 
     const approval = await prisma.specialApproval.create({
       data: {
@@ -76,12 +82,19 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const userId = Number(session.user.id);
   const userRole = session.user.role;
   if (userRole !== "TEAM_LEAD" && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const approvals = await prisma.specialApproval.findMany({
+    where: userRole === "TEAM_LEAD" ? {
+      OR: [
+        { approvedById: userId },
+        { article: { writer: { teamLeadId: userId } } },
+      ]
+    } : {},
     include: { approvedBy: { select: { name: true } } },
     orderBy: { approvedAt: "desc" },
   });

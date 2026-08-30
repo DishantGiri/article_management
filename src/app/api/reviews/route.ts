@@ -51,6 +51,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
+    if (reviewerRole === "TEAM_LEAD" && article.writerId && article.writerId !== reviewedById) {
+      const writer = await prisma.user.findUnique({
+        where: { id: article.writerId },
+        select: { teamLeadId: true },
+      });
+      if (writer?.teamLeadId !== reviewedById) {
+        return NextResponse.json(
+          { error: "Access denied: This writer is not assigned to your team." },
+          { status: 403 }
+        );
+      }
+    }
+
     if (approved && article.status === "APPROVED") {
       return NextResponse.json(
         { error: "This article has already been approved." },

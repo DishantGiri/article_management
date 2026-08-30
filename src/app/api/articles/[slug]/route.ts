@@ -51,8 +51,8 @@ export async function GET(
     return NextResponse.json({ error: "Article not found" }, { status: 404 });
   }
 
-  // Authorize check: only WRITER is restricted by SiteAccess
-  const userId = session.user.id;
+  // Authorize check: WRITER is restricted by SiteAccess; TEAM_LEAD can only view team articles or pending pool
+  const userId = Number(session.user.id);
   const userRole = session.user.role;
 
   if (userRole === "WRITER") {
@@ -66,6 +66,14 @@ export async function GET(
     });
     if (!access) {
       return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+    }
+  } else if (userRole === "TEAM_LEAD") {
+    const isUnderTL =
+      article.status === "PENDING" ||
+      article.writerId === userId ||
+      article.writer?.teamLeadId === userId;
+    if (!isUnderTL) {
+      return NextResponse.json({ error: "Access denied: This article is not under your team." }, { status: 403 });
     }
   }
 
@@ -117,6 +125,17 @@ export async function PATCH(
     // Prevent writer from editing someone else's active article (allow if PENDING so writer can pick it up)
     if (activeUserRole === "WRITER" && existing.writerId && existing.writerId !== activeUserId && existing.status !== "PENDING") {
       return NextResponse.json({ error: "This article is already in progress or assigned to another writer." }, { status: 403 });
+    }
+
+    // Prevent team lead from modifying an article that is assigned to a writer outside their team
+    if (activeUserRole === "TEAM_LEAD" && existing.writerId && existing.writerId !== activeUserId && existing.status !== "PENDING") {
+      const writer = await prisma.user.findUnique({
+        where: { id: existing.writerId },
+        select: { teamLeadId: true },
+      });
+      if (writer?.teamLeadId !== activeUserId) {
+        return NextResponse.json({ error: "Access denied: This writer is not assigned to your team." }, { status: 403 });
+      }
     }
 
     // Approval / Redo status change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN

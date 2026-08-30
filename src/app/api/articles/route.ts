@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const productId = searchParams.get("productId");
 
   let allowedFilter: any = {};
-  const userId = session.user.id;
+  const userId = Number(session.user.id);
   const userRole = session.user.role;
 
   if (userRole === "TEAM_LEAD") {

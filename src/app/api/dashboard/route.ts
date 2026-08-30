@@ -205,6 +205,13 @@ export async function GET(req: NextRequest) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      const teamLeadMemberFilter = {
+        OR: [
+          { writerId: Number(userId) },
+          { writer: { teamLeadId: Number(userId) } },
+        ],
+      };
+
       const [
         pendingReviewArticles,
         completedTodayCount,
@@ -212,42 +219,41 @@ export async function GET(req: NextRequest) {
         teamLeadWriters,
         reviewQueueArticles,
       ] = await Promise.all([
-        // Articles submitted (COMPLETED) waiting for team lead approval on their sites
+        // Articles submitted (COMPLETED) waiting for team lead approval for their team
         prisma.article.count({
           where: {
             status: "COMPLETED",
-            product: allowedSiteIds.length > 0 ? { siteId: { in: allowedSiteIds } } : {},
+            ...teamLeadMemberFilter,
           },
         }),
 
-        // Articles approved today on their sites
+        // Articles approved today for their team
         prisma.article.count({
           where: {
             status: "APPROVED",
             completedAt: { gte: today },
-            product: allowedSiteIds.length > 0 ? { siteId: { in: allowedSiteIds } } : {},
+            ...teamLeadMemberFilter,
           },
         }),
 
-        // Articles with special approval requested on their sites
+        // Articles with special approval requested for their team
         prisma.article.count({
           where: {
             specialApprovalRequested: true,
             status: { notIn: ["APPROVED"] },
-            product: allowedSiteIds.length > 0 ? { siteId: { in: allowedSiteIds } } : {},
+            ...teamLeadMemberFilter,
           },
         }),
 
-        // Writer performance: writers with completed articles on team lead's sites
+        // Writer performance: ONLY writers assigned under this team lead
         prisma.user.findMany({
-          where: { role: "WRITER" },
+          where: { role: "WRITER", teamLeadId: Number(userId) },
           include: {
             _count: {
               select: {
                 articles: {
                   where: {
                     status: { in: ["COMPLETED", "APPROVED"] },
-                    ...(allowedSiteIds.length > 0 ? { product: { siteId: { in: allowedSiteIds } } } : {}),
                   },
                 },
               },
@@ -255,14 +261,14 @@ export async function GET(req: NextRequest) {
           },
         }),
 
-        // Review queue: recent COMPLETED articles awaiting review
+        // Review queue: recent COMPLETED articles awaiting review from this team lead's writers
         prisma.article.findMany({
           where: {
             status: "COMPLETED",
-            product: allowedSiteIds.length > 0 ? { siteId: { in: allowedSiteIds } } : {},
+            ...teamLeadMemberFilter,
           },
           orderBy: { completedAt: "desc" },
-          take: 6,
+          take: 10,
           include: {
             product: {
               include: {
@@ -287,7 +293,7 @@ export async function GET(req: NextRequest) {
         writerPerformance: teamLeadWriters
           .map((w) => ({ name: w.name, completed: w._count.articles }))
           .sort((a, b) => b.completed - a.completed)
-          .slice(0, 6),
+          .slice(0, 10),
         reviewQueue: reviewQueueArticles.map((a) => {
           const latestHistory = a.history?.[0]?.notes || "";
           const hasRemarks = latestHistory.includes("Writer remarks:");
