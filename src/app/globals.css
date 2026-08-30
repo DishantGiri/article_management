@@ -143,14 +143,51 @@ body {
   }
 }
 
-/* ConfirmDialog animations */
+/* Custom keyframe animations and effects */
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.93) translateY(6px); }
+  from { opacity: 0; transform: scale(0.95) translateY(6px); }
   to   { opacity: 1; transform: scale(1)    translateY(0);   }
 }
-.animate-fadeIn  { animation: fadeIn  0.15s ease-out both; }
-.animate-scaleIn { animation: scaleIn 0.18s ease-out both; }
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fadeIn    { animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scaleIn   { animation: scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slideDown { animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-pulseSubtle { animation: pulseSubtle 2.5s infinite ease-in-out; }
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(203, 203, 203, 0.6);
+}
+
+.glass-panel-dark {
+  background: rgba(36, 37, 40, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-hover-effect {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-hover-effect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+}

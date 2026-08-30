@@ -396,7 +396,7 @@ export default function AddProductModal({
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[#6D8196] text-white text-xs font-bold hover:bg-[#5A6D81] transition cursor-pointer shadow-xs"
                 >
                   Done
                 </button>
@@ -417,15 +417,15 @@ export default function AddProductModal({
               {step === 1 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                    <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
                       Select Product Type <span className="text-rose-500">*</span>
                     </label>
                     {isAdmin && (
                       <button
                         type="button"
                         onClick={() => setShowAddCat(!showAddCat)}
-                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-bold text-[#6D8196] hover:text-[#5A6D81] flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         {showAddCat ? "Cancel" : "Add Product Type"}
@@ -434,18 +434,18 @@ export default function AddProductModal({
                   </div>
 
                   {showAddCat && (
-                    <form onSubmit={handleInlineAddCat} className="p-3 bg-indigo-50/40 rounded-xl border border-indigo-100 space-y-2">
+                    <form onSubmit={handleInlineAddCat} className="p-3 bg-[#FAF9F5] rounded-xl border border-[#CBCBCB]/60 space-y-2">
                       <input
                         type="text"
                         value={newCatName}
                         onChange={(e) => setNewCatName(e.target.value)}
                         placeholder="Product type name (e.g. Skin Care, Ecomm, Supplements)"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-white border border-[#CBCBCB] rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6D8196]"
                       />
                       <button
                         type="submit"
                         disabled={addingCat || !newCatName.trim()}
-                        className="w-full py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
+                        className="w-full py-1.5 bg-[#6D8196] text-white rounded-lg text-xs font-bold hover:bg-[#5A6D81] disabled:opacity-50 transition cursor-pointer shadow-xs"
                       >
                         {addingCat ? "Saving..." : "Create & Select"}
                       </button>
@@ -508,15 +508,15 @@ export default function AddProductModal({
               {step === 2 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                    <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
                       Associated Websites
                     </label>
                     {isAdmin && (
                       <button
                         type="button"
                         onClick={() => setShowAddSite(!showAddSite)}
-                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-bold text-[#6D8196] hover:text-[#5A6D81] flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         {showAddSite ? "Cancel" : "Add Website"}
@@ -525,25 +525,25 @@ export default function AddProductModal({
                   </div>
 
                   {showAddSite && (
-                    <form onSubmit={handleInlineAddSite} className="p-3 bg-indigo-50/40 rounded-xl border border-indigo-100 space-y-2">
+                    <form onSubmit={handleInlineAddSite} className="p-3 bg-[#FAF9F5] rounded-xl border border-[#CBCBCB]/60 space-y-2">
                       <input
                         type="text"
                         value={newSiteName}
                         onChange={(e) => setNewSiteName(e.target.value)}
                         placeholder="Site Name (e.g. Health Daily)"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-white border border-[#CBCBCB] rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6D8196]"
                       />
                       <input
                         type="url"
                         value={newSiteUrl}
                         onChange={(e) => setNewSiteUrl(e.target.value)}
                         placeholder="Site URL (https://...)"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-white border border-[#CBCBCB] rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6D8196]"
                       />
                       <button
                         type="submit"
                         disabled={addingSite || !newSiteName.trim()}
-                        className="w-full py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition cursor-pointer"
+                        className="w-full py-1.5 bg-[#6D8196] text-white rounded-lg text-xs font-bold hover:bg-[#5A6D81] disabled:opacity-50 transition cursor-pointer shadow-xs"
                       >
                         {addingSite ? "Saving..." : "Create & Link"}
                       </button>
@@ -564,7 +564,7 @@ export default function AddProductModal({
                             className={`w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all ${
                               isExcluded
                                 ? "bg-slate-50/50 border-slate-200 text-slate-400 opacity-60"
-                                : "bg-slate-50 border-slate-200/80 text-slate-800"
+                                : "bg-[#FAF9F5] border-[#CBCBCB]/60 text-slate-800"
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -576,7 +576,7 @@ export default function AddProductModal({
                                   Excluded
                                 </span>
                               ) : (
-                                <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-bold border border-indigo-100 shrink-0">
+                                <span className="text-[10px] bg-[#6D8196]/15 text-[#3D4F61] px-2 py-0.5 rounded-md font-bold border border-[#6D8196]/30 shrink-0">
                                   Auto-assigned
                                 </span>
                               )}
@@ -590,13 +590,13 @@ export default function AddProductModal({
                               }}
                               className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 ${
                                 isExcluded
-                                  ? "text-indigo-600 hover:bg-indigo-50"
+                                  ? "text-[#6D8196] hover:bg-[#6D8196]/10"
                                   : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                               }`}
                               title={isExcluded ? "Re-include this site" : "Remove/Deselect this site"}
                             >
                               {isExcluded ? (
-                                <span className="text-[11px] font-bold text-indigo-600">Re-include</span>
+                                <span className="text-[11px] font-bold text-[#6D8196]">Re-include</span>
                               ) : (
                                 <>
                                   <X className="w-4 h-4 text-slate-400 hover:text-rose-600" />
@@ -635,8 +635,8 @@ export default function AddProductModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Product Name */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Package className="w-3.5 h-3.5 text-indigo-600" />
+                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                        <Package className="w-3.5 h-3.5 text-[#6D8196]" />
                         Product Name <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -644,14 +644,14 @@ export default function AddProductModal({
                         value={form.name}
                         onChange={(e) => update("name", e.target.value)}
                         placeholder="e.g. Alpha Whey"
-                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                        className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
                       />
                     </div>
 
                     {/* Affiliate Network Dropdown */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
                         Affiliate Network / Name
                       </label>
                       {!showCustomAffiliate ? (
@@ -678,12 +678,12 @@ export default function AddProductModal({
                             value={customAffiliate}
                             onChange={(e) => setCustomAffiliate(e.target.value)}
                             placeholder="Enter affiliate name..."
-                            className="flex-1 px-3.5 py-2.5 bg-white border border-indigo-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+                            className="flex-1 px-3.5 py-2.5 bg-white border border-[#6D8196] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
                           />
                           <button
                             type="button"
                             onClick={() => setShowCustomAffiliate(false)}
-                            className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
+                            className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 border border-[#CBCBCB] rounded-xl hover:bg-slate-50 cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -696,8 +696,8 @@ export default function AddProductModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Trend Rating Dropdown */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-[#6D8196]" />
                         Trend Level
                       </label>
                       <CustomSelect
@@ -714,8 +714,8 @@ export default function AddProductModal({
 
                     {/* Trend Link */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Link2 className="w-3.5 h-3.5 text-indigo-600" />
+                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                        <Link2 className="w-3.5 h-3.5 text-[#6D8196]" />
                         Trend Link URL
                       </label>
                       <input
@@ -726,7 +726,7 @@ export default function AddProductModal({
                         className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
                           fieldErrors.trendLink
                             ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                            : "border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                            : "border-[#CBCBCB] focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
                         }`}
                       />
                       {fieldErrors.trendLink && (
@@ -739,7 +739,7 @@ export default function AddProductModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Preview Link */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
                         Preview Link URL
                       </label>
@@ -751,7 +751,7 @@ export default function AddProductModal({
                         className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
                           fieldErrors.previewLink
                             ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                            : "border-slate-200 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                            : "border-[#CBCBCB] focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
                         }`}
                       />
                       {fieldErrors.previewLink && (
@@ -761,7 +761,7 @@ export default function AddProductModal({
 
                     {/* New Defined Category Field */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                         <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
                         Category
                       </label>
@@ -770,18 +770,18 @@ export default function AddProductModal({
                         value={form.category}
                         onChange={(e) => update("category", e.target.value)}
                         placeholder="e.g. Skincare, Supplements, Fitness..."
-                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] shadow-2xs transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] shadow-2xs transition-all"
                       />
                     </div>
                   </div>
 
                   {/* Product Type (Read-only summary of Step 1 selection) */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
                       Product Type
                     </label>
-                    <div className="w-full px-3.5 py-2.5 bg-[#FAF9F5] border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 flex items-center justify-between min-h-[42px]">
+                    <div className="w-full px-3.5 py-2.5 bg-[#FAF9F5] border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-800 flex items-center justify-between min-h-[42px]">
                       <span className="truncate">
                         {getCategoryNames() || "None Selected"}
                       </span>
@@ -793,13 +793,13 @@ export default function AddProductModal({
 
                   {/* Remarks */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Remarks</label>
+                    <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider">Remarks</label>
                     <textarea
                       rows={2}
                       value={form.remarks}
                       onChange={(e) => update("remarks", e.target.value)}
                       placeholder="Optional notes or instructions..."
-                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none shadow-2xs"
+                      className="w-full px-3.5 py-2 bg-white border border-[#CBCBCB] rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all resize-none shadow-2xs"
                     />
                   </div>
 
