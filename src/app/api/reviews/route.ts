@@ -64,16 +64,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (approved && article.status === "APPROVED") {
+    if (article.status === "PENDING") {
       return NextResponse.json(
-        { error: "This article has already been approved." },
+        { error: "Cannot review an article that has not been started yet." },
         { status: 400 }
       );
     }
 
-    if (approved && article.status === "PENDING") {
+    if (article.status === "IN_PROGRESS") {
       return NextResponse.json(
-        { error: "Cannot approve an article that has not been started yet." },
+        { error: "Cannot review an article while the writer is actively writing it. Please wait for the writer to complete and submit it." },
+        { status: 400 }
+      );
+    }
+
+    if (article.status === "REDO") {
+      return NextResponse.json(
+        { error: "A revision has already been requested. Please wait for the writer to fix the problem and resubmit the article before submitting another review command." },
+        { status: 400 }
+      );
+    }
+
+    if (approved && article.status === "APPROVED") {
+      return NextResponse.json(
+        { error: "This article has already been approved." },
         { status: 400 }
       );
     }

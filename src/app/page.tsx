@@ -908,6 +908,13 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
 // 2. TEAM LEAD MISSION CONTROL
 // ─────────────────────────────────────────────────────────────────────────────
 
+const generateSlug = (productName: string) => {
+  return (productName || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+};
+
 function TeamLeadMissionControl({
   data,
   currentUserId,
@@ -924,58 +931,6 @@ function TeamLeadMissionControl({
     issueLinks: 0,
     writerPerformance: [],
     reviewQueue: [],
-  };
-
-  const [rejectingItem, setRejectingItem] = useState<any>(null);
-  const [redoFeedback, setRedoFeedback] = useState("");
-  const [processing, setProcessing] = useState(false);
-
-  const handleApprove = async (articleId: number) => {
-    try {
-      const res = await fetch(`/api/articles/${articleId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "APPROVED", callerId: currentUserId }),
-      });
-      if (res.ok) {
-        toast.success("Article approved successfully!");
-        onRefresh();
-      } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to approve article");
-      }
-    } catch {
-      toast.error("Failed to approve article");
-    }
-  };
-
-  const handleConfirmRedo = async () => {
-    if (!rejectingItem) return;
-    setProcessing(true);
-    try {
-      const res = await fetch(`/api/articles/${rejectingItem.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "REDO",
-          suggestion: redoFeedback,
-          callerId: currentUserId,
-        }),
-      });
-      if (res.ok) {
-        toast.success("Article returned to writer for changes!");
-        setRejectingItem(null);
-        setRedoFeedback("");
-        onRefresh();
-      } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to submit redo request");
-      }
-    } catch {
-      toast.error("Failed to submit redo request");
-    } finally {
-      setProcessing(false);
-    }
   };
 
   return (
@@ -1083,23 +1038,13 @@ function TeamLeadMissionControl({
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => handleApprove(item.id)}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    <Link
+                      href={`/articles/${item.id}-${generateSlug(item.product)}`}
+                      className="px-3.5 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
                     >
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => {
-                        setRejectingItem(item);
-                        setRedoFeedback("");
-                      }}
-                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/60 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5 stroke-[3]" />
-                      Redo
-                    </button>
+                      <FileText className="w-3.5 h-3.5" />
+                      Review Article
+                    </Link>
                   </div>
                 </div>
               ))
@@ -1124,8 +1069,8 @@ function TeamLeadMissionControl({
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={tl.writerPerformance} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b" }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b" }} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <Tooltip
                     cursor={{ fill: "#f8fafc" }}
                     contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}
@@ -1137,57 +1082,6 @@ function TeamLeadMissionControl({
           </div>
         </div>
       </div>
-
-      {/* Redo Reason Dialog Modal */}
-      {rejectingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 border border-slate-100 animate-scaleIn">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-rose-500" />
-                Request Changes & Revisions
-              </h3>
-              <button onClick={() => setRejectingItem(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600">
-              Returning <strong className="text-slate-900">&quot;{rejectingItem.product}&quot;</strong> to writer{" "}
-              <strong className="text-slate-900">{rejectingItem.writer}</strong>.
-            </p>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                Feedback / Required Changes
-              </label>
-              <textarea
-                rows={4}
-                value={redoFeedback}
-                onChange={(e) => setRedoFeedback(e.target.value)}
-                placeholder="Explain what modifications the writer needs to make before resubmission..."
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none font-medium"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
-              <button
-                onClick={() => setRejectingItem(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmRedo}
-                disabled={processing || !redoFeedback.trim()}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition disabled:opacity-50"
-              >
-                {processing ? "Submitting..." : "Send Back for Redo"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -32,7 +32,7 @@ export async function GET(
           },
         },
       },
-      writer: { select: { id: true, name: true, teamLeadId: true } },
+      writer: { select: { id: true, name: true, email: true, image: true, teamLeadId: true } },
       reviews: {
         include: { reviewedBy: { select: { id: true, name: true } } },
         orderBy: { reviewedAt: "desc" },
@@ -141,6 +141,27 @@ export async function PATCH(
     // Approval / Redo status change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN
     if ((status === "APPROVED" || status === "REDO") && !["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
       return NextResponse.json({ error: "Only Team Leads and Admins can approve or request changes for articles." }, { status: 403 });
+    }
+
+    if ((status === "APPROVED" || status === "REDO") && existing.status === "REDO" && !redoStarted) {
+      return NextResponse.json(
+        { error: "A revision has already been requested. Please wait for the writer to fix the problem and resubmit before sending another command." },
+        { status: 400 }
+      );
+    }
+
+    if ((status === "APPROVED" || status === "REDO") && existing.status === "PENDING") {
+      return NextResponse.json(
+        { error: "Cannot review an article that is still pending and has not been written yet." },
+        { status: 400 }
+      );
+    }
+
+    if ((status === "APPROVED" || status === "REDO") && existing.status === "IN_PROGRESS") {
+      return NextResponse.json(
+        { error: "Cannot review an article while the writer is actively working on it. Wait for completion." },
+        { status: 400 }
+      );
     }
 
     // Priority change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN
