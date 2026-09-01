@@ -3,6 +3,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor } from "lucide-react";
@@ -339,15 +340,22 @@ export default function Sidebar() {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-[#4A4A4A] flex items-center justify-center shadow-xs">
-              <span className="text-white font-bold text-xs">A</span>
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center shadow-xs border border-slate-200/60 dark:border-slate-700 p-0.5 shrink-0">
+              <Image
+                src="/logo.png"
+                alt="Article Flow Logo"
+                width={32}
+                height={32}
+                className="w-full h-full object-contain rounded-md"
+                priority
+              />
             </div>
             <div>
               <p className="text-[#4A4A4A] font-bold text-xs leading-tight">Article Flow</p>
               <p className="text-[#737373] text-[9px] font-medium">Enterprise Manager</p>
             </div>
-          </div>
+          </Link>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -392,15 +400,22 @@ export default function Sidebar() {
       >
         {/* Logo Header */}
         <div className="px-6 py-6 border-b border-[#CBCBCB]/40 flex items-center justify-between" suppressHydrationWarning>
-          <div className="flex items-center gap-3" suppressHydrationWarning>
-            <div className="w-8 h-8 rounded-md bg-[#4A4A4A] flex items-center justify-center shadow-sm" suppressHydrationWarning>
-              <span className="text-white font-bold text-sm">A</span>
+          <Link href="/" className="flex items-center gap-3 group cursor-pointer" suppressHydrationWarning>
+            <div className="w-9 h-9 rounded-xl overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center shadow-xs border border-slate-200/60 dark:border-slate-700 p-1 shrink-0 group-hover:scale-105 transition-transform" suppressHydrationWarning>
+              <Image
+                src="/logo.png"
+                alt="Article Flow Logo"
+                width={36}
+                height={36}
+                className="w-full h-full object-contain rounded-lg"
+                priority
+              />
             </div>
             <div suppressHydrationWarning>
-              <p className="text-[#4A4A4A] font-bold text-sm leading-tight">Article Flow</p>
-              <p className="text-[#737373] text-[10px] mt-0.5 font-medium">Enterprise Manager</p>
+              <p className="text-[#4A4A4A] dark:text-slate-100 font-bold text-sm leading-tight group-hover:text-[#6D8196] transition-colors">Article Flow</p>
+              <p className="text-[#737373] dark:text-slate-400 text-[10px] mt-0.5 font-medium">Enterprise Manager</p>
             </div>
-          </div>
+          </Link>
           {/* Mobile close button */}
           <button
             onClick={() => setIsMobileOpen(false)}
