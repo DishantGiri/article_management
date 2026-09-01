@@ -55,6 +55,14 @@ enum NotificationType {
   PRODUCT_ADDED
 }
 
+enum NoticeCategory {
+  IMPORTANT
+  GENERAL
+  SUGGESTION
+  URGENT
+  ANNOUNCEMENT
+}
+
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -105,6 +113,10 @@ model User {
   // Article histories updated by this user
   articleHistories ArticleHistory[] @relation("ArticleHistoryUpdatedBy")
   linkHistories    LinkHistory[]    @relation("LinkHistoryUpdatedBy")
+
+  // Notice board
+  noticesCreated        Notice[]               @relation("NoticeCreatedBy")
+  noticeAcknowledgments NoticeAcknowledgment[] @relation("NoticeAcknowledgedBy")
 }
 
 // ─────────────────────────────────────────────
@@ -345,4 +357,28 @@ model LinkHistory {
   oldRemarks       String?  @db.Text
   newRemarks       String?  @db.Text
   updatedAt        DateTime @default(now())
+}
+
+model Notice {
+  id              Int                    @id @default(autoincrement())
+  title           String
+  content         String                 @db.Text
+  category        NoticeCategory         @default(GENERAL)
+  createdById     Int
+  createdBy       User                   @relation("NoticeCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  acknowledgments NoticeAcknowledgment[]
+}
+
+model NoticeAcknowledgment {
+  id        Int      @id @default(autoincrement())
+  noticeId  Int
+  notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User     @relation("NoticeAcknowledgedBy", fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime @default(now())
+
+  @@unique([noticeId, userId])
 }
