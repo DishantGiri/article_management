@@ -28,6 +28,7 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import CustomSelect from "@/components/CustomSelect";
 import LoadingScreen from "@/components/LoadingScreen";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -918,16 +919,19 @@ export default function SettingsPage() {
               <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider mb-2">
                 Live Data Polling Interval
               </label>
-              <select
+              <CustomSelect
                 value={autoRefreshInterval}
-                onChange={(e) => setAutoRefreshInterval(e.target.value)}
-                className="px-4 py-2.5 rounded-xl border border-[#CBCBCB] bg-white text-xs font-bold text-[#4A4A4A] focus:outline-none focus:ring-1 focus:ring-[#6D8196] shadow-2xs max-w-xs cursor-pointer"
-              >
-                <option value="15">Every 15 seconds (High activity)</option>
-                <option value="30">Every 30 seconds (Standard default)</option>
-                <option value="60">Every 1 minute (Low network usage)</option>
-                <option value="manual">Manual refresh only</option>
-              </select>
+                onChange={(val) => setAutoRefreshInterval(val)}
+                options={[
+                  { value: "15", label: "Every 15 seconds (High activity)" },
+                  { value: "30", label: "Every 30 seconds (Standard default)" },
+                  { value: "60", label: "Every 1 minute (Low network usage)" },
+                  { value: "manual", label: "Manual refresh only" },
+                ]}
+                className="max-w-xs"
+                triggerClassName="px-4 py-2.5 rounded-xl border border-[#CBCBCB] bg-white text-xs font-bold text-[#4A4A4A] hover:border-[#6D8196] shadow-2xs cursor-pointer"
+                portal={true}
+              />
             </div>
 
             <div className="pt-4 border-t border-[#CBCBCB]/40 flex justify-end">

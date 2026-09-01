@@ -212,7 +212,7 @@ export default function CustomSelect({
         {placeholder && !options.some((o) => o.value === "") && !search && (
           <div
             onClick={() => handleSelect("")}
-            className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${
+            className={`mx-1 my-0.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors ${
               !value ? "bg-[#6D8196]/15 text-[#3D4F61] font-bold" : "text-[#737373] hover:bg-[#FAF9F5]"
             }`}
           >
@@ -229,7 +229,7 @@ export default function CustomSelect({
                 <div
                   key={opt.value || idx}
                   onClick={() => handleSelect(opt.value)}
-                  className="px-3 py-2 text-xs font-bold text-[#6D8196] hover:bg-[#6D8196]/10 cursor-pointer border-t border-[#CBCBCB]/40 transition-colors flex items-center gap-1.5"
+                  className="mx-1 my-0.5 px-3 py-2 text-xs font-bold text-[#6D8196] hover:bg-[#6D8196]/10 rounded-lg cursor-pointer border-t border-[#CBCBCB]/40 transition-colors flex items-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{opt.label}</span>
@@ -240,13 +240,13 @@ export default function CustomSelect({
               <div
                 key={opt.value || idx}
                 onClick={() => handleSelect(opt.value)}
-                className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors flex items-center justify-between group ${
+                className={`mx-1 my-0.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
                   isSelected
                     ? "bg-[#6D8196]/15 text-[#3D4F61] font-bold"
                     : "text-[#4A4A4A] hover:bg-[#FAF9F5] hover:text-[#1F2937]"
                 }`}
               >
-                <span className="truncate">{opt.label}</span>
+                <div className="truncate flex-1 min-w-0">{opt.label}</div>
                 {isSelected && <Check className="w-3.5 h-3.5 text-[#6D8196] shrink-0 ml-2" />}
               </div>
             );

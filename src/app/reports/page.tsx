@@ -27,6 +27,7 @@ import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
 import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
+import CustomSelect from "@/components/CustomSelect";
 
 export default function ReportsPage() {
   const [reportData, setReportData] = useState<any>(null);
@@ -380,20 +381,20 @@ export default function ReportsPage() {
               <span className="text-[11px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider whitespace-nowrap">
                 Inspect User:
               </span>
-              <select
+              <CustomSelect
                 value={selectedUserId}
-                onChange={(e) => {
-                  setSelectedUserId(e.target.value);
-                  fetchReport(startDate, endDate, e.target.value);
+                onChange={(val) => {
+                  setSelectedUserId(val);
+                  fetchReport(startDate, endDate, val);
                 }}
-                className="w-full sm:w-auto px-3 py-1.5 rounded-xl border border-[#CBCBCB] bg-white text-xs font-bold text-[#4A4A4A] focus:outline-none focus:ring-1 focus:ring-[#6D8196] shadow-2xs cursor-pointer"
-              >
-                {selectableUsers.map((u: any) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.role ? u.role.replace("_", " ") : "NO ROLE"})
-                  </option>
-                ))}
-              </select>
+                options={selectableUsers.map((u: any) => ({
+                  value: String(u.id),
+                  label: `${u.name} (${u.role ? u.role.replace("_", " ") : "NO ROLE"})`,
+                }))}
+                className="w-full sm:w-auto min-w-[200px]"
+                triggerClassName="w-full sm:w-auto px-3 py-1.5 rounded-xl border border-[#CBCBCB] bg-white text-xs font-bold text-[#4A4A4A] hover:border-[#6D8196] shadow-2xs cursor-pointer"
+                portal={true}
+              />
             </div>
           )}
         </div>
