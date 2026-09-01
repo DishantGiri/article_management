@@ -20,11 +20,11 @@ const MOCK_USERS = [
 ];
 
 const ROLE_COLORS: Record<Role, string> = {
-  SUPER_ADMIN: "bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30",
-  ADMIN: "bg-[#4A4A4A]/10 text-[#4A4A4A] border border-[#4A4A4A]/25",
-  LINKER: "bg-[#6D8196]/10 text-[#4A4A4A] border border-[#6D8196]/20",
-  WRITER: "bg-[#EAEAEA] text-[#4A4A4A] border border-[#CBCBCB]",
-  TEAM_LEAD: "bg-[#FFFFE3] text-[#4A4A4A] border border-[#CBCBCB]",
+  SUPER_ADMIN: "bg-[#6D8196]/15 text-[#3D4F61] dark:bg-[#6D8196]/30 dark:text-slate-200 border border-[#6D8196]/30 dark:border-[#6D8196]/50",
+  ADMIN: "bg-[#4A4A4A]/10 text-[#4A4A4A] dark:bg-slate-700/60 dark:text-slate-200 border border-[#4A4A4A]/25 dark:border-slate-600",
+  LINKER: "bg-[#6D8196]/10 text-[#4A4A4A] dark:bg-emerald-950/40 dark:text-emerald-300 border border-[#6D8196]/20 dark:border-emerald-700/40",
+  WRITER: "bg-[#EAEAEA] text-[#4A4A4A] dark:bg-slate-700/80 dark:text-slate-200 border border-[#CBCBCB] dark:border-slate-600",
+  TEAM_LEAD: "bg-[#FFFFE3] text-[#4A4A4A] dark:bg-amber-950/40 dark:text-amber-300 border border-[#CBCBCB] dark:border-amber-700/40",
 };
 
 interface NavItem {
@@ -430,10 +430,10 @@ export default function Sidebar() {
                   className={`flex items-center gap-3 pl-6 pr-4 py-2.5 text-sm transition-all duration-200 group rounded-r-xl ${
                     active
                       ? "bg-[#6D8196] text-white font-semibold shadow-xs"
-                      : "text-[#4A4A4A] hover:text-slate-900 hover:bg-[#FAF9F5] font-medium"
+                      : "text-[#4A4A4A] hover:text-slate-900 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/80 font-medium"
                   }`}
                 >
-                  <span className={active ? "text-white" : "text-[#6D8196]/70 group-hover:text-[#6D8196] transition-colors"}>
+                  <span className={active ? "text-white" : "text-[#6D8196]/70 group-hover:text-[#6D8196] dark:text-slate-400 dark:group-hover:text-white transition-colors"}>
                     <item.icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
                   </span>
                   <div className="flex-1 flex items-center justify-between">
@@ -494,14 +494,14 @@ export default function Sidebar() {
         </div>
 
         {/* User Switcher (mock auth) */}
-        <div className="px-3 py-4 border-t border-slate-100 relative bg-slate-50/50" suppressHydrationWarning>
+        <div className="px-3 py-4 border-t border-slate-100 dark:border-slate-800 relative bg-slate-50/50 dark:bg-slate-900/50" suppressHydrationWarning>
           {isMounted && status !== "loading" && currentUser ? (
             <>
               <button
                 onClick={() => setShowSwitcher(!showSwitcher)}
-                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white border border-transparent hover:border-slate-200/40 shadow-sm transition-all bg-white/70"
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/70 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 border border-slate-200/40 dark:border-slate-700 shadow-sm transition-all cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 text-violet-700 flex items-center justify-center text-xs font-bold flex-shrink-0 border border-violet-200/30 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-950 dark:to-indigo-950 text-violet-700 dark:text-violet-300 flex items-center justify-center text-xs font-bold flex-shrink-0 border border-violet-200/30 dark:border-violet-700/50 overflow-hidden">
                   {currentUser.image ? (
                     <img src={currentUser.image} alt={currentUser.name} className="w-full h-full object-cover" />
                   ) : (
@@ -509,13 +509,13 @@ export default function Sidebar() {
                   )}
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <p className="text-slate-800 text-xs font-bold truncate">{currentUser.name}</p>
+                  <p className="text-slate-800 dark:text-slate-100 text-xs font-bold truncate">{currentUser.name}</p>
                   {currentUser.role ? (
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${ROLE_COLORS[currentUser.role]}`}>
                       {currentUser.role.replace("_", " ")}
                     </span>
                   ) : (
-                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 border border-slate-200/50 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700 px-2 py-0.5 rounded-full inline-block mt-0.5">
                       No Role Assigned
                     </span>
                   )}
@@ -526,10 +526,10 @@ export default function Sidebar() {
               </button>
 
               {showSwitcher && (
-                <div className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden z-50 p-1.5 space-y-1">
+                <div className="absolute bottom-full left-3 right-3 mb-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden z-50 p-1.5 space-y-1">
                   {/* Dev role switcher */}
                   {process.env.NODE_ENV === "development" && (
-                    <div className="px-3 py-2 border-b border-slate-100 mb-1 text-left">
+                    <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-700 mb-1 text-left">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Dev: Switch Role</p>
                       <div className="grid grid-cols-2 gap-1">
                         {(["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "LINKER", "WRITER"] as const).map((r) => (
@@ -552,8 +552,8 @@ export default function Sidebar() {
                             }}
                             className={`px-2 py-1 text-[9px] font-bold rounded text-center transition cursor-pointer border ${
                               currentUser.role === r
-                                ? "bg-slate-900 border-slate-900 text-white"
-                                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                                ? "bg-slate-900 dark:bg-[#6D8196] border-slate-900 dark:border-[#6D8196] text-white"
+                                : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                             }`}
                           >
                             {r.replace("_", " ")}
@@ -577,8 +577,8 @@ export default function Sidebar() {
                           }}
                           className={`col-span-2 px-2 py-1 text-[9px] font-bold rounded text-center transition cursor-pointer border ${
                             currentUser.role === null
-                              ? "bg-slate-900 border-slate-900 text-white"
-                              : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                              ? "bg-slate-900 dark:bg-[#6D8196] border-slate-900 dark:border-[#6D8196] text-white"
+                              : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                           }`}
                         >
                           No Role (Null)
@@ -589,7 +589,7 @@ export default function Sidebar() {
 
                   <button
                     onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-700 font-semibold text-xs transition cursor-pointer"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs transition cursor-pointer"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

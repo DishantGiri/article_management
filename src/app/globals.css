@@ -261,6 +261,25 @@ body {
   border-color: #334155 !important;
 }
 
+/* Universal Dark Mode Hover Styles */
+.dark .hover\:bg-\[\#FAF9F5\]:hover,
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark [class*="hover:bg-[#FAF9F5]"]:hover {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark .hover\:bg-white:hover {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark .hover\:text-slate-900:hover,
+.dark .hover\:text-gray-900:hover {
+  color: #f8fafc !important;
+}
+
 /* Custom keyframe animations and effects */
 @keyframes fadeIn {
   from { opacity: 0; }
