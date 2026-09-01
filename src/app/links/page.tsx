@@ -469,10 +469,14 @@ function LinksPageContent() {
       {/* Unlinked Products Section */}
       <PendingLinkLogsSection
         products={unlinkedProducts}
-        onAddLink={(productId) => {
-          setPreselectedProductId(productId);
-          setIsAddLinkOpen(true);
-        }}
+        onAddLink={
+          currentUserRole === "LINKER" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN"
+            ? (productId) => {
+                setPreselectedProductId(productId);
+                setIsAddLinkOpen(true);
+              }
+            : undefined
+        }
       />
 
       {/* Tabs Selector for Links */}

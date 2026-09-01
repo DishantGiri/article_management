@@ -15,7 +15,7 @@ interface PendingProduct {
 
 interface PendingLinkLogsSectionProps {
   products: PendingProduct[];
-  onAddLink: (productId: number) => void;
+  onAddLink?: (productId: number) => void;
   title?: string;
   subtitle?: string;
 }
@@ -225,13 +225,15 @@ export default function PendingLinkLogsSection({
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => onAddLink(p.id)}
-                        className="w-full py-1.5 px-3 bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Link</span>
-                      </button>
+                      {onAddLink && (
+                        <button
+                          onClick={() => onAddLink(p.id)}
+                          className="w-full py-1.5 px-3 bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Link</span>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -249,13 +251,15 @@ export default function PendingLinkLogsSection({
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => onAddLink(p.id)}
-                        className="py-1 px-3 bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer flex-shrink-0"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Link</span>
-                      </button>
+                      {onAddLink && (
+                        <button
+                          onClick={() => onAddLink(p.id)}
+                          className="py-1 px-3 bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer flex-shrink-0"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Link</span>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

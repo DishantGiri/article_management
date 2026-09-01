@@ -29,6 +29,12 @@ export async function PATCH(
         where: { id: Number(activeUserId) },
         select: { role: true, allowLinkLogAccess: true },
       });
+      if (user?.role === "TEAM_LEAD") {
+        const isReportingIssue = status === "ISSUE" && body.issueMessage;
+        if (!isReportingIssue) {
+          return NextResponse.json({ error: "Access Denied: Team Leads cannot modify links. Only Linkers can manage links." }, { status: 403 });
+        }
+      }
       if (user?.role === "WRITER" && !user.allowLinkLogAccess) {
         const isReportingIssue = status === "ISSUE" && body.issueMessage;
         if (!isReportingIssue) {

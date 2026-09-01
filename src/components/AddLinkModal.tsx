@@ -246,6 +246,11 @@ export default function AddLinkModal({
       return;
     }
 
+    if (session?.user?.role === "TEAM_LEAD") {
+      setError("Access Denied: Team Leads cannot add links. Only Linkers can add links.");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
 

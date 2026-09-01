@@ -142,9 +142,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
     }
 
+    if (dbUser.role === "TEAM_LEAD") {
+      return NextResponse.json(
+        { error: "Access Denied: Team Leads cannot add links. Only Linkers can add links." },
+        { status: 403 }
+      );
+    }
+
     if (dbUser.role !== "LINKER" && dbUser.role !== "ADMIN" && dbUser.role !== "SUPER_ADMIN") {
       return NextResponse.json(
-        { error: "Only Linkers, Admins, and Super Admins can add links." },
+        { error: "Access Denied: Only Linkers can add links." },
         { status: 403 }
       );
     }
