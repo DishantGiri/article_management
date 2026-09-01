@@ -223,25 +223,28 @@ export default function Sidebar() {
             const soundVolume = soundVolStr !== null ? parseFloat(soundVolStr) : 0.8;
             const desktopEnabled = typeof window !== "undefined" ? localStorage.getItem("notif_desktop_enabled") === "true" : false;
 
-            if (toastEnabled) {
-              setToast({ message: notif.message });
-            }
-            setUnreadCount((prev) => prev + 1);
+            // Only alert if notification is not silent and has an active message
+            if (!notif.silent && notif.message) {
+              if (toastEnabled) {
+                setToast({ message: notif.message });
+              }
+              setUnreadCount((prev) => prev + 1);
 
-            if (soundEnabled) {
-              audioObj.volume = Math.max(0, Math.min(1, isNaN(soundVolume) ? 0.8 : soundVolume));
-              audioObj.currentTime = 0;
-              audioObj.play().catch(() => {});
-            }
+              if (soundEnabled) {
+                audioObj.volume = Math.max(0, Math.min(1, isNaN(soundVolume) ? 0.8 : soundVolume));
+                audioObj.currentTime = 0;
+                audioObj.play().catch(() => {});
+              }
 
-            if (desktopEnabled && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-              try {
-                new Notification("Daily Work Report", {
-                  body: notif.message,
-                  icon: "/favicon.ico",
-                });
-              } catch (e) {
-                // Ignore notification construct errors on restricted environments
+              if (desktopEnabled && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+                try {
+                  new Notification("Daily Work Report", {
+                    body: notif.message,
+                    icon: "/favicon.ico",
+                  });
+                } catch (e) {
+                  // Ignore notification construct errors on restricted environments
+                }
               }
             }
 
@@ -548,23 +551,32 @@ export default function Sidebar() {
             <div className="w-full h-[62px] p-2.5 rounded-xl bg-slate-100/50 animate-pulse border border-slate-200/50" suppressHydrationWarning />
           )}
         </div>
-
-        {/* Real-time notification Toast */}
-        {toast && (
-          <div className="fixed top-5 right-5 z-[9999] bg-slate-950/90 backdrop-blur-md text-white px-5 py-4 rounded-2xl shadow-2xl border border-slate-800/80 flex items-start gap-3 animate-slide-in max-w-sm">
-            <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/30 text-violet-400 flex items-center justify-center flex-shrink-0">
-              <Bell className="w-4 h-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider">Live Notification</p>
-              <p className="text-xs font-semibold text-slate-200 mt-1 leading-relaxed">{toast.message}</p>
-            </div>
-            <button onClick={() => setToast(null)} className="text-slate-500 hover:text-slate-300 text-xs font-bold font-mono transition-colors">
-              ✕
-            </button>
-          </div>
-        )}
       </aside>
+
+      {/* Real-time notification Toast pinned to bottom-right with user theme */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-[99999] bg-white/95 backdrop-blur-md text-[#4A4A4A] p-4 sm:p-5 rounded-2xl shadow-2xl border border-[#CBCBCB] flex items-start gap-3.5 animate-slideInUp max-w-sm w-[calc(100vw-2.5rem)] sm:w-[380px] transition-all">
+          <div className="w-10 h-10 rounded-2xl bg-[#6D8196]/15 border border-[#6D8196]/25 text-[#3D4F61] flex items-center justify-center shrink-0 shadow-2xs">
+            <Bell className="w-5 h-5 text-[#6D8196] animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] font-extrabold text-[#6D8196] uppercase tracking-wider">Live Notification</p>
+            </div>
+            <p className="text-xs sm:text-sm font-bold text-[#4A4A4A] mt-1 leading-snug break-words">
+              {toast.message}
+            </p>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="w-7 h-7 rounded-lg text-[#737373] hover:text-[#4A4A4A] hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            title="Dismiss notification"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </>
   );
 }

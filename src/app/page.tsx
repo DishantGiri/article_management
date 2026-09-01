@@ -242,13 +242,15 @@ export default function DashboardPage() {
       if (notif.type === "ARTICLE_STATUS_UPDATED" || notif.type === "LINK_STATUS_UPDATED") {
         fetchDashboardData(false);
       }
-      setNotifications((prev) => [notif, ...prev]);
+      if (!notif.silent && notif.message) {
+        setNotifications((prev) => [notif, ...prev]);
 
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Workflow Update", {
-          body: notif.message,
-          icon: "/favicon.ico",
-        });
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Workflow Update", {
+            body: notif.message,
+            icon: "/favicon.ico",
+          });
+        }
       }
     };
     window.addEventListener("live-notification", handleLiveNotif);

@@ -156,6 +156,10 @@ body {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 @keyframes pulseSubtle {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
@@ -168,6 +172,7 @@ body {
 .animate-fadeIn    { animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-scaleIn   { animation: scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-slideDown { animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slideInUp { animation: slideInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-pulseSubtle { animation: pulseSubtle 2.5s infinite ease-in-out; }
 
 .glass-panel {

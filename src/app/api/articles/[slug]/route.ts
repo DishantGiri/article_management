@@ -293,7 +293,7 @@ export async function PATCH(
         body: JSON.stringify({
           broadcast: true,
           type: "ARTICLE_STATUS_UPDATED",
-          message: `Article for ${updated.product.name} is now ${updated.status}`,
+          silent: true, // Silent state sync for table rows & dashboard counters; no alert/sound for other writers
           id: updated.id,
           createdAt: new Date().toISOString(),
           data: updated,
@@ -326,29 +326,105 @@ export async function PATCH(
       }
     }
 
-    // Notify Team Lead if Writer completed the article
-    if (status === "COMPLETED" && existing.status !== "COMPLETED") {
+    // Notify Team Lead if Writer started the article (ONLY sent to Team Lead)
+    const isStartingArticle =
+      (status === "IN_PROGRESS" && existing.status !== "IN_PROGRESS") ||
+      (redoStarted && existing.status === "REDO" && !existing.startedAt);
+
+    if (isStartingArticle) {
       try {
-        const writerIdToQuery = updated.writerId || existing.writerId;
+        const writerIdToQuery = updated.writerId || existing.writerId || activeUserId;
         if (writerIdToQuery) {
           const writerUser = await prisma.user.findUnique({
             where: { id: writerIdToQuery },
-            select: { teamLeadId: true },
+            select: { name: true, teamLeadId: true },
           });
+          const writerName = writerUser?.name || updated.writer?.name || session.user.name || "A writer";
+
           if (writerUser?.teamLeadId) {
-            const notif = await prisma.notification.create({
-              data: {
-                recipientId: writerUser.teamLeadId,
-                senderId: writerIdToQuery,
-                type: "ARTICLE_SUGGESTION",
-                message: `${updated.writer?.name || "A writer"} completed the article for "${updated.product.name}". Please review it.`,
-              },
+            if (writerUser.teamLeadId !== activeUserId) {
+              const notif = await prisma.notification.create({
+                data: {
+                  recipientId: writerUser.teamLeadId,
+                  senderId: writerIdToQuery,
+                  type: "ARTICLE_SUGGESTION",
+                  message: `${writerName} started writing the article for "${updated.product.name}".`,
+                },
+              });
+              await sendRealtimeNotification(writerUser.teamLeadId, notif);
+            }
+          } else {
+            // Fallback: If writer has no specific team lead assigned, notify all Team Leads
+            const teamLeads = await prisma.user.findMany({
+              where: { role: "TEAM_LEAD" },
+              select: { id: true },
             });
-            await sendRealtimeNotification(writerUser.teamLeadId, notif);
+            for (const tl of teamLeads) {
+              if (tl.id !== activeUserId) {
+                const notif = await prisma.notification.create({
+                  data: {
+                    recipientId: tl.id,
+                    senderId: writerIdToQuery,
+                    type: "ARTICLE_SUGGESTION",
+                    message: `${writerName} started writing the article for "${updated.product.name}".`,
+                  },
+                });
+                await sendRealtimeNotification(tl.id, notif);
+              }
+            }
           }
         }
       } catch (notifErr) {
-        console.error("Failed to notify Team Lead:", notifErr);
+        console.error("Failed to notify Team Lead on article start:", notifErr);
+      }
+    }
+
+    // Notify Team Lead if Writer completed the article (ONLY sent to Team Lead)
+    if (status === "COMPLETED" && existing.status !== "COMPLETED") {
+      try {
+        const writerIdToQuery = updated.writerId || existing.writerId || activeUserId;
+        if (writerIdToQuery) {
+          const writerUser = await prisma.user.findUnique({
+            where: { id: writerIdToQuery },
+            select: { name: true, teamLeadId: true },
+          });
+          const writerName = writerUser?.name || updated.writer?.name || session.user.name || "A writer";
+
+          if (writerUser?.teamLeadId) {
+            if (writerUser.teamLeadId !== activeUserId) {
+              const notif = await prisma.notification.create({
+                data: {
+                  recipientId: writerUser.teamLeadId,
+                  senderId: writerIdToQuery,
+                  type: "ARTICLE_SUGGESTION",
+                  message: `${writerName} completed the article for "${updated.product.name}". Please review it.`,
+                },
+              });
+              await sendRealtimeNotification(writerUser.teamLeadId, notif);
+            }
+          } else {
+            // Fallback: If writer has no specific team lead assigned, notify all Team Leads
+            const teamLeads = await prisma.user.findMany({
+              where: { role: "TEAM_LEAD" },
+              select: { id: true },
+            });
+            for (const tl of teamLeads) {
+              if (tl.id !== activeUserId) {
+                const notif = await prisma.notification.create({
+                  data: {
+                    recipientId: tl.id,
+                    senderId: writerIdToQuery,
+                    type: "ARTICLE_SUGGESTION",
+                    message: `${writerName} completed the article for "${updated.product.name}". Please review it.`,
+                  },
+                });
+                await sendRealtimeNotification(tl.id, notif);
+              }
+            }
+          }
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify Team Lead on article completion:", notifErr);
       }
     }
 

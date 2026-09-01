@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           broadcast: true,
           type: "ARTICLE_STATUS_UPDATED",
-          message: `Article for ${updatedArticle.product.name} was reviewed: ${newStatus}`,
+          silent: true,
           id: updatedArticle.id,
           createdAt: new Date().toISOString(),
           data: updatedArticle,
