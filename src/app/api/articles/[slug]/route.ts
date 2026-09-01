@@ -282,9 +282,9 @@ export async function PATCH(
     });
 
     try {
-      const port = process.env.PORT || "3022";
+      const baseUrl = (process.env.NEXTAUTH_URL || process.env.SITE_URL || process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${process.env.PORT || "3022"}`).replace(/\/$/, "");
       const secret = process.env.NEXTAUTH_SECRET;
-      fetch(`http://localhost:${port}/notify`, {
+      fetch(`${baseUrl}/notify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
