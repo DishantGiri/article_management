@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
+import { ChartPieInteractive } from "@/components/ChartPieInteractive";
+import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
 
 export default function ReportsPage() {
   const [reportData, setReportData] = useState<any>(null);
@@ -306,49 +308,49 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A]" suppressHydrationWarning>
+    <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A]" suppressHydrationWarning>
       {/* ─── HEADER & ACTIONS ────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">Work Report</h1>
-            <span className="px-2.5 py-0.5 text-xs font-extrabold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20 rounded-full uppercase">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#4A4A4A] tracking-tight">Work Report</h1>
+            <span className="px-2.5 py-0.5 text-[11px] sm:text-xs font-extrabold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20 rounded-full uppercase">
               {targetUser?.name || "User"} · {(targetRole || "USER").replace("_", " ")}
             </span>
           </div>
-          <p className="text-[#737373] text-sm font-medium">
+          <p className="text-[#737373] text-xs sm:text-sm font-medium">
             Generate and export your verified daily or periodic work summary with all article links and logs
           </p>
         </div>
 
         {/* Action Buttons: Copy & Export */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={handleCopyReport}
-            className="px-4 py-2 bg-white border border-[#CBCBCB] hover:border-[#6D8196] text-[#4A4A4A] rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-2xs transition flex items-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto justify-center px-3 sm:px-4 py-2 bg-white border border-[#CBCBCB] hover:border-[#6D8196] text-[#4A4A4A] rounded-xl text-xs sm:text-sm font-semibold hover:bg-slate-50 shadow-2xs transition flex items-center gap-2 cursor-pointer"
             title="Copy formatted work report to clipboard"
           >
-            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-[#6D8196]" />}
-            <span>{copied ? "Copied!" : "Copy Report"}</span>
+            {copied ? <Check className="w-4 h-4 text-emerald-600 shrink-0" /> : <Copy className="w-4 h-4 text-[#6D8196] shrink-0" />}
+            <span className="truncate">{copied ? "Copied!" : "Copy Report"}</span>
           </button>
 
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2 bg-white border border-[#CBCBCB] hover:border-[#6D8196] text-[#4A4A4A] rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-2xs transition flex items-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto justify-center px-3 sm:px-4 py-2 bg-white border border-[#CBCBCB] hover:border-[#6D8196] text-[#4A4A4A] rounded-xl text-xs sm:text-sm font-semibold hover:bg-slate-50 shadow-2xs transition flex items-center gap-2 cursor-pointer"
           >
-            <Download className="w-4 h-4 text-[#6D8196]" />
-            <span>Export CSV</span>
+            <Download className="w-4 h-4 text-[#6D8196] shrink-0" />
+            <span className="truncate">Export CSV</span>
           </button>
         </div>
       </div>
 
       {/* ─── REPORT GENERATOR TOOLBAR ─────────────────────────────────── */}
-      <div className="bg-white border border-[#CBCBCB]/70 rounded-2xl p-4 sm:p-5 shadow-2xs mb-8 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white border border-[#CBCBCB]/70 rounded-2xl p-3.5 sm:p-5 shadow-2xs mb-6 sm:mb-8 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
           {/* Quick Date Presets */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <span className="text-xs font-bold text-[#737373] uppercase tracking-wider mr-1 flex items-center gap-1">
-              <CalendarIcon className="w-3.5 h-3.5" />
+            <span className="text-[11px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mr-1 flex items-center gap-1 w-full sm:w-auto mb-1 sm:mb-0">
+              <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
               Period:
             </span>
             {[
@@ -361,7 +363,7 @@ export default function ReportsPage() {
               <button
                 key={p.id}
                 onClick={() => applyPreset(p.id as any)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`flex-1 sm:flex-initial text-center justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   preset === p.id
                     ? "bg-[#6D8196] text-white shadow-2xs"
                     : "bg-[#FAF9F5] text-[#737373] hover:text-[#4A4A4A] border border-[#CBCBCB]/60 hover:bg-slate-100"
@@ -374,8 +376,8 @@ export default function ReportsPage() {
 
           {/* User selector for Admins only */}
           {(caller.role === "SUPER_ADMIN" || caller.role === "ADMIN") && selectableUsers.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#737373] uppercase tracking-wider whitespace-nowrap">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 w-full lg:w-auto">
+              <span className="text-[11px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider whitespace-nowrap">
                 Inspect User:
               </span>
               <select
@@ -384,7 +386,7 @@ export default function ReportsPage() {
                   setSelectedUserId(e.target.value);
                   fetchReport(startDate, endDate, e.target.value);
                 }}
-                className="px-3 py-1.5 rounded-xl border border-[#CBCBCB] bg-white text-xs font-bold text-[#4A4A4A] focus:outline-none focus:ring-1 focus:ring-[#6D8196] shadow-2xs cursor-pointer"
+                className="w-full sm:w-auto px-3 py-1.5 rounded-xl border border-[#CBCBCB] bg-white text-xs font-bold text-[#4A4A4A] focus:outline-none focus:ring-1 focus:ring-[#6D8196] shadow-2xs cursor-pointer"
               >
                 {selectableUsers.map((u: any) => (
                   <option key={u.id} value={u.id}>
@@ -397,10 +399,10 @@ export default function ReportsPage() {
         </div>
 
         {/* Date Inputs & Generate Button */}
-        <div className="pt-3 border-t border-[#CBCBCB]/30 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-[#737373]">From:</label>
+        <div className="pt-3 border-t border-[#CBCBCB]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full">
+              <label className="text-xs font-bold text-[#737373] w-12 sm:w-auto shrink-0">From:</label>
               <input
                 type="date"
                 value={startDate}
@@ -408,12 +410,12 @@ export default function ReportsPage() {
                   setStartDate(e.target.value);
                   setPreset("all");
                 }}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#CBCBCB] bg-[#FAF9F5] text-[#4A4A4A] focus:outline-none focus:bg-white"
+                className="flex-1 w-full px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#CBCBCB] bg-[#FAF9F5] text-[#4A4A4A] focus:outline-none focus:bg-white"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-[#737373]">To:</label>
+            <div className="flex items-center gap-2 w-full">
+              <label className="text-xs font-bold text-[#737373] w-12 sm:w-auto shrink-0">To:</label>
               <input
                 type="date"
                 value={endDate}
@@ -421,7 +423,7 @@ export default function ReportsPage() {
                   setEndDate(e.target.value);
                   setPreset("all");
                 }}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#CBCBCB] bg-[#FAF9F5] text-[#4A4A4A] focus:outline-none focus:bg-white"
+                className="flex-1 w-full px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#CBCBCB] bg-[#FAF9F5] text-[#4A4A4A] focus:outline-none focus:bg-white"
               />
             </div>
           </div>
@@ -429,7 +431,7 @@ export default function ReportsPage() {
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer ml-auto"
+            className="w-full sm:w-auto justify-center px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${generating ? "animate-spin" : ""}`} />
             <span>{generating ? "Generating..." : "Generate Report"}</span>
@@ -441,54 +443,69 @@ export default function ReportsPage() {
       {/* 1. WRITER WORK REPORT SECTION */}
       {/* ───────────────────────────────────────────────────────────────── */}
       {(isWriter || (isAdminTarget && reports.writer)) && (
-        <div className="space-y-8 animate-fadeIn">
+        <div className="space-y-6 sm:space-y-8 animate-fadeIn">
           {/* Summary Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center mb-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-50 flex items-center justify-center mb-2 sm:mb-3">
                 <FileText className="w-4 h-4 text-indigo-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.writer.metrics.totalNew}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">New Articles</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.writer.metrics.totalNew}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">New Articles</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center mb-3">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-sky-50 flex items-center justify-center mb-2 sm:mb-3">
                 <RefreshCw className="w-4 h-4 text-sky-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.writer.metrics.totalUpdates}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Articles Updated</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.writer.metrics.totalUpdates}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Articles Updated</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-2 sm:mb-3">
                 <Wrench className="w-4 h-4 text-amber-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.writer.metrics.totalFixes}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Fixes / Redos Completed</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.writer.metrics.totalFixes}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Redos Fixed</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-2 sm:mb-3">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.writer.metrics.completedArticles}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Verified Completed</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.writer.metrics.completedArticles}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Verified Completed</p>
               </div>
             </div>
           </div>
 
+          {/* Visual Analytics Graphs */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartPieInteractive
+              data={reports.writer.statusDistribution || []}
+              title="Article Pipeline Distribution"
+              description="Active workflow state breakdown across assigned articles"
+              centerLabel="Articles"
+            />
+            <ChartLineLabelCustom
+              data={reports.writer.monthlyTrend || []}
+              title="Writing Output Trend"
+              description="Articles written over the last 6 months"
+            />
+          </div>
+
           {/* Section A: New Articles */}
           <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-2xs overflow-hidden">
-            <div className="p-4 px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
-              <div className="flex items-center gap-2.5">
+            <div className="p-3.5 px-4 sm:p-4 sm:px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
+              <div className="flex items-center gap-2 sm:gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">
                   <FileText className="w-4 h-4" />
                 </div>
@@ -497,18 +514,18 @@ export default function ReportsPage() {
                   {reports.writer.newArticles.length}
                 </span>
               </div>
-              <span className="text-xs text-[#737373] font-medium">All articles written in this period</span>
+              <span className="text-xs text-[#737373] font-medium hidden sm:inline">All articles written in this period</span>
             </div>
 
             {reports.writer.newArticles.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#737373]">No new articles recorded for this period.</div>
+              <div className="p-6 sm:p-8 text-center text-xs text-[#737373]">No new articles recorded for this period.</div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {reports.writer.newArticles.map((item: any) => (
-                  <div key={item.id} className="p-4 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
-                    <div className="space-y-1 min-w-0">
+                  <div key={item.id} className="p-3.5 px-4 sm:p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
+                    <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#4A4A4A]">{item.productName}</span>
+                        <span className="font-bold text-sm text-[#4A4A4A] break-words">{item.productName}</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
                           {item.siteName}
                         </span>
@@ -522,7 +539,7 @@ export default function ReportsPage() {
                           {item.status}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-[#737373]">
+                      <div className="flex items-center gap-3 text-xs text-[#737373] flex-wrap">
                         <span>Date: {new Date(item.date).toLocaleDateString()}</span>
                         {item.writingTimeMin && (
                           <span>Writing Time: {Math.round(item.writingTimeMin / 60)}h {item.writingTimeMin % 60}m</span>
@@ -530,19 +547,19 @@ export default function ReportsPage() {
                       </div>
                     </div>
 
-                    <div>
+                    <div className="w-full sm:w-auto">
                       {item.articleLink ? (
                         <a
                           href={item.articleLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
                         >
                           <span>Article Link</span>
                           <ExternalLink className="w-3.5 h-3.5 text-[#6D8196]" />
                         </a>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">No link assigned</span>
+                        <span className="text-xs text-slate-400 italic block sm:inline text-center sm:text-left">No link assigned</span>
                       )}
                     </div>
                   </div>
@@ -553,8 +570,8 @@ export default function ReportsPage() {
 
           {/* Section B: Updates */}
           <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-2xs overflow-hidden">
-            <div className="p-4 px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
-              <div className="flex items-center gap-2.5">
+            <div className="p-3.5 px-4 sm:p-4 sm:px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
+              <div className="flex items-center gap-2 sm:gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600 font-bold">
                   <RefreshCw className="w-4 h-4" />
                 </div>
@@ -563,39 +580,39 @@ export default function ReportsPage() {
                   {reports.writer.updates.length}
                 </span>
               </div>
-              <span className="text-xs text-[#737373] font-medium">Articles updated or revisions submitted</span>
+              <span className="text-xs text-[#737373] font-medium hidden sm:inline">Articles updated or revisions submitted</span>
             </div>
 
             {reports.writer.updates.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#737373]">No article updates recorded for this period.</div>
+              <div className="p-6 sm:p-8 text-center text-xs text-[#737373]">No article updates recorded for this period.</div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {reports.writer.updates.map((item: any) => (
-                  <div key={item.id} className="p-4 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
-                    <div className="space-y-1 min-w-0">
+                  <div key={item.id} className="p-3.5 px-4 sm:p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
+                    <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#4A4A4A]">{item.productName}</span>
+                        <span className="font-bold text-sm text-[#4A4A4A] break-words">{item.productName}</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
                           {item.siteName}
                         </span>
                       </div>
-                      <p className="text-xs text-[#737373] line-clamp-1">{item.notes}</p>
+                      <p className="text-xs text-[#737373] line-clamp-2">{item.notes}</p>
                       <p className="text-[11px] text-slate-400">Updated on {new Date(item.date).toLocaleDateString()}</p>
                     </div>
 
-                    <div>
+                    <div className="w-full sm:w-auto">
                       {item.articleLink ? (
                         <a
                           href={item.articleLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
                         >
                           <span>Article Link</span>
                           <ExternalLink className="w-3.5 h-3.5 text-[#6D8196]" />
                         </a>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">No link</span>
+                        <span className="text-xs text-slate-400 italic block sm:inline text-center sm:text-left">No link</span>
                       )}
                     </div>
                   </div>
@@ -606,8 +623,8 @@ export default function ReportsPage() {
 
           {/* Section C: Fixes */}
           <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-2xs overflow-hidden">
-            <div className="p-4 px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
-              <div className="flex items-center gap-2.5">
+            <div className="p-3.5 px-4 sm:p-4 sm:px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
+              <div className="flex items-center gap-2 sm:gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 font-bold">
                   <Wrench className="w-4 h-4" />
                 </div>
@@ -616,18 +633,18 @@ export default function ReportsPage() {
                   {reports.writer.fixes.length}
                 </span>
               </div>
-              <span className="text-xs text-[#737373] font-medium">Articles reworked after reviewer feedback</span>
+              <span className="text-xs text-[#737373] font-medium hidden sm:inline">Articles reworked after reviewer feedback</span>
             </div>
 
             {reports.writer.fixes.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#737373]">No redo fixes recorded for this period.</div>
+              <div className="p-6 sm:p-8 text-center text-xs text-[#737373]">No redo fixes recorded for this period.</div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {reports.writer.fixes.map((item: any) => (
-                  <div key={item.id} className="p-4 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
-                    <div className="space-y-1 min-w-0">
+                  <div key={item.id} className="p-3.5 px-4 sm:p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
+                    <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#4A4A4A]">{item.productName}</span>
+                        <span className="font-bold text-sm text-[#4A4A4A] break-words">{item.productName}</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
                           {item.siteName}
                         </span>
@@ -635,23 +652,23 @@ export default function ReportsPage() {
                           Fixed
                         </span>
                       </div>
-                      <p className="text-xs text-[#737373] line-clamp-1">{item.notes}</p>
+                      <p className="text-xs text-[#737373] line-clamp-2">{item.notes}</p>
                       <p className="text-[11px] text-slate-400">Fixed on {new Date(item.date).toLocaleDateString()}</p>
                     </div>
 
-                    <div>
+                    <div className="w-full sm:w-auto">
                       {item.articleLink ? (
                         <a
                           href={item.articleLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
                         >
                           <span>Article Link</span>
                           <ExternalLink className="w-3.5 h-3.5 text-[#6D8196]" />
                         </a>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">No link</span>
+                        <span className="text-xs text-slate-400 italic block sm:inline text-center sm:text-left">No link</span>
                       )}
                     </div>
                   </div>
@@ -666,55 +683,70 @@ export default function ReportsPage() {
       {/* 2. TEAM LEAD WORK REPORT SECTION */}
       {/* ───────────────────────────────────────────────────────────────── */}
       {isTeamLead && reports.teamLead && (
-        <div className="space-y-8 animate-fadeIn">
+        <div className="space-y-6 sm:space-y-8 animate-fadeIn">
           {/* Summary Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center mb-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-50 flex items-center justify-center mb-2 sm:mb-3">
                 <FileText className="w-4 h-4 text-indigo-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.teamLead.metrics.totalNewArticles}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Articles Written</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.teamLead.metrics.totalNewArticles}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Articles Written</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center mb-3">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-sky-50 flex items-center justify-center mb-2 sm:mb-3">
                 <ShieldCheck className="w-4 h-4 text-sky-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.teamLead.metrics.totalReviews}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Reviews Conducted</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.teamLead.metrics.totalReviews}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Reviews Conducted</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-2 sm:mb-3">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.teamLead.metrics.approvedReviews}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Articles Approved</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.teamLead.metrics.approvedReviews}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Articles Approved</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center mb-3">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-50 flex items-center justify-center mb-2 sm:mb-3">
                 <AlertTriangle className="w-4 h-4 text-rose-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.teamLead.metrics.redoReviews}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Redos Requested</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.teamLead.metrics.redoReviews}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Redos Requested</p>
               </div>
             </div>
+          </div>
+
+          {/* Visual Analytics Graphs */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <ChartPieInteractive
+              data={reports.teamLead.statusDistribution || []}
+              title="Review Decision Distribution"
+              description="Approval and redo request breakdown for reviewed articles"
+              centerLabel="Reviews"
+            />
+            <ChartLineLabelCustom
+              data={reports.teamLead.monthlyTrend || []}
+              title="Review Activity Trend"
+              description="Reviews conducted over the last 6 months"
+            />
           </div>
 
           {/* Section A: New Articles Written by TL */}
           {reports.teamLead.newArticles.length > 0 && (
             <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-2xs overflow-hidden">
-              <div className="p-4 px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
-                <div className="flex items-center gap-2.5">
+              <div className="p-3.5 px-4 sm:p-4 sm:px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
+                <div className="flex items-center gap-2 sm:gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">
                     <FileText className="w-4 h-4" />
                   </div>
@@ -727,10 +759,10 @@ export default function ReportsPage() {
 
               <div className="divide-y divide-slate-100">
                 {reports.teamLead.newArticles.map((item: any) => (
-                  <div key={item.id} className="p-4 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
-                    <div className="space-y-1 min-w-0">
+                  <div key={item.id} className="p-3.5 px-4 sm:p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
+                    <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#4A4A4A]">{item.productName}</span>
+                        <span className="font-bold text-sm text-[#4A4A4A] break-words">{item.productName}</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
                           {item.siteName}
                         </span>
@@ -738,19 +770,19 @@ export default function ReportsPage() {
                       <p className="text-xs text-[#737373]">Date: {new Date(item.date).toLocaleDateString()}</p>
                     </div>
 
-                    <div>
+                    <div className="w-full sm:w-auto">
                       {item.articleLink ? (
                         <a
                           href={item.articleLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
                         >
                           <span>Article Link</span>
                           <ExternalLink className="w-3.5 h-3.5 text-[#6D8196]" />
                         </a>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">No link</span>
+                        <span className="text-xs text-slate-400 italic block sm:inline text-center sm:text-left">No link</span>
                       )}
                     </div>
                   </div>
@@ -761,8 +793,8 @@ export default function ReportsPage() {
 
           {/* Section B: Reviewed Articles */}
           <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-2xs overflow-hidden">
-            <div className="p-4 px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
-              <div className="flex items-center gap-2.5">
+            <div className="p-3.5 px-4 sm:p-4 sm:px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
+              <div className="flex items-center gap-2 sm:gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600 font-bold">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
@@ -771,18 +803,18 @@ export default function ReportsPage() {
                   {reports.teamLead.reviews.length}
                 </span>
               </div>
-              <span className="text-xs text-[#737373] font-medium">Articles inspected and evaluated</span>
+              <span className="text-xs text-[#737373] font-medium hidden sm:inline">Articles inspected and evaluated</span>
             </div>
 
             {reports.teamLead.reviews.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#737373]">No reviews conducted in this period.</div>
+              <div className="p-6 sm:p-8 text-center text-xs text-[#737373]">No reviews conducted in this period.</div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {reports.teamLead.reviews.map((item: any) => (
-                  <div key={item.id} className="p-4 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
-                    <div className="space-y-1 min-w-0">
+                  <div key={item.id} className="p-3.5 px-4 sm:p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
+                    <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#4A4A4A]">{item.productName}</span>
+                        <span className="font-bold text-sm text-[#4A4A4A] break-words">{item.productName}</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
                           {item.siteName}
                         </span>
@@ -797,23 +829,23 @@ export default function ReportsPage() {
                           {item.verdict}
                         </span>
                       </div>
-                      <p className="text-xs text-[#737373] line-clamp-1">Remarks: {item.suggestion}</p>
+                      <p className="text-xs text-[#737373] line-clamp-2">Remarks: {item.suggestion}</p>
                       <p className="text-[11px] text-slate-400">Reviewed on {new Date(item.reviewedAt).toLocaleDateString()}</p>
                     </div>
 
-                    <div>
+                    <div className="w-full sm:w-auto">
                       {item.articleLink ? (
                         <a
                           href={item.articleLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5] text-xs font-bold text-[#4A4A4A] shadow-2xs transition cursor-pointer"
                         >
                           <span>Article Link</span>
                           <ExternalLink className="w-3.5 h-3.5 text-[#6D8196]" />
                         </a>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">No link</span>
+                        <span className="text-xs text-slate-400 italic block sm:inline text-center sm:text-left">No link</span>
                       )}
                     </div>
                   </div>
@@ -828,54 +860,69 @@ export default function ReportsPage() {
       {/* 3. LINKER WORK REPORT SECTION */}
       {/* ───────────────────────────────────────────────────────────────── */}
       {isLinker && reports.linker && (
-        <div className="space-y-8 animate-fadeIn">
+        <div className="space-y-6 sm:space-y-8 animate-fadeIn">
           {/* Summary Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center mb-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-50 flex items-center justify-center mb-2 sm:mb-3">
                 <Package className="w-4 h-4 text-indigo-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.linker.metrics.totalProductsAdded}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Products Added</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.linker.metrics.totalProductsAdded}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Products Added</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center mb-3">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-50 flex items-center justify-center mb-2 sm:mb-3">
                 <Link2 className="w-4 h-4 text-purple-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.linker.metrics.totalLinksAdded}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Links Configured</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.linker.metrics.totalLinksAdded}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Links Configured</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-2 sm:mb-3">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.linker.metrics.acceptedLinks}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Accepted Links</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.linker.metrics.acceptedLinks}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Accepted Links</p>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
-              <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center mb-3">
+            <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#CBCBCB]/60 shadow-2xs flex flex-col justify-between">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-sky-50 flex items-center justify-center mb-2 sm:mb-3">
                 <Layers className="w-4 h-4 text-sky-600" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-[#4A4A4A]">{reports.linker.metrics.totalUpdates}</h3>
-                <p className="text-xs font-bold text-[#737373] uppercase tracking-wider mt-1">Other Updates</p>
+                <h3 className="text-xl sm:text-3xl font-extrabold text-[#4A4A4A]">{reports.linker.metrics.totalUpdates}</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-[#737373] uppercase tracking-wider mt-0.5 sm:mt-1">Other Updates</p>
               </div>
             </div>
           </div>
 
+          {/* Visual Analytics Graphs */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <ChartPieInteractive
+              data={reports.linker.statusDistribution || []}
+              title="Link Operations Distribution"
+              description="Verification states across configured product links"
+              centerLabel="Links"
+            />
+            <ChartLineLabelCustom
+              data={reports.linker.monthlyTrend || []}
+              title="Link Configuration Trend"
+              description="Links configured over the last 6 months"
+            />
+          </div>
+
           {/* Section A: Products Added */}
           <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-2xs overflow-hidden">
-            <div className="p-4 px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
-              <div className="flex items-center gap-2.5">
+            <div className="p-3.5 px-4 sm:p-4 sm:px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
+              <div className="flex items-center gap-2 sm:gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">
                   <Package className="w-4 h-4" />
                 </div>
@@ -884,18 +931,18 @@ export default function ReportsPage() {
                   {reports.linker.productsAdded.length}
                 </span>
               </div>
-              <span className="text-xs text-[#737373] font-medium">New products registered in the pipeline</span>
+              <span className="text-xs text-[#737373] font-medium hidden sm:inline">New products registered in the pipeline</span>
             </div>
 
             {reports.linker.productsAdded.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#737373]">No products added in this period.</div>
+              <div className="p-6 sm:p-8 text-center text-xs text-[#737373]">No products added in this period.</div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {reports.linker.productsAdded.map((item: any) => (
-                  <div key={item.id} className="p-4 px-6 flex items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
-                    <div className="space-y-0.5">
+                  <div key={item.id} className="p-3.5 px-4 sm:p-4 sm:px-6 flex items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
+                    <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#4A4A4A]">{item.name}</span>
+                        <span className="font-bold text-sm text-[#4A4A4A] break-words">{item.name}</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
                           {item.siteName}
                         </span>
@@ -913,8 +960,8 @@ export default function ReportsPage() {
 
           {/* Section B: Links Added on Products */}
           <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-2xs overflow-hidden">
-            <div className="p-4 px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
-              <div className="flex items-center gap-2.5">
+            <div className="p-3.5 px-4 sm:p-4 sm:px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
+              <div className="flex items-center gap-2 sm:gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 font-bold">
                   <Link2 className="w-4 h-4" />
                 </div>
@@ -923,18 +970,18 @@ export default function ReportsPage() {
                   {reports.linker.linksAdded.length}
                 </span>
               </div>
-              <span className="text-xs text-[#737373] font-medium">Affiliate & bridge links configured</span>
+              <span className="text-xs text-[#737373] font-medium hidden sm:inline">Affiliate & bridge links configured</span>
             </div>
 
             {reports.linker.linksAdded.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#737373]">No links added in this period.</div>
+              <div className="p-6 sm:p-8 text-center text-xs text-[#737373]">No links added in this period.</div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {reports.linker.linksAdded.map((item: any) => (
-                  <div key={item.id} className="p-4 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
-                    <div className="space-y-1 min-w-0">
+                  <div key={item.id} className="p-3.5 px-4 sm:p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
+                    <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#4A4A4A]">{item.productName}</span>
+                        <span className="font-bold text-sm text-[#4A4A4A] break-words">{item.productName}</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
                           {item.siteName}
                         </span>
@@ -967,8 +1014,8 @@ export default function ReportsPage() {
           {/* Section C: Other Work */}
           {reports.linker.otherWork.length > 0 && (
             <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-2xs overflow-hidden">
-              <div className="p-4 px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
-                <div className="flex items-center gap-2.5">
+              <div className="p-3.5 px-4 sm:p-4 sm:px-6 border-b border-[#CBCBCB]/40 flex items-center justify-between bg-[#FAF9F5]/60">
+                <div className="flex items-center gap-2 sm:gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600 font-bold">
                     <Layers className="w-4 h-4" />
                   </div>
@@ -981,15 +1028,15 @@ export default function ReportsPage() {
 
               <div className="divide-y divide-slate-100">
                 {reports.linker.otherWork.map((item: any) => (
-                  <div key={item.id} className="p-4 px-6 flex items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
-                    <div className="space-y-0.5">
+                  <div key={item.id} className="p-3.5 px-4 sm:p-4 sm:px-6 flex items-center justify-between gap-3 hover:bg-[#FAF9F5] transition-colors">
+                    <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#4A4A4A]">{item.productName}</span>
+                        <span className="font-bold text-sm text-[#4A4A4A] break-words">{item.productName}</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
                           {item.siteName}
                         </span>
                       </div>
-                      <p className="text-xs text-[#737373]">{item.notes}</p>
+                      <p className="text-xs text-[#737373] break-words">{item.notes}</p>
                       <p className="text-[11px] text-slate-400">Date: {new Date(item.updatedAt).toLocaleDateString()}</p>
                     </div>
                   </div>

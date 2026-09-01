@@ -34,13 +34,13 @@ export function ChartLineLabelCustom({ data, title = "Monthly Articles Trend", d
   } satisfies ChartConfig
 
   return (
-    <Card className="flex flex-col border-slate-200 shadow-sm h-full">
-      <CardHeader>
-        <CardTitle className="text-sm font-bold text-slate-800">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+    <Card className="flex flex-col border-slate-200 shadow-sm h-full overflow-hidden">
+      <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
+        <CardTitle className="text-sm sm:text-base font-bold text-slate-800 tracking-tight">{title}</CardTitle>
+        <CardDescription className="text-xs text-slate-500">{description}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-2">
-        <ChartContainer config={chartConfig} className="w-full h-full min-h-[250px]">
+      <CardContent className="flex-1 p-2 sm:p-6 sm:pt-0 pb-2">
+        <ChartContainer config={chartConfig} className="w-full h-full min-h-[220px] sm:min-h-[250px]">
           <LineChart
             accessibilityLayer
             data={formattedData}

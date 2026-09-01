@@ -215,10 +215,36 @@ export default function Sidebar() {
             if (notif.senderId && userId && Number(notif.senderId) === Number(userId)) {
               return;
             }
-            setToast({ message: notif.message });
+
+            // Notification preferences
+            const soundEnabled = typeof window !== "undefined" ? localStorage.getItem("notif_sound_enabled") !== "false" : true;
+            const toastEnabled = typeof window !== "undefined" ? localStorage.getItem("notif_toast_enabled") !== "false" : true;
+            const soundVolStr = typeof window !== "undefined" ? localStorage.getItem("notif_sound_volume") : null;
+            const soundVolume = soundVolStr !== null ? parseFloat(soundVolStr) : 0.8;
+            const desktopEnabled = typeof window !== "undefined" ? localStorage.getItem("notif_desktop_enabled") === "true" : false;
+
+            if (toastEnabled) {
+              setToast({ message: notif.message });
+            }
             setUnreadCount((prev) => prev + 1);
-            audioObj.currentTime = 0;
-            audioObj.play().catch(() => {});
+
+            if (soundEnabled) {
+              audioObj.volume = Math.max(0, Math.min(1, isNaN(soundVolume) ? 0.8 : soundVolume));
+              audioObj.currentTime = 0;
+              audioObj.play().catch(() => {});
+            }
+
+            if (desktopEnabled && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+              try {
+                new Notification("Daily Work Report", {
+                  body: notif.message,
+                  icon: "/favicon.ico",
+                });
+              } catch (e) {
+                // Ignore notification construct errors on restricted environments
+              }
+            }
+
             const customEvent = new CustomEvent("live-notification", { detail: notif });
             window.dispatchEvent(customEvent);
           } catch (err) {

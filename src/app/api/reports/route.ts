@@ -309,6 +309,84 @@ export async function GET(req: NextRequest) {
       updatedAt: h.updatedAt,
     }));
 
+    // ─────────────────────────────────────────────
+    // TRENDS & DISTRIBUTIONS FOR GRAPHS
+    // ─────────────────────────────────────────────
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const d = new Date();
+
+    const getEmptyMonthTrend = () => {
+      const map = new Map<string, number>();
+      for (let i = 5; i >= 0; i--) {
+        const past = new Date(d.getFullYear(), d.getMonth() - i, 1);
+        map.set(monthNames[past.getMonth()], 0);
+      }
+      return map;
+    };
+
+    // Writer Graphs Data
+    const writerTrendMap = getEmptyMonthTrend();
+    const writerStatusCounts: Record<string, number> = {};
+    userArticles.forEach((a) => {
+      const m = monthNames[new Date(a.updatedAt).getMonth()];
+      if (writerTrendMap.has(m)) {
+        writerTrendMap.set(m, (writerTrendMap.get(m) || 0) + 1);
+      }
+      writerStatusCounts[a.status] = (writerStatusCounts[a.status] || 0) + 1;
+    });
+
+    const writerMonthlyTrend = Array.from(writerTrendMap.entries()).map(([month, articles]) => ({ month, articles }));
+    const writerStatusDistribution = [
+      { name: "Completed", value: writerStatusCounts["COMPLETED"] || 0, color: "#10b981" },
+      { name: "In Progress", value: writerStatusCounts["IN_PROGRESS"] || 0, color: "#3b82f6" },
+      { name: "Pending", value: writerStatusCounts["PENDING"] || 0, color: "#f59e0b" },
+      { name: "Redo", value: writerStatusCounts["REDO"] || 0, color: "#ef4444" },
+    ].filter((s) => s.value > 0);
+    if (writerStatusDistribution.length === 0) {
+      writerStatusDistribution.push({ name: "No Articles", value: 1, color: "#e2e8f0" });
+    }
+
+    // Team Lead Graphs Data
+    const tlTrendMap = getEmptyMonthTrend();
+    teamLeadReviews.forEach((r) => {
+      const m = monthNames[new Date(r.reviewedAt).getMonth()];
+      if (tlTrendMap.has(m)) {
+        tlTrendMap.set(m, (tlTrendMap.get(m) || 0) + 1);
+      }
+    });
+    const tlMonthlyTrend = Array.from(tlTrendMap.entries()).map(([month, articles]) => ({ month, articles }));
+    const tlApproved = reviewedArticlesList.filter((r) => r.approved).length;
+    const tlRedo = reviewedArticlesList.filter((r) => !r.approved).length;
+    const tlStatusDistribution = [
+      { name: "Approved", value: tlApproved, color: "#10b981" },
+      { name: "Redo Requested", value: tlRedo, color: "#ef4444" },
+      ...(newArticlesList.length > 0 ? [{ name: "Articles Written", value: newArticlesList.length, color: "#6366f1" }] : []),
+    ].filter((s) => s.value > 0);
+    if (tlStatusDistribution.length === 0) {
+      tlStatusDistribution.push({ name: "No Reviews", value: 1, color: "#e2e8f0" });
+    }
+
+    // Linker Graphs Data
+    const linkerTrendMap = getEmptyMonthTrend();
+    const linkerStatusCounts: Record<string, number> = {};
+    linkerLinks.forEach((l) => {
+      const m = monthNames[new Date(l.addedAt).getMonth()];
+      if (linkerTrendMap.has(m)) {
+        linkerTrendMap.set(m, (linkerTrendMap.get(m) || 0) + 1);
+      }
+      linkerStatusCounts[l.status] = (linkerStatusCounts[l.status] || 0) + 1;
+    });
+    const linkerMonthlyTrend = Array.from(linkerTrendMap.entries()).map(([month, articles]) => ({ month, articles }));
+    const linkerStatusDistribution = [
+      { name: "Accepted", value: linkerStatusCounts["ACCEPTED"] || 0, color: "#10b981" },
+      { name: "Requested", value: linkerStatusCounts["REQUESTED"] || 0, color: "#3b82f6" },
+      { name: "Issue", value: linkerStatusCounts["ISSUE"] || 0, color: "#ef4444" },
+      { name: "Products", value: productsAddedList.length, color: "#6366f1" },
+    ].filter((s) => s.value > 0);
+    if (linkerStatusDistribution.length === 0) {
+      linkerStatusDistribution.push({ name: "No Links", value: 1, color: "#e2e8f0" });
+    }
+
     // If caller is Admin/Super Admin, retrieve list of users so they can inspect any member's work report
     let selectableUsers: any[] = [];
     if (callerRole === "SUPER_ADMIN" || callerRole === "ADMIN") {
@@ -342,6 +420,8 @@ export async function GET(req: NextRequest) {
           newArticles: newArticlesList,
           updates: updatesList,
           fixes: fixesList,
+          monthlyTrend: writerMonthlyTrend,
+          statusDistribution: writerStatusDistribution,
           metrics: {
             totalNew: newArticlesList.length,
             totalUpdates: updatesList.length,
@@ -352,6 +432,8 @@ export async function GET(req: NextRequest) {
         teamLead: {
           newArticles: newArticlesList,
           reviews: reviewedArticlesList,
+          monthlyTrend: tlMonthlyTrend,
+          statusDistribution: tlStatusDistribution,
           specialApprovals: teamLeadSpecialApprovals.map((sa) => ({
             id: sa.id,
             productName: sa.productName,
@@ -362,14 +444,16 @@ export async function GET(req: NextRequest) {
           metrics: {
             totalNewArticles: newArticlesList.length,
             totalReviews: reviewedArticlesList.length,
-            approvedReviews: reviewedArticlesList.filter((r) => r.approved).length,
-            redoReviews: reviewedArticlesList.filter((r) => !r.approved).length,
+            approvedReviews: tlApproved,
+            redoReviews: tlRedo,
           },
         },
         linker: {
           productsAdded: productsAddedList,
           linksAdded: linksAddedList,
           otherWork: linkerOtherWorkList,
+          monthlyTrend: linkerMonthlyTrend,
+          statusDistribution: linkerStatusDistribution,
           metrics: {
             totalProductsAdded: productsAddedList.length,
             totalLinksAdded: linksAddedList.length,

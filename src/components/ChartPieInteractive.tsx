@@ -26,7 +26,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-export function ChartPieInteractive({ data, title = "Status Distribution", description = "Current Article Statuses" }: { data: any[], title?: string, description?: string }) {
+export function ChartPieInteractive({
+  data,
+  title = "Status Distribution",
+  description = "Current Article Statuses",
+  centerLabel = "Articles",
+}: {
+  data: any[];
+  title?: string;
+  description?: string;
+  centerLabel?: string;
+}) {
   const id = "pie-interactive"
   
   // Create formatted data for Recharts, handling shadcn's 'fill' expectation
@@ -104,16 +114,16 @@ export function ChartPieInteractive({ data, title = "Status Distribution", descr
   }
 
   return (
-    <Card data-chart={id} className="flex flex-col border-slate-200/60 shadow-sm h-full">
+    <Card data-chart={id} className="flex flex-col border-slate-200/60 shadow-sm h-full overflow-hidden">
       <ChartStyle id={id} config={chartConfig} />
-      <CardHeader className="flex-row items-start space-y-0 pb-0">
-        <div className="grid gap-1">
-          <CardTitle className="text-sm font-bold text-slate-800">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
+      <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-4 space-y-0 p-4 sm:p-6 pb-2 sm:pb-0">
+        <div className="grid gap-0.5 sm:gap-1 min-w-0">
+          <CardTitle className="text-sm sm:text-base font-bold text-slate-800 tracking-tight">{title}</CardTitle>
+          <CardDescription className="text-xs text-slate-500 leading-tight">{description}</CardDescription>
         </div>
         <Select value={activeStatus} onValueChange={setActiveStatus}>
           <SelectTrigger
-            className="ml-auto h-7 w-[140px] rounded-lg pl-2.5 text-xs font-semibold"
+            className="w-full sm:w-[140px] sm:ml-auto h-8 sm:h-7 rounded-lg pl-2.5 text-xs font-semibold shrink-0 cursor-pointer"
             aria-label="Select a value"
           >
             <SelectValue placeholder="Select status" />
@@ -183,7 +193,7 @@ export function ChartPieInteractive({ data, title = "Status Distribution", descr
                           y={(viewBox.cy || 0) + 24}
                           className="fill-muted-foreground text-xs font-medium"
                         >
-                          Articles
+                          {centerLabel}
                         </tspan>
                       </text>
                     )
