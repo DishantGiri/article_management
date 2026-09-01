@@ -1,5 +1,5 @@
 import CustomSelect from "@/components/CustomSelect";
-import { Link2, AlertCircle, Tag, X, Plus, Building2, Copy, Globe, Check } from "lucide-react";
+import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
@@ -7,11 +7,16 @@ import toast from "react-hot-toast";
 interface Product {
   id: number;
   name: string;
+  trendLink?: string | null;
+  previewLink?: string | null;
   linkLogs?: any[];
   site: {
     id: number;
     name: string;
     url?: string | null;
+  };
+  article?: {
+    articleLink?: string | null;
   };
 }
 
@@ -35,6 +40,16 @@ const LINK_STATUSES = [
   { value: "NEED_TO_CHECK", label: "Need to check in future" },
   { value: "PRESELL_PAGE", label: "Presell page" },
   { value: "REDIRECTED", label: "Redirected" },
+];
+
+const REMARK_TEMPLATES = [
+  { value: "Standard affiliate setup — links verified active", label: "Standard affiliate setup — links verified active" },
+  { value: "Bridge page live & redirecting to buy page", label: "Bridge page live & redirecting to buy page" },
+  { value: "Direct purchase link configured for site", label: "Direct purchase link configured for site" },
+  { value: "Under review — waiting for affiliate network approval", label: "Under review — waiting for affiliate approval" },
+  { value: "Presell page active with multi-geo routing", label: "Presell page active with multi-geo routing" },
+  { value: "Need to check in future — potential link/stock change", label: "Need to check in future — potential link change" },
+  { value: "No remarks / clean configuration", label: "No remarks / clean configuration" },
 ];
 
 const isValidUrl = (url: string) => {
@@ -66,7 +81,7 @@ export default function AddLinkModal({
   >([{ affiliateName: "", affiliateLink: "" }]);
   const [geos, setGeos] = useState<string[]>([]);
   const [status, setStatus] = useState("REQUESTED");
-  const [linkerRemarks, setLinkerRemarks] = useState("");
+  const [linkerRemarks, setLinkerRemarks] = useState("Standard affiliate setup — links verified active");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -76,12 +91,118 @@ export default function AddLinkModal({
   const [dbAffiliates, setDbAffiliates] = useState<DbAffiliate[]>([]);
   const [dbGeos, setDbGeos] = useState<string[]>([]);
 
-  const [showAddAffiliate, setShowAddAffiliate] = useState(false);
-  const [newAffiliateName, setNewAffiliateName] = useState("");
-  const [addingAffiliate, setAddingAffiliate] = useState(false);
+  const selectedProduct = useMemo(
+    () => products.find((p) => p.id === selectedProductId),
+    [products, selectedProductId]
+  );
+
+  const allAffiliates = useMemo(() => dbAffiliates.map((a) => a.name), [dbAffiliates]);
+  const allGeos = dbGeos;
+
+  const productSlug = useMemo(() => {
+    if (!selectedProduct?.name) return "";
+    return selectedProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }, [selectedProduct]);
+
+  const siteBaseUrl = useMemo(() => {
+    if (!selectedProduct?.site?.url) return "";
+    return selectedProduct.site.url.replace(/\/+$/, "");
+  }, [selectedProduct]);
+
+  // Dropdown options for Bridge Page Link
+  const bridgeLinkOptions = useMemo(() => {
+    const opts: Array<{ value: string; label: string }> = [];
+    if (siteBaseUrl && productSlug) {
+      opts.push({
+        value: `${siteBaseUrl}/${productSlug}`,
+        label: `Landing Page: ${siteBaseUrl}/${productSlug}`,
+      });
+    }
+    if (selectedProduct?.article?.articleLink) {
+      opts.push({
+        value: selectedProduct.article.articleLink,
+        label: `Writer Article Link: ${selectedProduct.article.articleLink}`,
+      });
+    }
+    if (siteBaseUrl) {
+      opts.push({
+        value: siteBaseUrl,
+        label: `Site Root URL: ${siteBaseUrl}`,
+      });
+    }
+    return opts;
+  }, [siteBaseUrl, productSlug, selectedProduct]);
+
+  // Dropdown options for Buy Link
+  const buyLinkOptions = useMemo(() => {
+    const opts: Array<{ value: string; label: string }> = [];
+    if (siteBaseUrl && productSlug) {
+      opts.push({
+        value: `${siteBaseUrl}/${productSlug}`,
+        label: `Direct Buy / Landing: ${siteBaseUrl}/${productSlug}`,
+      });
+    }
+    if (affiliateEntries[0]?.affiliateLink) {
+      opts.push({
+        value: affiliateEntries[0].affiliateLink,
+        label: `Primary Affiliate URL: ${affiliateEntries[0].affiliateLink}`,
+      });
+    }
+    if (selectedProduct?.trendLink) {
+      opts.push({
+        value: selectedProduct.trendLink,
+        label: `Product Trend Link: ${selectedProduct.trendLink}`,
+      });
+    }
+    if (selectedProduct?.previewLink) {
+      opts.push({
+        value: selectedProduct.previewLink,
+        label: `Product Preview Link: ${selectedProduct.previewLink}`,
+      });
+    }
+    return opts;
+  }, [siteBaseUrl, productSlug, affiliateEntries, selectedProduct]);
+
+  // Dropdown options for Affiliate Links
+  const affiliateLinkOptions = useMemo(() => {
+    const opts: Array<{ value: string; label: string }> = [];
+    if (selectedProduct?.trendLink) {
+      opts.push({
+        value: selectedProduct.trendLink,
+        label: `Trend URL: ${selectedProduct.trendLink}`,
+      });
+    }
+    if (selectedProduct?.previewLink) {
+      opts.push({
+        value: selectedProduct.previewLink,
+        label: `Preview URL: ${selectedProduct.previewLink}`,
+      });
+    }
+    if (selectedProduct?.article?.articleLink) {
+      opts.push({
+        value: selectedProduct.article.articleLink,
+        label: `Article URL: ${selectedProduct.article.articleLink}`,
+      });
+    }
+    if (siteBaseUrl && productSlug) {
+      opts.push({
+        value: `${siteBaseUrl}/aff/${productSlug}`,
+        label: `Affiliate Tag: ${siteBaseUrl}/aff/${productSlug}`,
+      });
+      opts.push({
+        value: `${siteBaseUrl}/${productSlug}`,
+        label: `Direct Link: ${siteBaseUrl}/${productSlug}`,
+      });
+    }
+    return opts;
+  }, [selectedProduct, siteBaseUrl, productSlug]);
 
   const addAffiliateEntry = () => {
-    setAffiliateEntries((prev) => [...prev, { affiliateName: "", affiliateLink: "" }]);
+    const defaultAffLink = affiliateLinkOptions[0]?.value || "";
+    setAffiliateEntries((prev) => [
+      ...prev,
+      { affiliateName: allAffiliates[0] || "", affiliateLink: defaultAffLink },
+    ]);
   };
 
   const removeAffiliateEntry = (index: number) => {
@@ -106,52 +227,12 @@ export default function AddLinkModal({
     );
   };
 
-  const handleInlineAddAffiliate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAffiliateName.trim()) return;
-    setAddingAffiliate(true);
-    setError("");
-    try {
-      const res = await fetch("/api/affiliates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newAffiliateName.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to add affiliate");
-      setDbAffiliates((prev) => [...prev, data]);
-      setAffiliateEntries((prev) => {
-        const next = [...prev];
-        const lastIdx = next.length - 1;
-        if (lastIdx >= 0 && !next[lastIdx].affiliateName) {
-          next[lastIdx] = { ...next[lastIdx], affiliateName: data.name };
-        }
-        return next;
-      });
-      setNewAffiliateName("");
-      setShowAddAffiliate(false);
-      toast.success(`Affiliate "${data.name}" added successfully!`);
-    } catch (err: any) {
-      setError(err.message || "Failed to add affiliate");
-    } finally {
-      setAddingAffiliate(false);
-    }
-  };
-
-  const selectedProduct = useMemo(
-    () => products.find((p) => p.id === selectedProductId),
-    [products, selectedProductId]
-  );
-
-  const allAffiliates = useMemo(() => dbAffiliates.map((a) => a.name), [dbAffiliates]);
-  const allGeos = dbGeos;
-
   useEffect(() => {
     if (isOpen) {
       setLoadingProducts(true);
       setError("");
       setStatus("REQUESTED");
-      setLinkerRemarks("");
+      setLinkerRemarks("Standard affiliate setup — links verified active");
       setBridgePageLink("");
       setBuyLink("");
       setAffiliateEntries([{ affiliateName: "", affiliateLink: "" }]);
@@ -183,13 +264,41 @@ export default function AddLinkModal({
     }
   }, [isOpen, preselectedProductId]);
 
+  // Auto-fill smart link defaults on product select
   useEffect(() => {
-    if (!selectedProductId) return;
-    setBridgePageLink("");
-    setBuyLink("");
+    if (!selectedProduct) return;
+    const slug = selectedProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const base = selectedProduct.site?.url ? selectedProduct.site.url.replace(/\/+$/, "") : "";
+    const autoBridge = selectedProduct.article?.articleLink || (base ? `${base}/${slug}` : "");
+    const autoBuy = base ? `${base}/${slug}` : "";
+    const autoAffLink = selectedProduct.trendLink || selectedProduct.previewLink || (base ? `${base}/aff/${slug}` : "");
+
+    setBridgePageLink(autoBridge);
+    setBuyLink(autoBuy);
     setBridgeLinkError("");
     setBuyLinkError("");
-  }, [selectedProductId]);
+
+    setAffiliateEntries((prev) => {
+      const defaultAffName = allAffiliates[0] || "";
+      if (prev.length === 0 || (!prev[0].affiliateName && !prev[0].affiliateLink)) {
+        return [{ affiliateName: defaultAffName, affiliateLink: autoAffLink }];
+      }
+      return prev.map((entry, idx) => {
+        if (idx === 0) {
+          return {
+            ...entry,
+            affiliateName: entry.affiliateName || defaultAffName,
+            affiliateLink: entry.affiliateLink || autoAffLink,
+          };
+        }
+        return entry;
+      });
+    });
+
+    if (allGeos.length > 0 && geos.length === 0) {
+      setGeos(allGeos.slice(0, 4)); // Default to Tier 1 GEOs (e.g. US, UK, CA, AU)
+    }
+  }, [selectedProduct, allAffiliates, allGeos]);
 
   const toggleGeo = (geo: string) => {
     setGeos((prev) => (prev.includes(geo) ? prev.filter((g) => g !== geo) : [...prev, geo]));
@@ -247,7 +356,7 @@ export default function AddLinkModal({
     }
 
     if (session?.user?.role === "TEAM_LEAD") {
-      setError("Access Denied: Team Leads cannot add links. Only Linkers can add links.");
+      setError("Access Denied: Team Leads cannot add links. Only Linkers and Admins can add links.");
       return;
     }
 
@@ -296,9 +405,9 @@ export default function AddLinkModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[92vh] border border-slate-100 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[92vh] border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors">
         {/* Header */}
-        <div className="px-6 py-4 bg-[#4A4A4A] text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 bg-[#4A4A4A] dark:bg-slate-800 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#6D8196]/30 border border-[#6D8196]/40 flex items-center justify-center text-white shadow-inner">
               <Link2 className="w-5 h-5" />
@@ -312,8 +421,8 @@ export default function AddLinkModal({
                   </span>
                 )}
               </h2>
-              <p className="text-xs text-[#EAEAEA] font-medium">
-                Configure affiliate links and site-specific landing pages
+              <p className="text-xs text-[#EAEAEA] dark:text-slate-300 font-medium">
+                Configure affiliate links and site-specific landing pages via dropdown selections
               </p>
             </div>
           </div>
@@ -327,76 +436,69 @@ export default function AddLinkModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-5 flex-1">
+        <div className="p-6 overflow-y-auto space-y-5 flex-1 bg-[#FAF9F5]/50 dark:bg-slate-950">
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2.5 shadow-2xs">
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2.5 shadow-2xs">
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-500" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Section 1: Product Selection */}
-          <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/70 space-y-2">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5 text-indigo-600" />
+          {/* Section 1: Product Selection (Dropdown) */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/70 dark:border-slate-800 space-y-2 shadow-2xs">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               Product <span className="text-rose-500">*</span>
             </label>
             <CustomSelect
               value={selectedProductId ? String(selectedProductId) : ""}
               onChange={(val) => setSelectedProductId(val ? Number(val) : null)}
-              placeholder="Select Product..."
+              placeholder="Select Product from Dropdown..."
               disabled={loadingProducts || !!preselectedProductId}
+              searchable={true}
+              searchPlaceholder="Search products by name or site..."
               options={products.map((p) => {
                 const isUnlinked = !p.linkLogs || p.linkLogs.length === 0;
                 return {
                   value: String(p.id),
-                  label: `${p.name} — (Site: ${p.site?.name || "Unassigned"}) ${isUnlinked ? "⚠️ (Needs Link Logs)" : ""}`
+                  label: `${p.name} — (Site: ${p.site?.name || "Unassigned"}) ${isUnlinked ? "⚠️ (Needs Link Logs)" : ""}`,
                 };
               })}
             />
           </div>
 
-          {/* Section 2: Affiliate Info (Supports Multiple Networks per Product) */}
-          <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200/70">
+          {/* Section 2: Affiliate Info (Dropdowns) */}
+          <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/70 dark:border-slate-800 shadow-2xs">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Affiliate Network Links <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                Affiliate Network & Link Selection <span className="text-rose-500">*</span>
               </label>
+              <button
+                type="button"
+                onClick={addAffiliateEntry}
+                className="text-xs font-bold text-[#6D8196] hover:text-[#5A6D81] dark:text-sky-400 flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Another Network
+              </button>
             </div>
-
-            {showAddAffiliate && (
-              <form onSubmit={handleInlineAddAffiliate} className="p-2.5 bg-[#FAF9F5] border border-[#CBCBCB] rounded-xl flex gap-2">
-                <input
-                  type="text"
-                  placeholder="New affiliate name (e.g. Smashloud, ClickBank)..."
-                  value={newAffiliateName}
-                  onChange={(e) => setNewAffiliateName(e.target.value)}
-                  className="flex-1 px-3 py-1.5 bg-white border border-[#CBCBCB] rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={addingAffiliate || !newAffiliateName.trim()}
-                  className="px-3 py-1.5 bg-[#6D8196] text-white rounded-lg text-xs font-bold hover:bg-[#5A6D81] disabled:opacity-50 transition cursor-pointer"
-                >
-                  {addingAffiliate ? "Saving..." : "Add"}
-                </button>
-              </form>
-            )}
 
             <div className="space-y-3">
               {affiliateEntries.map((entry, idx) => (
-                <div key={idx} className="p-3.5 bg-white border border-[#CBCBCB]/60 rounded-xl space-y-2.5 relative shadow-2xs">
+                <div
+                  key={idx}
+                  className="p-3.5 bg-[#FAF9F5] dark:bg-slate-800/60 border border-[#CBCBCB]/60 dark:border-slate-700 rounded-xl space-y-2.5 relative shadow-2xs"
+                >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#6D8196] uppercase tracking-wider">
-                      Affiliate Network #{idx + 1}
+                    <span className="text-[11px] font-bold text-[#6D8196] dark:text-sky-400 uppercase tracking-wider">
+                      Network #{idx + 1}
                     </span>
                     {affiliateEntries.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeAffiliateEntry(idx)}
-                        className="text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1"
-                        title="Remove this affiliate network link"
+                        className="text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 px-2 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                        title="Remove network"
                       >
                         <X className="w-3.5 h-3.5" />
                         <span className="text-[10px]">Remove</span>
@@ -405,99 +507,66 @@ export default function AddLinkModal({
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Affiliate Name */}
+                    {/* Affiliate Name Dropdown */}
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase">
-                          Affiliate Name <span className="text-rose-500">*</span>
-                        </label>
-                        {idx === 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setShowAddAffiliate(!showAddAffiliate)}
-                            className="text-[11px] font-bold text-[#6D8196] hover:text-[#4A4A4A] hover:underline flex items-center gap-0.5 cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3" />
-                            {showAddAffiliate ? "Cancel" : "Add New Affiliate"}
-                          </button>
-                        )}
-                      </div>
+                      <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">
+                        Affiliate Name <span className="text-rose-500">*</span>
+                      </label>
                       <CustomSelect
                         value={entry.affiliateName}
                         onChange={(val) => updateAffiliateEntry(idx, "affiliateName", val)}
-                        placeholder="Select Affiliate Name..."
+                        placeholder="Select Affiliate Network..."
+                        searchable={true}
+                        searchPlaceholder="Search or pick affiliate..."
+                        allowCustom={true}
                         options={allAffiliates.map((name) => ({ value: name, label: name }))}
                       />
                     </div>
 
-                    {/* Affiliate Link */}
+                    {/* Affiliate Link Dropdown */}
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase">
-                          Affiliate Link <span className="text-rose-500">*</span>
-                        </label>
-                        {idx === 0 && (
-                          <button
-                            type="button"
-                            onClick={addAffiliateEntry}
-                            className="text-[11px] font-bold text-[#6D8196] hover:text-[#4A4A4A] hover:underline flex items-center gap-0.5 cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3" />
-                            Add New Link
-                          </button>
-                        )}
-                      </div>
-                      <input
-                        type="url"
+                      <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">
+                        Affiliate Link URL <span className="text-rose-500">*</span>
+                      </label>
+                      <CustomSelect
                         value={entry.affiliateLink}
-                        onChange={(e) => updateAffiliateEntry(idx, "affiliateLink", e.target.value)}
-                        placeholder="https://..."
-                        className={`w-full px-3 py-2 bg-slate-50/50 border rounded-lg text-xs font-medium text-slate-900 focus:outline-none ${
-                          entry.linkError
-                            ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                            : "border-slate-200 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
-                        }`}
+                        onChange={(val) => updateAffiliateEntry(idx, "affiliateLink", val)}
+                        placeholder="Select Link from Product..."
+                        searchable={true}
+                        searchPlaceholder="Select link or enter URL..."
+                        allowCustom={true}
+                        options={affiliateLinkOptions}
                       />
                       {entry.linkError && <p className="text-[10px] font-semibold text-rose-500">{entry.linkError}</p>}
                     </div>
                   </div>
                 </div>
               ))}
-
-              <button
-                type="button"
-                onClick={addAffiliateEntry}
-                className="w-full py-2 bg-white hover:bg-[#FAF9F5] text-[#6D8196] border border-[#CBCBCB] hover:border-[#6D8196] rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <Plus className="w-4 h-4 text-[#6D8196]" />
-                + Add Another Affiliate Network Link
-              </button>
             </div>
           </div>
 
-          {/* Section 3: Configure Site-Specific Link (Only Selected Product's Site) */}
+          {/* Section 3: Configure Site-Specific Link (Dropdowns) */}
           {selectedProduct && (
-            <div className="border border-[#CBCBCB]/60 rounded-2xl bg-[#FAF9F5]/40 p-4 space-y-3 shadow-2xs">
-              <div className="flex items-center justify-between pb-2 border-b border-[#CBCBCB]/40">
-                <h3 className="text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-2">
+            <div className="border border-[#CBCBCB]/60 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 p-4 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between pb-2 border-b border-[#CBCBCB]/40 dark:border-slate-800">
+                <h3 className="text-xs font-bold text-[#4A4A4A] dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-[#6D8196]" />
-                  Site: <span className="text-[#6D8196]">{selectedProduct.site?.name}</span>
-                  <span className="text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-[#CBCBCB]">
+                  Site: <span className="text-[#6D8196] dark:text-sky-400">{selectedProduct.site?.name}</span>
+                  <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-[#CBCBCB]/60 dark:border-slate-700">
                     Product ID: #{selectedProduct.id}
                   </span>
                 </h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                {/* Bridge Page Link Dropdown */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                     Bridge Page Link
                   </label>
-                  <input
-                    type="url"
+                  <CustomSelect
                     value={bridgePageLink}
-                    onChange={(e) => {
-                      const val = e.target.value;
+                    onChange={(val) => {
                       setBridgePageLink(val);
                       if (val && !isValidUrl(val)) {
                         setBridgeLinkError("Must start with http:// or https://");
@@ -505,38 +574,25 @@ export default function AddLinkModal({
                         setBridgeLinkError("");
                       }
                     }}
-                    placeholder="Enter bridge page URL manually..."
-                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-slate-900 focus:outline-none transition-all ${
-                      bridgeLinkError
-                        ? "border-rose-400 focus:ring-1 focus:ring-rose-500 bg-rose-50/10"
-                        : "border-slate-200 focus:border-[#6D8196]"
-                    }`}
+                    placeholder="Select Bridge Page URL..."
+                    searchable={true}
+                    searchPlaceholder="Select or enter bridge URL..."
+                    allowCustom={true}
+                    options={bridgeLinkOptions}
                   />
                   {bridgeLinkError && (
                     <p className="text-[10px] font-semibold text-rose-500 mt-1">{bridgeLinkError}</p>
                   )}
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                      Buy Link
-                    </label>
-                    {affiliateEntries[0]?.affiliateLink && (
-                      <button
-                        type="button"
-                        onClick={() => setBuyLink(affiliateEntries[0].affiliateLink)}
-                        className="text-[10px] font-bold text-slate-500 hover:text-slate-700 hover:underline flex items-center gap-0.5 cursor-pointer"
-                      >
-                        <Copy className="w-3 h-3 text-slate-400" /> Use Primary Affiliate Link
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="url"
+                {/* Buy Link Dropdown */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+                    Buy Link
+                  </label>
+                  <CustomSelect
                     value={buyLink}
-                    onChange={(e) => {
-                      const val = e.target.value;
+                    onChange={(val) => {
                       setBuyLink(val);
                       if (val && !isValidUrl(val)) {
                         setBuyLinkError("Must start with http:// or https://");
@@ -544,13 +600,12 @@ export default function AddLinkModal({
                         setBuyLinkError("");
                       }
                     }}
-                    placeholder={bridgePageLink ? "Enter buy URL manually..." : "Add bridge page link first"}
+                    placeholder="Select Buy Link URL..."
+                    searchable={true}
+                    searchPlaceholder="Select or enter buy URL..."
+                    allowCustom={true}
                     disabled={!bridgePageLink}
-                    className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-slate-900 focus:outline-none transition-all disabled:bg-slate-100 disabled:text-slate-400 ${
-                      buyLinkError
-                        ? "border-rose-400 focus:ring-1 focus:ring-rose-500 bg-rose-50/10"
-                        : "border-slate-200 focus:border-[#6D8196]"
-                    }`}
+                    options={buyLinkOptions}
                   />
                   {buyLinkError && (
                     <p className="text-[10px] font-semibold text-rose-500 mt-1">{buyLinkError}</p>
@@ -560,62 +615,84 @@ export default function AddLinkModal({
             </div>
           )}
 
-          {/* Section 4: Geos Selection */}
-          <div className="space-y-2">
+          {/* Section 4: Target GEOs (Dropdown & Presets) */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/70 dark:border-slate-800 space-y-3 shadow-2xs">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-emerald-600" />
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 Target GEOs <span className="text-rose-500">*</span>
               </label>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setGeos([...allGeos])}
-                  className="text-xs font-bold text-[#6D8196] hover:text-[#4A4A4A] hover:underline cursor-pointer"
+                  className="text-xs font-bold text-[#6D8196] hover:text-[#4A4A4A] dark:text-sky-400 cursor-pointer"
                 >
                   Select All
                 </button>
-                <span className="text-slate-300">|</span>
+                <span className="text-slate-300 dark:text-slate-700">|</span>
                 <button
                   type="button"
                   onClick={() => setGeos([])}
-                  className="text-xs font-bold text-slate-500 hover:text-slate-700 hover:underline cursor-pointer"
+                  className="text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer"
                 >
                   Clear
                 </button>
               </div>
             </div>
 
-            {geos.length === 0 && (
-              <p className="text-xs text-rose-500 font-semibold">At least one GEO is required.</p>
-            )}
+            {/* GEO Selection Dropdown */}
+            <CustomSelect
+              value=""
+              onChange={(val) => {
+                if (!val) return;
+                if (val === "TIER_1") {
+                  const tier1 = ["US", "UK", "CA", "AU"].filter((g) => allGeos.includes(g));
+                  setGeos(Array.from(new Set([...geos, ...tier1])));
+                } else if (val === "ALL") {
+                  setGeos([...allGeos]);
+                } else {
+                  toggleGeo(val);
+                }
+              }}
+              placeholder="Select Target GEO from Dropdown..."
+              searchable={true}
+              searchPlaceholder="Search country code (US, UK, CA...)"
+              options={[
+                { value: "TIER_1", label: "⭐ Add Tier 1 Pack (US, UK, CA, AU)" },
+                { value: "ALL", label: "🌐 Add All Available GEOs" },
+                ...allGeos.map((g) => ({
+                  value: g,
+                  label: geos.includes(g) ? `✓ ${g} (Selected)` : `+ Add ${g}`,
+                })),
+              ]}
+            />
 
-            <div className="flex flex-wrap gap-2 pt-1">
-              {allGeos.map((geo) => {
-                const isSelected = geos.includes(geo);
-                return (
-                  <button
+            {/* Selected GEO tags */}
+            {geos.length === 0 ? (
+              <p className="text-xs text-rose-500 font-semibold">At least one GEO is required.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {geos.map((geo) => (
+                  <span
                     key={geo}
-                    type="button"
                     onClick={() => toggleGeo(geo)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      isSelected
-                        ? "bg-[#6D8196] text-white shadow-2xs border border-[#6D8196]"
-                        : "bg-white text-[#4A4A4A] border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5]"
-                    }`}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#6D8196] text-white shadow-2xs cursor-pointer hover:bg-rose-600 transition-colors"
+                    title="Click to remove"
                   >
-                    {isSelected && <Check className="w-3.5 h-3.5" />}
+                    <Check className="w-3 h-3" />
                     <span>{geo}</span>
-                  </button>
-                );
-              })}
-            </div>
+                    <X className="w-3 h-3 opacity-70 hover:opacity-100" />
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Section 5: Link Status & Remarks */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          {/* Section 5: Link Status & Remarks (Dropdowns) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/70 dark:border-slate-800 shadow-2xs">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                 Link Status
               </label>
               <CustomSelect
@@ -627,26 +704,29 @@ export default function AddLinkModal({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Remarks
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                Remarks Template
               </label>
-              <textarea
-                rows={2}
+              <CustomSelect
                 value={linkerRemarks}
-                onChange={(e) => setLinkerRemarks(e.target.value)}
-                placeholder="Any issues or extra notes..."
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs resize-none"
+                onChange={(val) => setLinkerRemarks(val)}
+                placeholder="Select Remarks from Dropdown..."
+                searchable={true}
+                searchPlaceholder="Select remark or type custom..."
+                allowCustom={true}
+                options={REMARK_TEMPLATES}
               />
             </div>
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
-          <div className="text-xs font-semibold text-slate-500">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
             {selectedProduct ? (
-              <span className="text-indigo-600 font-bold">
-                1 link log entry will be created for {selectedProduct.site?.name}
+              <span className="text-[#6D8196] dark:text-sky-300 font-bold flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                1 link log entry ready for {selectedProduct.site?.name}
               </span>
             ) : (
               <span>Select a product above</span>
@@ -657,7 +737,7 @@ export default function AddLinkModal({
             <button
               onClick={onClose}
               type="button"
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-white transition text-xs cursor-pointer shadow-2xs"
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-white dark:hover:bg-slate-800 transition text-xs cursor-pointer shadow-2xs"
             >
               Cancel
             </button>
@@ -665,8 +745,12 @@ export default function AddLinkModal({
               onClick={handleSubmit}
               disabled={submitting || !isFormValid}
               type="button"
-              title={!isFormValid ? "Please fill in all required fields: Product, Affiliate Name, Affiliate Link, and at least one GEO" : undefined}
-              className="px-5 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white font-bold text-xs shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              title={
+                !isFormValid
+                  ? "Please fill in all required fields: Product, Affiliate Name, Affiliate Link, and at least one GEO"
+                  : undefined
+              }
+              className="px-5 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white font-bold text-xs shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
             >
               {submitting ? "Saving..." : "Add 1 Link Log"}
             </button>

@@ -290,6 +290,7 @@ body {
   border-color: rgba(225, 29, 72, 0.35) !important;
 }
 
+.dark .text-rose-950,
 .dark .text-rose-900,
 .dark .text-rose-800,
 .dark .text-rose-700 {
@@ -313,6 +314,7 @@ body {
   border-color: rgba(16, 185, 129, 0.35) !important;
 }
 
+.dark .text-emerald-950,
 .dark .text-emerald-900,
 .dark .text-emerald-800,
 .dark .text-emerald-700 {
@@ -335,6 +337,7 @@ body {
   border-color: rgba(59, 130, 246, 0.35) !important;
 }
 
+.dark .text-blue-950,
 .dark .text-blue-900,
 .dark .text-blue-800,
 .dark .text-blue-700 {
@@ -356,6 +359,7 @@ body {
   border-color: rgba(99, 102, 241, 0.35) !important;
 }
 
+.dark .text-indigo-950,
 .dark .text-indigo-900,
 .dark .text-indigo-800,
 .dark .text-indigo-700 {
@@ -375,6 +379,7 @@ body {
   border-color: rgba(245, 158, 11, 0.35) !important;
 }
 
+.dark .text-amber-950,
 .dark .text-amber-900,
 .dark .text-amber-800,
 .dark .text-amber-700 {

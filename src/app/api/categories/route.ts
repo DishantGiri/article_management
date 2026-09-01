@@ -33,8 +33,8 @@ export async function POST(req: Request) {
     }
 
     const role = session.user.role;
-    if (role !== "SUPER_ADMIN" && role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden: Category creation is restricted to Admin role" }, { status: 403 });
+    if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "LINKER") {
+      return NextResponse.json({ error: "Forbidden: Category creation is restricted to Admin and Linker roles" }, { status: 403 });
     }
 
     const { name } = await req.json();

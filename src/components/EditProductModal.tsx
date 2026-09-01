@@ -327,12 +327,14 @@ export default function EditProductModal({
                     <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
                     Category
                   </label>
-                  <input
-                    type="text"
+                  <CustomSelect
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder="e.g. Skincare, Supplements, Fitness..."
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
+                    onChange={(val) => setCategory(val)}
+                    placeholder="Select Category..."
+                    searchable={true}
+                    searchPlaceholder="Search category..."
+                    className="w-full"
+                    options={categories.map((c) => ({ value: c.name, label: c.name }))}
                   />
                 </div>
 

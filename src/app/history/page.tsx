@@ -460,44 +460,44 @@ export default function HistoryPage() {
                   return (
                     <tr
                       key={record.id}
-                      className={`hover:bg-slate-50/60 transition-colors group ${
-                        isRedoSuggestion ? "bg-rose-50/20" : isApproval ? "bg-emerald-50/15" : ""
+                      className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors group ${
+                        isRedoSuggestion ? "bg-rose-50/20 dark:bg-rose-950/20" : isApproval ? "bg-emerald-50/15 dark:bg-emerald-950/20" : ""
                       }`}
                     >
                       {/* 1. Type / Action Badge */}
                       <td className="px-4 py-4 align-top">
                         {isRedoSuggestion ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs whitespace-nowrap">
-                            <AlertTriangle className="w-3 h-3 text-rose-600" />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 shadow-2xs whitespace-nowrap">
+                            <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                             TL Suggestion (Redo)
                           </span>
                         ) : isApproval ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs whitespace-nowrap">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs whitespace-nowrap">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                             Article Approved
                           </span>
                         ) : isCompleted ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 whitespace-nowrap">
                             <FileText className="w-3 h-3 text-indigo-500" />
                             Article Submitted
                           </span>
                         ) : isRevisionResubmitted ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-cyan-50 dark:bg-cyan-950/70 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 whitespace-nowrap">
                             <RotateCcw className="w-3 h-3 text-cyan-500" />
                             Revision Resubmitted
                           </span>
                         ) : record.actionType === "WRITING_STARTED" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 whitespace-nowrap">
                             <PlayCircle className="w-3 h-3 text-blue-500" />
                             Started Writing
                           </span>
                         ) : record.type === "LINK" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
                             <Link2 className="w-3 h-3 text-[#6D8196]" />
                             Link Log Update
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
                             <FileText className="w-3 h-3 text-slate-500" />
                             Article Modified
                           </span>
@@ -506,7 +506,7 @@ export default function HistoryPage() {
 
                       {/* 2. Date & Time */}
                       <td className="px-4 py-4 align-top whitespace-nowrap">
-                        <p className="font-bold text-slate-800">
+                        <p className="font-bold text-slate-800 dark:text-slate-100">
                           {new Date(record.updatedAt).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
@@ -523,8 +523,8 @@ export default function HistoryPage() {
 
                       {/* 3. Product / Site */}
                       <td className="px-4 py-4 align-top">
-                        <p className="font-bold text-slate-900 leading-snug">{record.productName}</p>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
+                        <p className="font-bold text-slate-900 dark:text-slate-100 leading-snug">{record.productName}</p>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
                           <Globe className="w-2.5 h-2.5 text-slate-400" />
                           {record.siteName}
                         </span>
@@ -534,14 +534,14 @@ export default function HistoryPage() {
                       <td className="px-4 py-4 align-top">
                         {record.writtenBy ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-indigo-100 border border-indigo-200 text-indigo-700 flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs">
+                            <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs">
                               {getInitials(record.writtenBy.name)}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-slate-900 truncate leading-tight">
+                              <p className="font-bold text-slate-900 dark:text-slate-100 truncate leading-tight">
                                 {record.writtenBy.name}
                               </p>
-                              <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-wider">
+                              <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                                 {record.writtenBy.role || "WRITER"}
                               </p>
                             </div>
@@ -559,16 +559,16 @@ export default function HistoryPage() {
                           <div
                             className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs ${
                               isRedoSuggestion
-                                ? "bg-rose-100 border border-rose-200 text-rose-700"
+                                ? "bg-rose-100 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300"
                                 : isApproval
-                                ? "bg-emerald-100 border border-emerald-200 text-emerald-700"
-                                : "bg-slate-100 border border-slate-200 text-slate-700"
+                                ? "bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300"
+                                : "bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
                             }`}
                           >
                             {getInitials(record.updatedBy?.name)}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-slate-900 truncate leading-tight">
+                            <p className="font-bold text-slate-900 dark:text-slate-100 truncate leading-tight">
                               {record.updatedBy?.name || "System"}
                             </p>
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
@@ -582,26 +582,26 @@ export default function HistoryPage() {
                       <td className="px-4 py-4 align-top">
                         {record.approvedBy ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs">
                               {getInitials(record.approvedBy.name)}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-slate-900 truncate leading-tight">
+                              <p className="font-bold text-slate-900 dark:text-slate-100 truncate leading-tight">
                                 {record.approvedBy.name}
                               </p>
-                              <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-0.5">
+                              <p className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-0.5">
                                 <ShieldCheck className="w-2.5 h-2.5" /> Approved
                               </p>
                             </div>
                           </div>
                         ) : record.newStatus === "REDO" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
                             Needs Revision
                           </span>
                         ) : record.type === "LINK" ? (
                           <span className="text-[11px] text-slate-400 italic">—</span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
                             Pending Approval
                           </span>
                         )}
@@ -612,17 +612,17 @@ export default function HistoryPage() {
                         <div className="space-y-2">
                           {/* SPECIAL DISPLAY: TL Suggestion on Call to Writer */}
                           {isRedoSuggestion && (
-                            <div className="p-2.5 bg-white rounded-xl border border-rose-200 shadow-2xs space-y-1">
+                            <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-rose-200 dark:border-rose-800/60 shadow-2xs space-y-1">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700 flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700 dark:text-rose-300 flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                                   TL Suggestion to {record.writtenBy?.name || "Writer"}
                                 </span>
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-800">
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950/90 text-rose-800 dark:text-rose-300 border border-transparent dark:border-rose-800/60">
                                   Action Required
                                 </span>
                               </div>
-                              <p className="text-xs text-rose-950 font-semibold leading-relaxed">
+                              <p className="text-xs text-rose-950 dark:text-rose-100 font-semibold leading-relaxed">
                                 &quot;{record.suggestion || record.notes?.replace("Status changed from COMPLETED to REDO", "").replace("Feedback:", "").trim() || "Please revise article per team lead instructions."}&quot;
                               </p>
                             </div>
@@ -630,13 +630,13 @@ export default function HistoryPage() {
 
                           {/* SPECIAL DISPLAY: Editorial Approval */}
                           {isApproval && (
-                            <div className="p-2.5 bg-white rounded-xl border border-emerald-200 shadow-2xs space-y-1">
-                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-2xs space-y-1">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                 Approved by {record.updatedBy?.name} for {record.writtenBy?.name || "Writer"}
                               </span>
                               {record.suggestion && (
-                                <p className="text-xs text-emerald-950 font-medium">
+                                <p className="text-xs text-emerald-950 dark:text-emerald-100 font-medium">
                                   &quot;{record.suggestion}&quot;
                                 </p>
                               )}

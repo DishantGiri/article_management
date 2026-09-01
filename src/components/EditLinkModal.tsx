@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import CustomSelect from "@/components/CustomSelect";
+import { Check, Globe, X } from "lucide-react";
 
 interface Product {
   id: number;
   name: string;
-  site: { name: string };
+  trendLink?: string | null;
+  previewLink?: string | null;
+  site: { name: string; url?: string | null };
+  article?: { articleLink?: string | null };
 }
 
 interface EditLinkModalProps {
@@ -38,6 +42,15 @@ const LINK_STATUSES = [
   { value: "REDIRECTED", label: "Redirected" },
 ];
 
+const REMARK_TEMPLATES = [
+  { value: "Standard affiliate setup — links verified active", label: "Standard affiliate setup — links verified active" },
+  { value: "Bridge page live & redirecting to buy page", label: "Bridge page live & redirecting to buy page" },
+  { value: "Direct purchase link configured for site", label: "Direct purchase link configured for site" },
+  { value: "Under review — waiting for affiliate network approval", label: "Under review — waiting for affiliate approval" },
+  { value: "Presell page active with multi-geo routing", label: "Presell page active with multi-geo routing" },
+  { value: "Need to check in future — potential link/stock change", label: "Need to check in future — potential link change" },
+  { value: "No remarks / clean configuration", label: "No remarks / clean configuration" },
+];
 
 const isValidUrl = (url: string) => {
   if (!url) return true;
@@ -72,33 +85,74 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   const [bridgePageLinkError, setBridgePageLinkError] = useState("");
   const [buyLinkError, setBuyLinkError] = useState("");
 
-  const [showAddAffiliate, setShowAddAffiliate] = useState(false);
-  const [newAffiliateName, setNewAffiliateName] = useState("");
-  const [addingAffiliate, setAddingAffiliate] = useState(false);
+  const selectedProduct = useMemo(
+    () => products.find((p) => String(p.id) === productId),
+    [products, productId]
+  );
 
-  const handleInlineAddAffiliate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAffiliateName.trim()) return;
-    setAddingAffiliate(true);
-    setError("");
-    try {
-      const res = await fetch("/api/affiliates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newAffiliateName.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to add affiliate");
-      setDbAffiliates((prev) => [...prev, data]);
-      setAffiliateName(data.name);
-      setNewAffiliateName("");
-      setShowAddAffiliate(false);
-    } catch (err: any) {
-      setError(err.message || "Failed to add affiliate");
-    } finally {
-      setAddingAffiliate(false);
+  const productSlug = useMemo(() => {
+    if (!selectedProduct?.name) return "";
+    return selectedProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }, [selectedProduct]);
+
+  const siteBaseUrl = useMemo(() => {
+    if (!selectedProduct?.site?.url) return "";
+    return selectedProduct.site.url.replace(/\/+$/, "");
+  }, [selectedProduct]);
+
+  // Dynamic link options for Bridge Page Link
+  const bridgeLinkOptions = useMemo(() => {
+    const opts: Array<{ value: string; label: string }> = [];
+    if (bridgePageLink) {
+      opts.push({ value: bridgePageLink, label: `Current: ${bridgePageLink}` });
     }
-  };
+    if (siteBaseUrl && productSlug) {
+      const u = `${siteBaseUrl}/${productSlug}`;
+      if (u !== bridgePageLink) opts.push({ value: u, label: `Landing Page: ${u}` });
+    }
+    if (selectedProduct?.article?.articleLink && selectedProduct.article.articleLink !== bridgePageLink) {
+      opts.push({ value: selectedProduct.article.articleLink, label: `Article: ${selectedProduct.article.articleLink}` });
+    }
+    if (siteBaseUrl && siteBaseUrl !== bridgePageLink) {
+      opts.push({ value: siteBaseUrl, label: `Site Home: ${siteBaseUrl}` });
+    }
+    return opts;
+  }, [siteBaseUrl, productSlug, selectedProduct, bridgePageLink]);
+
+  // Dynamic link options for Buy Link
+  const buyLinkOptions = useMemo(() => {
+    const opts: Array<{ value: string; label: string }> = [];
+    if (buyLink) {
+      opts.push({ value: buyLink, label: `Current: ${buyLink}` });
+    }
+    if (siteBaseUrl && productSlug) {
+      const u = `${siteBaseUrl}/${productSlug}`;
+      if (u !== buyLink) opts.push({ value: u, label: `Direct Buy: ${u}` });
+    }
+    if (affiliateLink && affiliateLink !== buyLink) {
+      opts.push({ value: affiliateLink, label: `Affiliate Link: ${affiliateLink}` });
+    }
+    return opts;
+  }, [siteBaseUrl, productSlug, buyLink, affiliateLink]);
+
+  // Dynamic link options for Affiliate Link
+  const affiliateLinkOptions = useMemo(() => {
+    const opts: Array<{ value: string; label: string }> = [];
+    if (affiliateLink) {
+      opts.push({ value: affiliateLink, label: `Current: ${affiliateLink}` });
+    }
+    if (selectedProduct?.trendLink && selectedProduct.trendLink !== affiliateLink) {
+      opts.push({ value: selectedProduct.trendLink, label: `Trend: ${selectedProduct.trendLink}` });
+    }
+    if (selectedProduct?.previewLink && selectedProduct.previewLink !== affiliateLink) {
+      opts.push({ value: selectedProduct.previewLink, label: `Preview: ${selectedProduct.previewLink}` });
+    }
+    if (siteBaseUrl && productSlug) {
+      const u = `${siteBaseUrl}/aff/${productSlug}`;
+      if (u !== affiliateLink) opts.push({ value: u, label: `Affiliate Tag: ${u}` });
+    }
+    return opts;
+  }, [affiliateLink, selectedProduct, siteBaseUrl, productSlug]);
 
   useEffect(() => {
     if (isOpen && link) {
@@ -113,10 +167,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
         .filter(line => !line.trim().startsWith("[Flagged by"))
         .join('\n')
         .trim();
-      setLinkerRemarks(cleanRemarks);
+      setLinkerRemarks(cleanRemarks || "Standard affiliate setup — links verified active");
       setGeos(link.geos?.map((g) => g.geo) || []);
-
-
 
       fetch("/api/affiliates")
         .then(r => r.json())
@@ -125,7 +177,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
       fetch("/api/geos")
         .then(r => r.json())
-        .then(data => { setDbGeos(Array.isArray(data) ? data.map((g: any) => g.code) : []); })
+        .then(data => { setDbGeos(Array.isArray(data) ? data.map((g: any) => g.code || g.name || g) : []); })
         .catch(e => console.error("Failed to load geos", e));
 
       setError("");
@@ -144,7 +196,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
         .catch(() => setError("Failed to load products"))
         .finally(() => setLoadingProducts(false));
     }
-  }, [isOpen, link]);
+  }, [isOpen, link, session]);
 
   const toggleGeo = (geo: string) => {
     setGeos((prev) => (prev.includes(geo) ? prev.filter((g) => g !== geo) : [...prev, geo]));
@@ -171,7 +223,6 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       return;
     }
 
-    // Fix 1: Compulsory Geo selection
     if (geos.length === 0) {
       setError("At least one GEO must be selected.");
       return;
@@ -198,7 +249,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
     }
 
     if (buyLink && !bridgePageLink) {
-      setError("Bridge Page Link is required before a Buy Link can be added.");
+      setError("Bridge Page Link is required before adding a Buy Link.");
       return;
     }
 
@@ -212,11 +263,13 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
     try {
       const mockUserId = session?.user?.id || 1;
+
       const res = await fetch(`/api/links/${link.id}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId: parseInt(productId),
+          updatedById: mockUserId,
           affiliateName,
           affiliateLink,
           bridgePageLink: bridgePageLink || null,
@@ -224,19 +277,18 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           status,
           linkerRemarks: linkerRemarks || null,
           geos,
-          callerId: mockUserId,
         }),
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Failed to update link log");
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update link");
       }
 
       if (onSuccess) onSuccess();
       onClose();
     } catch (e: any) {
-      setError(e.message || "Something went wrong");
+      setError(e.message || "Failed to update link");
     } finally {
       setSubmitting(false);
     }
@@ -245,103 +297,86 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   if (!isOpen || !link) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden border border-[#CBCBCB]/60">
-        <div className="px-6 py-4 bg-[#4A4A4A] text-white flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">Edit Link Log</h2>
-          <button onClick={onClose} className="text-white/80 hover:text-white transition cursor-pointer">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100 dark:border-slate-800 transition-colors">
+        {/* Header */}
+        <div className="px-6 py-4 bg-[#4A4A4A] dark:bg-slate-800 text-white flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-white tracking-tight">Edit Link Log #{link.id}</h2>
+            <p className="text-xs text-[#EAEAEA] dark:text-slate-300 font-medium">Update link routing details via dropdown selectors</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+          >
+            ✕
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-4">
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto space-y-4 flex-1 bg-white dark:bg-slate-900">
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-2">
-              <span className="font-bold">!</span> {error}
+            <div className="p-3 bg-red-50 dark:bg-rose-950/40 border border-red-200 dark:border-rose-900/60 rounded-xl text-red-700 dark:text-rose-300 text-xs font-semibold">
+              {error}
             </div>
           )}
 
-          {link.status === "ISSUE" && link.linkerRemarks && (
+          {link.linkerRemarks && link.linkerRemarks.includes("[Flagged by") && (
             <div className="mb-2">
               <FormattedRemarks remarks={link.linkerRemarks} />
             </div>
           )}
 
+          {/* Product Dropdown */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Product *</label>
+            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Product *</label>
             <CustomSelect
               value={productId}
               onChange={(val) => setProductId(val)}
-              placeholder="Select Product..."
+              placeholder="Select Product from Dropdown..."
               disabled={loadingProducts}
+              searchable={true}
+              searchPlaceholder="Search product..."
               options={products.map((p) => ({
                 value: String(p.id),
-                label: `${p.name} (${p.site.name})`
+                label: `${p.name} (${p.site.name})`,
               }))}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Affiliate Name Dropdown */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[11px] font-bold text-slate-500 uppercase">Affiliate Name *</label>
-                <button
-                  type="button"
-                  onClick={() => setShowAddAffiliate(!showAddAffiliate)}
-                  className="text-[10px] font-bold text-[#6D8196] hover:text-[#4A4A4A] underline cursor-pointer"
-                >
-                  {showAddAffiliate ? "Cancel" : "+ Add Affiliate"}
-                </button>
-              </div>
-
-              {showAddAffiliate && (
-                <form onSubmit={handleInlineAddAffiliate} className="mb-2 p-2 bg-[#FAF9F5] border border-[#CBCBCB] rounded-lg flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="New affiliate name..."
-                    value={newAffiliateName}
-                    onChange={(e) => setNewAffiliateName(e.target.value)}
-                    className="flex-1 px-2.5 py-1 bg-white border border-[#CBCBCB] rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    disabled={addingAffiliate || !newAffiliateName.trim()}
-                    className="px-3 py-1 bg-[#6D8196] text-white rounded text-xs font-semibold hover:bg-[#5A6D81] disabled:opacity-50 transition cursor-pointer"
-                  >
-                    {addingAffiliate ? "..." : "Add"}
-                  </button>
-                </form>
-              )}
-
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Affiliate Name *</label>
               <CustomSelect
                 value={affiliateName}
                 onChange={(val) => setAffiliateName(val)}
-                placeholder="Select Affiliate Name..."
+                placeholder="Select Affiliate Network..."
+                searchable={true}
+                searchPlaceholder="Search or select affiliate..."
+                allowCustom={true}
                 options={allAffiliates.map((name) => ({ value: name, label: name }))}
               />
-
             </div>
+
+            {/* Affiliate Link Dropdown */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Affiliate Link *</label>
-              <input
-                type="url"
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Affiliate Link URL *</label>
+              <CustomSelect
                 value={affiliateLink}
-                onChange={(e) => {
-                  const val = e.target.value;
+                onChange={(val) => {
                   setAffiliateLink(val);
                   if (val && !isValidUrl(val)) {
-                    setAffiliateLinkError("Must start with http:// or https:// and be a valid URL");
+                    setAffiliateLinkError("Must start with http:// or https://");
                   } else {
                     setAffiliateLinkError("");
                   }
                 }}
-                placeholder="https://..."
-                className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
-                  affiliateLinkError ? "border-rose-400 focus:border-rose-500 bg-rose-50/10" : "border-slate-200 focus:border-indigo-500"
-                }`}
+                placeholder="Select Affiliate Link URL..."
+                searchable={true}
+                searchPlaceholder="Select or enter URL..."
+                allowCustom={true}
+                options={affiliateLinkOptions}
               />
               {affiliateLinkError && (
                 <p className="text-[11px] font-semibold text-rose-500 mt-1">{affiliateLinkError}</p>
@@ -349,52 +384,51 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Bridge Page Link Dropdown */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Bridge Page Link</label>
-              <input
-                type="url"
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Bridge Page Link</label>
+              <CustomSelect
                 value={bridgePageLink}
-                onChange={(e) => {
-                  const val = e.target.value;
+                onChange={(val) => {
                   setBridgePageLink(val);
-                  if (!val) {
-                    setBuyLink(""); // Clear buy link if bridge page is cleared
-                  }
+                  if (!val) setBuyLink("");
                   if (val && !isValidUrl(val)) {
-                    setBridgePageLinkError("Must start with http:// or https:// and be a valid URL");
+                    setBridgePageLinkError("Must start with http:// or https://");
                   } else {
                     setBridgePageLinkError("");
                   }
                 }}
-                placeholder="https://..."
-                className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors ${
-                  bridgePageLinkError ? "border-rose-400 focus:border-rose-500" : "border-slate-200 focus:border-indigo-500"
-                }`}
+                placeholder="Select Bridge Page URL..."
+                searchable={true}
+                searchPlaceholder="Select or enter bridge URL..."
+                allowCustom={true}
+                options={bridgeLinkOptions}
               />
               {bridgePageLinkError && (
                 <p className="text-[11px] font-semibold text-rose-500 mt-1">{bridgePageLinkError}</p>
               )}
             </div>
+
+            {/* Buy Link Dropdown */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Buy Link</label>
-              <input
-                type="url"
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Buy Link</label>
+              <CustomSelect
                 value={buyLink}
                 disabled={!bridgePageLink}
-                onChange={(e) => {
-                  const val = e.target.value;
+                onChange={(val) => {
                   setBuyLink(val);
                   if (val && !isValidUrl(val)) {
-                    setBuyLinkError("Must start with http:// or https:// and be a valid URL");
+                    setBuyLinkError("Must start with http:// or https://");
                   } else {
                     setBuyLinkError("");
                   }
                 }}
-                placeholder={bridgePageLink ? "https://..." : "Add bridge page first"}
-                className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm text-slate-900 focus:outline-none transition-colors disabled:bg-slate-100 disabled:text-slate-400 ${
-                  buyLinkError ? "border-rose-400 focus:border-rose-500" : "border-slate-200 focus:border-indigo-500"
-                }`}
+                placeholder={bridgePageLink ? "Select Buy URL..." : "Select bridge page first"}
+                searchable={true}
+                searchPlaceholder="Select or enter buy URL..."
+                allowCustom={true}
+                options={buyLinkOptions}
               />
               {buyLinkError && (
                 <p className="text-[11px] font-semibold text-rose-500 mt-1">{buyLinkError}</p>
@@ -402,33 +436,81 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
             </div>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">
-              Geos (Multi-select) <span className="text-rose-500">*</span>
-            </label>
-            {geos.length === 0 && (
-              <p className="text-[10px] text-rose-500 font-semibold mb-1.5">At least one GEO is required.</p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {allGeos.map((geo) => (
+          {/* Geos Dropdown & Tags */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1">
+                <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                Target Geos <span className="text-rose-500">*</span>
+              </label>
+              <div className="flex items-center gap-2">
                 <button
-                  key={geo}
                   type="button"
-                  onClick={() => toggleGeo(geo)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors cursor-pointer ${
-                    geos.includes(geo)
-                      ? "bg-[#6D8196] text-white border border-[#6D8196]"
-                      : "bg-white text-[#4A4A4A] border border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#FAF9F5]"
-                  }`}
+                  onClick={() => setGeos([...allGeos])}
+                  className="text-xs font-bold text-[#6D8196] hover:text-[#4A4A4A] dark:text-sky-400 cursor-pointer"
                 >
-                  {geo}
+                  Select All
                 </button>
-              ))}
+                <span className="text-slate-300 dark:text-slate-700">|</span>
+                <button
+                  type="button"
+                  onClick={() => setGeos([])}
+                  className="text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
+
+            <CustomSelect
+              value=""
+              onChange={(val) => {
+                if (!val) return;
+                if (val === "TIER_1") {
+                  const tier1 = ["US", "UK", "CA", "AU"].filter((g) => allGeos.includes(g));
+                  setGeos(Array.from(new Set([...geos, ...tier1])));
+                } else if (val === "ALL") {
+                  setGeos([...allGeos]);
+                } else {
+                  toggleGeo(val);
+                }
+              }}
+              placeholder="Select Target GEO from Dropdown..."
+              searchable={true}
+              searchPlaceholder="Search country code..."
+              options={[
+                { value: "TIER_1", label: "⭐ Add Tier 1 Pack (US, UK, CA, AU)" },
+                { value: "ALL", label: "🌐 Add All Available GEOs" },
+                ...allGeos.map((g) => ({
+                  value: g,
+                  label: geos.includes(g) ? `✓ ${g} (Selected)` : `+ Add ${g}`,
+                })),
+              ]}
+            />
+
+            {geos.length === 0 ? (
+              <p className="text-[10px] text-rose-500 font-semibold">At least one GEO is required.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {geos.map((geo) => (
+                  <span
+                    key={geo}
+                    onClick={() => toggleGeo(geo)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#6D8196] text-white shadow-2xs cursor-pointer hover:bg-rose-600 transition-colors"
+                    title="Click to remove"
+                  >
+                    <Check className="w-3 h-3" />
+                    <span>{geo}</span>
+                    <X className="w-3 h-3 opacity-70 hover:opacity-100" />
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* Link Status Dropdown */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Link Status</label>
+            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Link Status</label>
             <CustomSelect
               value={status}
               onChange={(val) => setStatus(val)}
@@ -437,22 +519,26 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
             />
           </div>
 
+          {/* Remarks Dropdown */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Remarks</label>
-            <textarea
-              rows={2}
+            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Remarks Template</label>
+            <CustomSelect
               value={linkerRemarks}
-              onChange={(e) => setLinkerRemarks(e.target.value)}
-              placeholder="Any issues or notes..."
-              className="w-full px-3 py-2 bg-white border border-[#CBCBCB] rounded-lg text-sm text-[#4A4A4A] focus:outline-none focus:border-[#6D8196] transition-colors resize-none"
+              onChange={(val) => setLinkerRemarks(val)}
+              placeholder="Select Remark from Dropdown..."
+              searchable={true}
+              searchPlaceholder="Select or enter remark..."
+              allowCustom={true}
+              options={REMARK_TEMPLATES}
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#CBCBCB]/40">
+          {/* Footer actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#CBCBCB]/40 dark:border-slate-800">
             <button
               onClick={onClose}
               type="button"
-              className="px-4 py-2 rounded-lg border border-[#CBCBCB] text-[#4A4A4A] font-semibold hover:bg-[#FAF9F5] transition text-sm cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-[#CBCBCB] dark:border-slate-700 text-[#4A4A4A] dark:text-slate-300 font-semibold hover:bg-[#FAF9F5] dark:hover:bg-slate-800 transition text-sm cursor-pointer"
             >
               Cancel
             </button>
@@ -460,8 +546,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               onClick={handleSubmit}
               disabled={submitting || !isFormValid}
               type="button"
-              title={!isFormValid ? "Please fill in all required fields: Affiliate Name, Affiliate Link, and at least one GEO" : undefined}
-              className="px-4 py-2 rounded-lg bg-[#6D8196] text-white font-semibold hover:bg-[#5A6D81] disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex items-center justify-center gap-2 cursor-pointer"
+              title={!isFormValid ? "Please fill in all required fields" : undefined}
+              className="px-5 py-2.5 rounded-xl bg-[#6D8196] text-white font-semibold hover:bg-[#5A6D81] disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
               {submitting ? "Saving..." : "Save Changes"}
             </button>

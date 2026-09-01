@@ -900,12 +900,15 @@ export default function AddProductModal({
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 my-1">
                         <div>
                           <label className="block text-[10px] font-bold text-[#737373] uppercase mb-0.5">Category</label>
-                          <input
-                            type="text"
+                          <CustomSelect
                             value={batchCategory}
-                            onChange={(e) => setBatchCategory(e.target.value)}
-                            placeholder="e.g. Fitness"
-                            className="w-full px-2.5 py-1.5 text-xs font-medium border border-[#CBCBCB] rounded-lg focus:outline-none focus:border-[#6D8196] bg-white"
+                            onChange={(val) => setBatchCategory(val)}
+                            placeholder="Select Category..."
+                            searchable={true}
+                            searchPlaceholder="Search category..."
+                            className="w-full"
+                            triggerClassName="w-full px-2.5 py-1.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                            options={categories.map((c) => ({ value: c.name, label: c.name }))}
                           />
                         </div>
 
@@ -1017,13 +1020,17 @@ export default function AddProductModal({
                                   className="w-full px-2 py-1.5 text-xs font-bold text-slate-900 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
                                 />
                               </td>
-                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
-                                <input
-                                  type="text"
+                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40 min-w-[150px]">
+                                <CustomSelect
                                   value={row.category}
-                                  onChange={(e) => updateSpreadsheetRow(idx, "category", e.target.value)}
-                                  placeholder="Category *"
-                                  className="w-full px-2 py-1.5 text-xs text-slate-800 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                  onChange={(val) => updateSpreadsheetRow(idx, "category", val)}
+                                  placeholder="Select Category *"
+                                  searchable={true}
+                                  searchPlaceholder="Search category..."
+                                  portal={true}
+                                  className="w-full"
+                                  triggerClassName="w-full px-2 py-1.5 bg-white border border-[#CBCBCB]/60 hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                                  options={categories.map((c) => ({ value: c.name, label: c.name }))}
                                 />
                               </td>
                               <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
@@ -1436,12 +1443,14 @@ export default function AddProductModal({
                         <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
                         Category <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="text"
+                      <CustomSelect
                         value={form.category}
-                        onChange={(e) => update("category", e.target.value)}
-                        placeholder="e.g. Skincare, Supplements, Fitness..."
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] shadow-2xs transition-all"
+                        onChange={(val) => update("category", val)}
+                        placeholder="Select Product Category..."
+                        searchable={true}
+                        searchPlaceholder="Search category..."
+                        className="w-full"
+                        options={categories.map((c) => ({ value: c.name, label: c.name }))}
                       />
                     </div>
                   </div>

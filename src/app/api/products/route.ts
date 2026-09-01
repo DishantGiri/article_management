@@ -336,7 +336,7 @@ export async function GET(req: NextRequest) {
       site: { select: { id: true, name: true, url: true } },
       category: { select: { id: true, name: true } },
       addedBy: { select: { id: true, name: true } },
-      article: { select: { id: true, status: true, writer: { select: { id: true, name: true } } } },
+      article: { select: { id: true, status: true, articleLink: true, writer: { select: { id: true, name: true } } } },
       linkLogs: { include: { geos: true } },
     },
     orderBy: { addedAt: "desc" },

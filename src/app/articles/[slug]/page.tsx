@@ -733,24 +733,24 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
               {/* STATE 2: REDO IN PROGRESS — LOCKED UNTIL WRITER RESUBMITS */}
               {article.status === "REDO" && (
                 <div className="space-y-4">
-                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-2.5">
-                    <div className="flex items-center gap-2 text-rose-800 font-bold text-xs">
-                      <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-2xl space-y-2.5">
+                    <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-xs">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0" />
                       <span>Revision Requested — Waiting for Writer Resubmission</span>
                     </div>
-                    <p className="text-xs text-rose-900 leading-relaxed font-medium">
-                      You have sent revision instructions to <strong>{article.writer?.name || "the assigned writer"}</strong>.
+                    <p className="text-xs text-rose-900 dark:text-rose-200 leading-relaxed font-medium">
+                      You have sent revision instructions to <strong className="text-rose-950 dark:text-rose-100">{article.writer?.name || "the assigned writer"}</strong>.
                       Per workflow rules, the writer must fix the problem in the article and resubmit before another review command can be issued.
                     </p>
                     {latestReview?.suggestion && (
-                      <div className="p-3 bg-white/80 rounded-xl border border-rose-200 text-xs text-rose-950 font-medium">
-                        <span className="font-bold block mb-0.5 text-rose-800">Latest Feedback Sent to Writer:</span>
+                      <div className="p-3 bg-white/80 dark:bg-slate-900/90 rounded-xl border border-rose-200 dark:border-rose-800/60 text-xs text-rose-950 dark:text-rose-100 font-medium">
+                        <span className="font-bold block mb-0.5 text-rose-800 dark:text-rose-300">Latest Feedback Sent to Writer:</span>
                         &quot;{latestReview.suggestion}&quot;
                       </div>
                     )}
                   </div>
 
-                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500 font-semibold flex items-center justify-center gap-2">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center justify-center gap-2">
                     <Lock className="w-3.5 h-3.5 text-slate-400" />
                     <span>Review commands locked. Unlocks automatically when writer submits their revised draft.</span>
                   </div>
