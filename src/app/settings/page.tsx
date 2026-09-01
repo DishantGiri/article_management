@@ -26,10 +26,13 @@ import {
   Package,
   LogOut,
   Info,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
 import LoadingScreen from "@/components/LoadingScreen";
+import { useTheme } from "@/context/ThemeContext";
 
 const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-purple-100 text-purple-800 border-purple-200",
@@ -58,7 +61,8 @@ const PRESET_AVATARS = [
 
 export default function SettingsPage() {
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState<"profile" | "notifications" | "workspace" | "security">("profile");
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<"profile" | "appearance" | "notifications" | "workspace" | "security">("profile");
 
   // User Profile
   const [userData, setUserData] = useState<any>(null);
@@ -333,6 +337,7 @@ export default function SettingsPage() {
             <button
               onClick={() => {
                 if (activeTab === "profile") handleSaveProfile();
+                else if (activeTab === "appearance") toast.success("Appearance settings saved!");
                 else if (activeTab === "notifications") handleSaveNotifications();
                 else if (activeTab === "workspace") handleSaveWorkspace();
                 else toast.success("Settings up to date!");
@@ -350,6 +355,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-2 mt-6 pt-5 border-t border-[#CBCBCB]/40 overflow-x-auto no-scrollbar">
           {[
             { id: "profile", label: "Profile & Identity", icon: User },
+            { id: "appearance", label: "Appearance & Theme", icon: Sparkles, badge: resolvedTheme === "dark" ? "Dark" : "Light" },
             { id: "notifications", label: "Notification Alerts", icon: Bell, badge: soundEnabled ? "Active" : "Muted" },
             { id: "workspace", label: "Workspace & Display", icon: Sliders },
             { id: "security", label: "Security & Session", icon: Shield },
@@ -550,6 +556,208 @@ export default function SettingsPage() {
                   <span className="text-slate-500 font-medium">System Environment</span>
                   <span className="font-bold text-slate-800">Production v1.0</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB: APPEARANCE & THEME (LIGHT & DARK MODE) ─────────────── */}
+      {activeTab === "appearance" && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Main Theme Switcher Card */}
+          <div className="bg-white rounded-3xl border border-[#CBCBCB]/70 p-5 sm:p-7 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-[#CBCBCB]/40">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#6D8196]" />
+                  <h2 className="text-base font-bold text-[#4A4A4A]">Interface Appearance</h2>
+                </div>
+                <p className="text-xs text-[#737373] font-medium">
+                  Customize the theme, color palette, and visual contrast across ArticleMgmt
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200/80 text-xs font-bold text-slate-700">
+                <span className={`w-2 h-2 rounded-full ${resolvedTheme === "dark" ? "bg-sky-400" : "bg-amber-400"} animate-pulse`} />
+                <span>Current: {resolvedTheme === "dark" ? "Dark Mode" : "Light Mode"}</span>
+              </div>
+            </div>
+
+            {/* 3 Theme Options Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Option 1: Light Mode */}
+              <div
+                onClick={() => {
+                  setTheme("light");
+                  toast.success("Switched to Light Mode!");
+                }}
+                className={`group relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-4 ${
+                  theme === "light"
+                    ? "border-[#6D8196] bg-[#6D8196]/5 shadow-sm ring-4 ring-[#6D8196]/10"
+                    : "border-[#CBCBCB]/60 bg-white hover:border-[#6D8196]/60 hover:bg-slate-50/50"
+                }`}
+              >
+                <div className="space-y-3">
+                  {/* Visual UI Preview */}
+                  <div className="h-28 rounded-xl bg-[#FAF9F5] border border-slate-200 p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-400" />
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      </div>
+                      <div className="w-12 h-2 bg-slate-200 rounded" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 my-1">
+                      <div className="bg-white p-1.5 rounded border border-slate-200 shadow-2xs space-y-1">
+                        <div className="w-6 h-1.5 bg-[#6D8196] rounded" />
+                        <div className="w-8 h-1 bg-slate-200 rounded" />
+                      </div>
+                      <div className="bg-white p-1.5 rounded border border-slate-200 shadow-2xs space-y-1">
+                        <div className="w-5 h-1.5 bg-emerald-500 rounded" />
+                        <div className="w-7 h-1 bg-slate-200 rounded" />
+                      </div>
+                      <div className="bg-white p-1.5 rounded border border-slate-200 shadow-2xs space-y-1">
+                        <div className="w-7 h-1.5 bg-blue-500 rounded" />
+                        <div className="w-6 h-1 bg-slate-200 rounded" />
+                      </div>
+                    </div>
+                    <div className="h-2 bg-slate-200/70 rounded w-2/3" />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sun className="w-4 h-4 text-amber-500" />
+                        <h3 className="font-bold text-sm text-[#4A4A4A]">Light Mode</h3>
+                      </div>
+                      {theme === "light" && (
+                        <CheckCircle2 className="w-4 h-4 text-[#6D8196]" />
+                      )}
+                    </div>
+                    <p className="text-xs text-[#737373] mt-1 leading-relaxed">
+                      Clean daylight aesthetic with warm parchment background and high readability.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option 2: Dark Mode */}
+              <div
+                onClick={() => {
+                  setTheme("dark");
+                  toast.success("Switched to Dark Mode!");
+                }}
+                className={`group relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-4 ${
+                  theme === "dark"
+                    ? "border-[#6D8196] bg-[#6D8196]/10 shadow-sm ring-4 ring-[#6D8196]/10"
+                    : "border-[#CBCBCB]/60 bg-white hover:border-[#6D8196]/60 hover:bg-slate-50/50"
+                }`}
+              >
+                <div className="space-y-3">
+                  {/* Visual UI Preview */}
+                  <div className="h-28 rounded-xl bg-[#0f172a] border border-slate-700 p-2.5 flex flex-col justify-between overflow-hidden shadow-2xs">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-500" />
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      </div>
+                      <div className="w-12 h-2 bg-slate-700 rounded" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 my-1">
+                      <div className="bg-[#1e293b] p-1.5 rounded border border-slate-700 space-y-1">
+                        <div className="w-6 h-1.5 bg-[#6D8196] rounded" />
+                        <div className="w-8 h-1 bg-slate-600 rounded" />
+                      </div>
+                      <div className="bg-[#1e293b] p-1.5 rounded border border-slate-700 space-y-1">
+                        <div className="w-5 h-1.5 bg-emerald-500 rounded" />
+                        <div className="w-7 h-1 bg-slate-600 rounded" />
+                      </div>
+                      <div className="bg-[#1e293b] p-1.5 rounded border border-slate-700 space-y-1">
+                        <div className="w-7 h-1.5 bg-blue-500 rounded" />
+                        <div className="w-6 h-1 bg-slate-600 rounded" />
+                      </div>
+                    </div>
+                    <div className="h-2 bg-slate-800 rounded w-2/3" />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Moon className="w-4 h-4 text-sky-400" />
+                        <h3 className="font-bold text-sm text-[#4A4A4A]">Dark Mode</h3>
+                      </div>
+                      {theme === "dark" && (
+                        <CheckCircle2 className="w-4 h-4 text-[#6D8196]" />
+                      )}
+                    </div>
+                    <p className="text-xs text-[#737373] mt-1 leading-relaxed">
+                      Sleek slate-900 palette for reduced eye strain and enhanced focus in low light.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option 3: System Match */}
+              <div
+                onClick={() => {
+                  setTheme("system");
+                  toast.success("Synchronized with System Theme!");
+                }}
+                className={`group relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-4 ${
+                  theme === "system"
+                    ? "border-[#6D8196] bg-[#6D8196]/5 shadow-sm ring-4 ring-[#6D8196]/10"
+                    : "border-[#CBCBCB]/60 bg-white hover:border-[#6D8196]/60 hover:bg-slate-50/50"
+                }`}
+              >
+                <div className="space-y-3">
+                  {/* Visual UI Preview (Split Light/Dark) */}
+                  <div className="h-28 rounded-xl border border-slate-300 p-0 flex overflow-hidden shadow-2xs">
+                    <div className="w-1/2 bg-[#FAF9F5] p-2.5 flex flex-col justify-between border-r border-slate-200">
+                      <div className="w-8 h-2 bg-slate-200 rounded" />
+                      <div className="bg-white p-1 rounded border border-slate-200 space-y-1">
+                        <div className="w-4 h-1 bg-[#6D8196] rounded" />
+                      </div>
+                      <div className="h-1.5 bg-slate-200 rounded w-3/4" />
+                    </div>
+                    <div className="w-1/2 bg-[#0f172a] p-2.5 flex flex-col justify-between">
+                      <div className="w-8 h-2 bg-slate-700 rounded ml-auto" />
+                      <div className="bg-[#1e293b] p-1 rounded border border-slate-700 space-y-1">
+                        <div className="w-4 h-1 bg-[#6D8196] rounded" />
+                      </div>
+                      <div className="h-1.5 bg-slate-800 rounded w-3/4 ml-auto" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Monitor className="w-4 h-4 text-indigo-500" />
+                        <h3 className="font-bold text-sm text-[#4A4A4A]">System Default</h3>
+                      </div>
+                      {theme === "system" && (
+                        <CheckCircle2 className="w-4 h-4 text-[#6D8196]" />
+                      )}
+                    </div>
+                    <p className="text-xs text-[#737373] mt-1 leading-relaxed">
+                      Automatically syncs with your operating system (macOS, Windows, or Linux) preferences.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Design & Contrast Standards Info Box */}
+            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex items-start gap-3.5">
+              <div className="w-8 h-8 rounded-xl bg-[#6D8196]/15 text-[#6D8196] flex items-center justify-center shrink-0">
+                <Info className="w-4 h-4" />
+              </div>
+              <div className="space-y-1 text-xs">
+                <p className="font-bold text-[#4A4A4A]">Clean, Natural Color Philosophy</p>
+                <p className="text-[#737373] leading-relaxed">
+                  Both modes use industry-standard Slate neutrals with optimal WCAG AA contrast. The theme automatically persists across all pages, modals, and workspaces.
+                </p>
               </div>
             </div>
           </div>

@@ -29,7 +29,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" className={`${inter.variable} font-sans h-full`} suppressHydrationWarning>
-      <body className="h-full bg-[#FAF9F5] text-[#4A4A4A] antialiased" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var theme = localStorage.getItem('theme') || 'system';
+                var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (isDark) {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                  document.documentElement.setAttribute('data-theme', 'light');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="h-full bg-[#FAF9F5] text-[#4A4A4A] dark:bg-[#0f172a] dark:text-[#f1f5f9] antialiased" suppressHydrationWarning>
         <Providers>
           <div className="flex h-full" suppressHydrationWarning>
             {showSidebar && <Sidebar />}

@@ -5,8 +5,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon } from "lucide-react";
+import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
+import { useTheme } from "@/context/ThemeContext";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
 
@@ -119,6 +120,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status, update } = useSession();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
@@ -348,7 +350,14 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="p-2 rounded-lg text-[#4A4A4A] hover:bg-[#FAF9F5] transition-colors cursor-pointer"
+            title={`Switch to ${resolvedTheme === "dark" ? "Light" : "Dark"} mode`}
+          >
+            {resolvedTheme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+          </button>
           <Link href="/notifications" className="relative p-2 rounded-lg text-[#4A4A4A] hover:bg-[#FAF9F5] transition-colors">
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
@@ -440,6 +449,49 @@ export default function Sidebar() {
             })
           )}
         </nav>
+
+        {/* Quick Theme Switcher */}
+        <div className="px-3.5 py-2.5 border-t border-slate-100 flex items-center justify-between text-xs" suppressHydrationWarning>
+          <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
+            {resolvedTheme === "dark" ? <Moon className="w-3.5 h-3.5 text-sky-400" /> : <Sun className="w-3.5 h-3.5 text-amber-500" />}
+            <span>Theme</span>
+          </span>
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
+            <button
+              onClick={() => setTheme("light")}
+              className={`p-1.5 rounded-md transition cursor-pointer ${
+                theme === "light"
+                  ? "bg-white text-amber-500 shadow-xs"
+                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              }`}
+              title="Light theme"
+            >
+              <Sun className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setTheme("dark")}
+              className={`p-1.5 rounded-md transition cursor-pointer ${
+                theme === "dark"
+                  ? "bg-slate-900 text-sky-400 shadow-xs"
+                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              }`}
+              title="Dark theme"
+            >
+              <Moon className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setTheme("system")}
+              className={`p-1.5 rounded-md transition cursor-pointer ${
+                theme === "system"
+                  ? "bg-white dark:bg-slate-900 text-indigo-500 shadow-xs"
+                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              }`}
+              title="System theme"
+            >
+              <Monitor className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
 
         {/* User Switcher (mock auth) */}
         <div className="px-3 py-4 border-t border-slate-100 relative bg-slate-50/50" suppressHydrationWarning>
