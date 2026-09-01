@@ -32,7 +32,7 @@ export default function CustomSelect({
   options,
   placeholder = "Select...",
   className = "w-full",
-  triggerClassName = "w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-xl text-xs font-semibold text-[#4A4A4A] shadow-2xs",
+  triggerClassName = "w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-[#CBCBCB] dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-[#6D8196] rounded-xl text-xs font-semibold text-[#4A4A4A] dark:text-slate-100 shadow-2xs",
   popupClassName = "",
   disabled = false,
   searchable,
@@ -164,13 +164,13 @@ export default function CustomSelect({
       style={portal ? dropdownStyle : undefined}
       className={`${
         portal
-          ? "bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-[#CBCBCB] flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
-          : `absolute z-50 mt-1.5 left-0 shadow-xl border border-[#CBCBCB] py-1 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150 ${popupClassName}`
+          ? "bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-2xl border border-[#CBCBCB] dark:border-slate-700 flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden text-slate-800 dark:text-slate-100"
+          : `absolute z-50 mt-1.5 left-0 shadow-xl border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-900 py-1 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150 text-slate-800 dark:text-slate-100 ${popupClassName}`
       }`}
     >
       {/* Search Input Box */}
       {isSearchable && (
-        <div className="p-2 border-b border-[#CBCBCB]/60 bg-[#FAF9F5] shrink-0 sticky top-0 z-10">
+        <div className="p-2 border-b border-[#CBCBCB]/60 dark:border-slate-800 bg-[#FAF9F5] dark:bg-slate-950 shrink-0 sticky top-0 z-10">
           <div className="relative flex items-center">
             <Search className="w-3.5 h-3.5 text-[#6D8196] absolute left-2.5 pointer-events-none" />
             <input
@@ -179,7 +179,7 @@ export default function CustomSelect({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full pl-8 pr-7 py-1.5 text-xs font-semibold bg-white border border-[#CBCBCB] rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6D8196] focus:ring-1 focus:ring-[#6D8196]"
+              className="w-full pl-8 pr-7 py-1.5 text-xs font-semibold bg-white dark:bg-slate-900 border border-[#CBCBCB] dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#6D8196] focus:ring-1 focus:ring-[#6D8196]"
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
                   setIsOpen(false);
@@ -197,7 +197,7 @@ export default function CustomSelect({
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-2 p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="absolute right-2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -207,13 +207,15 @@ export default function CustomSelect({
       )}
 
       {/* Options Scroll List */}
-      <div className="overflow-y-auto flex-1 py-1 max-h-56 divide-y divide-slate-50">
+      <div className="overflow-y-auto flex-1 py-1 max-h-56 divide-y divide-slate-50 dark:divide-slate-800/60">
         {/* Placeholder / Empty Option */}
         {placeholder && !options.some((o) => o.value === "") && !search && (
           <div
             onClick={() => handleSelect("")}
             className={`mx-1 my-0.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors ${
-              !value ? "bg-[#6D8196]/15 text-[#3D4F61] font-bold" : "text-[#737373] hover:bg-[#FAF9F5]"
+              !value
+                ? "bg-[#6D8196]/15 dark:bg-[#6D8196]/30 text-[#3D4F61] dark:text-sky-200 font-bold"
+                : "text-[#737373] dark:text-slate-400 hover:bg-[#FAF9F5] dark:hover:bg-slate-800/80 dark:hover:text-slate-100"
             }`}
           >
             {placeholder}
@@ -229,7 +231,7 @@ export default function CustomSelect({
                 <div
                   key={opt.value || idx}
                   onClick={() => handleSelect(opt.value)}
-                  className="mx-1 my-0.5 px-3 py-2 text-xs font-bold text-[#6D8196] hover:bg-[#6D8196]/10 rounded-lg cursor-pointer border-t border-[#CBCBCB]/40 transition-colors flex items-center gap-1.5"
+                  className="mx-1 my-0.5 px-3 py-2 text-xs font-bold text-[#6D8196] dark:text-sky-400 hover:bg-[#6D8196]/10 dark:hover:bg-[#6D8196]/20 rounded-lg cursor-pointer border-t border-[#CBCBCB]/40 dark:border-slate-800 transition-colors flex items-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{opt.label}</span>
@@ -242,17 +244,17 @@ export default function CustomSelect({
                 onClick={() => handleSelect(opt.value)}
                 className={`mx-1 my-0.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
                   isSelected
-                    ? "bg-[#6D8196]/15 text-[#3D4F61] font-bold"
-                    : "text-[#4A4A4A] hover:bg-[#FAF9F5] hover:text-[#1F2937]"
+                    ? "bg-[#6D8196]/15 dark:bg-[#6D8196]/30 text-[#3D4F61] dark:text-sky-200 font-bold"
+                    : "text-[#4A4A4A] dark:text-slate-200 hover:bg-[#FAF9F5] dark:hover:bg-slate-800/80 hover:text-[#1F2937] dark:hover:text-white"
                 }`}
               >
                 <div className="truncate flex-1 min-w-0">{opt.label}</div>
-                {isSelected && <Check className="w-3.5 h-3.5 text-[#6D8196] shrink-0 ml-2" />}
+                {isSelected && <Check className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400 shrink-0 ml-2" />}
               </div>
             );
           })
         ) : (
-          <div className="px-3 py-4 text-center text-xs text-slate-400 italic">
+          <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500 italic">
             No matching options found
           </div>
         )}
@@ -261,7 +263,7 @@ export default function CustomSelect({
         {allowCustom && search.trim() && !exactMatchExists && (
           <div
             onClick={() => handleSelect(search.trim())}
-            className="px-3 py-2 text-xs font-bold text-[#6D8196] bg-[#6D8196]/5 hover:bg-[#6D8196]/15 cursor-pointer border-t border-[#CBCBCB]/40 transition-colors flex items-center gap-1.5"
+            className="px-3 py-2 text-xs font-bold text-[#6D8196] dark:text-sky-400 bg-[#6D8196]/5 dark:bg-[#6D8196]/20 hover:bg-[#6D8196]/15 dark:hover:bg-[#6D8196]/30 cursor-pointer border-t border-[#CBCBCB]/40 dark:border-slate-800 transition-colors flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Use &ldquo;{search.trim()}&rdquo;</span>
@@ -287,12 +289,12 @@ export default function CustomSelect({
           ) : value ? (
             value
           ) : (
-            <span className="text-[#737373] font-medium">{placeholder}</span>
+            <span className="text-[#737373] dark:text-slate-400 font-medium">{placeholder}</span>
           )}
         </span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-[#737373] shrink-0 ml-1.5 transition-transform duration-200 ${
-            isOpen ? "rotate-180 text-[#6D8196]" : ""
+          className={`w-3.5 h-3.5 text-[#737373] dark:text-slate-400 shrink-0 ml-1.5 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-[#6D8196] dark:text-sky-400" : ""
           }`}
         />
       </button>
