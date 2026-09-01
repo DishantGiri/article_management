@@ -40,6 +40,11 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Admins cannot view Super Admin profiles
+    if (session.user.role === "ADMIN" && user.role === "SUPER_ADMIN" && !isSelf) {
+      return NextResponse.json({ error: "Forbidden: Admins cannot view Super Admin users" }, { status: 403 });
+    }
+
     return NextResponse.json(user);
   } catch (err) {
     console.error("[GET /api/users/[id]]", err);

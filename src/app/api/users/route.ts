@@ -15,7 +15,11 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // If Admin (and not Super Admin), filter out Super Admin users
+  const whereClause = session.user.role === "ADMIN" ? { role: { not: "SUPER_ADMIN" as const } } : {};
+
   const users = await prisma.user.findMany({
+    where: whereClause,
     include: {
       siteAccess: {
         include: { site: { select: { id: true, name: true } } },

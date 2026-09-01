@@ -40,10 +40,18 @@ export async function GET(req: NextRequest) {
     }
 
     // Role-based Access Control:
-    // SUPER_ADMIN and ADMIN: can view anyone
+    // SUPER_ADMIN: can view anyone
+    // ADMIN: can view anyone EXCEPT SUPER_ADMIN (unless viewing self)
     // TEAM_LEAD: can view themselves and their assigned team members
     // WRITER / LINKER: can only view themselves
-    if (sessionUserRole === "TEAM_LEAD") {
+    if (sessionUserRole === "ADMIN") {
+      if (targetUser.role === "SUPER_ADMIN" && targetUserId !== sessionUserId) {
+        return NextResponse.json(
+          { error: "Access Denied: Admins cannot view Super Admin work calendars." },
+          { status: 403 }
+        );
+      }
+    } else if (sessionUserRole === "TEAM_LEAD") {
       const isSelf = targetUserId === sessionUserId;
       const isTeamMember = targetUser.teamLeadId === sessionUserId;
       if (!isSelf && !isTeamMember) {
@@ -52,7 +60,7 @@ export async function GET(req: NextRequest) {
           { status: 403 }
         );
       }
-    } else if (sessionUserRole !== "SUPER_ADMIN" && sessionUserRole !== "ADMIN") {
+    } else if (sessionUserRole !== "SUPER_ADMIN") {
       // WRITER, LINKER, or other
       if (targetUserId !== sessionUserId) {
         return NextResponse.json(
@@ -64,9 +72,18 @@ export async function GET(req: NextRequest) {
 
     // Fetch list of users that the current session user is permitted to select
     let selectableUsers: Array<{ id: number; name: string; email: string; role: string | null }> = [];
-    if (sessionUserRole === "SUPER_ADMIN" || sessionUserRole === "ADMIN") {
+    if (sessionUserRole === "SUPER_ADMIN") {
       selectableUsers = await prisma.user.findMany({
         where: { approved: true },
+        select: { id: true, name: true, email: true, role: true },
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+      });
+    } else if (sessionUserRole === "ADMIN") {
+      selectableUsers = await prisma.user.findMany({
+        where: {
+          approved: true,
+          role: { not: "SUPER_ADMIN" },
+        },
         select: { id: true, name: true, email: true, role: true },
         orderBy: [{ role: "asc" }, { name: "asc" }],
       });

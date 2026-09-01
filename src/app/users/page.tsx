@@ -179,6 +179,9 @@ export default function UsersPage() {
   };
 
   const filtered = users.filter((u) => {
+    if (currentUserRole === "ADMIN") {
+      if (u.role === "SUPER_ADMIN") return false;
+    }
     if (currentUserRole === "TEAM_LEAD") {
       if (u.teamLead?.id !== currentUserId) return false;
     }
@@ -382,7 +385,9 @@ export default function UsersPage() {
           className="min-w-[130px]"
           options={[
             { value: "", label: "All Roles" },
-            ...Object.entries(ROLE_LABELS).map(([val, label]) => ({ value: val, label })),
+            ...Object.entries(ROLE_LABELS)
+              .filter(([val]) => currentUserRole === "SUPER_ADMIN" || val !== "SUPER_ADMIN")
+              .map(([val, label]) => ({ value: val, label })),
           ]}
         />
       </div>
