@@ -112,6 +112,11 @@ export default function NotificationsPage() {
     const match = msg.match(/"([^"]+)"/);
     const productName = match ? match[1] : null;
 
+    if (msg.toLowerCase().includes("changes requested") || msg.toLowerCase().includes("redo") || msg.toLowerCase().includes("wrong")) {
+      router.push("/?tab=write");
+      return;
+    }
+
     const userRole = session?.user?.role || "WRITER";
 
     if (productName) {
@@ -232,7 +237,10 @@ export default function NotificationsPage() {
               let iconBg = "bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30";
 
               const msg = notification.message.toLowerCase();
-              if (msg.includes("product") || notification.type === "PRODUCT_ADDED") {
+              if (msg.includes("changes requested") || msg.includes("redo") || msg.includes("wrong") || msg.includes("needs changes")) {
+                Icon = AlertTriangle;
+                iconBg = "bg-rose-50 text-rose-700 border border-rose-200/60";
+              } else if (msg.includes("product") || notification.type === "PRODUCT_ADDED") {
                 Icon = Package;
                 iconBg = "bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30";
               } else if (msg.includes("approved")) {

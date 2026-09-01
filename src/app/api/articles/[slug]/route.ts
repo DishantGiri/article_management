@@ -94,7 +94,7 @@ export async function PATCH(
     const { slug: rawSlug } = await params;
     const id = parseInt(rawSlug.split("-")[0]);
     const body = await req.json();
-    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted } = body;
+    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted, suggestion } = body;
 
     const activeUserId = Number(session.user.id);
     const activeUserRole = session.user.role || "";
@@ -133,7 +133,7 @@ export async function PATCH(
         where: { id: existing.writerId },
         select: { teamLeadId: true },
       });
-      if (writer?.teamLeadId !== activeUserId) {
+      if (writer?.teamLeadId && writer.teamLeadId !== activeUserId) {
         return NextResponse.json({ error: "Access denied: This writer is not assigned to your team." }, { status: 403 });
       }
     }
@@ -301,6 +301,77 @@ export async function PATCH(
       }).catch((e) => console.error("WS Notification failed", e));
     } catch (e) {}
 
+    // If status is changed to REDO or APPROVED by TL/Admin, record an ArticleReview entry
+    if (status === "REDO" || (status === "APPROVED" && ["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole))) {
+      try {
+        await prisma.articleReview.create({
+          data: {
+            articleId: id,
+            reviewedById: activeUserId,
+            suggestion: suggestion || notes || null,
+            approved: status === "APPROVED",
+          },
+        });
+      } catch (revErr) {
+        console.error("Failed to create ArticleReview entry in PATCH:", revErr);
+      }
+    }
+
+    // If article is marked as REDO / Changes requested, dispatch notification specifically to the writer
+    if (status === "REDO") {
+      try {
+        const writerIdToNotify = updated.writerId || existing.writerId;
+        if (writerIdToNotify && writerIdToNotify !== activeUserId) {
+          const reviewer = await prisma.user.findUnique({
+            where: { id: activeUserId },
+            select: { name: true },
+          });
+          const reviewerName = reviewer?.name || session.user.name || "Team Lead";
+          const feedbackRemark = suggestion || notes || "No specific remark provided. Please review and revise the article.";
+          const notifMessage = `Changes requested on your article for "${updated.product.name}" by Team Lead ${reviewerName}. Remark: ${feedbackRemark}`;
+
+          const notif = await prisma.notification.create({
+            data: {
+              recipientId: writerIdToNotify,
+              senderId: activeUserId,
+              type: "ARTICLE_SUGGESTION",
+              message: notifMessage,
+            },
+          });
+          await sendRealtimeNotification(writerIdToNotify, notif);
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify writer on REDO:", notifErr);
+      }
+    }
+
+    // If article is APPROVED by Team Lead or Admin, notify the writer
+    if (status === "APPROVED") {
+      try {
+        const writerIdToNotify = updated.writerId || existing.writerId;
+        if (writerIdToNotify && writerIdToNotify !== activeUserId) {
+          const reviewer = await prisma.user.findUnique({
+            where: { id: activeUserId },
+            select: { name: true },
+          });
+          const reviewerName = reviewer?.name || session.user.name || "Team Lead";
+          const notifMessage = `Your article for "${updated.product.name}" was APPROVED by Team Lead ${reviewerName}.`;
+
+          const notif = await prisma.notification.create({
+            data: {
+              recipientId: writerIdToNotify,
+              senderId: activeUserId,
+              type: "ARTICLE_SUGGESTION",
+              message: notifMessage,
+            },
+          });
+          await sendRealtimeNotification(writerIdToNotify, notif);
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify writer on APPROVED:", notifErr);
+      }
+    }
+
     // Notify Admins and Super Admins if Special Approval / Article Update Approval is requested
     if (specialApprovalRequested && !existing.specialApprovalRequested) {
       try {
@@ -446,6 +517,9 @@ export async function PATCH(
       }
       if (existing.specialApprovalRequested !== updated.specialApprovalRequested) {
         changeNotes.push(updated.specialApprovalRequested ? "Requested special approval" : "Cleared special approval request");
+      }
+      if (status === "REDO" && suggestion) {
+        changeNotes.push(`Feedback: ${suggestion}`);
       }
 
       if (changeNotes.length > 0 || notes) {

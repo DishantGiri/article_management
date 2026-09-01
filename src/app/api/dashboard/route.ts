@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
                 },
               },
             },
-            take: 10,
+            take: 50,
           })
         : Promise.resolve([]),
 

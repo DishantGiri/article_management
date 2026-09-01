@@ -143,6 +143,17 @@ export default function DashboardPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showBellDropdown, setShowBellDropdown] = useState(false);
+  const [tlTab, setTlTab] = useState<"check" | "write">("check");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam === "write" || tabParam === "check") {
+        setTlTab(tabParam);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (session?.user?.role) {
@@ -271,6 +282,7 @@ export default function DashboardPage() {
       if (res.ok) {
         toast.success("Assignment started! Loading workspace...");
         window.scrollTo({ top: 0, behavior: "smooth" });
+        setTlTab("write");
         fetchDashboardData(false);
       } else {
         const err = await res.json();
@@ -474,11 +486,85 @@ export default function DashboardPage() {
 
       {/* ─── ROLE: TEAM_LEAD VIEW ──────────────────────────────────── */}
       {currentUserRole === "TEAM_LEAD" && (
-        <TeamLeadMissionControl
-          data={data}
-          currentUserId={currentUserId}
-          onRefresh={() => fetchDashboardData(false)}
-        />
+        <div className="space-y-6 animate-fadeIn">
+          {/* Dual Perspective Tabs for Team Lead */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-2 bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTlTab("check")}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                  tlTab === "check"
+                    ? "bg-[#6D8196] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <ClipboardList className="w-4 h-4" />
+                <span>Check Article</span>
+                {(data?.teamLead?.reviewQueue?.length ?? 0) > 0 && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      tlTab === "check"
+                        ? "bg-white text-[#6D8196]"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {data?.teamLead?.reviewQueue?.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setTlTab("write")}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                  tlTab === "write"
+                    ? "bg-[#6D8196] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Write Article</span>
+                {(data?.writerInProgressArticles?.length ?? 0) > 0 ? (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    In Progress
+                  </span>
+                ) : (data?.writerPendingArticles?.length ?? 0) > 0 ? (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      tlTab === "write"
+                        ? "bg-white text-[#6D8196]"
+                        : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {data?.writerPendingArticles?.length} pool
+                  </span>
+                ) : null}
+              </button>
+            </div>
+
+            <div className="text-xs font-semibold text-slate-400 px-3 hidden md:block">
+              {tlTab === "check"
+                ? "Reviewing submissions from assigned team members"
+                : "Active authoring station & product claim directory"}
+            </div>
+          </div>
+
+          {/* Tab View Content */}
+          {tlTab === "check" ? (
+            <TeamLeadMissionControl
+              data={data}
+              currentUserId={currentUserId}
+              onRefresh={() => fetchDashboardData(false)}
+            />
+          ) : (
+            <WriterFocusStudio
+              data={data}
+              currentUserId={currentUserId}
+              onStartWriting={handleStartWriting}
+              onRefresh={() => fetchDashboardData(false)}
+            />
+          )}
+        </div>
       )}
 
       {/* ─── ROLE: LINKER VIEW ─────────────────────────────────────── */}

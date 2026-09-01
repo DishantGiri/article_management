@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
         where: { id: article.writerId },
         select: { teamLeadId: true },
       });
-      if (writer?.teamLeadId !== reviewedById) {
+      if (writer?.teamLeadId && writer.teamLeadId !== reviewedById) {
         return NextResponse.json(
           { error: "Access denied: This writer is not assigned to your team." },
           { status: 403 }

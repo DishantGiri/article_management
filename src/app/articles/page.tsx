@@ -421,6 +421,50 @@ function ArticlesContent() {
           All Articles
         </button>
 
+        {currentUserRole === "TEAM_LEAD" && (
+          <button
+            onClick={() => {
+              setWriterFilter("");
+              setStatusFilter("COMPLETED");
+              setCurrentPage(1);
+            }}
+            className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+              statusFilter === "COMPLETED" && !writerFilter
+                ? "border-[#6D8196] text-[#6D8196] font-bold"
+                : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+            }`}
+          >
+            <span>Check Articles</span>
+            {articles.filter((a) => a.status === "COMPLETED").length > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-50 text-amber-700 rounded-full">
+                {articles.filter((a) => a.status === "COMPLETED").length}
+              </span>
+            )}
+          </button>
+        )}
+
+        {currentUserRole === "TEAM_LEAD" && (
+          <button
+            onClick={() => {
+              setWriterFilter("");
+              setStatusFilter("PENDING");
+              setCurrentPage(1);
+            }}
+            className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+              statusFilter === "PENDING" && !writerFilter
+                ? "border-emerald-600 text-emerald-600 font-bold"
+                : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+            }`}
+          >
+            <span>Write Articles</span>
+            {articles.filter((a) => a.status === "PENDING").length > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 rounded-full">
+                {articles.filter((a) => a.status === "PENDING").length}
+              </span>
+            )}
+          </button>
+        )}
+
         {session?.user?.name && (
           <button
             onClick={() => {
@@ -715,90 +759,101 @@ function ArticlesContent() {
                           <span className="text-[12px] font-bold text-slate-300">--</span>
                         )}
                       </td>
-                      {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
+                      {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "WRITER") && (
                         <td className="px-4 py-3.5">
-                          <Link
-                            href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            Review
-                          </Link>
-                        </td>
-                      )}
-                      {currentUserRole === "WRITER" && (
-                        <td className="px-4 py-3.5">
-                          {status === "PENDING" && (
-                            <button
-                              disabled={hasActiveAssignment}
-                              onClick={async () => {
-                                if (!currentUserId) return;
-                                try {
-                                  const res = await fetch(`/api/articles/${a.id}`, {
-                                    method: "PATCH",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ status: "IN_PROGRESS", writerId: currentUserId, callerId: currentUserId }),
-                                  });
-                                  if (res.ok) {
-                                    toast.success("Started writing! Redirecting to dashboard...");
-                                    router.push("/");
-                                  } else {
-                                    const err = await res.json();
-                                    toast.error(err.error || "Failed to start writing");
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {/* If current user is the assigned writer of this article */}
+                            {a.writer?.id === currentUserId && (
+                              <>
+                                {status === "IN_PROGRESS" && (
+                                  <button
+                                    onClick={() => {
+                                      setUpdatingArticle(a);
+                                      setUpdateLink(a.articleLink || "");
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#6D8196]/30 bg-[#6D8196]/15 text-[#3D4F61] hover:bg-[#6D8196]/25 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" />
+                                    Update
+                                  </button>
+                                )}
+                                {status === "REDO" && (
+                                  <>
+                                    {!a.startedAt ? (
+                                      <button
+                                        onClick={() => handleStartRevision(a.id)}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
+                                      >
+                                        <PlayCircle className="w-3.5 h-3.5" />
+                                        Start Revision
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          setUpdatingArticle(a);
+                                          setUpdateLink(a.articleLink || "");
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
+                                      >
+                                        <FileText className="w-3.5 h-3.5" />
+                                        Update
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </>
+                            )}
+
+                            {/* Write button for PENDING articles (Writer or Team Lead) */}
+                            {status === "PENDING" && (currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD") && (
+                              <button
+                                disabled={hasActiveAssignment}
+                                onClick={async () => {
+                                  if (!currentUserId) return;
+                                  try {
+                                    const res = await fetch(`/api/articles/${a.id}`, {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ status: "IN_PROGRESS", writerId: currentUserId, callerId: currentUserId }),
+                                    });
+                                    if (res.ok) {
+                                      toast.success("Started writing! Redirecting to workspace...");
+                                      router.push("/?tab=write");
+                                    } else {
+                                      const err = await res.json();
+                                      toast.error(err.error || "Failed to start writing");
+                                    }
+                                  } catch {
+                                    toast.error("Failed to start writing");
                                   }
-                                } catch {
-                                  toast.error("Failed to start writing");
-                                }
-                              }}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold whitespace-nowrap transition-all ${
-                                !hasActiveAssignment
-                                  ? "bg-[#6D8196] text-white hover:bg-[#5A6D81] cursor-pointer shadow-xs"
-                                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                              }`}
-                            >
-                              <PlayCircle className="w-3.5 h-3.5" />
-                              Write
-                            </button>
-                          )}
-                          {status === "IN_PROGRESS" && a.writer?.id === currentUserId && (
-                            <button
-                              onClick={() => {
-                                setUpdatingArticle(a);
-                                setUpdateLink(a.articleLink || "");
-                              }}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#6D8196]/30 bg-[#6D8196]/15 text-[#3D4F61] hover:bg-[#6D8196]/25 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                              Update
-                            </button>
-                          )}
-                          {status === "REDO" && a.writer?.id === currentUserId && (
-                            <>
-                              {!a.startedAt ? (
-                                <button
-                                  onClick={() => handleStartRevision(a.id)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
-                                >
-                                  <PlayCircle className="w-3.5 h-3.5" />
-                                  Start Revision
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => {
-                                    setUpdatingArticle(a);
-                                    setUpdateLink(a.articleLink || "");
-                                  }}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
-                                >
-                                  <FileText className="w-3.5 h-3.5" />
-                                  Update
-                                </button>
-                              )}
-                            </>
-                          )}
-                          {a.writer?.id !== currentUserId && (status === "IN_PROGRESS" || status === "REDO" || status === "COMPLETED" || status === "APPROVED") && (
-                            <span className="text-[11px] font-medium text-slate-400">Locked</span>
-                          )}
+                                }}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold whitespace-nowrap transition-all ${
+                                  !hasActiveAssignment
+                                    ? "bg-[#6D8196] text-white hover:bg-[#5A6D81] cursor-pointer shadow-xs"
+                                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                }`}
+                              >
+                                <PlayCircle className="w-3.5 h-3.5" />
+                                Write
+                              </button>
+                            )}
+
+                            {/* Review link for Managers (Super Admin, Admin, Team Lead) */}
+                            {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
+                              <Link
+                                href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                Review
+                              </Link>
+                            )}
+
+                            {/* Locked indicator for Writers when not their article */}
+                            {currentUserRole === "WRITER" && a.writer?.id !== currentUserId && (status === "IN_PROGRESS" || status === "REDO" || status === "COMPLETED" || status === "APPROVED") && (
+                              <span className="text-[11px] font-medium text-slate-400">Locked</span>
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>
