@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor } from "lucide-react";
+import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -75,9 +75,15 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/categories",
+    label: "Product Types",
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
+    icon: Layers,
+  },
+  {
+    href: "/product-categories",
     label: "Product Categories",
     roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
-    icon: Tags,
+    icon: Tag,
   },
   {
     href: "/reports",

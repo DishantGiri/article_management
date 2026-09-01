@@ -127,6 +127,7 @@ export default function AddProductModal({
   const [step, setStep] = useState(1);
   const [sites, setSites] = useState<Site[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [productCategories, setProductCategories] = useState<{ id: number; name: string }[]>([]);
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -334,11 +335,13 @@ export default function AddProductModal({
       setLoading(true);
       Promise.all([
         fetch("/api/categories").then((r) => r.json()),
+        fetch("/api/product-categories").then((r) => r.json()),
         fetch("/api/sites").then((r) => r.json()),
         fetch("/api/affiliates").then((r) => r.json()),
       ])
-        .then(([catsData, sitesData, affsData]) => {
+        .then(([catsData, prodCatsData, sitesData, affsData]) => {
           setCategories(Array.isArray(catsData) ? catsData : []);
+          setProductCategories(Array.isArray(prodCatsData) ? prodCatsData : []);
           setSites(Array.isArray(sitesData) ? sitesData : []);
           setAffiliates(Array.isArray(affsData) ? affsData : []);
         })
@@ -908,7 +911,7 @@ export default function AddProductModal({
                             searchPlaceholder="Search category..."
                             className="w-full"
                             triggerClassName="w-full px-2.5 py-1.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
-                            options={categories.map((c) => ({ value: c.name, label: c.name }))}
+                            options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                           />
                         </div>
 
@@ -1030,7 +1033,7 @@ export default function AddProductModal({
                                   portal={true}
                                   className="w-full"
                                   triggerClassName="w-full px-2 py-1.5 bg-white border border-[#CBCBCB]/60 hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
-                                  options={categories.map((c) => ({ value: c.name, label: c.name }))}
+                                  options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                                 />
                               </td>
                               <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
@@ -1450,7 +1453,7 @@ export default function AddProductModal({
                         searchable={true}
                         searchPlaceholder="Search category..."
                         className="w-full"
-                        options={categories.map((c) => ({ value: c.name, label: c.name }))}
+                        options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                       />
                     </div>
                   </div>

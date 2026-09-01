@@ -315,6 +315,13 @@ model AffiliateName {
   updatedAt DateTime @default(now()) @updatedAt
 }
 
+model ProductCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
 model Geo {
   id        Int      @id @default(autoincrement())
   code      String   @unique

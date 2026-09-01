@@ -68,7 +68,8 @@ export default function EditProductModal({
 }: EditProductModalProps) {
   const { data: session } = useSession();
   const [sites, setSites] = useState<Site[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [productCategories, setProductCategories] = useState<{ id: number; name: string }[]>([]);
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -111,11 +112,13 @@ export default function EditProductModal({
       setLoading(true);
       Promise.all([
         fetch("/api/categories").then((r) => r.json()),
+        fetch("/api/product-categories").then((r) => r.json()),
         fetch("/api/sites").then((r) => r.json()),
         fetch("/api/affiliates").then((r) => r.json()),
       ])
-        .then(([catsData, sitesData, affsData]) => {
+        .then(([catsData, prodCatsData, sitesData, affsData]) => {
           setCategories(Array.isArray(catsData) ? catsData : []);
+          setProductCategories(Array.isArray(prodCatsData) ? prodCatsData : []);
           setSites(Array.isArray(sitesData) ? sitesData : []);
           setAffiliates(Array.isArray(affsData) ? affsData : []);
         })
@@ -325,16 +328,16 @@ export default function EditProductModal({
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
-                    Category
+                    Product Category
                   </label>
                   <CustomSelect
                     value={category}
                     onChange={(val) => setCategory(val)}
-                    placeholder="Select Category..."
+                    placeholder="Select Product Category..."
                     searchable={true}
                     searchPlaceholder="Search category..."
                     className="w-full"
-                    options={categories.map((c) => ({ value: c.name, label: c.name }))}
+                    options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                   />
                 </div>
 
