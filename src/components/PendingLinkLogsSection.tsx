@@ -61,35 +61,35 @@ export default function PendingLinkLogsSection({
   const hasMore = displayLimit !== -1 && filteredProducts.length > displayLimit;
 
   return (
-    <div className="mb-6 bg-white border border-[#CBCBCB]/70 rounded-2xl p-5 shadow-xs transition-all duration-200">
+    <div className="mb-6 bg-white dark:bg-slate-900 border border-[#CBCBCB]/70 dark:border-slate-800 rounded-2xl p-5 shadow-xs transition-all duration-200">
       {/* Top Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-xs">
+          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-500/20 dark:border-amber-800/50 shadow-xs">
             <AlertTriangle className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-[#4A4A4A] tracking-tight">{title}</h3>
-              <span className="px-2.5 py-0.5 text-xs font-extrabold bg-[#FFFFE3] text-[#4A4A4A] border border-[#CBCBCB] rounded-full">
+              <h3 className="text-base font-bold text-[#4A4A4A] dark:text-slate-100 tracking-tight">{title}</h3>
+              <span className="px-2.5 py-0.5 text-xs font-extrabold bg-[#FFFFE3] dark:bg-amber-950/60 text-[#4A4A4A] dark:text-amber-300 border border-[#CBCBCB] dark:border-amber-800/60 rounded-full">
                 {products.length} {products.length === 1 ? "Product" : "Products"}
               </span>
             </div>
-            <p className="text-xs text-[#737373] font-medium mt-0.5">{subtitle}</p>
+            <p className="text-xs text-[#737373] dark:text-slate-400 font-medium mt-0.5">{subtitle}</p>
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
           {/* View Mode Toggle */}
-          <div className="hidden sm:flex items-center bg-[#FAF9F5] p-0.5 rounded-lg border border-[#CBCBCB]/60 shadow-2xs">
+          <div className="hidden sm:flex items-center bg-[#FAF9F5] dark:bg-slate-800 p-0.5 rounded-lg border border-[#CBCBCB]/60 dark:border-slate-700 shadow-2xs">
             <button
               onClick={() => setViewMode("grid")}
               title="Grid View"
               className={`p-1.5 rounded-md transition cursor-pointer ${
-                viewMode === "grid" ? "bg-[#6D8196] text-white shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                viewMode === "grid" ? "bg-[#6D8196] text-white shadow-2xs" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -98,7 +98,7 @@ export default function PendingLinkLogsSection({
               onClick={() => setViewMode("list")}
               title="List View"
               className={`p-1.5 rounded-md transition cursor-pointer ${
-                viewMode === "list" ? "bg-[#6D8196] text-white shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                viewMode === "list" ? "bg-[#6D8196] text-white shadow-2xs" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
               <List className="w-3.5 h-3.5" />
@@ -108,7 +108,7 @@ export default function PendingLinkLogsSection({
           {/* Collapse/Expand Toggle */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#FAF9F5] text-[#4A4A4A] border border-[#CBCBCB] rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 text-[#4A4A4A] dark:text-slate-200 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer"
           >
             {isExpanded ? (
               <>
@@ -127,7 +127,7 @@ export default function PendingLinkLogsSection({
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="mt-4 pt-4 border-t border-[#CBCBCB]/40 space-y-3">
+        <div className="mt-4 pt-4 border-t border-[#CBCBCB]/40 dark:border-slate-800 space-y-3">
           {/* Filters & Search Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             {/* Search Input */}
@@ -138,12 +138,12 @@ export default function PendingLinkLogsSection({
                 placeholder="Search pending product..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-1.5 text-xs bg-white border border-[#CBCBCB] rounded-xl text-[#4A4A4A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] shadow-2xs transition-all"
+                className="w-full pl-9 pr-8 py-1.5 text-xs bg-white dark:bg-slate-800 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-[#4A4A4A] dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] shadow-2xs transition-all"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -157,7 +157,7 @@ export default function PendingLinkLogsSection({
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   selectedSite === "ALL"
                     ? "bg-[#6D8196] text-white shadow-xs"
-                    : "bg-white hover:bg-[#FAF9F5] text-[#4A4A4A] border border-[#CBCBCB]"
+                    : "bg-white dark:bg-slate-800 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 text-[#4A4A4A] dark:text-slate-200 border border-[#CBCBCB] dark:border-slate-700"
                 }`}
               >
                 All ({products.length})
@@ -169,13 +169,13 @@ export default function PendingLinkLogsSection({
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
                     selectedSite === site
                       ? "bg-[#6D8196] text-white shadow-xs"
-                      : "bg-white hover:bg-[#FAF9F5] text-[#4A4A4A] border border-[#CBCBCB]"
+                      : "bg-white dark:bg-slate-800 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 text-[#4A4A4A] dark:text-slate-200 border border-[#CBCBCB] dark:border-slate-700"
                   }`}
                 >
                   <span>{site}</span>
                   <span
                     className={`px-1.5 py-0.2 rounded-md text-[10px] ${
-                      selectedSite === site ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                      selectedSite === site ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300"
                     }`}
                   >
                     {siteCounts[site]}
@@ -208,19 +208,19 @@ export default function PendingLinkLogsSection({
                   {visibleProducts.map((p) => (
                     <div
                       key={p.id}
-                      className="group bg-white hover:bg-[#FAF9F5] border border-[#CBCBCB]/60 hover:border-[#6D8196] rounded-xl p-3 shadow-2xs transition-all flex flex-col justify-between gap-2.5"
+                      className="group bg-white dark:bg-slate-800/70 hover:bg-[#FAF9F5] dark:hover:bg-slate-800 border border-[#CBCBCB]/60 dark:border-slate-700 hover:border-[#6D8196] rounded-xl p-3 shadow-2xs transition-all flex flex-col justify-between gap-2.5"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <h4 className="text-xs font-bold text-[#4A4A4A] truncate group-hover:text-[#6D8196] transition-colors" title={p.name}>
+                          <h4 className="text-xs font-bold text-[#4A4A4A] dark:text-slate-100 truncate group-hover:text-[#6D8196] transition-colors" title={p.name}>
                             {p.name}
                           </h4>
-                          <div className="flex items-center gap-1 mt-1 text-[11px] text-[#737373] font-medium">
+                          <div className="flex items-center gap-1 mt-1 text-[11px] text-[#737373] dark:text-slate-400 font-medium">
                             <Building2 className="w-3 h-3 text-slate-400 flex-shrink-0" />
                             <span className="truncate">{p.site?.name || "No Site"}</span>
                           </div>
                         </div>
-                        <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md flex-shrink-0">
+                        <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded-md flex-shrink-0">
                           #{p.id}
                         </span>
                       </div>
@@ -238,15 +238,15 @@ export default function PendingLinkLogsSection({
                   ))}
                 </div>
               ) : (
-                <div className="bg-white rounded-xl border border-[#CBCBCB]/60 divide-y divide-slate-100 overflow-hidden shadow-2xs">
+                <div className="bg-white dark:bg-slate-800/80 rounded-xl border border-[#CBCBCB]/60 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700/60 overflow-hidden shadow-2xs">
                   {visibleProducts.map((p) => (
-                    <div key={p.id} className="p-2.5 px-4 flex items-center justify-between gap-4 hover:bg-[#FAF9F5] transition-colors">
+                    <div key={p.id} className="p-2.5 px-4 flex items-center justify-between gap-4 hover:bg-[#FAF9F5] dark:hover:bg-slate-800 transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
                         <span className="text-xs font-bold text-slate-400">#{p.id}</span>
-                        <span className="text-xs font-bold text-[#4A4A4A] truncate" title={p.name}>
+                        <span className="text-xs font-bold text-[#4A4A4A] dark:text-slate-100 truncate" title={p.name}>
                           {p.name}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20 flex-shrink-0">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#6D8196]/10 dark:bg-[#6D8196]/30 text-[#3D4F61] dark:text-slate-200 border border-[#6D8196]/20 dark:border-[#6D8196]/40 flex-shrink-0">
                           {p.site?.name || "Unassigned"}
                         </span>
                       </div>

@@ -386,10 +386,109 @@ body {
   border-color: rgba(245, 158, 11, 0.35) !important;
 }
 
+/* Badge 100-level tint adaptations */
+.dark .bg-rose-100,
+.dark .bg-rose-100\/50,
+.dark .bg-rose-100\/80 {
+  background-color: rgba(76, 5, 25, 0.55) !important;
+  border-color: rgba(225, 29, 72, 0.4) !important;
+  color: #fda4af !important;
+}
+
+.dark .bg-emerald-100,
+.dark .bg-emerald-100\/50,
+.dark .bg-emerald-100\/80 {
+  background-color: rgba(6, 78, 59, 0.45) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #6ee7b7 !important;
+}
+
+.dark .bg-amber-100,
+.dark .bg-amber-100\/50,
+.dark .bg-amber-100\/80 {
+  background-color: rgba(120, 53, 15, 0.45) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: #fcd34d !important;
+}
+
+.dark .bg-blue-100,
+.dark .bg-blue-100\/50,
+.dark .bg-blue-100\/80 {
+  background-color: rgba(30, 58, 138, 0.45) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  color: #93c5fd !important;
+}
+
+.dark .bg-indigo-100,
+.dark .bg-indigo-100\/50,
+.dark .bg-indigo-100\/80,
+.dark .bg-violet-100,
+.dark .bg-violet-100\/50 {
+  background-color: rgba(49, 46, 129, 0.45) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  color: #a5b4fc !important;
+}
+
+.dark .bg-purple-100,
+.dark .bg-purple-100\/50,
+.dark .bg-purple-100\/80 {
+  background-color: rgba(88, 28, 135, 0.45) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  color: #d8b4fe !important;
+}
+
 .dark button:disabled,
 .dark .disabled\:bg-slate-300:disabled {
   background-color: #1e293b !important;
   color: #64748b !important;
+  border-color: #334155 !important;
+}
+
+/* Universal Design Tokens Hex Dark Mode Mappings */
+.dark .bg-\[\#FFFFE3\],
+.dark [class*="bg-[#FFFFE3]"] {
+  background-color: rgba(120, 53, 15, 0.45) !important;
+  color: #fcd34d !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+.dark .bg-\[\#EAEAEA\],
+.dark [class*="bg-[#EAEAEA]"] {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+
+.dark .bg-\[\#FAF9F5\],
+.dark .bg-\[\#FAF9F5\]\/40,
+.dark .bg-\[\#FAF9F5\]\/60,
+.dark .bg-\[\#FAF9F5\]\/80,
+.dark .bg-\[\#FAF9F5\]\/90,
+.dark [class*="bg-[#FAF9F5]"] {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark .text-\[\#4A4A4A\],
+.dark [class*="text-[#4A4A4A]"] {
+  color: #f8fafc !important;
+}
+
+.dark .text-\[\#737373\],
+.dark [class*="text-[#737373]"] {
+  color: #94a3b8 !important;
+}
+
+.dark .text-\[\#3D4F61\],
+.dark [class*="text-[#3D4F61]"] {
+  color: #cbd5e1 !important;
+}
+
+.dark .border-\[\#CBCBCB\],
+.dark .border-\[\#CBCBCB\]\/40,
+.dark .border-\[\#CBCBCB\]\/60,
+.dark .border-\[\#CBCBCB\]\/70,
+.dark [class*="border-[#CBCBCB]"] {
   border-color: #334155 !important;
 }
 
