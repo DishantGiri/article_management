@@ -17,6 +17,11 @@ import {
   Sparkles,
   Check,
   ChevronDown,
+  ListPlus,
+  ClipboardList,
+  Table,
+  FileSpreadsheet,
+  Trash2,
 } from "lucide-react";
 
 interface Site {
@@ -34,6 +39,16 @@ interface Affiliate {
   name: string;
 }
 
+export interface SpreadsheetRow {
+  name: string;
+  category: string;
+  affiliateName: string;
+  trendLevel: string;
+  trendLink: string;
+  previewLink: string;
+  remarks: string;
+}
+
 interface FormData {
   categoryIds: number[];
   name: string;
@@ -45,10 +60,13 @@ interface FormData {
   remarks: string;
 }
 
-function StepIndicator({ step }: { step: number }) {
-  const steps = ["Product Type", "Preview Sites", "Details"];
+function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | "single" }) {
+  const steps = entryMode === "bulk"
+    ? ["Product Type", "Bulk Products (Google Sheet)"]
+    : ["Product Type", "Preview Sites", "Details"];
+
   return (
-    <div className="flex items-center gap-0 mb-6">
+    <div className={`flex items-center gap-0 ${entryMode === "bulk" ? "mb-3" : "mb-6"}`}>
       {steps.map((label, i) => {
         const idx = i + 1;
         const active = step === idx;
@@ -118,6 +136,94 @@ export default function AddProductModal({
 
   const [customAffiliate, setCustomAffiliate] = useState("");
   const [showCustomAffiliate, setShowCustomAffiliate] = useState(false);
+
+  // Bulk entry / Google Sheets mode (DEFAULT: "bulk")
+  const [entryMode, setEntryMode] = useState<"single" | "bulk">("bulk");
+  const [bulkPasteText, setBulkPasteText] = useState("");
+  const [spreadsheetRows, setSpreadsheetRows] = useState<SpreadsheetRow[]>([
+    { name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
+  ]);
+
+  // Batch Fill Helpers
+  const [batchCategory, setBatchCategory] = useState("");
+  const [batchAffiliate, setBatchAffiliate] = useState("");
+  const [batchTrendLevel, setBatchTrendLevel] = useState("HIGH");
+  const [showSitesDrawer, setShowSitesDrawer] = useState(false);
+
+  const parseTextToRows = (text: string) => {
+    setBulkPasteText(text);
+    const lines = text
+      .split(/\r?\n/)
+      .flatMap((line) => {
+        if (line.includes(",") && !line.includes("http://") && !line.includes("https://")) {
+          return line.split(",");
+        }
+        return [line];
+      })
+      .map((line) => line.trim().replace(/^[-*•\d.)\s]+/, "").trim())
+      .filter((line) => line.length > 0);
+
+    const uniqueNames = Array.from(new Set(lines));
+    if (uniqueNames.length === 0) return;
+
+    const newRows: SpreadsheetRow[] = uniqueNames.map((n) => ({
+      name: n,
+      category: batchCategory || form.category || "",
+      affiliateName: batchAffiliate || form.affiliateName || "",
+      trendLevel: batchTrendLevel || form.trendLevel || "HIGH",
+      trendLink: "",
+      previewLink: "",
+      remarks: "",
+    }));
+
+    setSpreadsheetRows(newRows);
+    toast.success(`Imported ${newRows.length} products into spreadsheet table!`);
+  };
+
+  const updateSpreadsheetRow = (index: number, field: keyof SpreadsheetRow, value: string) => {
+    setSpreadsheetRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const addSpreadsheetRow = () => {
+    setSpreadsheetRows((prev) => [
+      ...prev,
+      {
+        name: "",
+        category: batchCategory || form.category || "",
+        affiliateName: batchAffiliate || form.affiliateName || "",
+        trendLevel: batchTrendLevel || "HIGH",
+        trendLink: "",
+        previewLink: "",
+        remarks: "",
+      },
+    ]);
+  };
+
+  const removeSpreadsheetRow = (index: number) => {
+    setSpreadsheetRows((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (next.length === 0) {
+        return [{ name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }];
+      }
+      return next;
+    });
+  };
+
+  const applyBatchToAll = () => {
+    setSpreadsheetRows((prev) =>
+      prev.map((row) => ({
+        ...row,
+        category: batchCategory ? batchCategory : row.category,
+        affiliateName: batchAffiliate ? batchAffiliate : row.affiliateName,
+        trendLevel: batchTrendLevel ? batchTrendLevel : row.trendLevel,
+      }))
+    );
+    toast.success("Applied batch values to all spreadsheet rows!");
+  };
 
   const [form, setForm] = useState<FormData>({
     categoryIds: [],
@@ -206,6 +312,15 @@ export default function AddProductModal({
       setShowCustomAffiliate(false);
       setCustomAffiliate("");
       setExcludedSiteIds([]);
+      setEntryMode("bulk");
+      setBulkPasteText("");
+      setSpreadsheetRows([
+        { name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
+      ]);
+      setBatchCategory("");
+      setBatchAffiliate("");
+      setBatchTrendLevel("HIGH");
+      setShowSitesDrawer(false);
       setForm({
         categoryIds: [],
         name: "",
@@ -266,26 +381,156 @@ export default function AddProductModal({
   };
 
   const handleSubmit = async () => {
+    if (entryMode === "bulk") {
+      const validRows = spreadsheetRows.filter((r) => r.name.trim().length > 0);
+      if (validRows.length === 0) {
+        setError("Please enter or paste at least one product name in the spreadsheet table.");
+        toast.error("Please enter or paste at least one product name in the spreadsheet table.");
+        return;
+      }
+
+      for (let i = 0; i < validRows.length; i++) {
+        const r = validRows[i];
+        const rowNum = i + 1;
+        if (!r.name.trim()) {
+          const msg = `Row #${rowNum}: Product Name is compulsory.`;
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+        if (!r.category.trim()) {
+          const msg = `Row #${rowNum} ("${r.name}"): Category is compulsory.`;
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+        if (!r.affiliateName.trim()) {
+          const msg = `Row #${rowNum} ("${r.name}"): Affiliate Network is compulsory.`;
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+        if (!r.trendLevel || !r.trendLevel.trim()) {
+          const msg = `Row #${rowNum} ("${r.name}"): Trend Level is compulsory.`;
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+        if (!r.trendLink.trim()) {
+          const msg = `Row #${rowNum} ("${r.name}"): Trend Link URL is compulsory.`;
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+        if (!isValidUrl(r.trendLink)) {
+          const msg = `Row #${rowNum} ("${r.name}"): Trend Link must start with http:// or https:// and be a valid URL.`;
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+        if (!r.previewLink.trim()) {
+          const msg = `Row #${rowNum} ("${r.name}"): Preview Link URL is compulsory.`;
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+        if (!isValidUrl(r.previewLink)) {
+          const msg = `Row #${rowNum} ("${r.name}"): Preview Link must start with http:// or https:// and be a valid URL.`;
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+      }
+
+      setSubmitting(true);
+      setError("");
+
+      try {
+        const res = await fetch("/api/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            products: validRows.map((r) => ({
+              name: r.name.trim(),
+              productCategory: r.category.trim(),
+              affiliateName: r.affiliateName.trim(),
+              trendLevel: r.trendLevel || "HIGH",
+              trendLink: r.trendLink.trim(),
+              previewLink: r.previewLink.trim(),
+              remarks: r.remarks.trim() || null,
+            })),
+            categoryIds: form.categoryIds,
+            excludedSiteIds,
+            addedById: session?.user?.id || 1,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to create products");
+        }
+
+        toast.success(`Successfully created ${validRows.length} products!`);
+        setSuccessState(true);
+        if (onSuccess) onSuccess();
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Something went wrong";
+        setError(msg);
+        toast.error(msg);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Single mode submission
     if (!form.name.trim()) {
-      setError("Product name is required.");
+      setError("Product Name is compulsory.");
+      toast.error("Product Name is compulsory.");
+      return;
+    }
+    if (!form.category.trim()) {
+      setError("Category is compulsory.");
+      toast.error("Category is compulsory.");
+      return;
+    }
+    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim() : form.affiliateName.trim();
+    if (!finalAffiliate) {
+      setError("Affiliate Network is compulsory.");
+      toast.error("Affiliate Network is compulsory.");
+      return;
+    }
+    if (!form.trendLevel || !form.trendLevel.trim()) {
+      setError("Trend Level is compulsory.");
+      toast.error("Trend Level is compulsory.");
+      return;
+    }
+    if (!form.trendLink.trim()) {
+      setError("Trend Link URL is compulsory.");
+      toast.error("Trend Link URL is compulsory.");
+      return;
+    }
+    if (!isValidUrl(form.trendLink)) {
+      setError("Please enter a valid Trend Link URL (must start with http:// or https://)");
+      toast.error("Invalid Trend Link URL.");
+      return;
+    }
+    if (!form.previewLink.trim()) {
+      setError("Preview Link URL is compulsory.");
+      toast.error("Preview Link URL is compulsory.");
+      return;
+    }
+    if (!isValidUrl(form.previewLink)) {
+      setError("Please enter a valid Preview Link URL (must start with http:// or https://)");
+      toast.error("Invalid Preview Link URL.");
       return;
     }
     if (Object.keys(fieldErrors).length > 0) {
       setError("Please fix the link validation errors before submitting.");
       return;
     }
-    if (form.trendLink && !isValidUrl(form.trendLink)) {
-      setError("Please enter a valid Trend Link URL (must start with http:// or https://)");
-      return;
-    }
-    if (form.previewLink && !isValidUrl(form.previewLink)) {
-      setError("Please enter a valid Preview Link URL (must start with http:// or https://)");
-      return;
-    }
     setSubmitting(true);
     setError("");
-
-    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim() : form.affiliateName;
 
     try {
       if (showCustomAffiliate && customAffiliate.trim()) {
@@ -318,6 +563,7 @@ export default function AddProductModal({
         throw new Error(err.error || "Failed to create product");
       }
 
+      toast.success("Successfully added product!");
       setSuccessState(true);
       if (onSuccess) onSuccess();
     } catch (e: unknown) {
@@ -342,20 +588,31 @@ export default function AddProductModal({
 
   const activeSites = previewSites.filter((site: any) => !excludedSiteIds.includes(site.id));
 
-  if (!isOpen) return null;
+  const userRole = session?.user?.role;
+  const canAddProduct = userRole === "SUPER_ADMIN" || userRole === "ADMIN" || userRole === "LINKER";
+
+  if (!isOpen || !canAddProduct) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col border border-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-2 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
+      <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col border border-slate-100 transition-all duration-300 ${
+        entryMode === "bulk" && step === 2
+          ? "w-[99vw] max-w-[99.2vw] h-[98vh] max-h-[98vh]"
+          : "max-w-2xl max-h-[92vh]"
+      }`}>
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-[#4A4A4A] text-white flex items-center justify-between shrink-0">
+        <div className="px-5 sm:px-6 py-3.5 bg-[#4A4A4A] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#6D8196]/30 border border-[#6D8196]/40 flex items-center justify-center text-white shadow-inner">
               <Package className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">Add New Product</h2>
-              <p className="text-xs text-[#EAEAEA] font-medium">Select product type, websites, trend rating & affiliate info</p>
+              <p className="text-xs text-[#EAEAEA] font-medium">
+                {entryMode === "bulk" && step === 2
+                  ? "Bulk Spreadsheet Mode — Full-Width Google Sheets Style Table"
+                  : "Select product type, websites, trend rating & affiliate info"}
+              </p>
             </div>
           </div>
           <button
@@ -367,15 +624,19 @@ export default function AddProductModal({
         </div>
 
         {/* Modal Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className={`overflow-y-auto flex-1 flex flex-col ${entryMode === "bulk" && step === 2 ? "p-3 sm:p-4" : "p-5 sm:p-6"}`}>
           {successState ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-200">
                 <Sparkles className="w-8 h-8" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Product Added Successfully!</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">
+                {entryMode === "bulk" ? "Products Added Successfully!" : "Product Added Successfully!"}
+              </h3>
               <p className="text-xs text-slate-500 font-medium mb-6">
-                <strong className="text-slate-800">{form.name}</strong> has been added to {getCategoryNames()}.
+                {entryMode === "bulk"
+                  ? `${spreadsheetRows.filter((r) => r.name.trim()).length} products have been added to ${getCategoryNames()}.`
+                  : `${form.name} has been added to ${getCategoryNames()}.`}
               </p>
               <div className="flex gap-3 justify-center">
                 <button
@@ -390,6 +651,10 @@ export default function AddProductModal({
                       previewLink: "",
                       remarks: "",
                     });
+                    setSpreadsheetRows([
+                      { name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
+                    ]);
+                    setBulkPasteText("");
                     setStep(1);
                     setSuccessState(false);
                   }}
@@ -407,7 +672,7 @@ export default function AddProductModal({
             </div>
           ) : (
             <>
-              <StepIndicator step={step} />
+              <StepIndicator step={step} entryMode={entryMode} />
 
               {error && (
                 <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
@@ -416,14 +681,19 @@ export default function AddProductModal({
                 </div>
               )}
 
-              {/* STEP 1 */}
+              {/* STEP 1: Choose Product Type */}
               {step === 1 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
-                      Select Product Type <span className="text-rose-500">*</span>
-                    </label>
+                    <div>
+                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
+                        Select Product Type <span className="text-rose-500">*</span>
+                      </label>
+                      <p className="text-[11px] text-[#737373] mt-0.5">
+                        Choose the product type for your products (e.g. Ecomm, Supplement)
+                      </p>
+                    </div>
                     {isAdmin && (
                       <button
                         type="button"
@@ -507,13 +777,408 @@ export default function AddProductModal({
                 </div>
               )}
 
-              {/* STEP 2 */}
-              {step === 2 && (
+              {/* STEP 2: BULK SPREADSHEET MODE (DEFAULT) */}
+              {step === 2 && entryMode === "bulk" && (
                 <div className="space-y-4">
+                  {/* Mode Switcher */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-extrabold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                          <FileSpreadsheet className="w-4 h-4 text-[#6D8196]" />
+                          Bulk Products Spreadsheet (Google Sheets Style)
+                        </span>
+                        <span className="text-[10px] font-extrabold bg-[#6D8196]/15 text-[#3D4F61] px-2 py-0.5 rounded-md border border-[#6D8196]/30">
+                          Default
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#737373] mt-0.5">
+                        Selected Type: <strong className="text-slate-800">{getCategoryNames()}</strong> • Direct paste 10+ products or edit directly in the table
+                      </p>
+                    </div>
+
+                    <div className="inline-flex p-1 bg-[#FAF9F5] border border-[#CBCBCB]/70 rounded-xl shrink-0 self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setEntryMode("bulk")}
+                        className="px-3 py-1 rounded-lg text-xs font-bold transition bg-[#6D8196] text-white shadow-2xs cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Table className="w-3.5 h-3.5" />
+                        Bulk Spreadsheet
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEntryMode("single")}
+                        className="px-3 py-1 rounded-lg text-xs font-bold transition text-[#737373] hover:text-[#4A4A4A] cursor-pointer"
+                      >
+                        Single Product Form
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Control Center: Side-by-Side Direct Paste & Batch Fill Cards */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 shrink-0">
+                    {/* Card 1: Direct Paste Box (6 columns) */}
+                    <div className="lg:col-span-6 bg-[#FAF9F5] border border-[#CBCBCB] rounded-xl p-3 flex flex-col justify-between shadow-2xs hover:border-[#6D8196]/60 transition-colors">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-[#4A4A4A] flex items-center gap-1.5 uppercase tracking-wider">
+                          <ClipboardList className="w-3.5 h-3.5 text-[#6D8196]" />
+                          1. Direct Paste Products
+                          <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const text = await navigator.clipboard.readText();
+                                if (text) parseTextToRows(text);
+                              } catch {
+                                toast.error("Please paste directly into the box");
+                              }
+                            }}
+                            className="px-2 py-0.5 text-[11px] font-bold text-[#6D8196] bg-white border border-[#6D8196]/30 hover:bg-[#6D8196]/10 rounded-md transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                          >
+                            <ClipboardList className="w-3 h-3" />
+                            Paste Clipboard
+                          </button>
+                          {bulkPasteText && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBulkPasteText("");
+                                setSpreadsheetRows([{ name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }]);
+                              }}
+                              className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <textarea
+                        rows={3}
+                        value={bulkPasteText}
+                        onChange={(e) => parseTextToRows(e.target.value)}
+                        placeholder={"Paste 10+ product names (one per line)...\nExample:\nAlpha Whey Protein\nCreatine Monohydrate 5000\nOmega-3 Triple Strength"}
+                        className="w-full px-3 py-2 text-xs font-semibold bg-white border border-[#CBCBCB] rounded-lg text-slate-900 focus:outline-none focus:border-[#6D8196] focus:ring-1 focus:ring-[#6D8196] shadow-2xs resize-none font-mono placeholder:font-sans placeholder:text-slate-400 leading-relaxed"
+                      />
+
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mt-1.5">
+                        <span className="flex items-center gap-1.5 text-[#3D4F61]">
+                          {spreadsheetRows.filter((r) => r.name.trim()).length > 0 ? (
+                            <>
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                              <strong className="text-emerald-700 font-bold">{spreadsheetRows.filter((r) => r.name.trim()).length}</strong> product(s) in spreadsheet
+                            </>
+                          ) : (
+                            "Paste from Excel, Google Sheets, or notepad"
+                          )}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">Auto-populates table</span>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Batch Fill & Sites Toolbar (6 columns) */}
+                    <div className="lg:col-span-6 bg-white border border-[#CBCBCB] rounded-xl p-3 flex flex-col justify-between shadow-2xs">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-bold text-[#4A4A4A] flex items-center gap-1.5 uppercase tracking-wider">
+                          <Sparkles className="w-3.5 h-3.5 text-[#6D8196]" />
+                          2. Batch Fill All Rows
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowSitesDrawer(!showSitesDrawer)}
+                          className="px-2 py-0.5 text-[11px] font-bold text-[#3D4F61] bg-[#FAF9F5] hover:bg-[#6D8196]/10 border border-[#CBCBCB] rounded-md transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                        >
+                          <Globe className="w-3 h-3 text-[#6D8196]" />
+                          {activeSites.length} Sites Included {showSitesDrawer ? "▲" : "▼"}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 my-1">
+                        <div>
+                          <label className="block text-[10px] font-bold text-[#737373] uppercase mb-0.5">Category</label>
+                          <input
+                            type="text"
+                            value={batchCategory}
+                            onChange={(e) => setBatchCategory(e.target.value)}
+                            placeholder="e.g. Fitness"
+                            className="w-full px-2.5 py-1.5 text-xs font-medium border border-[#CBCBCB] rounded-lg focus:outline-none focus:border-[#6D8196] bg-white"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-[#737373] uppercase mb-0.5">Affiliate Network</label>
+                          <CustomSelect
+                            value={batchAffiliate}
+                            onChange={(val) => setBatchAffiliate(val)}
+                            placeholder="Select Affiliate..."
+                            searchable={true}
+                            searchPlaceholder="Search affiliate..."
+                            allowCustom={true}
+                            className="w-full"
+                            triggerClassName="w-full px-2.5 py-1.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                            options={affiliates.map((aff) => ({ value: aff.name, label: aff.name }))}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-[#737373] uppercase mb-0.5">Trend Level</label>
+                          <CustomSelect
+                            value={batchTrendLevel}
+                            onChange={(val) => setBatchTrendLevel(val)}
+                            className="w-full"
+                            triggerClassName="w-full px-2.5 py-1.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800"
+                            options={[
+                              { value: "HIGH", label: "🔥 High Trend" },
+                              { value: "MODERATE", label: "📈 Moderate Trend" },
+                              { value: "LOW", label: "📉 Low / Stable" },
+                            ]}
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={applyBatchToAll}
+                        className="w-full py-1.5 bg-[#FAF9F5] hover:bg-[#6D8196]/15 hover:border-[#6D8196] border border-[#CBCBCB] text-[#3D4F61] text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs mt-1"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-[#6D8196]" />
+                        Apply Batch Attributes to All Rows
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sites Exclusion / Customization Collapsible */}
+                  {showSitesDrawer && (
+                    <div className="p-3 bg-[#FAF9F5] rounded-xl border border-[#CBCBCB]/80 space-y-2 animate-fadeIn">
+                      <div className="flex items-center justify-between text-xs font-bold text-[#4A4A4A]">
+                        <span>Included Websites for ({getCategoryNames()})</span>
+                        <span className="text-[11px] text-slate-500 font-medium">Click to exclude any site from this upload</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                        {previewSites.map((site: any) => {
+                          const isExcluded = excludedSiteIds.includes(site.id);
+                          return (
+                            <button
+                              key={site.id}
+                              type="button"
+                              onClick={() => {
+                                setExcludedSiteIds((prev) =>
+                                  isExcluded ? prev.filter((id) => id !== site.id) : [...prev, site.id]
+                                );
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${
+                                isExcluded
+                                  ? "bg-slate-100 text-slate-400 border-slate-200 line-through opacity-60"
+                                  : "bg-white text-slate-800 border-[#6D8196]/40 font-bold shadow-2xs"
+                              }`}
+                            >
+                              <span>{site.name}</span>
+                              {isExcluded ? <Plus className="w-3 h-3 text-slate-400" /> : <Check className="w-3 h-3 text-[#6D8196]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. The Google Sheets Style Table */}
+                  <div className="border border-[#CBCBCB] rounded-2xl overflow-hidden shadow-xs bg-white flex-1 flex flex-col min-h-0">
+                    <div className="overflow-x-auto max-h-[58vh] overflow-y-auto flex-1">
+                      <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
+                        <thead className="bg-[#FAF9F5] sticky top-0 z-10 border-b border-[#CBCBCB] text-[#4A4A4A] text-[11px] font-extrabold uppercase tracking-wider">
+                          <tr>
+                            <th className="w-10 py-2.5 px-2 text-center border-r border-[#CBCBCB]/60">#</th>
+                            <th className="w-[23%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Product Name <span className="text-rose-500">*</span></th>
+                            <th className="w-[11%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Category <span className="text-rose-500">*</span></th>
+                            <th className="w-[16%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Affiliate Network <span className="text-rose-500">*</span></th>
+                            <th className="w-[11%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Trend Level <span className="text-rose-500">*</span></th>
+                            <th className="w-[14%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Trend Link <span className="text-rose-500">*</span></th>
+                            <th className="w-[14%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Preview Link <span className="text-rose-500">*</span></th>
+                            <th className="w-[11%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Remarks</th>
+                            <th className="w-10 py-2.5 px-1 text-center"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs">
+                          {spreadsheetRows.map((row, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/70 transition-colors group">
+                              <td className="py-1 px-2 text-center text-slate-400 font-bold bg-slate-50/40 border-r border-[#CBCBCB]/40">
+                                {idx + 1}
+                              </td>
+                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                                <input
+                                  type="text"
+                                  value={row.name}
+                                  onChange={(e) => updateSpreadsheetRow(idx, "name", e.target.value)}
+                                  placeholder={`Product #${idx + 1} name *`}
+                                  className="w-full px-2 py-1.5 text-xs font-bold text-slate-900 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                />
+                              </td>
+                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                                <input
+                                  type="text"
+                                  value={row.category}
+                                  onChange={(e) => updateSpreadsheetRow(idx, "category", e.target.value)}
+                                  placeholder="Category *"
+                                  className="w-full px-2 py-1.5 text-xs text-slate-800 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                />
+                              </td>
+                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                                <CustomSelect
+                                  value={row.affiliateName}
+                                  onChange={(val) => updateSpreadsheetRow(idx, "affiliateName", val)}
+                                  placeholder="Select Affiliate *"
+                                  searchable={true}
+                                  searchPlaceholder="Search affiliate..."
+                                  allowCustom={true}
+                                  portal={true}
+                                  minWidth={220}
+                                  className="w-full"
+                                  triggerClassName="w-full px-2 py-1.5 text-xs text-slate-800 bg-transparent hover:bg-white border border-transparent hover:border-[#CBCBCB] focus:border-[#6D8196] rounded-lg transition-all"
+                                  options={affiliates.map((aff) => ({ value: aff.name, label: aff.name }))}
+                                />
+                              </td>
+                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                                <CustomSelect
+                                  value={row.trendLevel}
+                                  onChange={(val) => updateSpreadsheetRow(idx, "trendLevel", val)}
+                                  portal={true}
+                                  minWidth={140}
+                                  className="w-full"
+                                  triggerClassName="w-full px-2 py-1.5 text-xs font-semibold text-slate-800 bg-transparent hover:bg-white border border-transparent hover:border-[#CBCBCB] focus:border-[#6D8196] rounded-lg transition-all"
+                                  options={[
+                                    { value: "HIGH", label: "🔥 High" },
+                                    { value: "MODERATE", label: "📈 Moderate" },
+                                    { value: "LOW", label: "📉 Low" },
+                                  ]}
+                                />
+                              </td>
+                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                                <input
+                                  type="url"
+                                  value={row.trendLink}
+                                  onChange={(e) => updateSpreadsheetRow(idx, "trendLink", e.target.value)}
+                                  placeholder="https://... *"
+                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-800 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                />
+                              </td>
+                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                                <input
+                                  type="url"
+                                  value={row.previewLink}
+                                  onChange={(e) => updateSpreadsheetRow(idx, "previewLink", e.target.value)}
+                                  placeholder="https://... *"
+                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-800 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                />
+                              </td>
+                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                                <input
+                                  type="text"
+                                  value={row.remarks}
+                                  onChange={(e) => updateSpreadsheetRow(idx, "remarks", e.target.value)}
+                                  placeholder="Notes..."
+                                  className="w-full px-2 py-1.5 text-xs text-slate-800 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                />
+                              </td>
+                              <td className="py-1 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeSpreadsheetRow(idx)}
+                                  className="w-6 h-6 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer mx-auto"
+                                  title="Delete row"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="px-4 py-2.5 bg-[#FAF9F5] border-t border-[#CBCBCB] flex items-center justify-between text-xs">
+                      <button
+                        type="button"
+                        onClick={addSpreadsheetRow}
+                        className="font-bold text-[#6D8196] hover:text-[#5A6D81] flex items-center gap-1.5 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-[#CBCBCB] shadow-2xs hover:bg-slate-50 transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Blank Row
+                      </button>
+
+                      <div className="flex items-center gap-3 text-slate-500 font-semibold">
+                        <span>{spreadsheetRows.filter((r) => r.name.trim()).length} Products in Sheet</span>
+                        <span>•</span>
+                        <span>{activeSites.length} Preview Sites included</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Action Buttons */}
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition text-xs shadow-2xs cursor-pointer"
+                    >
+                      Back to Product Type
+                    </button>
+                    <button
+                      type="button"
+                      disabled={spreadsheetRows.filter((r) => r.name.trim()).length === 0 || submitting}
+                      onClick={handleSubmit}
+                      className="flex-1 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white font-bold text-xs shadow-xs disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {submitting ? (
+                        "Saving Products..."
+                      ) : (
+                        `Add ${spreadsheetRows.filter((r) => r.name.trim()).length} Products to ${getCategoryNames() || "Selected Type"}`
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: PREVIEW SITES (IF IN SINGLE MODE) */}
+              {step === 2 && entryMode === "single" && (
+                <div className="space-y-4">
+                  {/* Mode Switcher */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div>
+                      <span className="text-xs font-bold text-[#4A4A4A] uppercase tracking-wider">
+                        Product Entry Mode
+                      </span>
+                      <p className="text-[11px] text-[#737373]">
+                        Switch to Bulk Spreadsheet or continue with Single Product Form
+                      </p>
+                    </div>
+
+                    <div className="inline-flex p-1 bg-[#FAF9F5] border border-[#CBCBCB]/70 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setEntryMode("bulk")}
+                        className="px-3 py-1 rounded-lg text-xs font-bold transition text-[#737373] hover:text-[#4A4A4A] cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Table className="w-3.5 h-3.5" />
+                        Bulk Spreadsheet
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEntryMode("single")}
+                        className="px-3 py-1 rounded-lg text-xs font-bold transition bg-[#6D8196] text-white shadow-2xs cursor-pointer"
+                      >
+                        Single Product Form
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                       <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
-                      Associated Websites
+                      Associated Websites ({getCategoryNames()})
                     </label>
                     {isAdmin && (
                       <button
@@ -571,11 +1236,14 @@ export default function AddProductModal({
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className={`font-bold text-xs truncate ${isExcluded ? "line-through text-slate-400" : "text-slate-800"}`}>
-                                {site.name}
-                              </span>
+                              <span className="text-xs font-bold truncate">{site.name}</span>
+                              {site.url && (
+                                <span className="text-[11px] text-slate-400 font-mono truncate hidden sm:inline">
+                                  ({site.url})
+                                </span>
+                              )}
                               {isExcluded ? (
-                                <span className="text-[10px] bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md font-bold border border-rose-100 shrink-0">
+                                <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md font-bold shrink-0">
                                   Excluded
                                 </span>
                               ) : (
@@ -631,8 +1299,8 @@ export default function AddProductModal({
                 </div>
               )}
 
-              {/* STEP 3 */}
-              {step === 3 && (
+              {/* STEP 3: DETAILS (IF IN SINGLE MODE) */}
+              {step === 3 && entryMode === "single" && (
                 <div className="space-y-4">
                   {/* Grid 2-Column: Product Name & Affiliate Dropdown */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -655,7 +1323,7 @@ export default function AddProductModal({
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                         <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
-                        Affiliate Network / Name
+                        Affiliate Network / Name <span className="text-rose-500">*</span>
                       </label>
                       {!showCustomAffiliate ? (
                         <CustomSelect
@@ -701,7 +1369,7 @@ export default function AddProductModal({
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                         <TrendingUp className="w-3.5 h-3.5 text-[#6D8196]" />
-                        Trend Level
+                        Trend Level <span className="text-rose-500">*</span>
                       </label>
                       <CustomSelect
                         value={form.trendLevel}
@@ -719,7 +1387,7 @@ export default function AddProductModal({
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                         <Link2 className="w-3.5 h-3.5 text-[#6D8196]" />
-                        Trend Link URL
+                        Trend Link URL <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="url"
@@ -744,7 +1412,7 @@ export default function AddProductModal({
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
-                        Preview Link URL
+                        Preview Link URL <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="url"
@@ -766,7 +1434,7 @@ export default function AddProductModal({
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
                         <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
-                        Category
+                        Category <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -775,22 +1443,6 @@ export default function AddProductModal({
                         placeholder="e.g. Skincare, Supplements, Fitness..."
                         className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] shadow-2xs transition-all"
                       />
-                    </div>
-                  </div>
-
-                  {/* Product Type (Read-only summary of Step 1 selection) */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
-                      Product Type
-                    </label>
-                    <div className="w-full px-3.5 py-2.5 bg-[#FAF9F5] border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-800 flex items-center justify-between min-h-[42px]">
-                      <span className="truncate">
-                        {getCategoryNames() || "None Selected"}
-                      </span>
-                      <span className="text-[10px] font-bold bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30 px-2 py-0.5 rounded-md shrink-0">
-                        Selected from Step 1
-                      </span>
                     </div>
                   </div>
 
@@ -812,7 +1464,7 @@ export default function AddProductModal({
                       onClick={() => setStep(2)}
                       className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition text-xs shadow-2xs cursor-pointer"
                     >
-                      Back
+                      Back to Websites
                     </button>
                     <button
                       type="button"

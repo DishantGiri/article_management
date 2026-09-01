@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendRealtimeNotification } from "@/lib/notifier";
+import { sendRealtimeNotification, broadcastRealtimeNotification } from "@/lib/notifier";
 
 // PATCH /api/links/[id] — update link details / status
 export async function PATCH(
@@ -146,27 +146,34 @@ export async function PATCH(
           },
         });
 
-        const linkers = await prisma.user.findMany({
-          where: { role: "LINKER" },
+        const allUsers = await prisma.user.findMany({
           select: { id: true }
         });
 
-        const recipientIds = Array.from(new Set([
-          ...linkers.map((l: any) => l.id),
-          existing.addedById
-        ]));
+        const notifMessage = `⚠️ ${callerLabel} flagged an issue with link "${existing.affiliateName}": "${issueMessage}"`;
 
-        for (const rId of recipientIds) {
-          const notif = await prisma.notification.create({
-            data: {
-              recipientId: rId,
-              senderId: Number(activeUserId),
-              type: "LINK_ISSUE",
-              message: `${callerLabel} flagged an issue with link "${existing.affiliateName}": "${issueMessage}"`,
-            },
-          });
-          await sendRealtimeNotification(rId, notif);
+        for (const u of allUsers) {
+          try {
+            const notif = await prisma.notification.create({
+              data: {
+                recipientId: u.id,
+                senderId: Number(activeUserId),
+                type: "LINK_ISSUE",
+                message: notifMessage,
+              },
+            });
+            await sendRealtimeNotification(u.id, notif);
+          } catch (e) {
+            console.error("Failed to notify user", u.id, e);
+          }
         }
+
+        await broadcastRealtimeNotification({
+          senderId: Number(activeUserId),
+          message: notifMessage,
+          type: "LINK_ISSUE",
+          data: { linkLogId: existing.id },
+        });
       } catch (notifErr) {
         console.error("Failed to process link issue flagging:", notifErr);
       }

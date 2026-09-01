@@ -102,6 +102,16 @@ export default function AddProductPage() {
     remarks: "",
   });
 
+  // Restrict access: only SUPER_ADMIN, ADMIN, LINKER can access this page
+  useEffect(() => {
+    if (session && session.user) {
+      const r = session.user.role;
+      if (r !== "SUPER_ADMIN" && r !== "ADMIN" && r !== "LINKER") {
+        router.replace("/products");
+      }
+    }
+  }, [session, router]);
+
   // Fetch categories on load
   useEffect(() => {
     setLoading(true);

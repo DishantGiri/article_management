@@ -81,7 +81,12 @@ function ArticlesContent() {
   const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; linker: string; productName: string } | null>(null);
   const [selectedArticleIds, setSelectedArticleIds] = useState<number[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isManager = currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD";
 
@@ -332,6 +337,18 @@ function ArticlesContent() {
     (art) => art.writer?.id === currentUserId && (art.status === "IN_PROGRESS" || art.status === "REDO")
   );
 
+  if (!mounted || sessionStatus === "loading") {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] flex items-center justify-center" suppressHydrationWarning>
+        <LoadingScreen
+          message="Loading articles studio..."
+          subtext="Fetching editorial pipeline & review status"
+          size="md"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A]" suppressHydrationWarning>
       {/* Header */}
@@ -387,8 +404,90 @@ function ArticlesContent() {
         </div>
       )}
 
+      {/* Tabs Selector for Articles */}
+      <div className="flex border-b border-[#CBCBCB]/60 mb-5 gap-2">
+        <button
+          onClick={() => {
+            setWriterFilter("");
+            setStatusFilter("");
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+            !writerFilter && !statusFilter
+              ? "border-[#6D8196] text-[#6D8196] font-bold"
+              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+          }`}
+        >
+          All Articles
+        </button>
+
+        {session?.user?.name && (
+          <button
+            onClick={() => {
+              setWriterFilter(session.user.name || "");
+              setStatusFilter("");
+              setCurrentPage(1);
+            }}
+            className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+              writerFilter === session.user.name && !statusFilter
+                ? "border-indigo-600 text-indigo-600 font-bold"
+                : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+            }`}
+          >
+            <span>My Articles</span>
+            {articles.filter((a) => a.writer?.id === currentUserId || a.writer?.name === session?.user?.name).length > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-indigo-50 text-indigo-700 rounded-full">
+                {articles.filter((a) => a.writer?.id === currentUserId || a.writer?.name === session?.user?.name).length}
+              </span>
+            )}
+          </button>
+        )}
+
+        <button
+          onClick={() => {
+            setStatusFilter("IN_PROGRESS");
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+            statusFilter === "IN_PROGRESS"
+              ? "border-blue-600 text-blue-600 font-bold"
+              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+          }`}
+        >
+          In Progress
+        </button>
+
+        <button
+          onClick={() => {
+            setStatusFilter("COMPLETED");
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+            statusFilter === "COMPLETED"
+              ? "border-emerald-600 text-emerald-600 font-bold"
+              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+          }`}
+        >
+          Completed
+        </button>
+
+        <button
+          onClick={() => {
+            setStatusFilter("REDO");
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+            statusFilter === "REDO"
+              ? "border-rose-600 text-rose-600 font-bold"
+              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+          }`}
+        >
+          Revisions
+        </button>
+      </div>
+
       {/* Filters Bar */}
-      <div className="flex items-center gap-3 mt-6 mb-2">
+      <div className="flex items-center gap-3 mt-4 mb-2">
         {/* Search */}
         <div className="relative flex-1 max-w-sm bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
