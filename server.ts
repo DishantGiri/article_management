@@ -132,14 +132,38 @@ app.prepare().then(() => {
     }
   });
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", async (ws: WebSocket, request: IncomingMessage) => {
     let registeredUserId: number | null = null;
+    let authenticatedUserId: number | null = null;
+
+    try {
+      const token = await getToken({
+        req: request as any,
+        secret: process.env.NEXTAUTH_SECRET,
+      });
+      if (token && token.id) {
+        authenticatedUserId = Number(token.id);
+      }
+    } catch (e) {
+      console.error("Failed to decode token on WebSocket connection:", e);
+    }
 
     ws.on("message", (message) => {
       try {
         const data = JSON.parse(message.toString());
-        if (data.type === "register" && data.userId) {
-          registeredUserId = Number(data.userId);
+        if (data.type === "register") {
+          // If authenticated session exists, always bind to authenticated user ID
+          if (authenticatedUserId !== null) {
+            registeredUserId = authenticatedUserId;
+          } else if (dev && data.userId) {
+            // In local development fallback only
+            registeredUserId = Number(data.userId);
+          } else {
+            console.warn("Rejected unauthenticated WebSocket registration attempt");
+            ws.close(1008, "Authentication required");
+            return;
+          }
+
           if (!clients.has(registeredUserId)) {
             clients.set(registeredUserId, new Set());
           }
