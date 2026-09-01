@@ -1481,14 +1481,7 @@ function WriterActiveFocusWorkspace({
             </div>
 
             <div className="text-right">
-              {article.status === "REDO" && !article.startedAt ? (
-                <span className="text-xs font-semibold text-slate-400">Timer not started</span>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[#6D8196]" />
-                  <p className="text-xl font-extrabold text-slate-900 font-mono tracking-tight">{formatTime(elapsed)}</p>
-                </div>
-              )}
+              {/* Live stopwatch is hidden from writers */}
             </div>
           </div>
 
@@ -1517,7 +1510,7 @@ function WriterActiveFocusWorkspace({
                 className="px-6 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 disabled:opacity-50 transition flex items-center gap-2 shadow-xs cursor-pointer"
               >
                 <PlayCircle className="w-4 h-4" />
-                {startingRevision ? "Starting..." : "Start Revision Stopwatch"}
+                {startingRevision ? "Starting..." : "Start Revision"}
               </button>
             </div>
           )}
@@ -1994,7 +1987,7 @@ function RecentCompletionsTable({ completedArticles }: { completedArticles: any[
     <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs overflow-hidden">
       <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
         <h3 className="font-bold text-slate-900 text-sm">Your Recent Completions</h3>
-        <span className="text-xs text-slate-400 font-medium">Logged writing time</span>
+        <span className="text-xs text-slate-400 font-medium">Your latest submitted articles</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left">
@@ -2002,7 +1995,7 @@ function RecentCompletionsTable({ completedArticles }: { completedArticles: any[
             <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               <th className="px-6 py-3">Product Name</th>
               <th className="px-6 py-3">Site</th>
-              <th className="px-6 py-3 text-center">Writing Time</th>
+              <th className="px-6 py-3 text-center">Completed Date</th>
               <th className="px-6 py-3 text-right">Status</th>
             </tr>
           </thead>
@@ -2023,11 +2016,9 @@ function RecentCompletionsTable({ completedArticles }: { completedArticles: any[
                     <span className="text-[11px] font-medium text-slate-500">{a.product.site.name}</span>
                   </td>
                   <td className="px-6 py-3.5 text-center">
-                    <span className="text-xs font-mono font-bold text-slate-700">
-                      {a.writingTimeMin
-                        ? a.writingTimeMin >= 60
-                          ? `${Math.floor(a.writingTimeMin / 60)}h ${a.writingTimeMin % 60}m`
-                          : `${a.writingTimeMin}m`
+                    <span className="text-xs font-medium text-slate-500">
+                      {a.completedAt
+                        ? new Date(a.completedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })
                         : "--"}
                     </span>
                   </td>

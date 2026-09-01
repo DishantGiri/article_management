@@ -778,7 +778,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                     <span>Drafting in Progress</span>
                   </div>
                   <p className="text-xs text-blue-900 font-medium leading-relaxed">
-                    Writer <strong>{article.writer?.name || "Assigned Writer"}</strong> is actively working on this article. The live stopwatch is running. Review controls will unlock as soon as the article is submitted.
+                    Writer <strong>{article.writer?.name || "Assigned Writer"}</strong> is actively working on this article. {isManager ? "The live stopwatch is running. Review controls will unlock as soon as the article is submitted." : "Review controls will unlock as soon as the article is submitted."}
                   </p>
                 </div>
               )}
@@ -1069,51 +1069,53 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
         {/* RIGHT COLUMN: TIMELINE & AUDIT TRAIL (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Timing Metrics Card */}
-          <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#6D8196]" />
-              Production & Velocity Metrics
-            </h3>
+          {/* Timing Metrics Card — Hidden from writers */}
+          {isManager && (
+            <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#6D8196]" />
+                Production & Velocity Metrics
+              </h3>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Started At</p>
-                <p className="text-xs font-bold text-slate-700">
-                  {article.startedAt ? new Date(article.startedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "—"}
-                </p>
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Started At</p>
+                  <p className="text-xs font-bold text-slate-700">
+                    {article.startedAt ? new Date(article.startedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "—"}
+                  </p>
+                </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Completed At</p>
-                <p className="text-xs font-bold text-slate-700">
-                  {article.completedAt ? new Date(article.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "—"}
-                </p>
-              </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Completed At</p>
+                  <p className="text-xs font-bold text-slate-700">
+                    {article.completedAt ? new Date(article.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "—"}
+                  </p>
+                </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Writing Time</p>
-                <p className="text-sm font-extrabold text-slate-900">
-                  {article.writingTimeMin !== undefined && article.writingTimeMin !== null
-                    ? article.writingTimeMin >= 60
-                      ? `${Math.floor(article.writingTimeMin / 60)}h ${article.writingTimeMin % 60}m`
-                      : `${article.writingTimeMin}m`
-                    : "—"}
-                </p>
-              </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Writing Time</p>
+                  <p className="text-sm font-extrabold text-slate-900">
+                    {article.writingTimeMin !== undefined && article.writingTimeMin !== null
+                      ? article.writingTimeMin >= 60
+                        ? `${Math.floor(article.writingTimeMin / 60)}h ${article.writingTimeMin % 60}m`
+                        : `${article.writingTimeMin}m`
+                      : "—"}
+                  </p>
+                </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Revision Time</p>
-                <p className="text-sm font-extrabold text-slate-900">
-                  {article.updateTimeMin !== undefined && article.updateTimeMin !== null
-                    ? article.updateTimeMin >= 60
-                      ? `${Math.floor(article.updateTimeMin / 60)}h ${article.updateTimeMin % 60}m`
-                      : `${article.updateTimeMin}m`
-                    : "—"}
-                </p>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Revision Time</p>
+                  <p className="text-sm font-extrabold text-slate-900">
+                    {article.updateTimeMin !== undefined && article.updateTimeMin !== null
+                      ? article.updateTimeMin >= 60
+                        ? `${Math.floor(article.updateTimeMin / 60)}h ${article.updateTimeMin % 60}m`
+                        : `${article.updateTimeMin}m`
+                      : "—"}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Past Reviews Log */}
           <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">

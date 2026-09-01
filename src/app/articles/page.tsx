@@ -496,13 +496,23 @@ function ArticlesContent() {
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Pending Articles</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-500 mb-2"><Activity className="w-4 h-4" /></div>
-            <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.avgWritingTime || "0.0"}h</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Avg Writing Time</p>
+          {session?.user?.role !== "WRITER" ? (
+            <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+              <div className="w-8 h-8 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-500 mb-2"><Activity className="w-4 h-4" /></div>
+              <div>
+                <p className="text-3xl font-bold text-slate-800">{stats.superAdmin?.avgWritingTime || "0.0"}h</p>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Avg Writing Time</p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
+              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-2"><CheckCircle2 className="w-4 h-4" /></div>
+              <div>
+                <p className="text-3xl font-bold text-slate-800">{articles.filter((a) => a.status === "APPROVED").length}</p>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Approved Articles</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

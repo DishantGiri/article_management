@@ -110,6 +110,7 @@ function CalendarContent() {
   );
 
   const [inspectingDay, setInspectingDay] = useState<CalendarDay | null>(null);
+  const isWriter = session?.user?.role === "WRITER";
 
   // Synchronize when query params change or month changes
   useEffect(() => {
@@ -243,7 +244,7 @@ function CalendarContent() {
 
       {/* ── Summary Cards ── */}
       {data && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div className={`grid grid-cols-2 sm:grid-cols-3 ${isWriter ? "lg:grid-cols-4" : "lg:grid-cols-5"} gap-3.5`}>
           {/* Card 1: Working Days */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-sm transition space-y-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500">
@@ -292,17 +293,19 @@ function CalendarContent() {
             <p className="text-[11px] font-medium text-slate-400">Logged or modified</p>
           </div>
 
-          {/* Card 5: Writing Time */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-sm transition space-y-1 col-span-2 sm:col-span-1">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-              <span>Writing Time</span>
-              <Clock className="w-4 h-4 text-[#6D8196]" />
+          {/* Card 5: Writing Time — Hidden from writers */}
+          {!isWriter && (
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-sm transition space-y-1 col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                <span>Writing Time</span>
+                <Clock className="w-4 h-4 text-[#6D8196]" />
+              </div>
+              <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                {formatWritingTime(data.summary.totalWritingTimeMin)}
+              </p>
+              <p className="text-[11px] font-medium text-slate-400">Total hours spent</p>
             </div>
-            <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              {formatWritingTime(data.summary.totalWritingTimeMin)}
-            </p>
-            <p className="text-[11px] font-medium text-slate-400">Total hours spent</p>
-          </div>
+          )}
         </div>
       )}
 
@@ -545,7 +548,7 @@ function CalendarContent() {
 
                             {/* Extra Info: duration or link */}
                             <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px]">
-                              {item.durationMin && item.durationMin > 0 && (
+                              {!isWriter && item.durationMin && item.durationMin > 0 && (
                                 <span className="flex items-center gap-1 font-semibold text-slate-500">
                                   <Clock className="w-3 h-3 text-[#6D8196]" /> Time: {formatWritingTime(item.durationMin)}
                                 </span>
