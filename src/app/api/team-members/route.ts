@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Fetch team members (writers) and their completed/approved articles
+    // Fetch team members (writers) and their articles
     const teamMembers = await prisma.user.findMany({
       where: { teamLeadId },
       select: {
@@ -31,21 +31,27 @@ export async function GET(req: NextRequest) {
         email: true,
         createdAt: true,
         articles: {
-          where: { status: { in: ["COMPLETED", "APPROVED"] } },
           select: {
             id: true,
+            status: true,
             writingTimeMin: true,
+            startedAt: true,
             completedAt: true,
-            product: { select: { name: true } }
+            product: { select: { name: true } },
           },
-          orderBy: { completedAt: "desc" }
-        }
-      }
+          orderBy: { updatedAt: "desc" },
+        },
+      },
     });
 
     // Process stats for each team member
     const processedMembers = teamMembers.map((member) => {
-      const completedArticles = member.articles;
+      const completedArticles = member.articles.filter(
+        (a) => a.status === "COMPLETED" || a.status === "APPROVED"
+      );
+      const activeArticle = member.articles.find(
+        (a) => a.status === "IN_PROGRESS" || a.status === "REDO"
+      );
       const totalArticles = completedArticles.length;
 
       // Calculate average writing time
@@ -70,18 +76,26 @@ export async function GET(req: NextRequest) {
         name: member.name,
         email: member.email,
         createdAt: member.createdAt,
+        activeArticle: activeArticle
+          ? {
+              id: activeArticle.id,
+              productName: activeArticle.product.name,
+              status: activeArticle.status,
+              startedAt: activeArticle.startedAt,
+            }
+          : null,
         stats: {
           totalArticles,
           avgWritingTimeMin,
           avgArticlesPerDay,
           avgArticlesPerWeek,
         },
-        recentArticles: completedArticles.slice(0, 5).map(a => ({
+        recentArticles: completedArticles.slice(0, 5).map((a) => ({
           id: a.id,
           productName: a.product.name,
           completedAt: a.completedAt,
-          writingTimeMin: a.writingTimeMin
-        }))
+          writingTimeMin: a.writingTimeMin,
+        })),
       };
     });
 
