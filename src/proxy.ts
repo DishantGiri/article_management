@@ -70,8 +70,8 @@ export default withAuth(
     callbacks: {
       authorized: ({ req, token }) => {
         const { pathname } = req.nextUrl;
-        // Let middleware function handle authentication checks on API paths and signin page
-        if (pathname === "/auth/signin" || pathname.startsWith("/api/")) {
+        // Let middleware function handle authentication checks on API paths, ws and signin page
+        if (pathname === "/auth/signin" || pathname.startsWith("/api/") || pathname === "/ws") {
           return true;
         }
         return !!token;
@@ -82,7 +82,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    // Protect all routes except api/auth routes and static assets
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon-192.png|icon-512.png|loading.svg|404.svg|file.svg|globe.svg|next.svg|vercel.svg|window.svg|mixkit-software-interface-back-2575.wav|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|wav|mp3|mp4|json|js)).*)",
+    // Protect all routes except api/auth routes, websocket and static assets
+    "/((?!api/auth|ws|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon-192.png|icon-512.png|loading.svg|404.svg|file.svg|globe.svg|next.svg|vercel.svg|window.svg|mixkit-software-interface-back-2575.wav|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|wav|mp3|mp4|json|js)).*)",
   ],
 };

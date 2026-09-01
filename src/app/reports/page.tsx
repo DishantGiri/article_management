@@ -161,7 +161,7 @@ export default function ReportsPage() {
         ? `Until ${endDate}`
         : "All Time";
 
-    let text = `Work Report — ${targetUser.name} (${targetRole.replace("_", " ")})\nPeriod: ${periodLabel}\n\n`;
+    let text = `Work Report — ${targetUser?.name || "User"} (${(targetRole || "USER").replace("_", " ")})\nPeriod: ${periodLabel}\n\n`;
 
     if (isWriter || (isAdminTarget && reports.writer?.newArticles.length > 0)) {
       text += `📝 NEW ARTICLES (${reports.writer.newArticles.length}):\n`;
@@ -297,7 +297,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `work_report_${targetUser.name.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `work_report_${(targetUser?.name || "user").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -313,7 +313,7 @@ export default function ReportsPage() {
           <div className="flex items-center gap-2.5 mb-1">
             <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">Work Report</h1>
             <span className="px-2.5 py-0.5 text-xs font-extrabold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20 rounded-full uppercase">
-              {targetUser.name} · {targetRole.replace("_", " ")}
+              {targetUser?.name || "User"} · {(targetRole || "USER").replace("_", " ")}
             </span>
           </div>
           <p className="text-[#737373] text-sm font-medium">
@@ -388,7 +388,7 @@ export default function ReportsPage() {
               >
                 {selectableUsers.map((u: any) => (
                   <option key={u.id} value={u.id}>
-                    {u.name} ({u.role.replace("_", " ")})
+                    {u.name} ({u.role ? u.role.replace("_", " ") : "NO ROLE"})
                   </option>
                 ))}
               </select>

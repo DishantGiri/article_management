@@ -325,7 +325,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/25">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {currentUserRole.replace("_", " ")}
+              {(currentUserRole || "USER").replace("_", " ")}
             </span>
             <span className="text-xs text-slate-400 font-medium">·</span>
             <span className="text-xs text-slate-500 font-medium flex items-center gap-1">

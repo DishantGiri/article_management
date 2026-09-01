@@ -169,7 +169,7 @@ export default function LinkHistoryModal({ isOpen, onClose, linkLog }: LinkHisto
                           <User className="w-3.5 h-3.5 text-slate-400" />
                           <span className="text-slate-800 font-bold">{item.updatedBy.name}</span>
                           <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                            {item.updatedBy.role.replace("_", " ")}
+                            {item.updatedBy?.role ? item.updatedBy.role.replace("_", " ") : "USER"}
                           </span>
                         </div>
                         <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">

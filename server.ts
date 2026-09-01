@@ -117,10 +117,15 @@ app.prepare().then(() => {
     const parsedUrl = parseUrl(request.url || "");
     const { pathname } = parsedUrl;
 
-    if (pathname === "/ws") {
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit("connection", ws, request);
-      });
+    if (pathname === "/ws" || pathname === "/ws/" || pathname?.startsWith("/ws")) {
+      try {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit("connection", ws, request);
+        });
+      } catch (err) {
+        console.error("WebSocket upgrade error:", err);
+        socket.destroy();
+      }
     } else if (!pathname?.startsWith("/_next")) {
       socket.destroy();
     }

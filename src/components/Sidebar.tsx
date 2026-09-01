@@ -192,35 +192,62 @@ export default function Sidebar() {
     window.addEventListener("click", unlockAudio);
     window.addEventListener("keydown", unlockAudio);
 
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsHost = window.location.host;
-    const ws = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "register", userId }));
-    };
-    ws.onmessage = (event) => {
+    let isSubscribed = true;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+
+    const connectWs = () => {
+      if (!isSubscribed) return;
       try {
-        const notif = JSON.parse(event.data);
-        // Skip notification sound and toast for actions triggered by the logged-in user themselves
-        if (notif.senderId && userId && Number(notif.senderId) === Number(userId)) {
-          return;
+        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsHost = window.location.host;
+        ws = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
+
+        ws.onopen = () => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "register", userId }));
+          }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const notif = JSON.parse(event.data);
+            if (notif.senderId && userId && Number(notif.senderId) === Number(userId)) {
+              return;
+            }
+            setToast({ message: notif.message });
+            setUnreadCount((prev) => prev + 1);
+            audioObj.currentTime = 0;
+            audioObj.play().catch(() => {});
+            const customEvent = new CustomEvent("live-notification", { detail: notif });
+            window.dispatchEvent(customEvent);
+          } catch (err) {
+            console.error("Failed to parse live notification", err);
+          }
+        };
+
+        ws.onclose = () => {
+          if (isSubscribed) {
+            reconnectTimeout = setTimeout(connectWs, 5000);
+          }
+        };
+
+        ws.onerror = () => {
+          // Handled gracefully by onclose
+        };
+      } catch (e) {
+        if (isSubscribed) {
+          reconnectTimeout = setTimeout(connectWs, 5000);
         }
-        setToast({ message: notif.message });
-        setUnreadCount((prev) => prev + 1);
-        audioObj.currentTime = 0;
-        audioObj.play().catch((e) => console.log("Failed to play notification sound:", e));
-        const customEvent = new CustomEvent("live-notification", { detail: notif });
-        window.dispatchEvent(customEvent);
-      } catch (err) {
-        console.error("Failed to parse live notification", err);
       }
     };
-    ws.onerror = () => {
-      console.warn("WebSocket notification server is offline.");
-    };
+
+    connectWs();
 
     return () => {
-      ws.close();
+      isSubscribed = false;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) ws.close();
       window.removeEventListener("click", unlockAudio);
       window.removeEventListener("keydown", unlockAudio);
     };
