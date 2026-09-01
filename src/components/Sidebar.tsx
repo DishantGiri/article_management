@@ -419,7 +419,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile Top Header */}
-      <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-[#CBCBCB]/40 px-4 py-3 flex items-center justify-between shadow-xs w-full" suppressHydrationWarning>
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white dark:bg-slate-900 border-b border-[#CBCBCB]/40 dark:border-slate-700 px-4 py-3 flex items-center justify-between shadow-xs" suppressHydrationWarning>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileOpen(true)}
