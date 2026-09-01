@@ -5,7 +5,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X } from "lucide-react";
+import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
@@ -83,6 +83,10 @@ function ArticlesContent() {
   const [requestingUpdateArticle, setRequestingUpdateArticle] = useState<Article | null>(null);
   const [requestEditReason, setRequestEditReason] = useState("");
   const [submittingEditRequest, setSubmittingEditRequest] = useState(false);
+  const [assigningArticle, setAssigningArticle] = useState<Article | null>(null);
+  const [selectedAssignee, setSelectedAssignee] = useState<string>("");
+  const [teamMembers, setTeamMembers] = useState<{ id: number; name: string; email: string }[]>([]);
+  const [submittingAssignment, setSubmittingAssignment] = useState(false);
   const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; linker: string; productName: string } | null>(null);
   const [selectedArticleIds, setSelectedArticleIds] = useState<number[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
@@ -94,6 +98,18 @@ function ArticlesContent() {
   }, []);
 
   const isManager = currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD";
+
+  const fetchArticlesList = async () => {
+    const uid = session?.user?.id || currentUserId;
+    if (!uid) return;
+    try {
+      const res = await fetch(`/api/articles?userId=${uid}`);
+      const data = await res.json();
+      if (Array.isArray(data)) setArticles(data);
+    } catch {
+      // ignore
+    }
+  };
 
   const handleSendEditRequest = async () => {
     if (!requestingUpdateArticle || !requestEditReason.trim() || !currentUserId) return;
@@ -112,7 +128,7 @@ function ArticlesContent() {
         toast.success("Edit request submitted to Team Lead for approval!");
         setRequestingUpdateArticle(null);
         setRequestEditReason("");
-        fetchArticles();
+        fetchArticlesList();
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to submit edit request");
@@ -121,6 +137,56 @@ function ArticlesContent() {
       toast.error("Failed to submit edit request");
     } finally {
       setSubmittingEditRequest(false);
+    }
+  };
+
+  const handleAssignToWriter = async () => {
+    if (!assigningArticle || !selectedAssignee || !currentUserId) return;
+    setSubmittingAssignment(true);
+    try {
+      const res = await fetch(`/api/articles/${assigningArticle.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          writerId: Number(selectedAssignee),
+          callerId: currentUserId,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const assignedUser = teamMembers.find((m) => m.id === Number(selectedAssignee));
+      toast.success(`Assigned to ${assignedUser?.name || "writer"} successfully!`);
+      setAssigningArticle(null);
+      setSelectedAssignee("");
+      fetchArticlesList();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to assign article");
+    } finally {
+      setSubmittingAssignment(false);
+    }
+  };
+
+  const handleOpenToTeam = async () => {
+    if (!assigningArticle || !currentUserId) return;
+    setSubmittingAssignment(true);
+    try {
+      const res = await fetch(`/api/articles/${assigningArticle.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          writerId: null,
+          openToTeam: true,
+          callerId: currentUserId,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Article opened to all team members!");
+      setAssigningArticle(null);
+      setSelectedAssignee("");
+      fetchArticlesList();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to open article to team");
+    } finally {
+      setSubmittingAssignment(false);
     }
   };
 
@@ -180,6 +246,28 @@ function ArticlesContent() {
     const uRole = session.user.role || "WRITER";
     setCurrentUserRole(uRole);
     setCurrentUserId(stored);
+
+    if (uRole === "TEAM_LEAD") {
+      fetch(`/api/team-members?userId=${stored}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setTeamMembers(data.map((m: any) => ({ id: m.id, name: m.name, email: m.email })));
+          }
+        })
+        .catch(() => {});
+    } else if (uRole === "ADMIN" || uRole === "SUPER_ADMIN") {
+      fetch(`/api/users`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setTeamMembers(
+              data.filter((u: any) => u.role === "WRITER").map((m: any) => ({ id: m.id, name: m.name, email: m.email }))
+            );
+          }
+        })
+        .catch(() => {});
+    }
 
     Promise.all([
       fetch(`/api/articles?userId=${stored}`).then((r) => r.json()),
@@ -477,27 +565,6 @@ function ArticlesContent() {
           </button>
         )}
 
-        {currentUserRole === "TEAM_LEAD" && (
-          <button
-            onClick={() => {
-              setWriterFilter("");
-              setStatusFilter("PENDING");
-              setCurrentPage(1);
-            }}
-            className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
-              statusFilter === "PENDING" && !writerFilter
-                ? "border-emerald-600 text-emerald-600 font-bold"
-                : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
-            }`}
-          >
-            <span>Write Articles</span>
-            {articles.filter((a) => a.status === "PENDING").length > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 rounded-full">
-                {articles.filter((a) => a.status === "PENDING").length}
-              </span>
-            )}
-          </button>
-        )}
 
         {session?.user?.name && (
           <button
@@ -861,8 +928,8 @@ function ArticlesContent() {
                               </>
                             )}
 
-                            {/* Write button for PENDING articles (Writer or Team Lead) */}
-                            {status === "PENDING" && (currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD") && (
+                            {/* Write button for PENDING articles: ONLY for regular WRITERS */}
+                            {status === "PENDING" && currentUserRole === "WRITER" && (!a.writer || a.writer.id === currentUserId) && (
                               <button
                                 disabled={hasActiveAssignment}
                                 onClick={async () => {
@@ -895,6 +962,21 @@ function ArticlesContent() {
                               </button>
                             )}
 
+                            {/* Assign Button for Team Leads & Managers on PENDING articles */}
+                            {status === "PENDING" && (currentUserRole === "TEAM_LEAD" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN") && (
+                              <button
+                                onClick={() => {
+                                  setAssigningArticle(a);
+                                  setSelectedAssignee(a.writer ? String(a.writer.id) : "");
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                title={a.writer ? `Currently assigned to ${a.writer.name}. Click to reassign or open to team.` : "Assign to a team member or open to team"}
+                              >
+                                <UserPlus className="w-3.5 h-3.5 text-indigo-600" />
+                                {a.writer ? "Reassign" : "Assign"}
+                              </button>
+                            )}
+
                             {/* Manager Actions (Super Admin, Admin, Team Lead) */}
                             {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
                               <>
@@ -913,7 +995,7 @@ function ArticlesContent() {
                                         });
                                         if (!res.ok) throw new Error("Failed to approve update request");
                                         toast.success(`Unlocked article for ${a.writer?.name || "writer"} to edit!`);
-                                        fetchArticles();
+                                        fetchArticlesList();
                                       } catch (e: any) {
                                         toast.error(e.message || "Failed to approve update");
                                       }
@@ -1135,6 +1217,109 @@ function ArticlesContent() {
                   className="flex-1 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white font-bold text-xs transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
                 >
                   {submittingEditRequest ? "Submitting..." : "Send Request to TL"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Article Modal for Team Leads & Managers */}
+      {assigningArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-150">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-indigo-600" />
+                  Assign Article to Team
+                </h3>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                  Assign to a specific team member or open to all
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setAssigningArticle(null);
+                  setSelectedAssignee("");
+                }}
+                className="text-slate-400 hover:text-slate-600 transition cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {/* Product Info */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Product & Site</span>
+                <p className="text-sm font-bold text-slate-900">{assigningArticle.product.name}</p>
+                <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                  <span className="bg-white px-2 py-0.5 rounded border border-slate-200 text-[10px] font-bold text-slate-700">
+                    {assigningArticle.product.site.name}
+                  </span>
+                  <span>·</span>
+                  <span>Currently: <strong className="text-slate-700">{assigningArticle.writer?.name || "Unassigned"}</strong></span>
+                </div>
+              </div>
+
+              {/* Method 1: Assign to Specific Writer */}
+              <div className="space-y-2.5 p-3.5 bg-indigo-50/40 border border-indigo-100 rounded-xl">
+                <label className="block text-xs font-bold text-indigo-950">
+                  Option 1: Assign to a Specific Writer
+                </label>
+                <p className="text-[11px] text-indigo-700/80">
+                  Select a writer from your team to assign this article to directly.
+                </p>
+                <select
+                  value={selectedAssignee}
+                  onChange={(e) => setSelectedAssignee(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                >
+                  <option value="">-- Choose Team Member --</option>
+                  {teamMembers.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name} ({member.email})
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={handleAssignToWriter}
+                  disabled={submittingAssignment || !selectedAssignee}
+                  className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {submittingAssignment ? "Assigning..." : "Assign to Selected Writer"}
+                </button>
+              </div>
+
+              {/* Method 2: Open to all team members */}
+              <div className="space-y-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                <label className="block text-xs font-bold text-slate-900">
+                  Option 2: Open to Any Team Member
+                </label>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Make this article available to all {teamMembers.length} writers in your team so any of them can claim and write it.
+                </p>
+
+                <button
+                  onClick={handleOpenToTeam}
+                  disabled={submittingAssignment}
+                  className="w-full py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300 font-bold text-xs rounded-xl transition cursor-pointer shadow-2xs"
+                >
+                  Open for Any Team Member
+                </button>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={() => {
+                    setAssigningArticle(null);
+                    setSelectedAssignee("");
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Cancel
                 </button>
               </div>
             </div>

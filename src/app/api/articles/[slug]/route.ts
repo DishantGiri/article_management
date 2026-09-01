@@ -94,7 +94,7 @@ export async function PATCH(
     const { slug: rawSlug } = await params;
     const id = parseInt(rawSlug.split("-")[0]);
     const body = await req.json();
-    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted, suggestion } = body;
+    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted, suggestion, openToTeam } = body;
 
     const activeUserId = Number(session.user.id);
     const activeUserRole = session.user.role || "";
@@ -265,7 +265,7 @@ export async function PATCH(
       where: { id },
       data: {
         ...(status ? { status } : {}),
-        ...(writerId ? { writerId: parseInt(writerId) } : {}),
+        ...(writerId !== undefined ? { writerId: writerId ? parseInt(writerId) : null } : {}),
         ...(articleLink !== undefined ? { articleLink } : {}),
         ...(priority !== undefined ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" } : {}),
         ...(specialApprovalRequested !== undefined ? { specialApprovalRequested } : {}),
@@ -519,6 +519,46 @@ export async function PATCH(
         }
       } catch (notifErr) {
         console.error("Failed to notify Team Lead on update request:", notifErr);
+      }
+    }
+
+    // Notify Writer if assigned by Team Lead
+    if (writerId !== undefined && updated.writerId && existing.writerId !== updated.writerId && updated.writerId !== activeUserId) {
+      try {
+        const notif = await prisma.notification.create({
+          data: {
+            recipientId: updated.writerId,
+            senderId: activeUserId,
+            type: "ARTICLE_SUGGESTION",
+            message: `Team Lead ${session.user.name || "Team Lead"} assigned you the article for "${updated.product.name}".`,
+          },
+        });
+        await sendRealtimeNotification(updated.writerId, notif);
+      } catch (notifErr) {
+        console.error("Failed to notify writer on assignment:", notifErr);
+      }
+    }
+
+    // Notify all writers in Team Lead's team when opened to team
+    if (openToTeam === true) {
+      try {
+        const teamWriters = await prisma.user.findMany({
+          where: { role: "WRITER", teamLeadId: activeUserId },
+          select: { id: true },
+        });
+        for (const w of teamWriters) {
+          const notif = await prisma.notification.create({
+            data: {
+              recipientId: w.id,
+              senderId: activeUserId,
+              type: "ARTICLE_SUGGESTION",
+              message: `New Article Available: Team Lead ${session.user.name || "Team Lead"} opened the article for "${updated.product.name}" to your team. You can claim and write it now.`,
+            },
+          });
+          await sendRealtimeNotification(w.id, notif);
+        }
+      } catch (e) {
+        console.error("Failed to notify team on open article:", e);
       }
     }
 

@@ -218,6 +218,7 @@ export async function GET(req: NextRequest) {
         specialApprovalsCount,
         teamLeadWriters,
         reviewQueueArticles,
+        editRequestArticles,
       ] = await Promise.all([
         // Articles submitted (COMPLETED) waiting for team lead approval for their team
         prisma.article.count({
