@@ -10,6 +10,7 @@ import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, Check
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
+import { isUserTargeted } from "@/lib/noticeUtils";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
 
@@ -236,6 +237,15 @@ export default function Sidebar() {
             const notif = JSON.parse(event.data);
             if (notif.senderId && userId && Number(notif.senderId) === Number(userId)) {
               return;
+            }
+
+            // If notice published, check if targeted to this user's role
+            if (notif.type === "NOTICE_PUBLISHED") {
+              const targetRolesRaw = notif.data?.targetRoles || notif.data?.targetRole || "ALL";
+              const userRole = session?.user?.role;
+              if (!isUserTargeted(targetRolesRaw, userRole)) {
+                return;
+              }
             }
 
             // Notification preferences

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
+import { isUserTargeted } from "@/lib/noticeUtils";
 
 interface PendingNotice {
   id: number;
@@ -47,18 +48,9 @@ export default function NoticePopupModal() {
       if (detail && detail.type === "NOTICE_PUBLISHED" && detail.data) {
         const targetRolesRaw = detail.data.targetRoles || detail.data.targetRole || "ALL";
         const userRole = session?.user?.role;
-        const rolesList = typeof targetRolesRaw === "string" 
-          ? (targetRolesRaw === "ALL" ? ["ALL"] : targetRolesRaw.split(",").map((s: string) => s.trim()))
-          : Array.isArray(targetRolesRaw) ? targetRolesRaw : ["ALL"];
 
-        // If targetRoles is specified (not ALL) and does not contain current user role (and user is not admin/super admin)
-        if (
-          !rolesList.includes("ALL") &&
-          userRole &&
-          !rolesList.includes(userRole) &&
-          userRole !== "ADMIN" &&
-          userRole !== "SUPER_ADMIN"
-        ) {
+        // Strictly check if this notice targets current user's role
+        if (!isUserTargeted(targetRolesRaw, userRole)) {
           return;
         }
 
@@ -111,23 +103,12 @@ export default function NoticePopupModal() {
     }, 300);
   }, [currentNotice, acknowledging]);
 
-  const handleDismiss = useCallback(() => {
-    setVisible(false);
-    setTimeout(() => {
-      setQueue((prev) => prev.filter((n) => n.id !== currentNotice?.id));
-      setCurrentNotice(null);
-    }, 300);
-  }, [currentNotice]);
-
   if (!visible || !currentNotice) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-      {/* Soft Blurred Ambient Backdrop */}
-      <div
-        onClick={handleDismiss}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fadeIn"
-      />
+      {/* Soft Blurred Ambient Backdrop (Non-dismissable to enforce acknowledgment) */}
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fadeIn pointer-events-auto" />
 
       {/* Arched Notification Modal Card */}
       <div className="relative z-10 animate-bouncePop max-w-sm sm:max-w-md w-full my-auto flex justify-center">
@@ -141,7 +122,7 @@ export default function NoticePopupModal() {
           actionLabel="I have understood"
           isAcknowledging={acknowledging}
           onAction={handleAcknowledge}
-          onClose={handleDismiss}
+          showCloseButton={false}
           isModal={true}
         />
       </div>

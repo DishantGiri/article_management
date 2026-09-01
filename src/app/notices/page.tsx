@@ -24,6 +24,7 @@ import {
   Shield,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { isUserTargeted } from "@/lib/noticeUtils";
 
 type NoticeCategoryType = "IMPORTANT" | "GENERAL" | "SUGGESTION" | "URGENT" | "ANNOUNCEMENT";
 type TargetRoleType = "ALL" | "WRITER" | "LINKER" | "TEAM_LEAD" | "ADMIN";
@@ -346,6 +347,9 @@ export default function NoticeBoardPage() {
 
   const filteredNotices = useMemo(() => {
     return notices.filter((n) => {
+      if (!isAdmin && !isUserTargeted(n.targetRoles, session?.user?.role)) {
+        return false;
+      }
       if (selectedCategory !== "ALL" && n.category !== selectedCategory) {
         return false;
       }
@@ -366,7 +370,7 @@ export default function NoticeBoardPage() {
       }
       return true;
     });
-  }, [notices, selectedCategory, selectedRole, showUnreadOnly, searchQuery]);
+  }, [notices, selectedCategory, selectedRole, showUnreadOnly, searchQuery, isAdmin, session?.user?.role]);
 
   const unreadCount = useMemo(() => notices.filter((n) => !n.isRead).length, [notices]);
 

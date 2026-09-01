@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { broadcastRealtimeNotification } from "@/lib/notifier";
 import { NoticeCategory } from "@/generated/prisma/client";
+import { isUserTargeted } from "@/lib/noticeUtils";
 
 function normalizeTargetRoles(input: any): string {
   if (!input || input === "ALL") return "ALL";
@@ -28,7 +29,13 @@ export async function GET(req: NextRequest) {
     }
 
     const currentUserId = Number(session.user.id);
-    const currentUserRole = session.user.role;
+
+    const dbUser = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { id: true, role: true },
+    });
+
+    const currentUserRole = dbUser?.role || session.user.role;
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category");
     const targetRole = searchParams.get("targetRole");
@@ -42,15 +49,7 @@ export async function GET(req: NextRequest) {
       where.category = category as NoticeCategory;
     }
 
-    // Role filtering
-    if (!isAdmin) {
-      // Non-admins only see notices sent to ALL or containing their specific role
-      where.OR = [
-        { targetRoles: null },
-        { targetRoles: "ALL" },
-        ...(currentUserRole ? [{ targetRoles: { contains: currentUserRole } }] : []),
-      ];
-    } else if (targetRole && targetRole !== "ALL") {
+    if (isAdmin && targetRole && targetRole !== "ALL") {
       if (targetRole === "GLOBAL_ALL" || targetRole === "NULL") {
         where.OR = [{ targetRoles: null }, { targetRoles: "ALL" }];
       } else {
@@ -92,7 +91,12 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const formatted = notices.map((notice) => ({
+    // If not Admin, filter strictly by targeted roles
+    const filteredNotices = isAdmin
+      ? notices
+      : notices.filter((n) => isUserTargeted(n.targetRoles, currentUserRole));
+
+    const formatted = filteredNotices.map((notice) => ({
       id: notice.id,
       title: notice.title,
       content: notice.content,
@@ -160,7 +164,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Broadcast notice via real-time WebSocket to all active users
+    // Broadcast notice via real-time WebSocket to active users
     await broadcastRealtimeNotification({
       type: "NOTICE_PUBLISHED",
       message: `New Notice: ${created.title}`,

@@ -12,12 +12,13 @@ export interface ArchedNotificationProps {
   message: string;
   authorName?: string;
   createdAt?: string | Date;
-  onClose: () => void;
+  onClose?: () => void;
   onAction?: () => void;
   actionLabel?: string;
   isAcknowledging?: boolean;
   type?: string;
   isModal?: boolean;
+  showCloseButton?: boolean;
 }
 
 export function getCategoryConfig(category?: string, type?: string) {
@@ -102,6 +103,7 @@ export function ArchedNotificationCard({
   isAcknowledging = false,
   type,
   isModal = false,
+  showCloseButton = true,
 }: ArchedNotificationProps) {
   const config = getCategoryConfig(category, type);
   const displayTitle = title || config.defaultTitle;
@@ -134,15 +136,17 @@ export function ArchedNotificationCard({
           className={`absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full ${config.themeBg} blur-3xl opacity-60 pointer-events-none`}
         />
 
-        {/* Top-Right Circular Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white flex items-center justify-center transition-all cursor-pointer z-30 shadow-2xs"
-          title="Dismiss"
-          aria-label="Dismiss notification"
-        >
-          <X className="w-4 h-4 stroke-[2.5]" />
-        </button>
+        {/* Top-Right Circular Close Button (Only when enabled) */}
+        {showCloseButton && onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white flex items-center justify-center transition-all cursor-pointer z-30 shadow-2xs"
+            title="Dismiss"
+            aria-label="Dismiss notification"
+          >
+            <X className="w-4 h-4 stroke-[2.5]" />
+          </button>
+        )}
 
         {/* Category Pill Tag (if specific) */}
         <div className="flex justify-center mb-1.5">
