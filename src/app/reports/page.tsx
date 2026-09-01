@@ -173,7 +173,7 @@ export default function ReportsPage() {
       } else {
         reports.writer.newArticles.forEach((a: any) => {
           text += `  - ${a.productName} (${a.siteName}): ${a.articleLink || "No Link Yet"}${
-            a.writingTimeMin ? ` [${a.writingTimeMin} mins]` : ""
+            caller.role !== "WRITER" && a.writingTimeMin ? ` [${a.writingTimeMin} mins]` : ""
           }\n`;
         });
       }
@@ -260,15 +260,24 @@ export default function ReportsPage() {
     let rows: string[][] = [];
 
     if (isWriter) {
-      headers = ["Type", "Product", "Site", "Article Link", "Date", "Status / Notes", "Writing Time (Min)"];
+      const showTime = caller.role !== "WRITER";
+      headers = showTime
+        ? ["Type", "Product", "Site", "Article Link", "Date", "Status / Notes", "Writing Time (Min)"]
+        : ["Type", "Product", "Site", "Article Link", "Date", "Status / Notes"];
       (reports.writer.newArticles || []).forEach((a: any) => {
-        rows.push(["New Article", a.productName, a.siteName, a.articleLink || "", new Date(a.date).toLocaleDateString(), a.status, a.writingTimeMin ? String(a.writingTimeMin) : ""]);
+        const row = ["New Article", a.productName, a.siteName, a.articleLink || "", new Date(a.date).toLocaleDateString(), a.status];
+        if (showTime) row.push(a.writingTimeMin ? String(a.writingTimeMin) : "");
+        rows.push(row);
       });
       (reports.writer.updates || []).forEach((u: any) => {
-        rows.push(["Update", u.productName, u.siteName, u.articleLink || "", new Date(u.date).toLocaleDateString(), u.notes, ""]);
+        const row = ["Update", u.productName, u.siteName, u.articleLink || "", new Date(u.date).toLocaleDateString(), u.notes];
+        if (showTime) row.push("");
+        rows.push(row);
       });
       (reports.writer.fixes || []).forEach((f: any) => {
-        rows.push(["Fix", f.productName, f.siteName, f.articleLink || "", new Date(f.date).toLocaleDateString(), f.notes, ""]);
+        const row = ["Fix", f.productName, f.siteName, f.articleLink || "", new Date(f.date).toLocaleDateString(), f.notes];
+        if (showTime) row.push("");
+        rows.push(row);
       });
     } else if (isTeamLead) {
       headers = ["Type", "Product", "Site", "Writer", "Verdict", "Article Link", "Feedback", "Date"];
@@ -542,7 +551,7 @@ export default function ReportsPage() {
                       </div>
                       <div className="flex items-center gap-3 text-xs text-[#737373] flex-wrap">
                         <span>Date: {new Date(item.date).toLocaleDateString()}</span>
-                        {item.writingTimeMin && (
+                        {caller.role !== "WRITER" && item.writingTimeMin && (
                           <span>Writing Time: {Math.round(item.writingTimeMin / 60)}h {item.writingTimeMin % 60}m</span>
                         )}
                       </div>
