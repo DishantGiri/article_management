@@ -280,6 +280,119 @@ body {
   color: #f8fafc !important;
 }
 
+/* Status Banner & Tint Container Dark Adaptations */
+.dark .bg-rose-50,
+.dark .bg-rose-50\/40,
+.dark .bg-rose-50\/50,
+.dark .bg-rose-50\/70,
+.dark .bg-rose-50\/80 {
+  background-color: rgba(76, 5, 25, 0.45) !important;
+  border-color: rgba(225, 29, 72, 0.35) !important;
+}
+
+.dark .text-rose-900,
+.dark .text-rose-800,
+.dark .text-rose-700 {
+  color: #fda4af !important;
+}
+
+.dark .border-rose-200,
+.dark .border-rose-200\/60,
+.dark .border-rose-200\/70,
+.dark .border-rose-200\/80,
+.dark .border-rose-100 {
+  border-color: rgba(225, 29, 72, 0.35) !important;
+}
+
+.dark .bg-emerald-50,
+.dark .bg-emerald-50\/40,
+.dark .bg-emerald-50\/60,
+.dark .bg-emerald-50\/70,
+.dark .bg-emerald-50\/80 {
+  background-color: rgba(6, 78, 59, 0.4) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+.dark .text-emerald-900,
+.dark .text-emerald-800,
+.dark .text-emerald-700 {
+  color: #6ee7b7 !important;
+}
+
+.dark .border-emerald-200,
+.dark .border-emerald-200\/60,
+.dark .border-emerald-200\/70,
+.dark .border-emerald-200\/80 {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+.dark .bg-blue-50,
+.dark .bg-blue-50\/40,
+.dark .bg-blue-50\/60,
+.dark .bg-blue-50\/70,
+.dark .bg-blue-50\/80 {
+  background-color: rgba(30, 58, 138, 0.4) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+.dark .text-blue-900,
+.dark .text-blue-800,
+.dark .text-blue-700 {
+  color: #93c5fd !important;
+}
+
+.dark .border-blue-200,
+.dark .border-blue-200\/50,
+.dark .border-blue-200\/60,
+.dark .border-blue-200\/80 {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+.dark .bg-indigo-50,
+.dark .bg-indigo-50\/50,
+.dark .bg-indigo-50\/70,
+.dark .bg-indigo-50\/80 {
+  background-color: rgba(49, 46, 129, 0.4) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+.dark .text-indigo-900,
+.dark .text-indigo-800,
+.dark .text-indigo-700 {
+  color: #a5b4fc !important;
+}
+
+.dark .border-indigo-200,
+.dark .border-indigo-200\/50,
+.dark .border-indigo-200\/60 {
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+.dark .bg-amber-50,
+.dark .bg-amber-50\/50,
+.dark .bg-amber-50\/80 {
+  background-color: rgba(120, 53, 15, 0.4) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+.dark .text-amber-900,
+.dark .text-amber-800,
+.dark .text-amber-700 {
+  color: #fcd34d !important;
+}
+
+.dark .border-amber-200,
+.dark .border-amber-200\/60 {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+.dark button:disabled,
+.dark .disabled\:bg-slate-300:disabled {
+  background-color: #1e293b !important;
+  color: #64748b !important;
+  border-color: #334155 !important;
+}
+
 /* Custom keyframe animations and effects */
 @keyframes fadeIn {
   from { opacity: 0; }
