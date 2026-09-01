@@ -710,7 +710,7 @@ export default function Sidebar() {
 
       {/* Real-time category-styled 3D Horn notification popup */}
       {toast && (
-        <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-[99999] animate-bouncePop max-w-[360px] sm:max-w-[400px] w-[calc(100vw-3rem)]">
+        <div className="fixed bottom-3 right-3 left-3 sm:left-auto sm:bottom-6 sm:right-6 z-[99999] animate-bouncePop max-w-[340px] xs:max-w-[380px] sm:max-w-[400px] mx-auto sm:mx-0 w-auto flex justify-center">
           <ArchedNotificationCard
             category={toast.category}
             type={toast.type}

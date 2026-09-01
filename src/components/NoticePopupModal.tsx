@@ -106,12 +106,12 @@ export default function NoticePopupModal() {
   if (!visible || !currentNotice) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 xs:p-4 sm:p-6 overflow-y-auto min-h-[100dvh]">
       {/* Soft Blurred Ambient Backdrop (Non-dismissable to enforce acknowledgment) */}
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fadeIn pointer-events-auto" />
 
-      {/* Arched Notification Modal Card */}
-      <div className="relative z-10 animate-bouncePop max-w-sm sm:max-w-md w-full my-auto flex justify-center">
+      {/* Arched Notification Modal Card Container */}
+      <div className="relative z-10 animate-bouncePop w-full max-w-[340px] xs:max-w-[380px] sm:max-w-[420px] my-auto py-6 sm:py-10 flex justify-center">
         <ArchedNotificationCard
           category={currentNotice.category}
           count={queue.length}

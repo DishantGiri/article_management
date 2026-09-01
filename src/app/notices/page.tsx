@@ -691,7 +691,7 @@ export default function NoticeBoardPage() {
                       : `${formSelectedRoles.length} role${formSelectedRoles.length > 1 ? "s" : ""} selected`}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2">
                   {TARGET_ROLES.map((r) => {
                     const isSelected = formSelectedRoles.includes(r.value);
                     const Icon = r.icon;
