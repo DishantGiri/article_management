@@ -2,10 +2,10 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  SUPER_ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members", "/calendar"],
-  ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members", "/calendar"],
+  SUPER_ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/product-categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members", "/calendar"],
+  ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/product-categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members", "/calendar"],
   TEAM_LEAD: ["/", "/products", "/articles", "/links", "/reports", "/notifications", "/settings", "/team-members", "/calendar"],
-  LINKER: ["/", "/products", "/links", "/sites", "/categories", "/reports", "/notifications", "/settings", "/calendar"],
+  LINKER: ["/", "/products", "/links", "/sites", "/categories", "/product-categories", "/reports", "/notifications", "/settings", "/calendar"],
   WRITER: ["/", "/products", "/articles", "/reports", "/notifications", "/settings", "/calendar"],
 };
 
