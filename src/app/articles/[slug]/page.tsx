@@ -126,6 +126,9 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   const [newLinkValue, setNewLinkValue] = useState("");
   const [updateReason, setUpdateReason] = useState("");
   const [updatingLink, setUpdatingLink] = useState(false);
+  const [showFlagModal, setShowFlagModal] = useState(false);
+  const [flagReason, setFlagReason] = useState("");
+  const [submittingFlag, setSubmittingFlag] = useState(false);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -218,6 +221,36 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
       toast.error(err.message || "Failed to submit review");
     } finally {
       setSubmittingReview(false);
+    }
+  };
+
+  const handleFlagForUpdate = async () => {
+    if (!article || !flagReason.trim() || !currentUserId) return;
+    setSubmittingFlag(true);
+    try {
+      const targetWriterId = article.writer?.id || currentUserId;
+      const res = await fetch(`/api/articles/${article.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          flagForUpdate: true,
+          writerId: targetWriterId,
+          status: "IN_PROGRESS",
+          suggestion: flagReason.trim(),
+          callerId: currentUserId,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Flag raised! Article unlocked and assigned for update.");
+      setShowFlagModal(false);
+      setFlagReason("");
+      const ref = await fetch(`/api/articles/${id}?userId=${currentUserId}`);
+      const data = await ref.json();
+      if (!data.error) setArticle(data);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to flag article for update");
+    } finally {
+      setSubmittingFlag(false);
     }
   };
 
@@ -828,13 +861,28 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                       )}
                     </div>
                   ) : (
-                    <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl space-y-2">
-                      <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>Article Approved & Finalized</span>
+                    <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span>Article Approved & Finalized</span>
+                        </div>
+                        {isManager && (
+                          <button
+                            onClick={() => {
+                              setShowFlagModal(true);
+                              setFlagReason("");
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                            title="Raise a flag to the writer that this approved article requires revisions"
+                          >
+                            <Flag className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Flag for Update</span>
+                          </button>
+                        )}
                       </div>
                       <p className="text-xs text-emerald-900 font-medium leading-relaxed">
-                        This article has passed all editorial checks and has been approved. No further actions required unless writer requests an update.
+                        This article has passed all editorial checks and has been approved. If revisions are required later, you can raise a flag to reopen it for the writer.
                       </p>
                     </div>
                   )}
@@ -1136,6 +1184,66 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
       </div>
+
+      {showFlagModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-150">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-amber-600" />
+                  Flag Approved Article for Update
+                </h3>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                  Reopen this approved article and send update instructions to the writer
+                </p>
+              </div>
+              <button
+                onClick={() => setShowFlagModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Writer</span>
+                <p className="font-bold text-slate-800">{article.writer?.name || "Unassigned"}</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Update Instructions <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={flagReason}
+                  onChange={(e) => setFlagReason(e.target.value)}
+                  placeholder="Specify what needs to be updated by the writer (e.g. dead link, pricing update)..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition resize-none font-medium placeholder-slate-400"
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => setShowFlagModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleFlagForUpdate}
+                  disabled={submittingFlag || !flagReason.trim()}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {submittingFlag ? "Raising Flag..." : "Raise Flag & Unlock"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

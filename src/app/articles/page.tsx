@@ -82,6 +82,7 @@ function ArticlesContent() {
   const [submittingUpdate, setSubmittingUpdate] = useState(false);
   const [requestingUpdateArticle, setRequestingUpdateArticle] = useState<Article | null>(null);
   const [requestEditReason, setRequestEditReason] = useState("");
+  const [submittingEditRequest, setSubmittingEditRequest] = useState(false);
   const [flaggingArticle, setFlaggingArticle] = useState<Article | null>(null);
   const [selectedAssignee, setSelectedAssignee] = useState<string>("");
   const [flagInstructions, setFlagInstructions] = useState<string>("");
