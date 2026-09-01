@@ -669,6 +669,10 @@ export async function PATCH(
       if (status === "REDO" && suggestion) {
         changeNotes.push(`Feedback: ${suggestion}`);
       }
+      if (flagForUpdate) {
+        const assignedWriterName = updated.writer?.name || "writer";
+        changeNotes.push(`Flagged for update by Team Lead ${session.user.name || "Team Lead"} to writer ${assignedWriterName}. Instructions: ${suggestion || "none"}`);
+      }
 
       if (changeNotes.length > 0 || notes) {
         const finalNotes = notes

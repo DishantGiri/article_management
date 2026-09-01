@@ -5,7 +5,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus } from "lucide-react";
+import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
@@ -82,11 +82,11 @@ function ArticlesContent() {
   const [submittingUpdate, setSubmittingUpdate] = useState(false);
   const [requestingUpdateArticle, setRequestingUpdateArticle] = useState<Article | null>(null);
   const [requestEditReason, setRequestEditReason] = useState("");
-  const [submittingEditRequest, setSubmittingEditRequest] = useState(false);
-  const [assigningArticle, setAssigningArticle] = useState<Article | null>(null);
+  const [flaggingArticle, setFlaggingArticle] = useState<Article | null>(null);
   const [selectedAssignee, setSelectedAssignee] = useState<string>("");
+  const [flagInstructions, setFlagInstructions] = useState<string>("");
   const [teamMembers, setTeamMembers] = useState<{ id: number; name: string; email: string }[]>([]);
-  const [submittingAssignment, setSubmittingAssignment] = useState(false);
+  const [submittingFlag, setSubmittingFlag] = useState(false);
   const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; linker: string; productName: string } | null>(null);
   const [selectedArticleIds, setSelectedArticleIds] = useState<number[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
@@ -140,53 +140,32 @@ function ArticlesContent() {
     }
   };
 
-  const handleAssignToWriter = async () => {
-    if (!assigningArticle || !selectedAssignee || !currentUserId) return;
-    setSubmittingAssignment(true);
+  const handleFlagApprovedArticle = async () => {
+    if (!flaggingArticle || !selectedAssignee || !currentUserId) return;
+    setSubmittingFlag(true);
     try {
-      const res = await fetch(`/api/articles/${assigningArticle.id}`, {
+      const res = await fetch(`/api/articles/${flaggingArticle.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          flagForUpdate: true,
           writerId: Number(selectedAssignee),
+          status: "IN_PROGRESS",
+          suggestion: flagInstructions.trim(),
           callerId: currentUserId,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       const assignedUser = teamMembers.find((m) => m.id === Number(selectedAssignee));
-      toast.success(`Assigned to ${assignedUser?.name || "writer"} successfully!`);
-      setAssigningArticle(null);
+      toast.success(`Flag raised! Article unlocked and assigned to ${assignedUser?.name || "writer"} for update.`);
+      setFlaggingArticle(null);
+      setFlagInstructions("");
       setSelectedAssignee("");
       fetchArticlesList();
     } catch (e: any) {
-      toast.error(e.message || "Failed to assign article");
+      toast.error(e.message || "Failed to flag article for update");
     } finally {
-      setSubmittingAssignment(false);
-    }
-  };
-
-  const handleOpenToTeam = async () => {
-    if (!assigningArticle || !currentUserId) return;
-    setSubmittingAssignment(true);
-    try {
-      const res = await fetch(`/api/articles/${assigningArticle.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          writerId: null,
-          openToTeam: true,
-          callerId: currentUserId,
-        }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      toast.success("Article opened to all team members!");
-      setAssigningArticle(null);
-      setSelectedAssignee("");
-      fetchArticlesList();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to open article to team");
-    } finally {
-      setSubmittingAssignment(false);
+      setSubmittingFlag(false);
     }
   };
 
@@ -962,21 +941,6 @@ function ArticlesContent() {
                               </button>
                             )}
 
-                            {/* Assign Button for Team Leads & Managers on PENDING articles */}
-                            {status === "PENDING" && (currentUserRole === "TEAM_LEAD" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN") && (
-                              <button
-                                onClick={() => {
-                                  setAssigningArticle(a);
-                                  setSelectedAssignee(a.writer ? String(a.writer.id) : "");
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
-                                title={a.writer ? `Currently assigned to ${a.writer.name}. Click to reassign or open to team.` : "Assign to a team member or open to team"}
-                              >
-                                <UserPlus className="w-3.5 h-3.5 text-indigo-600" />
-                                {a.writer ? "Reassign" : "Assign"}
-                              </button>
-                            )}
-
                             {/* Manager Actions (Super Admin, Admin, Team Lead) */}
                             {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
                               <>
@@ -1007,6 +971,23 @@ function ArticlesContent() {
                                     Approve Edit
                                   </button>
                                 )}
+
+                                {/* Flag for Update: on APPROVED articles only, Team Lead can assign a writer to update it */}
+                                {status === "APPROVED" && (
+                                  <button
+                                    onClick={() => {
+                                      setFlaggingArticle(a);
+                                      setSelectedAssignee(a.writer ? String(a.writer.id) : "");
+                                      setFlagInstructions("");
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                    title="Raise flag to writer that this approved article needs an update"
+                                  >
+                                    <Flag className="w-3.5 h-3.5 text-amber-600" />
+                                    Flag for Update
+                                  </button>
+                                )}
+
                                 <Link
                                   href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
@@ -1224,24 +1205,25 @@ function ArticlesContent() {
         </div>
       )}
 
-      {/* Assign Article Modal for Team Leads & Managers */}
-      {assigningArticle && (
+      {/* Flag Approved Article for Update Modal */}
+      {flaggingArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-150">
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <UserPlus className="w-4 h-4 text-indigo-600" />
-                  Assign Article to Team
+                  <Flag className="w-4 h-4 text-amber-600" />
+                  Flag Approved Article for Update
                 </h3>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                  Assign to a specific team member or open to all
+                  Raise a flag to writer that this approved article requires revisions
                 </p>
               </div>
               <button
                 onClick={() => {
-                  setAssigningArticle(null);
+                  setFlaggingArticle(null);
                   setSelectedAssignee("");
+                  setFlagInstructions("");
                 }}
                 className="text-slate-400 hover:text-slate-600 transition cursor-pointer p-1 rounded-lg hover:bg-slate-100"
               >
@@ -1249,77 +1231,79 @@ function ArticlesContent() {
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-5">
+            <div className="px-6 py-5 space-y-4">
               {/* Product Info */}
               <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Product & Site</span>
-                <p className="text-sm font-bold text-slate-900">{assigningArticle.product.name}</p>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Article</span>
+                <p className="text-sm font-bold text-slate-900">{flaggingArticle.product.name}</p>
                 <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
                   <span className="bg-white px-2 py-0.5 rounded border border-slate-200 text-[10px] font-bold text-slate-700">
-                    {assigningArticle.product.site.name}
+                    {flaggingArticle.product.site.name}
                   </span>
                   <span>·</span>
-                  <span>Currently: <strong className="text-slate-700">{assigningArticle.writer?.name || "Unassigned"}</strong></span>
+                  <span>Original Writer: <strong className="text-slate-700">{flaggingArticle.writer?.name || "Unassigned"}</strong></span>
                 </div>
               </div>
 
-              {/* Method 1: Assign to Specific Writer */}
-              <div className="space-y-2.5 p-3.5 bg-indigo-50/40 border border-indigo-100 rounded-xl">
-                <label className="block text-xs font-bold text-indigo-950">
-                  Option 1: Assign to a Specific Writer
+              {/* Writer Assignment */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Assign Update To Writer <span className="text-rose-500">*</span>
                 </label>
-                <p className="text-[11px] text-indigo-700/80">
-                  Select a writer from your team to assign this article to directly.
-                </p>
                 <select
                   value={selectedAssignee}
                   onChange={(e) => setSelectedAssignee(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                 >
-                  <option value="">-- Choose Team Member --</option>
+                  <option value="">-- Choose Writer --</option>
+                  {flaggingArticle.writer && !teamMembers.some((m) => m.id === flaggingArticle.writer?.id) && (
+                    <option value={flaggingArticle.writer.id}>
+                      {flaggingArticle.writer.name} (Original Author)
+                    </option>
+                  )}
                   {teamMembers.map((member) => (
                     <option key={member.id} value={member.id}>
-                      {member.name} ({member.email})
+                      {member.name} {flaggingArticle.writer?.id === member.id ? "(Original Author)" : `(${member.email})`}
                     </option>
                   ))}
                 </select>
-
-                <button
-                  onClick={handleAssignToWriter}
-                  disabled={submittingAssignment || !selectedAssignee}
-                  className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition disabled:opacity-50 cursor-pointer shadow-xs"
-                >
-                  {submittingAssignment ? "Assigning..." : "Assign to Selected Writer"}
-                </button>
               </div>
 
-              {/* Method 2: Open to all team members */}
-              <div className="space-y-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                <label className="block text-xs font-bold text-slate-900">
-                  Option 2: Open to Any Team Member
+              {/* Instructions / Reason for Update */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Update Instructions & Feedback <span className="text-rose-500">*</span>
                 </label>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Make this article available to all {teamMembers.length} writers in your team so any of them can claim and write it.
-                </p>
-
-                <button
-                  onClick={handleOpenToTeam}
-                  disabled={submittingAssignment}
-                  className="w-full py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300 font-bold text-xs rounded-xl transition cursor-pointer shadow-2xs"
-                >
-                  Open for Any Team Member
-                </button>
+                <textarea
+                  rows={3}
+                  value={flagInstructions}
+                  onChange={(e) => setFlagInstructions(e.target.value)}
+                  placeholder="Specify what needs to be updated (e.g. broken article link, price changes, client requests new GEO link)..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition resize-none font-medium placeholder-slate-400"
+                />
               </div>
 
-              <div className="flex justify-end pt-1">
+              <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 leading-relaxed font-medium">
+                This will unlock the article back to <strong>In Progress</strong> for the selected writer, log your instructions, and notify them immediately.
+              </div>
+
+              <div className="flex gap-2.5 pt-2 border-t border-slate-100">
                 <button
                   onClick={() => {
-                    setAssigningArticle(null);
+                    setFlaggingArticle(null);
                     setSelectedAssignee("");
+                    setFlagInstructions("");
                   }}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={handleFlagApprovedArticle}
+                  disabled={submittingFlag || !selectedAssignee || !flagInstructions.trim()}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+                >
+                  {submittingFlag ? "Raising Flag..." : "Raise Flag & Unlock"}
                 </button>
               </div>
             </div>
