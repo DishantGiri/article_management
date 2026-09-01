@@ -11,403 +11,373 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = Number(session.user.id);
-    const userRole = session.user.role || "WRITER";
+    const callerId = Number(session.user.id);
+    const callerRole = session.user.role || "WRITER";
 
-    // ─────────────────────────────────────────────
-    // 1. DATES (LAST 6 MONTHS)
-    // ─────────────────────────────────────────────
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const d = new Date();
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1. PERMISSION CONSTRAINT:
+    // "work report there tl cannot view the report, one user can own report"
+    // TEAM_LEAD, WRITER, and LINKER can STRICTLY ONLY view their OWN report.
+    // Only SUPER_ADMIN and ADMIN can specify a ?userId query param.
+    // ─────────────────────────────────────────────────────────────────────────
+    let targetUserId = callerId;
+    const requestedUserId = req.nextUrl.searchParams.get("userId");
 
-    const getEmptyMonthTrend = () => {
-      const map = new Map<string, number>();
-      for (let i = 5; i >= 0; i--) {
-        const past = new Date(d.getFullYear(), d.getMonth() - i, 1);
-        map.set(monthNames[past.getMonth()], 0);
-      }
-      return map;
-    };
+    if ((callerRole === "SUPER_ADMIN" || callerRole === "ADMIN") && requestedUserId) {
+      targetUserId = Number(requestedUserId);
+    }
 
-    // ─────────────────────────────────────────────
-    // 2. WRITER REPORT DATA
-    // ─────────────────────────────────────────────
-    let articleFilter: any = {};
-    if (userRole === "WRITER") {
-      articleFilter = { writerId: userId };
-    } else if (userRole === "TEAM_LEAD") {
-      articleFilter = {
-        OR: [
-          { writerId: userId },
-          { writer: { teamLeadId: userId } },
-        ],
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, name: true, email: true, role: true },
+    });
+
+    if (!targetUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 2. DATE FILTERING (FOR REPORT GENERATION)
+    // ─────────────────────────────────────────────────────────────────────────
+    const startDateParam = req.nextUrl.searchParams.get("startDate");
+    const endDateParam = req.nextUrl.searchParams.get("endDate");
+
+    let dateStart: Date | undefined = undefined;
+    let dateEnd: Date | undefined = undefined;
+
+    if (startDateParam) {
+      dateStart = new Date(startDateParam.includes("T") ? startDateParam : `${startDateParam}T00:00:00.000Z`);
+    }
+    if (endDateParam) {
+      dateEnd = new Date(endDateParam.includes("T") ? endDateParam : `${endDateParam}T23:59:59.999Z`);
+    }
+
+    const getDateFilter = (field: string) => {
+      if (!dateStart && !dateEnd) return {};
+      return {
+        [field]: {
+          ...(dateStart ? { gte: dateStart } : {}),
+          ...(dateEnd ? { lte: dateEnd } : {}),
+        },
       };
-    } else if (userRole === "LINKER") {
-      articleFilter = { id: -1 }; // Linkers don't write articles
-    }
-
-    const articles = await prisma.article.findMany({
-      where: articleFilter,
-      include: {
-        writer: { select: { id: true, name: true, email: true } },
-        product: { select: { id: true, name: true, site: { select: { name: true } } } },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
-
-    const totalArticles = articles.length;
-    const completedArticles = articles.filter((a) => a.status === "COMPLETED").length;
-    const inProgressArticles = articles.filter((a) => a.status === "IN_PROGRESS").length;
-    const completionRate = totalArticles === 0 ? 0 : Math.round((completedArticles / totalArticles) * 100);
-
-    const articleTrendMap = getEmptyMonthTrend();
-    articles.forEach((a) => {
-      const monthStr = monthNames[a.updatedAt.getMonth()];
-      if (articleTrendMap.has(monthStr)) {
-        articleTrendMap.set(monthStr, (articleTrendMap.get(monthStr) || 0) + 1);
-      }
-    });
-    const articleMonthlyTrend = Array.from(articleTrendMap.entries()).map(([month, articles]) => ({ month, articles }));
-
-    let artInProgress = 0;
-    let artPending = 0;
-    let artRedo = 0;
-    articles.forEach((a) => {
-      if (a.status === "IN_PROGRESS") artInProgress++;
-      else if (a.status === "PENDING") artPending++;
-      else if (a.status === "REDO") artRedo++;
-    });
-
-    const articleStatusDistribution = [
-      { name: "Completed", value: completedArticles, color: "#10b981" },
-      { name: "In Progress", value: artInProgress, color: "#6366f1" },
-      { name: "Pending", value: artPending, color: "#f59e0b" },
-      { name: "Redo", value: artRedo, color: "#ef4444" },
-    ].filter((s) => s.value > 0);
-
-    if (articleStatusDistribution.length === 0) {
-      articleStatusDistribution.push({ name: "No Data", value: 1, color: "#e2e8f0" });
-    }
-
-    // Writer Productivity Map
-    const writerMap = new Map();
-    let totalMins = 0;
-    let totalCompletedWithTime = 0;
-
-    articles.forEach((a) => {
-      if (a.writer) {
-        if (!writerMap.has(a.writer.id)) {
-          writerMap.set(a.writer.id, {
-            id: a.writer.id,
-            writer: a.writer.name,
-            email: a.writer.email,
-            articles: 0,
-            completed: 0,
-            inProgress: 0,
-            totalTimeMin: 0,
-            status: "Active",
-            performance: 0,
-            avgTime: "0.0",
-          });
-        }
-        const w = writerMap.get(a.writer.id);
-        w.articles += 1;
-        if (a.status === "COMPLETED") {
-          w.completed += 1;
-        } else if (a.status === "IN_PROGRESS") {
-          w.inProgress += 1;
-        }
-        if (a.writingTimeMin) {
-          w.totalTimeMin += a.writingTimeMin;
-        }
-      }
-      if (a.status === "COMPLETED" && a.writingTimeMin) {
-        totalMins += a.writingTimeMin;
-        totalCompletedWithTime++;
-      }
-    });
-
-    const writerProductivity = Array.from(writerMap.values()).map((w) => {
-      w.performance = w.articles > 0 ? Math.round((w.completed / w.articles) * 100) : 0;
-      w.avgTime = w.completed > 0 ? (w.totalTimeMin / w.completed / 60).toFixed(1) : "0.0";
-      return w;
-    });
-    writerProductivity.sort((a, b) => b.performance - a.performance);
-
-    const avgWritingTime = totalCompletedWithTime > 0 ? (totalMins / totalCompletedWithTime / 60).toFixed(1) : "0.0";
-
-    const writerReport = {
-      metrics: {
-        totalArticles,
-        completedArticles,
-        inProgressArticles,
-        avgWritingTime,
-        completionRate,
-      },
-      monthlyTrend: articleMonthlyTrend,
-      statusDistribution: articleStatusDistribution,
-      writerProductivity,
-      recentArticles: articles.slice(0, 30).map((a) => ({
-        id: a.id,
-        productName: a.product?.name || "Untitled",
-        siteName: a.product?.site?.name || "Unassigned",
-        status: a.status,
-        writingTimeMin: a.writingTimeMin,
-        completedAt: a.completedAt,
-        articleLink: a.articleLink,
-        writerName: a.writer?.name,
-      })),
     };
 
-    // ─────────────────────────────────────────────
-    // 3. LINKER REPORT DATA
-    // ─────────────────────────────────────────────
-    let linkFilter: any = {};
-    if (userRole === "LINKER") {
-      linkFilter = { addedById: userId };
-    } else if (userRole === "WRITER") {
-      linkFilter = { id: -1 }; // Writers don't manage links
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // 3. RETRIEVE WORK RECORDS FOR TARGET USER
+    // ─────────────────────────────────────────────────────────────────────────
 
-    const [links, productsAddedCount] = await Promise.all([
-      prisma.linkLog.findMany({
-        where: linkFilter,
+    // A. WRITER WORK: New Articles, Updates, Fixes
+    const [userArticles, userArticleHistories] = await Promise.all([
+      prisma.article.findMany({
+        where: {
+          writerId: targetUserId,
+          ...getDateFilter("updatedAt"),
+        },
         include: {
-          addedBy: { select: { id: true, name: true, email: true } },
-          product: { select: { id: true, name: true, site: { select: { name: true } } } },
+          product: {
+            include: { site: { select: { id: true, name: true, url: true } } },
+          },
+          reviews: {
+            select: { id: true, approved: true, suggestion: true, reviewedAt: true },
+            orderBy: { reviewedAt: "desc" },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.articleHistory.findMany({
+        where: {
+          updatedById: targetUserId,
+          ...getDateFilter("updatedAt"),
+        },
+        include: {
+          article: {
+            include: {
+              product: {
+                include: { site: { select: { id: true, name: true, url: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+    ]);
+
+    // Categorize Writer Work:
+    // 1. Fixes (Redo resolutions)
+    const fixedArticleIds = new Set<number>();
+    const fixesList: any[] = [];
+
+    userArticleHistories.forEach((h) => {
+      const isRedoFix =
+        h.oldStatus === "REDO" ||
+        (h.notes && h.notes.toLowerCase().includes("redo")) ||
+        (h.notes && h.notes.toLowerCase().includes("fix"));
+
+      if (isRedoFix && h.article) {
+        fixedArticleIds.add(h.article.id);
+        fixesList.push({
+          id: `fix-${h.id}`,
+          articleId: h.article.id,
+          productName: h.article.product?.name || "Untitled Product",
+          siteName: h.article.product?.site?.name || "Unassigned Site",
+          articleLink: h.newLink || h.article.articleLink || null,
+          date: h.updatedAt,
+          notes: h.notes || "Addressed redo feedback and updated article",
+          writingTimeMin: h.article.writingTimeMin,
+          status: h.newStatus || h.article.status,
+        });
+      }
+    });
+
+    // 2. Updates (Article content / link updates)
+    const updatedArticleIds = new Set<number>();
+    const updatesList: any[] = [];
+
+    userArticleHistories.forEach((h) => {
+      const isRedoFix =
+        h.oldStatus === "REDO" ||
+        (h.notes && h.notes.toLowerCase().includes("redo")) ||
+        (h.notes && h.notes.toLowerCase().includes("fix"));
+
+      const isUpdate =
+        !isRedoFix &&
+        (h.oldLink !== h.newLink ||
+          (h.notes && h.notes.toLowerCase().includes("update")) ||
+          (h.notes && h.notes.toLowerCase().includes("link updated")));
+
+      if (isUpdate && h.article) {
+        updatedArticleIds.add(h.article.id);
+        updatesList.push({
+          id: `update-${h.id}`,
+          articleId: h.article.id,
+          productName: h.article.product?.name || "Untitled Product",
+          siteName: h.article.product?.site?.name || "Unassigned Site",
+          articleLink: h.newLink || h.article.articleLink || null,
+          oldLink: h.oldLink,
+          date: h.updatedAt,
+          notes: h.notes || "Updated article link/content",
+          status: h.newStatus || h.article.status,
+        });
+      }
+    });
+
+    // 3. New Articles written
+    const newArticlesList: any[] = [];
+    userArticles.forEach((art) => {
+      // If it's not strictly an update or fix entry, or was completed/in-progress in this period
+      newArticlesList.push({
+        id: `article-${art.id}`,
+        articleId: art.id,
+        productName: art.product?.name || "Untitled Product",
+        siteName: art.product?.site?.name || "Unassigned Site",
+        articleLink: art.articleLink || null,
+        date: art.completedAt || art.startedAt || art.updatedAt,
+        writingTimeMin: art.writingTimeMin,
+        status: art.status,
+      });
+    });
+
+    // B. TEAM LEAD WORK: New Articles, Reviews Conducted, Links
+    const [teamLeadReviews, teamLeadSpecialApprovals] = await Promise.all([
+      prisma.articleReview.findMany({
+        where: {
+          reviewedById: targetUserId,
+          ...getDateFilter("reviewedAt"),
+        },
+        include: {
+          article: {
+            include: {
+              product: {
+                include: { site: { select: { id: true, name: true } } },
+              },
+              writer: { select: { id: true, name: true, email: true } },
+            },
+          },
+        },
+        orderBy: { reviewedAt: "desc" },
+      }),
+      prisma.specialApproval.findMany({
+        where: {
+          approvedById: targetUserId,
+          ...getDateFilter("approvedAt"),
+        },
+        include: {
+          article: {
+            include: {
+              product: {
+                include: { site: { select: { id: true, name: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { approvedAt: "desc" },
+      }),
+    ]);
+
+    const reviewedArticlesList = teamLeadReviews.map((r) => ({
+      id: `review-${r.id}`,
+      reviewId: r.id,
+      articleId: r.article.id,
+      productName: r.article.product?.name || "Untitled Product",
+      siteName: r.article.product?.site?.name || "Unassigned Site",
+      writerName: r.article.writer?.name || "Writer",
+      articleLink: r.article.articleLink || null,
+      approved: r.approved,
+      verdict: r.approved ? "Approved" : "Redo Requested",
+      suggestion: r.suggestion || "No remarks",
+      reviewedAt: r.reviewedAt,
+    }));
+
+    // C. LINKER WORK: Products Added, Links Added on Products, Other Work
+    const [linkerProducts, linkerLinks, linkerHistories] = await Promise.all([
+      prisma.product.findMany({
+        where: {
+          addedById: targetUserId,
+          ...getDateFilter("addedAt"),
+        },
+        include: {
+          site: { select: { id: true, name: true } },
+          category: { select: { id: true, name: true } },
         },
         orderBy: { addedAt: "desc" },
       }),
-      userRole === "LINKER"
-        ? prisma.product.count({ where: { addedById: userId } })
-        : prisma.product.count(),
+      prisma.linkLog.findMany({
+        where: {
+          addedById: targetUserId,
+          ...getDateFilter("addedAt"),
+        },
+        include: {
+          product: {
+            include: { site: { select: { id: true, name: true } } },
+          },
+          geos: true,
+        },
+        orderBy: { addedAt: "desc" },
+      }),
+      prisma.linkHistory.findMany({
+        where: {
+          updatedById: targetUserId,
+          ...getDateFilter("updatedAt"),
+        },
+        include: {
+          linkLog: {
+            include: {
+              product: {
+                include: { site: { select: { id: true, name: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
     ]);
 
-    const totalLinks = links.length;
-    const acceptedLinks = links.filter((l) => l.status === "ACCEPTED").length;
-    const requestedLinks = links.filter((l) => l.status === "REQUESTED").length;
-    const issueLinks = links.filter((l) => l.status === "ISSUE").length;
-
-    const linkTrendMap = getEmptyMonthTrend();
-    links.forEach((l) => {
-      const monthStr = monthNames[l.addedAt.getMonth()];
-      if (linkTrendMap.has(monthStr)) {
-        linkTrendMap.set(monthStr, (linkTrendMap.get(monthStr) || 0) + 1);
-      }
-    });
-    const linkMonthlyTrend = Array.from(linkTrendMap.entries()).map(([month, linksCount]) => ({ month, links: linksCount }));
-
-    const linkStatusMap: Record<string, number> = {};
-    const affiliateMap: Record<string, number> = {};
-
-    links.forEach((l) => {
-      linkStatusMap[l.status] = (linkStatusMap[l.status] || 0) + 1;
-      if (l.affiliateName) {
-        affiliateMap[l.affiliateName] = (affiliateMap[l.affiliateName] || 0) + 1;
-      }
-    });
-
-    const statusColors: Record<string, string> = {
-      ACCEPTED: "#10b981",
-      REQUESTED: "#3b82f6",
-      ISSUE: "#ef4444",
-      CANCELED: "#64748b",
-      NEED_TO_CHECK: "#f59e0b",
-      REDIRECTED: "#8b5cf6",
-      PRESELL_PAGE: "#06b6d4",
-    };
-
-    const linkStatusDistribution = Object.entries(linkStatusMap).map(([name, value]) => ({
-      name,
-      value,
-      color: statusColors[name] || "#94a3b8",
+    const productsAddedList = linkerProducts.map((p) => ({
+      id: `prod-${p.id}`,
+      productId: p.id,
+      name: p.name,
+      siteName: p.site?.name || "Unassigned Site",
+      categoryName: p.category?.name || "Uncategorized",
+      createdAt: p.addedAt,
     }));
 
-    if (linkStatusDistribution.length === 0) {
-      linkStatusDistribution.push({ name: "No Links", value: 1, color: "#e2e8f0" });
-    }
+    const linksAddedList = linkerLinks.map((l) => ({
+      id: `link-${l.id}`,
+      linkId: l.id,
+      productId: l.productId,
+      productName: l.product?.name || "Untitled Product",
+      siteName: l.product?.site?.name || "Unassigned Site",
+      affiliateName: l.affiliateName,
+      affiliateLink: l.affiliateLink,
+      bridgePageLink: l.bridgePageLink,
+      buyLink: l.buyLink,
+      status: l.status,
+      geos: l.geos.map((g) => g.geo),
+      addedAt: l.addedAt,
+    }));
 
-    const affiliateColors = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
-    const affiliateDistribution = Object.entries(affiliateMap)
-      .slice(0, 7)
-      .map(([name, value], i) => ({
-        name,
-        value,
-        color: affiliateColors[i % affiliateColors.length],
-      }));
+    const linkerOtherWorkList = linkerHistories.map((h) => ({
+      id: `linkhist-${h.id}`,
+      linkId: h.linkLogId,
+      productName: h.linkLog?.product?.name || "Untitled Product",
+      siteName: h.linkLog?.product?.site?.name || "Unassigned Site",
+      oldStatus: h.oldStatus,
+      newStatus: h.newStatus,
+      oldBridgeLink: h.oldBridgeLink,
+      newBridgeLink: h.newBridgeLink,
+      notes: h.newRemarks || "Updated link configuration",
+      updatedAt: h.updatedAt,
+    }));
 
-    if (affiliateDistribution.length === 0) {
-      affiliateDistribution.push({ name: "No Affiliates", value: 1, color: "#e2e8f0" });
-    }
-
-    // Linker Productivity Map
-    const linkerMap = new Map();
-    links.forEach((l) => {
-      if (l.addedBy) {
-        if (!linkerMap.has(l.addedBy.id)) {
-          linkerMap.set(l.addedBy.id, {
-            id: l.addedBy.id,
-            linker: l.addedBy.name,
-            email: l.addedBy.email,
-            links: 0,
-            accepted: 0,
-            issues: 0,
-          });
-        }
-        const lm = linkerMap.get(l.addedBy.id);
-        lm.links += 1;
-        if (l.status === "ACCEPTED") lm.accepted += 1;
-        if (l.status === "ISSUE") lm.issues += 1;
-      }
-    });
-
-    const linkerProductivity = Array.from(linkerMap.values()).map((lm) => {
-      lm.rate = lm.links > 0 ? Math.round((lm.accepted / lm.links) * 100) : 0;
-      return lm;
-    });
-    linkerProductivity.sort((a, b) => b.links - a.links);
-
-    const linkerReport = {
-      metrics: {
-        totalLinks,
-        acceptedLinks,
-        requestedLinks,
-        issueLinks,
-        productsAdded: productsAddedCount,
-      },
-      monthlyTrend: linkMonthlyTrend,
-      statusDistribution: linkStatusDistribution,
-      affiliateDistribution,
-      linkerProductivity,
-      recentLinks: links.slice(0, 30).map((l) => ({
-        id: l.id,
-        productName: l.product?.name || "Untitled",
-        siteName: l.product?.site?.name || "Unassigned",
-        affiliateName: l.affiliateName,
-        status: l.status,
-        addedAt: l.addedAt,
-        addedByName: l.addedBy?.name,
-      })),
-    };
-
-    // ─────────────────────────────────────────────
-    // 4. TEAM LEAD REPORT DATA
-    // ─────────────────────────────────────────────
-    let teamLeadReport: any = null;
-    if (userRole === "TEAM_LEAD" || userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-      const [teamWriters, reviews] = await Promise.all([
-        prisma.user.findMany({
-          where: userRole === "TEAM_LEAD" ? { teamLeadId: userId, role: "WRITER" } : { role: "WRITER" },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            articles: {
-              select: {
-                id: true,
-                status: true,
-                writingTimeMin: true,
-                completedAt: true,
-              },
-            },
-          },
-        }),
-        prisma.articleReview.findMany({
-          where: userRole === "TEAM_LEAD" ? { reviewedById: userId } : {},
-          include: {
-            article: {
-              select: {
-                product: { select: { name: true } },
-                writer: { select: { name: true } },
-              },
-            },
-          },
-          orderBy: { reviewedAt: "desc" },
-          take: 30,
-        }),
-      ]);
-
-      const totalReviews = reviews.length;
-      const approvedReviews = reviews.filter((r) => r.approved).length;
-      const redoReviews = totalReviews - approvedReviews;
-      const reviewApprovalRate = totalReviews === 0 ? 0 : Math.round((approvedReviews / totalReviews) * 100);
-
-      let teamCompletedArticles = 0;
-      let teamTotalTime = 0;
-      let teamCompletedWithTime = 0;
-
-      const writerComparison = teamWriters.map((tw) => {
-        const twCompleted = tw.articles.filter((a) => a.status === "COMPLETED").length;
-        const twTotal = tw.articles.length;
-        let twTime = 0;
-        let twTimeCount = 0;
-
-        tw.articles.forEach((a) => {
-          if (a.status === "COMPLETED" && a.writingTimeMin) {
-            twTime += a.writingTimeMin;
-            twTimeCount++;
-            teamTotalTime += a.writingTimeMin;
-            teamCompletedWithTime++;
-          }
-        });
-
-        teamCompletedArticles += twCompleted;
-        const avgHours = twTimeCount > 0 ? (twTime / twTimeCount / 60).toFixed(1) : "0.0";
-        const rate = twTotal > 0 ? Math.round((twCompleted / twTotal) * 100) : 0;
-
-        return {
-          id: tw.id,
-          name: tw.name,
-          email: tw.email,
-          totalArticles: twTotal,
-          completed: twCompleted,
-          avgTimeHours: avgHours,
-          completionRate: rate,
-        };
+    // If caller is Admin/Super Admin, retrieve list of users so they can inspect any member's work report
+    let selectableUsers: any[] = [];
+    if (callerRole === "SUPER_ADMIN" || callerRole === "ADMIN") {
+      selectableUsers = await prisma.user.findMany({
+        select: { id: true, name: true, email: true, role: true },
+        orderBy: { name: "asc" },
       });
-
-      writerComparison.sort((a, b) => b.completed - a.completed);
-
-      const teamAvgTime = teamCompletedWithTime > 0 ? (teamTotalTime / teamCompletedWithTime / 60).toFixed(1) : "0.0";
-
-      teamLeadReport = {
-        metrics: {
-          teamWritersCount: teamWriters.length,
-          teamArticlesCompleted: teamCompletedArticles,
-          teamAvgWritingTime: teamAvgTime,
-          reviewsConducted: totalReviews,
-          approvedCount: approvedReviews,
-          redoCount: redoReviews,
-          approvalRate: reviewApprovalRate,
-        },
-        writerComparison,
-        recentReviews: reviews.map((r) => ({
-          id: r.id,
-          productName: r.article?.product?.name || "Article",
-          writerName: r.article?.writer?.name || "Writer",
-          approved: r.approved,
-          suggestion: r.suggestion,
-          reviewedAt: r.reviewedAt,
-        })),
-      };
     }
 
     return NextResponse.json({
-      user: {
-        id: userId,
-        role: userRole,
+      caller: {
+        id: callerId,
+        role: callerRole,
         name: session.user.name,
       },
-      // Keep metrics, monthlyTrend, statusDistribution, writerProductivity at top-level for backward compatibility
-      metrics: writerReport.metrics,
-      monthlyTrend: writerReport.monthlyTrend,
-      statusDistribution: writerReport.statusDistribution,
-      writerProductivity: writerReport.writerProductivity,
+      targetUser: {
+        id: targetUser.id,
+        name: targetUser.name,
+        email: targetUser.email,
+        role: targetUser.role,
+      },
+      dateRange: {
+        startDate: startDateParam || null,
+        endDate: endDateParam || null,
+      },
+      selectableUsers,
 
-      // Enhanced report domains
-      writerReport,
-      linkerReport,
-      teamLeadReport,
+      // Specific report sections formatted exactly for the user's role
+      reportData: {
+        writer: {
+          newArticles: newArticlesList,
+          updates: updatesList,
+          fixes: fixesList,
+          metrics: {
+            totalNew: newArticlesList.length,
+            totalUpdates: updatesList.length,
+            totalFixes: fixesList.length,
+            completedArticles: newArticlesList.filter((a) => a.status === "COMPLETED" || a.status === "APPROVED").length,
+          },
+        },
+        teamLead: {
+          newArticles: newArticlesList,
+          reviews: reviewedArticlesList,
+          specialApprovals: teamLeadSpecialApprovals.map((sa) => ({
+            id: sa.id,
+            productName: sa.productName,
+            writerName: sa.writerName,
+            reason: sa.reason,
+            approvedAt: sa.approvedAt,
+          })),
+          metrics: {
+            totalNewArticles: newArticlesList.length,
+            totalReviews: reviewedArticlesList.length,
+            approvedReviews: reviewedArticlesList.filter((r) => r.approved).length,
+            redoReviews: reviewedArticlesList.filter((r) => !r.approved).length,
+          },
+        },
+        linker: {
+          productsAdded: productsAddedList,
+          linksAdded: linksAddedList,
+          otherWork: linkerOtherWorkList,
+          metrics: {
+            totalProductsAdded: productsAddedList.length,
+            totalLinksAdded: linksAddedList.length,
+            totalUpdates: linkerOtherWorkList.length,
+            acceptedLinks: linksAddedList.filter((l) => l.status === "ACCEPTED").length,
+          },
+        },
+      },
     });
   } catch (err: any) {
     console.error("[GET /api/reports]", err);
