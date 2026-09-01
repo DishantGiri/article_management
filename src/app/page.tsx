@@ -713,7 +713,7 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
 
       {/* CHARTS ROW 1: Productivity & Status Donut */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="w-full h-full">
+        <div className="w-full min-h-[380px] flex flex-col">
           <ChartLineLabelCustom
             data={monthlyData.map((d: any) => ({
               month: d.name,
@@ -725,7 +725,7 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
           />
         </div>
 
-        <div className="w-full h-full">
+        <div className="w-full min-h-[380px] flex flex-col">
           <ChartPieInteractive
             data={statusData}
             title="Article Pipeline Distribution"
@@ -755,7 +755,7 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
             {writerPerformance.length === 0 ? (
               <p className="text-center text-slate-400 text-xs py-20">No writer performance metrics available yet.</p>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={writerPerformance} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                   <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
@@ -1115,7 +1115,7 @@ function TeamLeadMissionControl({
             {tl.writerPerformance.length === 0 ? (
               <p className="text-center text-slate-400 text-xs py-20">No writer performance logs yet.</p>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={tl.writerPerformance} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />

@@ -40,7 +40,7 @@ export function ChartLineLabelCustom({ data, title = "Monthly Articles Trend", d
         <CardDescription className="text-xs text-slate-500">{description}</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 p-2 sm:p-6 sm:pt-0 pb-2">
-        <ChartContainer config={chartConfig} className="w-full h-full min-h-[220px] sm:min-h-[250px]">
+        <ChartContainer config={chartConfig} className="w-full min-h-[220px] sm:min-h-[260px] h-[220px] sm:h-[260px]">
           <LineChart
             accessibilityLayer
             data={formattedData}

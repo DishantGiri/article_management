@@ -152,11 +152,11 @@ export function ChartPieInteractive({
           </SelectContent>
         </Select>
       </CardHeader>
-      <CardContent className="flex flex-1 justify-center pb-0">
+      <CardContent className="flex flex-1 justify-center pb-0 min-h-[260px] sm:min-h-[300px]">
         <ChartContainer
           id={id}
           config={chartConfig}
-          className="mx-auto aspect-square w-full max-w-[300px]"
+          className="mx-auto aspect-square w-full max-w-[300px] min-h-[220px]"
         >
           <PieChart>
             <ChartTooltip

@@ -499,17 +499,21 @@ export default function ReportsPage() {
 
           {/* Visual Analytics Graphs */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ChartPieInteractive
-              data={reports.writer.statusDistribution || []}
-              title="Article Pipeline Distribution"
-              description="Active workflow state breakdown across assigned articles"
-              centerLabel="Articles"
-            />
-            <ChartLineLabelCustom
-              data={reports.writer.monthlyTrend || []}
-              title="Writing Output Trend"
-              description="Articles written over the last 6 months"
-            />
+            <div className="min-h-[380px] flex flex-col">
+              <ChartPieInteractive
+                data={reports.writer.statusDistribution || []}
+                title="Article Pipeline Distribution"
+                description="Active workflow state breakdown across assigned articles"
+                centerLabel="Articles"
+              />
+            </div>
+            <div className="min-h-[380px] flex flex-col">
+              <ChartLineLabelCustom
+                data={reports.writer.monthlyTrend || []}
+                title="Writing Output Trend"
+                description="Articles written over the last 6 months"
+              />
+            </div>
           </div>
 
           {/* Section A: New Articles */}
@@ -739,17 +743,21 @@ export default function ReportsPage() {
 
           {/* Visual Analytics Graphs */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <ChartPieInteractive
-              data={reports.teamLead.statusDistribution || []}
-              title="Review Decision Distribution"
-              description="Approval and redo request breakdown for reviewed articles"
-              centerLabel="Reviews"
-            />
-            <ChartLineLabelCustom
-              data={reports.teamLead.monthlyTrend || []}
-              title="Review Activity Trend"
-              description="Reviews conducted over the last 6 months"
-            />
+            <div className="min-h-[380px] flex flex-col">
+              <ChartPieInteractive
+                data={reports.teamLead.statusDistribution || []}
+                title="Review Decision Distribution"
+                description="Approval and redo request breakdown for reviewed articles"
+                centerLabel="Reviews"
+              />
+            </div>
+            <div className="min-h-[380px] flex flex-col">
+              <ChartLineLabelCustom
+                data={reports.teamLead.monthlyTrend || []}
+                title="Review Activity Trend"
+                description="Reviews conducted over the last 6 months"
+              />
+            </div>
           </div>
 
           {/* Section A: New Articles Written by TL */}
@@ -916,17 +924,21 @@ export default function ReportsPage() {
 
           {/* Visual Analytics Graphs */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <ChartPieInteractive
-              data={reports.linker.statusDistribution || []}
-              title="Link Operations Distribution"
-              description="Verification states across configured product links"
-              centerLabel="Links"
-            />
-            <ChartLineLabelCustom
-              data={reports.linker.monthlyTrend || []}
-              title="Link Configuration Trend"
-              description="Links configured over the last 6 months"
-            />
+            <div className="min-h-[380px] flex flex-col">
+              <ChartPieInteractive
+                data={reports.linker.statusDistribution || []}
+                title="Link Operations Distribution"
+                description="Verification states across configured product links"
+                centerLabel="Links"
+              />
+            </div>
+            <div className="min-h-[380px] flex flex-col">
+              <ChartLineLabelCustom
+                data={reports.linker.monthlyTrend || []}
+                title="Link Configuration Trend"
+                description="Links configured over the last 6 months"
+              />
+            </div>
           </div>
 
           {/* Section A: Products Added */}
