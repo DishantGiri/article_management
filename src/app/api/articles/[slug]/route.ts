@@ -94,7 +94,7 @@ export async function PATCH(
     const { slug: rawSlug } = await params;
     const id = parseInt(rawSlug.split("-")[0]);
     const body = await req.json();
-    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted, suggestion, openToTeam } = body;
+    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted, suggestion, openToTeam, flagForUpdate } = body;
 
     const activeUserId = Number(session.user.id);
     const activeUserRole = session.user.role || "";
@@ -141,6 +141,10 @@ export async function PATCH(
     // Approval / Redo status change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN
     if ((status === "APPROVED" || status === "REDO") && !["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
       return NextResponse.json({ error: "Only Team Leads and Admins can approve or request changes for articles." }, { status: 403 });
+    }
+
+    if (flagForUpdate && !["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
+      return NextResponse.json({ error: "Only Team Leads and Admins can flag approved articles for update." }, { status: 403 });
     }
 
     if ((status === "APPROVED" || status === "REDO") && existing.status === "REDO" && !redoStarted) {
@@ -271,7 +275,8 @@ export async function PATCH(
         ...(specialApprovalRequested !== undefined ? { specialApprovalRequested } : {}),
         ...(specialApprovalRequestReason !== undefined ? { specialApprovalRequestReason } : {}),
         ...(status === "COMPLETED" ? { specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
-        ...(status === "IN_PROGRESS" && !existing.startedAt ? { startedAt: new Date() } : {}),
+        ...((status === "IN_PROGRESS" && !existing.startedAt) || flagForUpdate ? { startedAt: new Date() } : {}),
+        ...(flagForUpdate ? { specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
         ...(status === "REDO" ? { startedAt: null, specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
         ...(redoStarted && existing.status === "REDO" && !existing.startedAt ? { startedAt: new Date() } : {}),
         ...(completedAt ? { completedAt } : {}),
@@ -559,6 +564,37 @@ export async function PATCH(
         }
       } catch (e) {
         console.error("Failed to notify team on open article:", e);
+      }
+    }
+
+    // If Flagged for Update on an Approved Article:
+    if (flagForUpdate) {
+      try {
+        if (suggestion) {
+          await prisma.articleReview.create({
+            data: {
+              articleId: id,
+              reviewedById: activeUserId,
+              suggestion: String(suggestion),
+              approved: false,
+            },
+          });
+        }
+
+        const targetWriterId = updated.writerId;
+        if (targetWriterId) {
+          const notif = await prisma.notification.create({
+            data: {
+              recipientId: targetWriterId,
+              senderId: activeUserId,
+              type: "ARTICLE_SUGGESTION",
+              message: `Flag Raised: Team Lead ${session.user.name || "Team Lead"} flagged approved article "${updated.product.name}" for an update. Instructions: ${suggestion || "Revisions required."}`,
+            },
+          });
+          await sendRealtimeNotification(targetWriterId, notif);
+        }
+      } catch (flagErr) {
+        console.error("Failed to process flag for update:", flagErr);
       }
     }
 
