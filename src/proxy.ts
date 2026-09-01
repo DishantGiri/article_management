@@ -2,11 +2,11 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  SUPER_ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members"],
-  ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members"],
-  TEAM_LEAD: ["/", "/products", "/articles", "/links", "/reports", "/notifications", "/settings", "/team-members"],
-  LINKER: ["/", "/products", "/links", "/sites", "/categories", "/notifications", "/settings"],
-  WRITER: ["/", "/products", "/articles", "/notifications", "/settings"],
+  SUPER_ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members", "/calendar"],
+  ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/reports", "/history", "/users", "/notifications", "/settings", "/team-members", "/calendar"],
+  TEAM_LEAD: ["/", "/products", "/articles", "/links", "/reports", "/notifications", "/settings", "/team-members", "/calendar"],
+  LINKER: ["/", "/products", "/links", "/sites", "/categories", "/notifications", "/settings", "/calendar"],
+  WRITER: ["/", "/products", "/articles", "/notifications", "/settings", "/calendar"],
 };
 
 function isRouteAllowed(pathname: string, role: string | null | undefined): boolean {
@@ -83,6 +83,6 @@ export default withAuth(
 export const config = {
   matcher: [
     // Protect all routes except api/auth routes and static assets
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon-192.png|icon-512.png|404.svg|file.svg|globe.svg|next.svg|vercel.svg|window.svg|mixkit-software-interface-back-2575.wav).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon-192.png|icon-512.png|loading.svg|404.svg|file.svg|globe.svg|next.svg|vercel.svg|window.svg|mixkit-software-interface-back-2575.wav|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|wav|mp3|mp4|json|js)).*)",
   ],
 };

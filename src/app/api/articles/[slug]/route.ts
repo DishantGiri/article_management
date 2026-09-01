@@ -171,7 +171,7 @@ export async function PATCH(
     }
 
     if (status === "COMPLETED" && !articleLink && !existing.articleLink) {
-      // Check if special approval exists
+      // Check if special approval existsg
       const approval = await prisma.specialApproval.findUnique({ where: { articleId: id } });
       if (!approval) {
         return NextResponse.json(

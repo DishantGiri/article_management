@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Search, Plus, Pencil, Trash2, X, Users } from "lucide-react";
+import Link from "next/link";
+import { Search, Plus, Pencil, Trash2, X, Users, Calendar as CalendarIcon } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { Toggle } from "@/components/ui/toggle";
@@ -298,15 +299,24 @@ export default function UsersPage() {
           </h1>
           <p className="text-[#737373] text-sm mt-0.5 font-medium">{filtered.length} users</p>
         </div>
-        {currentUserRole !== "TEAM_LEAD" && (
-          <button 
-            onClick={openAddModal}
-            className="px-4 py-2 bg-[#6D8196] text-white rounded-xl text-sm font-semibold hover:bg-[#5A6D81] shadow-xs transition flex items-center gap-2 cursor-pointer"
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/calendar"
+            className="px-3.5 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-2xs transition flex items-center gap-2 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            Add User
-          </button>
-        )}
+            <CalendarIcon className="w-4 h-4 text-[#6D8196]" />
+            Work Calendar
+          </Link>
+          {currentUserRole !== "TEAM_LEAD" && (
+            <button 
+              onClick={openAddModal}
+              className="px-4 py-2 bg-[#6D8196] text-white rounded-xl text-sm font-semibold hover:bg-[#5A6D81] shadow-xs transition flex items-center gap-2 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Add User
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Metric Cards Row */}
@@ -446,16 +456,25 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        {currentUserRole !== "TEAM_LEAD" && (
-                          <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => openEditModal(u)} className="text-slate-400 hover:text-indigo-500 transition">
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => handleDeleteUser(u.id)} className="text-slate-400 hover:text-rose-500 transition">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link
+                            href={`/calendar?userId=${u.id}`}
+                            className="p-1 text-slate-400 hover:text-[#6D8196] hover:bg-slate-100 rounded-md transition"
+                            title={`View ${u.name}'s Work Calendar`}
+                          >
+                            <CalendarIcon className="w-4 h-4" />
+                          </Link>
+                          {currentUserRole !== "TEAM_LEAD" && (
+                            <>
+                              <button onClick={() => openEditModal(u)} className="p-1 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 rounded-md transition" title="Edit User">
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDeleteUser(u.id)} className="p-1 text-slate-400 hover:text-rose-500 hover:bg-slate-100 rounded-md transition" title="Delete User">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

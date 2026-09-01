@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings, Clock, Menu, X } from "lucide-react";
+import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -39,6 +39,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Dashboard",
     roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
     icon: LayoutDashboard,
+  },
+  {
+    href: "/calendar",
+    label: "Work Calendar",
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
+    icon: CalendarIcon,
   },
   {
     href: "/products",

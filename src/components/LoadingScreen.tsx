@@ -18,6 +18,8 @@ export default function LoadingScreen({
   fullScreen = false,
   className = "",
 }: LoadingProps) {
+  const [hasError, setHasError] = React.useState(false);
+
   const sizeClasses = {
     sm: "w-28 h-20 max-w-[130px]",
     md: "w-52 h-40 max-w-[240px]",
@@ -31,17 +33,24 @@ export default function LoadingScreen({
       suppressHydrationWarning
     >
       <div className="relative flex items-center justify-center" suppressHydrationWarning>
-        {/* Animated SVG illustration */}
-        <Image
-          src="/loading.svg"
-          alt="Loading..."
-          width={240}
-          height={180}
-          className={`${sizeClasses[size]} object-contain drop-shadow-xs`}
-          loading="eager"
-          priority
-          unoptimized
-        />
+        {hasError ? (
+          <div className="flex items-center justify-center p-6 my-4">
+            <div className="w-12 h-12 rounded-full border-4 border-[#6D8196]/20 border-t-[#6D8196] animate-spin" />
+          </div>
+        ) : (
+          /* Animated SVG illustration */
+          <Image
+            src="/loading.svg"
+            alt="Loading..."
+            width={240}
+            height={180}
+            className={`${sizeClasses[size]} object-contain drop-shadow-xs`}
+            loading="eager"
+            priority
+            unoptimized
+            onError={() => setHasError(true)}
+          />
+        )}
       </div>
 
       {message && (
