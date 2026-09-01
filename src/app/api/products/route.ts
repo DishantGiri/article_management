@@ -27,11 +27,75 @@ export async function POST(req: NextRequest) {
     const activeUserId = session.user.id;
     const activeUserRole = session.user.role;
 
-    if (activeUserRole !== "LINKER" && activeUserRole !== "ADMIN" && activeUserRole !== "SUPER_ADMIN") {
+    if (
+      activeUserRole !== "LINKER" &&
+      activeUserRole !== "ADMIN" &&
+      activeUserRole !== "SUPER_ADMIN" &&
+      activeUserRole !== "WRITER"
+    ) {
       return NextResponse.json(
-        { error: "Only Linkers, Admins, and Super Admins can add products." },
+        { error: "Only Linkers, Admins, Super Admins, and Writers can add products." },
         { status: 403 }
       );
+    }
+
+    const trimmedName = name.trim();
+
+    // Check if a product with the same name already exists in the system
+    const existingProducts = await prisma.product.findMany({
+      where: {
+        OR: [
+          { name: trimmedName },
+          { name: trimmedName.toLowerCase() },
+          { name: trimmedName.toUpperCase() },
+        ],
+      },
+      include: {
+        addedBy: { select: { name: true } },
+        article: {
+          select: {
+            writer: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { addedAt: "desc" },
+    });
+
+    const matchingProducts = existingProducts.filter(
+      (p) => p.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (matchingProducts.length > 0) {
+      const writers = Array.from(
+        new Set(matchingProducts.map((p) => p.article?.writer?.name).filter(Boolean))
+      );
+      const addedBys = Array.from(
+        new Set(matchingProducts.map((p) => p.addedBy?.name).filter(Boolean))
+      );
+
+      const writerPart = writers.join(", ");
+      const addedByPart = addedBys.join(", ");
+
+      let errorMsg = "";
+      if (addedByPart && writerPart && addedByPart !== writerPart) {
+        errorMsg = `This product has been already added by ${addedByPart} or writer ${writerPart}.`;
+      } else if (writerPart && (!addedByPart || addedByPart === writerPart)) {
+        errorMsg = `This product has been already added by writer ${writerPart}.`;
+      } else {
+        errorMsg = `This product has been already added by ${addedByPart || "another user"}.`;
+      }
+
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
+    }
+
+    // If activeUser is WRITER, filter only sites the writer has access to
+    let allowedSiteIds: number[] | null = null;
+    if (activeUserRole === "WRITER") {
+      const accesses = await prisma.siteAccess.findMany({
+        where: { userId: activeUserId },
+        select: { siteId: true },
+      });
+      allowedSiteIds = accesses.map((a) => a.siteId);
     }
 
     const categoriesWithSites = await prisma.category.findMany({
@@ -49,8 +113,11 @@ export async function POST(req: NextRequest) {
         if (excludedSet.has(site.id)) {
           continue;
         }
+        if (allowedSiteIds !== null && !allowedSiteIds.includes(site.id)) {
+          continue;
+        }
         productsToCreate.push({
-          name,
+          name: trimmedName,
           siteId: site.id,
           categoryId: cat.id,
           productCategory: productCategory && typeof productCategory === "string" ? productCategory.trim() : null,

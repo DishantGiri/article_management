@@ -410,7 +410,7 @@ export default function ProductsPage() {
           <p className="text-[#737373] text-sm mt-0.5 font-medium">{filtered.length} products found</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER" || currentUserRole === "WRITER") && (
             <button 
               onClick={() => setIsAddModalOpen(true)}
               className="px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white rounded-lg text-sm font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
 import {
   Package,
@@ -320,7 +321,9 @@ export default function AddProductModal({
       setSuccessState(true);
       if (onSuccess) onSuccess();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      const msg = e instanceof Error ? e.message : "Something went wrong";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

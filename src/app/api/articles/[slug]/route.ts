@@ -168,10 +168,52 @@ export async function PATCH(
           { status: 400 }
         );
       }
+
+      // Check if this product or another product with the same name was already started or completed
+      const currentProductName = existing.product?.name?.trim();
+      if (currentProductName) {
+        const otherArticles = await prisma.article.findMany({
+          where: {
+            id: { not: id },
+            product: {
+              name: currentProductName,
+            },
+            status: { in: ["IN_PROGRESS", "COMPLETED", "APPROVED"] },
+          },
+          include: {
+            writer: { select: { name: true } },
+            product: {
+              include: {
+                addedBy: { select: { name: true } },
+              },
+            },
+          },
+        });
+
+        const duplicateArticle = otherArticles.find(
+          (a) => a.product?.name?.trim().toLowerCase() === currentProductName.toLowerCase()
+        );
+
+        if (duplicateArticle) {
+          const addedByName = duplicateArticle.product?.addedBy?.name;
+          const writerName = duplicateArticle.writer?.name;
+
+          let errorMsg = "";
+          if (addedByName && writerName && addedByName !== writerName) {
+            errorMsg = `This product has been already added by ${addedByName} or writer ${writerName}.`;
+          } else if (writerName) {
+            errorMsg = `This product has been already added by writer ${writerName}.`;
+          } else {
+            errorMsg = `This product has been already added by ${addedByName || "another user"}.`;
+          }
+
+          return NextResponse.json({ error: errorMsg }, { status: 400 });
+        }
+      }
     }
 
     if (status === "COMPLETED" && !articleLink && !existing.articleLink) {
-      // Check if special approval existsg
+      // Check if special approval exists
       const approval = await prisma.specialApproval.findUnique({ where: { articleId: id } });
       if (!approval) {
         return NextResponse.json(

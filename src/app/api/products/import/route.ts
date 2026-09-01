@@ -83,6 +83,36 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        // Check for existing product with this name
+        const existingWithSameName = await prisma.product.findFirst({
+          where: {
+            OR: [
+              { name: (row.name || name).trim() },
+              { name: (row.name || name).trim().toLowerCase() },
+              { name: (row.name || name).trim().toUpperCase() },
+            ],
+          },
+          include: {
+            addedBy: { select: { name: true } },
+            article: { select: { writer: { select: { name: true } } } },
+          },
+        });
+
+        if (existingWithSameName) {
+          const addedByName = existingWithSameName.addedBy?.name;
+          const writerName = existingWithSameName.article?.writer?.name;
+          let conflictMsg = "";
+          if (addedByName && writerName && addedByName !== writerName) {
+            conflictMsg = `This product has been already added by ${addedByName} or writer ${writerName}.`;
+          } else if (writerName) {
+            conflictMsg = `This product has been already added by writer ${writerName}.`;
+          } else {
+            conflictMsg = `This product has been already added by ${addedByName || "another user"}.`;
+          }
+          errors.push(`Row ${rowNum} ("${name}"): ${conflictMsg}`);
+          continue;
+        }
+
         // Create the product
         const newProduct = await prisma.product.create({
           data: {
