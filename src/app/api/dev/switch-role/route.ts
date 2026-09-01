@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
-  // Only allow this API in development mode
+  // Only allow this API in development mode on localhost
   if (process.env.NODE_ENV !== "development") {
     return NextResponse.json({ error: "Forbidden in production" }, { status: 403 });
+  }
+
+  const host = req.headers.get("host") || "";
+  if (!host.includes("localhost") && !host.includes("127.0.0.1")) {
+    return NextResponse.json({ error: "Forbidden: Localhost development only" }, { status: 403 });
   }
 
   try {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification, broadcastRealtimeNotification } from "@/lib/notifier";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // PATCH /api/links/[id] — update link details / status
 export async function PATCH(
@@ -8,6 +10,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const activeUserId = Number(session.user.id);
+    const activeUserRole = session.user.role;
+
     const { id } = await params;
     const body = await req.json();
     const {
@@ -19,27 +29,22 @@ export async function PATCH(
       affiliateName,
       affiliateLink,
       geos,
-      callerId,
-      teamLeadId,
     } = body;
 
-    const activeUserId = callerId || teamLeadId;
-    if (activeUserId) {
-      const user = await prisma.user.findUnique({
-        where: { id: Number(activeUserId) },
-        select: { role: true, allowLinkLogAccess: true },
-      });
-      if (user?.role === "TEAM_LEAD") {
-        const isReportingIssue = status === "ISSUE" && body.issueMessage;
-        if (!isReportingIssue) {
-          return NextResponse.json({ error: "Access Denied: Team Leads cannot modify links. Only Linkers can manage links." }, { status: 403 });
-        }
+    if (activeUserRole === "TEAM_LEAD") {
+      const isReportingIssue = status === "ISSUE" && body.issueMessage;
+      if (!isReportingIssue) {
+        return NextResponse.json({ error: "Access Denied: Team Leads cannot modify links. Only Linkers can manage links." }, { status: 403 });
       }
-      if (user?.role === "WRITER" && !user.allowLinkLogAccess) {
-        const isReportingIssue = status === "ISSUE" && body.issueMessage;
-        if (!isReportingIssue) {
-          return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
-        }
+    }
+    if (activeUserRole === "WRITER") {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: activeUserId },
+        select: { allowLinkLogAccess: true },
+      });
+      const isReportingIssue = status === "ISSUE" && body.issueMessage;
+      if (!dbUser?.allowLinkLogAccess && !isReportingIssue) {
+        return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
       }
     }
 
@@ -226,25 +231,20 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const { searchParams } = new URL(req.url);
-    const callerId = searchParams.get("callerId");
-
-    const callerIdNum = Number(callerId);
-    if (callerIdNum) {
-      const user = await prisma.user.findUnique({
-        where: { id: callerIdNum },
-        select: { role: true },
-      });
-      if (!user || (user.role !== "LINKER" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
-        return NextResponse.json(
-          { error: "Access Denied: Only Linkers, Admins, and Super Admins can delete links." },
-          { status: 403 }
-        );
-      }
-    } else {
-      return NextResponse.json({ error: "callerId is required" }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const role = session.user.role;
+    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Access Denied: Only Linkers, Admins, and Super Admins can delete links." },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await params;
 
     const existing = await prisma.linkLog.findUnique({ where: { id: parseInt(id) } });
     if (!existing) return NextResponse.json({ error: "Link not found" }, { status: 404 });
@@ -260,21 +260,24 @@ export async function DELETE(
   }
 }
 
-// GET /api/links/[id]?userId=X
+// GET /api/links/[id]
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get("userId");
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  if (userId) {
+  const { id } = await params;
+
+  if (session.user.role === "WRITER") {
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-      select: { role: true, allowLinkLogAccess: true },
+      where: { id: Number(session.user.id) },
+      select: { allowLinkLogAccess: true },
     });
-    if (user?.role === "WRITER" && !user.allowLinkLogAccess) {
+    if (!user?.allowLinkLogAccess) {
       return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
     }
   }

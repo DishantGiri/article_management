@@ -1,25 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userIdStr = searchParams.get("userId");
-
-    if (!userIdStr) {
-      return NextResponse.json({ error: "userId parameter is required" }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const teamLeadId = parseInt(userIdStr);
+    const callerId = Number(session.user.id);
+    const callerRole = session.user.role;
 
-    // Validate that the requestor is a Team Lead or Admin
-    const requestor = await prisma.user.findUnique({
-      where: { id: teamLeadId },
-      select: { role: true },
-    });
-
-    if (!requestor || (requestor.role !== "TEAM_LEAD" && requestor.role !== "ADMIN" && requestor.role !== "SUPER_ADMIN")) {
+    if (callerRole !== "TEAM_LEAD" && callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    let teamLeadId = callerId;
+    const { searchParams } = new URL(req.url);
+    const requestedUserId = searchParams.get("userId");
+
+    // Only Admin or Super Admin can inspect another team lead's members
+    if ((callerRole === "ADMIN" || callerRole === "SUPER_ADMIN") && requestedUserId) {
+      teamLeadId = parseInt(requestedUserId);
     }
 
     // Fetch team members (writers) and their articles

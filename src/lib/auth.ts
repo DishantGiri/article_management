@@ -102,12 +102,7 @@ export const authOptions: NextAuthOptions = {
         return false;
       }
     },
-    async jwt({ token, trigger, session }) {
-      if (trigger === "update" && session) {
-        if (session.role !== undefined) {
-          token.role = session.role;
-        }
-      }
+    async jwt({ token }) {
       if (token.email) {
         try {
           const dbUser = await prisma.user.findUnique({
@@ -118,9 +113,7 @@ export const authOptions: NextAuthOptions = {
             token.id = dbUser.id;
             token.approved = dbUser.approved;
             token.image = dbUser.image;
-            if (trigger !== "update") {
-              token.role = dbUser.role;
-            }
+            token.role = dbUser.role; // Always authoritative from DB
           }
         } catch (err) {
           console.error("Error in jwt callback fetching user:", err);

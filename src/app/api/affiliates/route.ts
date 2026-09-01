@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const DEFAULT_AFFILIATES = [
   "Admitad",
@@ -18,19 +20,6 @@ const DEFAULT_AFFILIATES = [
   "TerraLeads",
   "Traffic Light",
 ];
-
-async function hasPermission(userId?: number) {
-  if (!userId) return true;
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  return (
-    user?.role === "LINKER" ||
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN"
-  );
-}
 
 // GET /api/affiliates — retrieve all affiliates (and seed defaults if missing)
 export async function GET() {
@@ -62,20 +51,26 @@ export async function GET() {
 // POST /api/affiliates — add new affiliate name
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const role = session.user.role;
+    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Access Denied: Only Admins, Super Admins, and Linkers can manage affiliates." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
-    const { name, callerId } = body;
+    const { name } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
         { error: "Affiliate name is required" },
         { status: 400 }
-      );
-    }
-
-    if (callerId && !(await hasPermission(Number(callerId)))) {
-      return NextResponse.json(
-        { error: "Access Denied: Only Admins, Super Admins, and Linkers can manage affiliates." },
-        { status: 403 }
       );
     }
 

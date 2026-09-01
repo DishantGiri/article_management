@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // POST /api/users/[id]/access — assign site access to a writer
 export async function POST(
@@ -7,27 +9,21 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const callerRole = session.user.role;
+    if (callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden: Only Admins and Super Admins can assign site access." }, { status: 403 });
+    }
+
     const { id } = await params;
-    const { siteId, callerId } = await req.json();
+    const { siteId } = await req.json();
 
     if (!siteId) {
       return NextResponse.json({ error: "siteId is required" }, { status: 400 });
-    }
-
-    // Check caller role
-    let callerRole = "WRITER";
-    if (callerId) {
-      const caller = await prisma.user.findUnique({
-        where: { id: Number(callerId) },
-        select: { role: true },
-      });
-      if (caller) {
-        callerRole = caller.role || "";
-      }
-    }
-
-    if (callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Only Admins and Super Admins can assign site access." }, { status: 403 });
     }
 
     const access = await prisma.siteAccess.upsert({
@@ -58,29 +54,22 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const callerRole = session.user.role;
+    if (callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden: Only Admins and Super Admins can revoke site access." }, { status: 403 });
+    }
+
     const { id } = await params;
     const { searchParams } = new URL(req.url);
     const siteId = searchParams.get("siteId");
-    const callerId = searchParams.get("callerId");
 
     if (!siteId) {
       return NextResponse.json({ error: "siteId required in query parameters" }, { status: 400 });
-    }
-
-    // Check caller role
-    let callerRole = "WRITER";
-    if (callerId) {
-      const caller = await prisma.user.findUnique({
-        where: { id: Number(callerId) },
-        select: { role: true },
-      });
-      if (caller) {
-        callerRole = caller.role || "";
-      }
-    }
-
-    if (callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Only Admins and Super Admins can revoke site access." }, { status: 403 });
     }
 
     await prisma.siteAccess.delete({

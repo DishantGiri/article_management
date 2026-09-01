@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-async function hasPermission(userId?: number) {
-  if (!userId) return true;
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  return (
-    user?.role === "LINKER" ||
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN"
-  );
-}
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // PATCH /api/affiliates/:id — update affiliate name
 export async function PATCH(
@@ -20,6 +9,19 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const role = session.user.role;
+    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Access Denied: Only Admins, Super Admins, and Linkers can manage affiliates." },
+        { status: 403 }
+      );
+    }
+
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) {
@@ -27,14 +29,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { name, callerId } = body;
-
-    if (callerId && !(await hasPermission(Number(callerId)))) {
-      return NextResponse.json(
-        { error: "Access Denied: Only Admins, Super Admins, and Linkers can manage affiliates." },
-        { status: 403 }
-      );
-    }
+    const { name } = body;
 
     const updated = await prisma.affiliateName.update({
       where: { id },
@@ -58,23 +53,29 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: idStr } = await params;
-    const id = parseInt(idStr);
-    if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const callerId = searchParams.get("callerId");
-
-    if (callerId && !(await hasPermission(Number(callerId)))) {
+    const role = session.user.role;
+    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Access Denied: Only Admins, Super Admins, and Linkers can manage affiliates." },
         { status: 403 }
       );
     }
 
-    await prisma.affiliateName.delete({ where: { id } });
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
+    if (isNaN(id)) {
+      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    }
+
+    await prisma.affiliateName.delete({
+      where: { id },
+    });
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json(

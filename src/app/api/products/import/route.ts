@@ -1,29 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // POST /api/products/import — Import products from parsed CSV
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { products, addedById } = body;
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!products || !Array.isArray(products) || !addedById) {
+    const userRole = session.user.role;
+    if (userRole !== "LINKER" && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
       return NextResponse.json(
-        { error: "products array and addedById are required" },
-        { status: 400 }
+        { error: "Access Denied: Only Linkers, Admins, and Super Admins can import products." },
+        { status: 403 }
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: Number(addedById) },
-      select: { role: true },
-    });
+    const addedById = Number(session.user.id);
+    const body = await req.json();
+    const { products } = body;
 
-    if (!user || (user.role !== "LINKER" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
+    if (!products || !Array.isArray(products) || products.length === 0) {
       return NextResponse.json(
-        { error: "Only Linkers, Admins, and Super Admins can import products." },
-        { status: 403 }
+        { error: "products array is required and cannot be empty" },
+        { status: 400 }
       );
     }
 

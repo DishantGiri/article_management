@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-// GET /api/notifications?userId=X
+// GET /api/notifications — get notifications for the authenticated session user
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get("userId");
-  if (!userId) return NextResponse.json([]);
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
+  const authenticatedUserId = Number(session.user.id);
+  const { searchParams } = new URL(req.url);
   const limitParam = searchParams.get("limit");
   const take = limitParam ? parseInt(limitParam) : undefined;
 
@@ -16,33 +21,46 @@ export async function GET(req: NextRequest) {
 
   const notifications = await prisma.notification.findMany({
     where: { 
-      recipientId: parseInt(userId),
+      recipientId: authenticatedUserId,
       createdAt: { gte: oneMonthAgo }
     },
     include: { sender: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
     ...(take ? { take } : {}),
   });
+
   return NextResponse.json(notifications);
 }
 
-// PATCH /api/notifications — mark all read for a user, or a single notification
+// PATCH /api/notifications — mark read for the authenticated user
 export async function PATCH(req: NextRequest) {
-  const { userId, notificationId } = await req.json();
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const authenticatedUserId = Number(session.user.id);
+  const body = await req.json();
+  const { notificationId } = body;
 
   if (notificationId) {
-    await prisma.notification.update({
-      where: { id: parseInt(notificationId) },
+    await prisma.notification.updateMany({
+      where: {
+        id: parseInt(notificationId),
+        recipientId: authenticatedUserId, // Enforce ownership
+      },
       data: { isRead: true },
     });
     return NextResponse.json({ success: true });
   }
 
-  if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-
   await prisma.notification.updateMany({
-    where: { recipientId: parseInt(userId), isRead: false },
+    where: {
+      recipientId: authenticatedUserId,
+      isRead: false,
+    },
     data: { isRead: true },
   });
+
   return NextResponse.json({ success: true });
 }

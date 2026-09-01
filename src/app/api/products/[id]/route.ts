@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-// Helper function to check roles
-async function hasPermission(userId: number) {
-  if (!userId) return false;
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  return (
-    user?.role === "LINKER" ||
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN"
-  );
-}
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // GET /api/products/[id] — retrieve product details
 export async function GET(
@@ -48,17 +36,22 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const body = await req.json();
-    const { name, siteId, categoryId, productCategory, trendLink, trendLevel, affiliateName, previewLink, remarks, callerId } = body;
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const callerIdNum = Number(callerId);
-    if (!callerIdNum || !(await hasPermission(callerIdNum))) {
+    const role = session.user.role;
+    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Access Denied: Only Linkers, Admins, and Super Admins can update products." },
         { status: 403 }
       );
     }
+
+    const { id } = await params;
+    const body = await req.json();
+    const { name, siteId, categoryId, productCategory, trendLink, trendLevel, affiliateName, previewLink, remarks } = body;
 
     const existing = await prisma.product.findUnique({ where: { id: parseInt(id) } });
     if (!existing) {
@@ -135,17 +128,20 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const { searchParams } = new URL(req.url);
-    const callerId = searchParams.get("callerId");
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const callerIdNum = Number(callerId);
-    if (!callerIdNum || !(await hasPermission(callerIdNum))) {
+    const role = session.user.role;
+    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Access Denied: Only Linkers, Admins, and Super Admins can delete products." },
         { status: 403 }
       );
     }
+
+    const { id } = await params;
 
     const existing = await prisma.product.findUnique({ where: { id: parseInt(id) } });
     if (!existing) {

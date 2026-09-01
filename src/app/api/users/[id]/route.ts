@@ -58,20 +58,27 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await req.json();
-    const { name, role, image, siteIds, allowLinkLogAccess, creatorId, teamLeadId, approved } = body;
+    const { name, role, image, siteIds, allowLinkLogAccess, teamLeadId, approved } = body;
 
-    // Get creator role
-    let creatorRole = "ADMIN";
-    if (creatorId) {
-      const creator = await prisma.user.findUnique({
-        where: { id: Number(creatorId) },
-        select: { role: true },
-      });
-      if (creator) {
-        creatorRole = creator.role || "";
-      }
+    const callerId = Number(session.user.id);
+    const callerRole = session.user.role || "";
+    const isSelf = callerId === parseInt(id);
+    const isAdmin = callerRole === "ADMIN" || callerRole === "SUPER_ADMIN";
+
+    if (!isSelf && !isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Non-admin cannot modify role, approval, or site access
+    if (!isAdmin && (role || approved !== undefined || siteIds !== undefined || allowLinkLogAccess !== undefined)) {
+      return NextResponse.json({ error: "Forbidden: Only administrators can modify roles and permissions." }, { status: 403 });
     }
 
     // Get target user role
@@ -83,13 +90,13 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Cannot modify SUPER_ADMIN users (except themselves)
-    if (targetUser.role === "SUPER_ADMIN" && Number(creatorId) !== parseInt(id)) {
+    // Cannot modify SUPER_ADMIN users (except themselves for profile name/image)
+    if (targetUser.role === "SUPER_ADMIN" && callerId !== parseInt(id)) {
       return NextResponse.json({ error: "Cannot modify other Super Admin users." }, { status: 403 });
     }
 
     // Only SUPER_ADMIN can modify ADMIN users
-    if (targetUser.role === "ADMIN" && creatorRole !== "SUPER_ADMIN") {
+    if (targetUser.role === "ADMIN" && callerRole !== "SUPER_ADMIN" && !isSelf) {
       return NextResponse.json({ error: "Only Super Admins can modify Admin user roles." }, { status: 403 });
     }
 
@@ -97,7 +104,7 @@ export async function PATCH(
     if (role === "SUPER_ADMIN" && targetUser.role !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Cannot assign Super Admin role." }, { status: 403 });
     }
-    if (role === "ADMIN" && creatorRole !== "SUPER_ADMIN") {
+    if (role === "ADMIN" && callerRole !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Only Super Admins can assign Admin roles." }, { status: 403 });
     }
 
@@ -144,20 +151,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const { searchParams } = new URL(req.url);
-    const creatorId = searchParams.get("creatorId");
-
-    let creatorRole = "ADMIN";
-    if (creatorId) {
-      const creator = await prisma.user.findUnique({
-        where: { id: Number(creatorId) },
-        select: { role: true },
-      });
-      if (creator) {
-        creatorRole = creator.role || "";
-      }
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const callerRole = session.user.role || "";
+    if (callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden: Only Admins and Super Admins can delete users." }, { status: 403 });
+    }
+
+    const { id } = await params;
 
     const targetUser = await prisma.user.findUnique({
       where: { id: parseInt(id) },
@@ -172,7 +176,7 @@ export async function DELETE(
     if (targetUser.role === "SUPER_ADMIN") {
       return NextResponse.json({ error: "Cannot delete Super Admin users." }, { status: 403 });
     }
-    if (targetUser.role === "ADMIN" && creatorRole !== "SUPER_ADMIN") {
+    if (targetUser.role === "ADMIN" && callerRole !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Only Super Admins can delete Admin users." }, { status: 403 });
     }
 
