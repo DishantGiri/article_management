@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { Toaster } from "react-hot-toast";
 import { useEffect } from "react";
 import { ThemeProvider } from "@/context/ThemeContext";
+import NoticePopupModal from "@/components/NoticePopupModal";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -16,6 +17,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <ThemeProvider>
         {children}
+        <NoticePopupModal />
         <Toaster
           position="bottom-right"
           toastOptions={{

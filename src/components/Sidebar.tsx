@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor } from "lucide-react";
+import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -114,6 +114,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Notifications",
     roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
     icon: Bell,
+  },
+  {
+    href: "/notices",
+    label: "Notice Board",
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
+    icon: Megaphone,
   },
   {
     href: "/settings",
@@ -259,6 +265,11 @@ export default function Sidebar() {
 
             const customEvent = new CustomEvent("live-notification", { detail: notif });
             window.dispatchEvent(customEvent);
+
+            // Dispatch notice-published event for the NoticePopupModal
+            if (notif.type === "NOTICE_PUBLISHED") {
+              window.dispatchEvent(new CustomEvent("notice-published", { detail: notif }));
+            }
           } catch (err) {
             console.error("Failed to parse live notification", err);
           }
