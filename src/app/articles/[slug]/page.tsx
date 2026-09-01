@@ -33,6 +33,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
+import CustomSelect from "@/components/CustomSelect";
 
 interface Article {
   id: number;
@@ -318,12 +319,11 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
         <div className="flex items-center gap-3">
           {/* Priority Picker for Managers */}
           {isManager ? (
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-[#CBCBCB] shadow-2xs">
+            <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Priority:</span>
-              <select
+              <CustomSelect
                 value={article.priority || "MEDIUM"}
-                onChange={async (e) => {
-                  const newPriority = e.target.value;
+                onChange={async (newPriority) => {
                   try {
                     const res = await fetch(`/api/articles/${id}`, {
                       method: "PATCH",
@@ -337,12 +337,15 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                     toast.error(err.message || "Failed to update priority");
                   }
                 }}
-                className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
-              >
-                <option value="HIGH">High Priority</option>
-                <option value="MEDIUM">Medium Priority</option>
-                <option value="LOW">Low Priority</option>
-              </select>
+                options={[
+                  { value: "HIGH", label: "High Priority" },
+                  { value: "MEDIUM", label: "Medium Priority" },
+                  { value: "LOW", label: "Low Priority" },
+                ]}
+                className="w-40"
+                triggerClassName="px-3 py-1.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-xl text-xs font-bold text-slate-800 shadow-2xs"
+                portal={true}
+              />
             </div>
           ) : (
             <span className="px-3 py-1.5 rounded-xl text-xs font-bold border bg-white shadow-2xs">

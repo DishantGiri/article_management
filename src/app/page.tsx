@@ -48,6 +48,7 @@ import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
 import LoadingScreen from "@/components/LoadingScreen";
+import CustomSelect from "@/components/CustomSelect";
 
 interface DashboardData {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -1858,18 +1859,17 @@ function WriterAvailableAssignments({
             </div>
 
             {sites.length > 1 && (
-              <select
+              <CustomSelect
                 value={siteFilter}
-                onChange={(e) => setSiteFilter(e.target.value)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none"
-              >
-                <option value="ALL">All Sites</option>
-                {sites.map((site) => (
-                  <option key={site} value={site}>
-                    {site}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSiteFilter(val)}
+                options={[
+                  { value: "ALL", label: "All Sites" },
+                  ...sites.map((site) => ({ value: site, label: site })),
+                ]}
+                className="w-36"
+                triggerClassName="px-3 py-1.5 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+                portal={true}
+              />
             )}
           </div>
         </div>
