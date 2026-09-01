@@ -92,6 +92,15 @@ interface DashboardData {
       completedAt: string | null;
       remark?: string | null;
     }[];
+    editRequests?: {
+      id: number;
+      product: string;
+      writer: string;
+      site: string;
+      status: string;
+      reason: string;
+      updatedAt: string;
+    }[];
   };
   superAdmin?: {
     totalWriters: number;
@@ -965,14 +974,14 @@ function TeamLeadMissionControl({
 
         <div className="bg-white rounded-2xl p-5 border border-[#CBCBCB]/60 shadow-xs flex flex-col justify-between card-hover-effect">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600">Special Exceptions</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600">Edit Requests</span>
             <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
               <Star className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <p className="text-3xl font-extrabold text-slate-900">{tl.specialApprovals}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">No-link submissions pending</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Writers requesting to edit approved articles</p>
           </div>
         </div>
 
@@ -989,6 +998,45 @@ function TeamLeadMissionControl({
           </div>
         </div>
       </div>
+
+      {/* Pending Edit Requests on Approved Articles */}
+      {tl.editRequests && tl.editRequests.length > 0 && (
+        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-5 shadow-xs space-y-3 animate-fadeIn">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-amber-900 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              Approved Article Edit Requests ({tl.editRequests.length})
+            </h3>
+            <span className="text-[11px] font-bold text-amber-700">Writers requesting permission to update approved articles</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {tl.editRequests.map((req: any) => (
+              <div key={req.id} className="bg-white p-4 rounded-xl border border-amber-200 shadow-2xs flex flex-col justify-between space-y-2">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-900">{req.product}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">{req.site}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Requested by: <strong className="text-slate-700">{req.writer}</strong>
+                  </p>
+                  <p className="text-xs text-amber-950 bg-amber-50/60 p-2 rounded-lg border border-amber-100 mt-2 italic font-medium">
+                    &quot;{req.reason}&quot;
+                  </p>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <Link
+                    href={`/articles/${req.id}-${generateSlug(req.product)}`}
+                    className="px-3.5 py-1.5 rounded-lg bg-[#6D8196] hover:bg-[#5A6D81] text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                  >
+                    Review & Decide
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main Review Section */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

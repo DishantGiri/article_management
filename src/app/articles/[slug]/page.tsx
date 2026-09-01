@@ -749,14 +749,95 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
               {/* STATE 5: APPROVED */}
               {article.status === "APPROVED" && (
-                <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Article Approved & Finalized</span>
-                  </div>
-                  <p className="text-xs text-emerald-900 font-medium leading-relaxed">
-                    This article has passed all editorial checks and has been approved. No further actions required.
-                  </p>
+                <div className="space-y-4">
+                  {article.specialApprovalRequested ? (
+                    <div className="p-5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-3.5 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          <span>Writer Requested Permission to Edit Approved Article</span>
+                        </div>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                          Pending Decision
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                        Writer <strong>{article.writer?.name || "Assigned Writer"}</strong> is requesting permission from the Team Lead to reopen and make modifications to this finalized article.
+                      </p>
+
+                      <div className="p-3 bg-white rounded-xl border border-amber-200/80 text-xs text-amber-950 font-medium space-y-1">
+                        <span className="font-bold block text-amber-800 text-[10px] uppercase tracking-wider">Writer&apos;s Explanation / Reason:</span>
+                        <p className="italic">&quot;{article.specialApprovalRequestReason || "No specific reason provided"}&quot;</p>
+                      </div>
+
+                      {isManager && (
+                        <div className="flex flex-wrap gap-2.5 pt-1">
+                          <button
+                            onClick={async () => {
+                              try {
+                                const res = await fetch("/api/approvals", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    articleId: article.id,
+                                    reason: article.specialApprovalRequestReason || "Approved edit request",
+                                    action: "APPROVE",
+                                  }),
+                                });
+                                if (!res.ok) throw new Error("Failed to approve update request");
+                                toast.success("Article unlocked! Reopened for writer to edit.");
+                                const refreshRes = await fetch(`/api/articles/${article.id}?userId=${currentUserId}`);
+                                const freshData = await refreshRes.json();
+                                setArticle(freshData);
+                              } catch (e: any) {
+                                toast.error(e.message || "Failed to approve update");
+                              }
+                            }}
+                            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            Approve & Unlock Article for Writer
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const res = await fetch("/api/approvals", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    articleId: article.id,
+                                    reason: "Declined by Team Lead",
+                                    action: "REJECT",
+                                  }),
+                                });
+                                if (!res.ok) throw new Error("Failed to decline request");
+                                toast.success("Update request declined.");
+                                const refreshRes = await fetch(`/api/articles/${article.id}?userId=${currentUserId}`);
+                                const freshData = await refreshRes.json();
+                                setArticle(freshData);
+                              } catch (e: any) {
+                                toast.error(e.message || "Failed to decline update");
+                              }
+                            }}
+                            className="px-3.5 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                          >
+                            Decline Request
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl space-y-2">
+                      <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Article Approved & Finalized</span>
+                      </div>
+                      <p className="text-xs text-emerald-900 font-medium leading-relaxed">
+                        This article has passed all editorial checks and has been approved. No further actions required unless writer requests an update.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

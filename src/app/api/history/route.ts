@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
@@ -30,8 +31,16 @@ export async function GET() {
           updatedBy: { select: { id: true, name: true, role: true, email: true } },
           article: {
             include: {
+              writer: { select: { id: true, name: true, role: true, email: true } },
               product: {
                 select: { id: true, name: true, site: { select: { name: true } } },
+              },
+              reviews: {
+                include: { reviewedBy: { select: { id: true, name: true, role: true, email: true } } },
+                orderBy: { reviewedAt: "desc" },
+              },
+              specialApproval: {
+                include: { approvedBy: { select: { id: true, name: true, role: true, email: true } } },
               },
             },
           },
@@ -43,6 +52,7 @@ export async function GET() {
           updatedBy: { select: { id: true, name: true, role: true, email: true } },
           linkLog: {
             include: {
+              addedBy: { select: { id: true, name: true, role: true, email: true } },
               product: {
                 select: { id: true, name: true, site: { select: { name: true } } },
               },
@@ -53,20 +63,78 @@ export async function GET() {
       }),
     ]);
 
-    const formattedArticles = articleHistories.map((h) => ({
-      id: `art-${h.id}`,
-      type: "ARTICLE",
-      updatedById: h.updatedById,
-      updatedBy: h.updatedBy,
-      productName: h.article?.product?.name || "Unknown Product",
-      siteName: h.article?.product?.site?.name || "Unknown Site",
-      oldStatus: h.oldStatus,
-      newStatus: h.newStatus,
-      oldLink: h.oldLink,
-      newLink: h.newLink,
-      notes: h.notes,
-      updatedAt: h.updatedAt.toISOString(),
-    }));
+    const formattedArticles = articleHistories.map((h) => {
+      let actionType = "ARTICLE_UPDATE";
+      let actionLabel = "Article Modified";
+      let suggestion: string | null = null;
+
+      // Identify TL Suggestion / Redo
+      if (h.newStatus === "REDO") {
+        actionType = "TL_SUGGESTION";
+        actionLabel = "TL Suggestion (Redo)";
+        if (h.notes?.includes("Feedback:")) {
+          suggestion = h.notes.split("Feedback:")[1]?.trim() || null;
+        } else {
+          // Look in reviews for matching review around updatedAt or latest unapproved review
+          const matchingReview =
+            h.article?.reviews?.find(
+              (r) => !r.approved && Math.abs(new Date(r.reviewedAt).getTime() - new Date(h.updatedAt).getTime()) < 60000
+            ) || h.article?.reviews?.find((r) => !r.approved);
+          suggestion = matchingReview?.suggestion || null;
+        }
+      } else if (h.newStatus === "APPROVED") {
+        actionType = "ARTICLE_APPROVAL";
+        actionLabel = "Article Approved";
+        if (h.notes?.includes("Feedback:")) {
+          suggestion = h.notes.split("Feedback:")[1]?.trim() || null;
+        }
+      } else if (h.oldStatus === "REDO" && h.newStatus === "COMPLETED") {
+        actionType = "REVISION_SUBMITTED";
+        actionLabel = "Revision Resubmitted";
+      } else if (h.oldStatus === "IN_PROGRESS" && h.newStatus === "COMPLETED") {
+        actionType = "ARTICLE_COMPLETED";
+        actionLabel = "Article Submitted";
+      } else if (h.oldStatus === "PENDING" && h.newStatus === "IN_PROGRESS") {
+        actionType = "WRITING_STARTED";
+        actionLabel = "Started Writing";
+      } else if (h.oldLink !== h.newLink && h.newLink) {
+        actionType = "LINK_UPDATED";
+        actionLabel = "Doc Link Updated";
+      }
+
+      // Determine approvedBy
+      let approvedBy: any = null;
+      if (h.newStatus === "APPROVED") {
+        approvedBy = h.updatedBy;
+      } else {
+        const approvedReview = h.article?.reviews?.find((r) => r.approved);
+        if (approvedReview) {
+          approvedBy = approvedReview.reviewedBy;
+        } else if (h.article?.specialApproval?.approvedBy) {
+          approvedBy = h.article.specialApproval.approvedBy;
+        }
+      }
+
+      return {
+        id: `art-${h.id}`,
+        type: "ARTICLE",
+        actionType,
+        actionLabel,
+        updatedById: h.updatedById,
+        updatedBy: h.updatedBy,
+        writtenBy: h.article?.writer || null,
+        approvedBy: approvedBy,
+        productName: h.article?.product?.name || "Unknown Product",
+        siteName: h.article?.product?.site?.name || "Unknown Site",
+        oldStatus: h.oldStatus,
+        newStatus: h.newStatus,
+        oldLink: h.oldLink,
+        newLink: h.newLink,
+        notes: h.notes,
+        suggestion,
+        updatedAt: h.updatedAt.toISOString(),
+      };
+    });
 
     const formattedLinks = linkHistories.map((h) => {
       const oldL = h.oldBridgeLink || h.oldBuyLink || h.oldAffiliateLink;
@@ -80,8 +148,12 @@ export async function GET() {
       return {
         id: `link-${h.id}`,
         type: "LINK",
+        actionType: "LINK_LOG",
+        actionLabel: "Link Log Update",
         updatedById: h.updatedById,
         updatedBy: h.updatedBy,
+        writtenBy: h.linkLog?.addedBy || null,
+        approvedBy: null,
         productName: h.linkLog?.product?.name || "Unknown Product",
         siteName: h.linkLog?.product?.site?.name || "Unknown Site",
         oldStatus: h.oldStatus,
@@ -89,6 +161,7 @@ export async function GET() {
         oldLink: oldL,
         newLink: newL,
         notes: noteDetails,
+        suggestion: null,
         updatedAt: h.updatedAt.toISOString(),
       };
     });

@@ -471,6 +471,57 @@ export async function PATCH(
       }
     }
 
+    // Notify Team Lead if Writer requested permission to update an approved/old article
+    if (specialApprovalRequested === true && !existing.specialApprovalRequested) {
+      try {
+        const writerIdToQuery = updated.writerId || existing.writerId || activeUserId;
+        if (writerIdToQuery) {
+          const writerUser = await prisma.user.findUnique({
+            where: { id: writerIdToQuery },
+            select: { name: true, teamLeadId: true },
+          });
+          const writerName = writerUser?.name || updated.writer?.name || session.user.name || "A writer";
+          const reasonText = specialApprovalRequestReason || "Requested edit permission on approved article";
+
+          const notifPayload = {
+            senderId: writerIdToQuery,
+            type: "ARTICLE_SUGGESTION" as const,
+            message: `Update Request: Writer ${writerName} requested permission to edit approved article "${updated.product.name}". Reason: ${reasonText}`,
+          };
+
+          if (writerUser?.teamLeadId) {
+            if (writerUser.teamLeadId !== activeUserId) {
+              const notif = await prisma.notification.create({
+                data: {
+                  recipientId: writerUser.teamLeadId,
+                  ...notifPayload,
+                },
+              });
+              await sendRealtimeNotification(writerUser.teamLeadId, notif);
+            }
+          } else {
+            const teamLeads = await prisma.user.findMany({
+              where: { role: "TEAM_LEAD" },
+              select: { id: true },
+            });
+            for (const tl of teamLeads) {
+              if (tl.id !== activeUserId) {
+                const notif = await prisma.notification.create({
+                  data: {
+                    recipientId: tl.id,
+                    ...notifPayload,
+                  },
+                });
+                await sendRealtimeNotification(tl.id, notif);
+              }
+            }
+          }
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify Team Lead on update request:", notifErr);
+      }
+    }
+
     // Notify Team Lead if Writer completed the article (ONLY sent to Team Lead)
     if (status === "COMPLETED" && existing.status !== "COMPLETED") {
       try {

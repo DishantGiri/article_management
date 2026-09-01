@@ -5,7 +5,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame } from "lucide-react";
+import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
@@ -17,6 +17,8 @@ interface Article {
   priority: "LOW" | "MEDIUM" | "HIGH";
   updatedAt: string;
   articleLink?: string;
+  specialApprovalRequested?: boolean;
+  specialApprovalRequestReason?: string | null;
   product: { 
     id: number; 
     name: string; 
@@ -78,6 +80,9 @@ function ArticlesContent() {
   const [updateLink, setUpdateLink] = useState("");
   const [updateReason, setUpdateReason] = useState("");
   const [submittingUpdate, setSubmittingUpdate] = useState(false);
+  const [requestingUpdateArticle, setRequestingUpdateArticle] = useState<Article | null>(null);
+  const [requestEditReason, setRequestEditReason] = useState("");
+  const [submittingEditRequest, setSubmittingEditRequest] = useState(false);
   const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; linker: string; productName: string } | null>(null);
   const [selectedArticleIds, setSelectedArticleIds] = useState<number[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
@@ -89,6 +94,35 @@ function ArticlesContent() {
   }, []);
 
   const isManager = currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD";
+
+  const handleSendEditRequest = async () => {
+    if (!requestingUpdateArticle || !requestEditReason.trim() || !currentUserId) return;
+    setSubmittingEditRequest(true);
+    try {
+      const res = await fetch(`/api/articles/${requestingUpdateArticle.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          specialApprovalRequested: true,
+          specialApprovalRequestReason: requestEditReason.trim(),
+          callerId: currentUserId,
+        }),
+      });
+      if (res.ok) {
+        toast.success("Edit request submitted to Team Lead for approval!");
+        setRequestingUpdateArticle(null);
+        setRequestEditReason("");
+        fetchArticles();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to submit edit request");
+      }
+    } catch {
+      toast.error("Failed to submit edit request");
+    } finally {
+      setSubmittingEditRequest(false);
+    }
+  };
 
   const handleBulkApprove = async () => {
     if (selectedArticleIds.length === 0 || bulkApproving) return;
@@ -801,6 +835,29 @@ function ArticlesContent() {
                                     )}
                                   </>
                                 )}
+
+                                {/* Approved / Completed article edit request flow for assigned writer */}
+                                {(status === "APPROVED" || status === "COMPLETED") && (
+                                  <>
+                                    {a.specialApprovalRequested ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                                        <Clock className="w-3 h-3 text-amber-600 animate-spin" />
+                                        Edit Requested (Pending TL)
+                                      </span>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          setRequestingUpdateArticle(a);
+                                          setRequestEditReason("");
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        Request Edit
+                                      </button>
+                                    )}
+                                  </>
+                                )}
                               </>
                             )}
 
@@ -838,15 +895,44 @@ function ArticlesContent() {
                               </button>
                             )}
 
-                            {/* Review link for Managers (Super Admin, Admin, Team Lead) */}
+                            {/* Manager Actions (Super Admin, Admin, Team Lead) */}
                             {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
-                              <Link
-                                href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
-                              >
-                                <FileText className="w-3.5 h-3.5" />
-                                Review
-                              </Link>
+                              <>
+                                {a.specialApprovalRequested && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        const res = await fetch("/api/approvals", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({
+                                            articleId: a.id,
+                                            reason: a.specialApprovalRequestReason || "Approved edit request",
+                                            action: "APPROVE",
+                                          }),
+                                        });
+                                        if (!res.ok) throw new Error("Failed to approve update request");
+                                        toast.success(`Unlocked article for ${a.writer?.name || "writer"} to edit!`);
+                                        fetchArticles();
+                                      } catch (e: any) {
+                                        toast.error(e.message || "Failed to approve update");
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                    title={a.specialApprovalRequestReason ? `Writer note: "${a.specialApprovalRequestReason}"` : "Approve writer's edit request"}
+                                  >
+                                    <Check className="w-3 h-3 stroke-[3]" />
+                                    Approve Edit
+                                  </button>
+                                )}
+                                <Link
+                                  href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  Review
+                                </Link>
+                              </>
                             )}
 
                             {/* Locked indicator for Writers when not their article */}
@@ -983,6 +1069,79 @@ function ArticlesContent() {
           </div>
         </div>
       )}
+
+      {/* Request Edit Permission Modal on Approved Article */}
+      {requestingUpdateArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-150">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <RotateCcw className="w-4 h-4 text-indigo-600" />
+                  Request Edit on Approved Article
+                </h3>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                  Team Lead permission required to reopen approved articles
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setRequestingUpdateArticle(null);
+                  setRequestEditReason("");
+                }}
+                className="text-slate-400 hover:text-slate-600 transition cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Article</span>
+                <p className="text-xs font-bold text-slate-900 mt-0.5">{requestingUpdateArticle.product.name}</p>
+                <p className="text-[11px] text-slate-500 font-medium">{requestingUpdateArticle.product.site.name}</p>
+              </div>
+
+              <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-900 leading-relaxed font-medium">
+                Once submitted, your Team Lead will receive this request. Once approved by your Team Lead, this article will be unlocked so you can make and resubmit the necessary revisions.
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Reason for Update / Changes Needed <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={requestEditReason}
+                  onChange={(e) => setRequestEditReason(e.target.value)}
+                  placeholder="Explain why this approved article needs updating (e.g. broken link, product detail correction, new guidelines)..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition resize-none font-medium placeholder-slate-400"
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    setRequestingUpdateArticle(null);
+                    setRequestEditReason("");
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendEditRequest}
+                  disabled={submittingEditRequest || !requestEditReason.trim()}
+                  className="flex-1 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white font-bold text-xs transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+                >
+                  {submittingEditRequest ? "Submitting..." : "Send Request to TL"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View Remarks Modal */}
       {selectedRemarks && (
         <div 

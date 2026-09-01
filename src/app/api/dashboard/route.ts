@@ -237,10 +237,10 @@ export async function GET(req: NextRequest) {
         }),
 
         // Articles with special approval requested for their team
+        // Articles with edit / special approval requested for their team
         prisma.article.count({
           where: {
             specialApprovalRequested: true,
-            status: { notIn: ["APPROVED"] },
             ...teamLeadMemberFilter,
           },
         }),
@@ -283,6 +283,24 @@ export async function GET(req: NextRequest) {
             }
           },
         }),
+
+        // Edit requests on approved / old articles awaiting TL approval
+        prisma.article.findMany({
+          where: {
+            specialApprovalRequested: true,
+            ...teamLeadMemberFilter,
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 10,
+          include: {
+            product: {
+              include: {
+                site: { select: { name: true } },
+              },
+            },
+            writer: { select: { name: true } },
+          },
+        }),
       ]);
 
       teamLeadData = {
@@ -294,6 +312,15 @@ export async function GET(req: NextRequest) {
           .map((w) => ({ name: w.name, completed: w._count.articles }))
           .sort((a, b) => b.completed - a.completed)
           .slice(0, 10),
+        editRequests: editRequestArticles.map((a) => ({
+          id: a.id,
+          product: a.product.name,
+          writer: a.writer?.name || "Writer",
+          site: a.product.site.name,
+          status: a.status,
+          reason: a.specialApprovalRequestReason || "Requested edit permission",
+          updatedAt: a.updatedAt,
+        })),
         reviewQueue: reviewQueueArticles.map((a) => {
           const latestHistory = a.history?.[0]?.notes || "";
           const hasRemarks = latestHistory.includes("Writer remarks:");
