@@ -79,8 +79,8 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/reports",
-    label: "Reports",
-    roles: ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD"],
+    label: "Work Reports",
+    roles: ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "WRITER", "LINKER"],
     icon: BarChart2,
   },
   {
