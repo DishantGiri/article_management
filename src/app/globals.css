@@ -523,10 +523,17 @@ body {
   100% { background-position: 200% 0; }
 }
 
+@keyframes bouncePop {
+  0% { transform: scale(0.88) translateY(24px); opacity: 0; }
+  60% { transform: scale(1.02) translateY(-3px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
 .animate-fadeIn    { animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-scaleIn   { animation: scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-slideDown { animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-slideInUp { animation: slideInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-bouncePop { animation: bouncePop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-pulseSubtle { animation: pulseSubtle 2.5s infinite ease-in-out; }
 
 .glass-panel {

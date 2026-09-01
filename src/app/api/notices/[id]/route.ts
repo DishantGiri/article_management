@@ -85,10 +85,23 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { title, content, category } = body;
+    const { title, content, category, targetRoles, targetRole } = body;
 
     const validCategories = ["IMPORTANT", "GENERAL", "SUGGESTION", "URGENT", "ANNOUNCEMENT"];
     const targetCategory = validCategories.includes(category) ? (category as NoticeCategory) : undefined;
+
+    let parsedTargetRoles: string | undefined = undefined;
+    const rawRoles = targetRoles !== undefined ? targetRoles : targetRole;
+    if (rawRoles !== undefined) {
+      if (!rawRoles || rawRoles === "ALL") {
+        parsedTargetRoles = "ALL";
+      } else if (Array.isArray(rawRoles)) {
+        const valid = rawRoles.filter((r) => r && r !== "ALL");
+        parsedTargetRoles = valid.length > 0 ? valid.join(",") : "ALL";
+      } else if (typeof rawRoles === "string") {
+        parsedTargetRoles = rawRoles.trim() || "ALL";
+      }
+    }
 
     const updated = await prisma.notice.update({
       where: { id },
@@ -96,6 +109,7 @@ export async function PUT(
         ...(title !== undefined ? { title: title.trim() } : {}),
         ...(content !== undefined ? { content: content.trim() } : {}),
         ...(targetCategory ? { category: targetCategory } : {}),
+        ...(parsedTargetRoles !== undefined ? { targetRoles: parsedTargetRoles } : {}),
       },
       include: {
         createdBy: {

@@ -364,6 +364,7 @@ model Notice {
   title           String
   content         String                 @db.Text
   category        NoticeCategory         @default(GENERAL)
+  targetRoles     String?                @default("ALL")
   createdById     Int
   createdBy       User                   @relation("NoticeCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
   createdAt       DateTime               @default(now())

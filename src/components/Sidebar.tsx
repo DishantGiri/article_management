@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
+import { ArchedNotificationCard } from "./ArchedNotificationCard";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
 
@@ -136,7 +137,13 @@ export default function Sidebar() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showSwitcher, setShowSwitcher] = useState(false);
-  const [toast, setToast] = useState<{ message: string } | null>(null);
+  const [toast, setToast] = useState<{
+    id?: number;
+    message: string;
+    type?: string;
+    category?: string;
+    createdAt?: string | Date;
+  } | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -240,8 +247,14 @@ export default function Sidebar() {
 
             // Only alert if notification is not silent and has an active message
             if (!notif.silent && notif.message) {
-              if (toastEnabled) {
-                setToast({ message: notif.message });
+              if (toastEnabled && notif.type !== "NOTICE_PUBLISHED") {
+                setToast({
+                  id: notif.id,
+                  message: notif.message,
+                  type: notif.type,
+                  category: notif.category || notif.data?.category,
+                  createdAt: notif.createdAt,
+                });
               }
               setUnreadCount((prev) => prev + 1);
 
@@ -328,9 +341,57 @@ export default function Sidebar() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 5000);
+    const t = setTimeout(() => setToast(null), 8000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  const handleToastAction = async () => {
+    if (!toast) return;
+
+    if (toast.id) {
+      try {
+        await fetch("/api/notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationId: toast.id }),
+        });
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+        window.dispatchEvent(new CustomEvent("notifications-updated"));
+      } catch (e) {
+        console.error("Failed to mark notification as read", e);
+      }
+    }
+
+    const msg = toast.message;
+    const match = msg.match(/"([^"]+)"/);
+    const productName = match ? match[1] : null;
+
+    setToast(null);
+
+    if (msg.toLowerCase().includes("changes requested") || msg.toLowerCase().includes("redo") || msg.toLowerCase().includes("wrong")) {
+      router.push("/?tab=write");
+      return;
+    }
+
+    const userRole = session?.user?.role || "WRITER";
+
+    if (productName) {
+      const searchParam = encodeURIComponent(productName);
+      if (toast.type === "LINK_ISSUE" || msg.toLowerCase().includes("link")) {
+        router.push(`/links?search=${searchParam}`);
+      } else {
+        router.push(`/articles?search=${searchParam}`);
+      }
+    } else {
+      if (toast.type === "LINK_ISSUE" || userRole === "LINKER") {
+        router.push("/links");
+      } else if (toast.type === "PRODUCT_ADDED") {
+        router.push("/products");
+      } else {
+        router.push("/notifications");
+      }
+    }
+  };
 
   const visibleNavItems = currentUser?.role
     ? NAV_ITEMS.filter((item) => currentUser.role && item.roles.includes(currentUser.role))
@@ -637,28 +698,19 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* Real-time notification Toast pinned to bottom-right with user theme */}
+      {/* Real-time category-styled 3D Horn notification popup */}
       {toast && (
-        <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-[99999] bg-white/95 backdrop-blur-md text-[#4A4A4A] p-4 sm:p-5 rounded-2xl shadow-2xl border border-[#CBCBCB] flex items-start gap-3.5 animate-slideInUp max-w-sm w-[calc(100vw-2.5rem)] sm:w-[380px] transition-all">
-          <div className="w-10 h-10 rounded-2xl bg-[#6D8196]/15 border border-[#6D8196]/25 text-[#3D4F61] flex items-center justify-center shrink-0 shadow-2xs">
-            <Bell className="w-5 h-5 text-[#6D8196] animate-pulse" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] font-extrabold text-[#6D8196] uppercase tracking-wider">Live Notification</p>
-            </div>
-            <p className="text-xs sm:text-sm font-bold text-[#4A4A4A] mt-1 leading-snug break-words">
-              {toast.message}
-            </p>
-          </div>
-          <button
-            onClick={() => setToast(null)}
-            className="w-7 h-7 rounded-lg text-[#737373] hover:text-[#4A4A4A] hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-            title="Dismiss notification"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-[99999] animate-bouncePop max-w-[360px] sm:max-w-[400px] w-[calc(100vw-3rem)]">
+          <ArchedNotificationCard
+            category={toast.category}
+            type={toast.type}
+            count={unreadCount || 1}
+            message={toast.message}
+            createdAt={toast.createdAt}
+            actionLabel="View Details"
+            onAction={handleToastAction}
+            onClose={() => setToast(null)}
+          />
         </div>
       )}
     </>

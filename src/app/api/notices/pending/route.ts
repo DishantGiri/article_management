@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/notices/pending — retrieve unacknowledged notices for the session user
+// GET /api/notices/pending — retrieve unacknowledged notices for the session user matching their role
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -12,10 +12,18 @@ export async function GET(req: NextRequest) {
     }
 
     const currentUserId = Number(session.user.id);
+    const currentUserRole = session.user.role;
 
-    // Find notices where current user has NOT acknowledged yet
+    // Find notices where:
+    // 1. Current user has NOT acknowledged yet
+    // 2. The notice targetRoles is either "ALL", null, or contains current user's role
     const pendingNotices = await prisma.notice.findMany({
       where: {
+        OR: [
+          { targetRoles: null },
+          { targetRoles: "ALL" },
+          ...(currentUserRole ? [{ targetRoles: { contains: currentUserRole } }] : []),
+        ],
         acknowledgments: {
           none: {
             userId: currentUserId,

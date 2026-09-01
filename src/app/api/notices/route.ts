@@ -5,7 +5,21 @@ import { authOptions } from "@/lib/auth";
 import { broadcastRealtimeNotification } from "@/lib/notifier";
 import { NoticeCategory } from "@/generated/prisma/client";
 
-// GET /api/notices — retrieve notices with category filter & read state
+function normalizeTargetRoles(input: any): string {
+  if (!input || input === "ALL") return "ALL";
+  if (Array.isArray(input)) {
+    const valid = input.filter((r) => r && r !== "ALL");
+    return valid.length > 0 ? valid.join(",") : "ALL";
+  }
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed || trimmed === "ALL") return "ALL";
+    return trimmed;
+  }
+  return "ALL";
+}
+
+// GET /api/notices — retrieve notices with category filter, role filter & read state
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,9 +28,13 @@ export async function GET(req: NextRequest) {
     }
 
     const currentUserId = Number(session.user.id);
+    const currentUserRole = session.user.role;
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category");
+    const targetRole = searchParams.get("targetRole");
     const search = searchParams.get("search");
+
+    const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN";
 
     const where: any = {};
 
@@ -24,12 +42,37 @@ export async function GET(req: NextRequest) {
       where.category = category as NoticeCategory;
     }
 
+    // Role filtering
+    if (!isAdmin) {
+      // Non-admins only see notices sent to ALL or containing their specific role
+      where.OR = [
+        { targetRoles: null },
+        { targetRoles: "ALL" },
+        ...(currentUserRole ? [{ targetRoles: { contains: currentUserRole } }] : []),
+      ];
+    } else if (targetRole && targetRole !== "ALL") {
+      if (targetRole === "GLOBAL_ALL" || targetRole === "NULL") {
+        where.OR = [{ targetRoles: null }, { targetRoles: "ALL" }];
+      } else {
+        where.targetRoles = { contains: targetRole };
+      }
+    }
+
     if (search && search.trim()) {
       const q = search.trim();
-      where.OR = [
+      const searchCondition = [
         { title: { contains: q } },
         { content: { contains: q } },
       ];
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: searchCondition },
+        ];
+        delete where.OR;
+      } else {
+        where.OR = searchCondition;
+      }
     }
 
     const notices = await prisma.notice.findMany({
@@ -54,6 +97,7 @@ export async function GET(req: NextRequest) {
       title: notice.title,
       content: notice.content,
       category: notice.category,
+      targetRoles: notice.targetRoles || "ALL",
       createdAt: notice.createdAt,
       updatedAt: notice.updatedAt,
       createdBy: notice.createdBy,
@@ -86,7 +130,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, content, category } = body;
+    const { title, content, category, targetRoles, targetRole } = body;
 
     if (!title || !title.trim()) {
       return NextResponse.json({ error: "Notice title is required" }, { status: 400 });
@@ -99,11 +143,14 @@ export async function POST(req: NextRequest) {
     const validCategories = ["IMPORTANT", "GENERAL", "SUGGESTION", "URGENT", "ANNOUNCEMENT"];
     const targetCategory = validCategories.includes(category) ? (category as NoticeCategory) : NoticeCategory.GENERAL;
 
+    const normalizedRoles = normalizeTargetRoles(targetRoles || targetRole);
+
     const created = await prisma.notice.create({
       data: {
         title: title.trim(),
         content: content.trim(),
         category: targetCategory,
+        targetRoles: normalizedRoles,
         createdById: Number(session.user.id),
       },
       include: {
@@ -123,6 +170,7 @@ export async function POST(req: NextRequest) {
         title: created.title,
         content: created.content,
         category: created.category,
+        targetRoles: created.targetRoles,
         createdAt: created.createdAt,
         createdBy: created.createdBy,
       },
