@@ -137,9 +137,21 @@ app.prepare().then(() => {
     let authenticatedUserId: number | null = null;
 
     try {
+      // Detect if connection came via HTTPS (Nginx reverse-proxy sets x-forwarded-proto).
+      // next-auth uses the __Secure- prefixed cookie when secureCookie=true,
+      // which is what browsers send over HTTPS. Without this flag the token
+      // lookup always fails in production → WS closes with 1008.
+      const forwardedProto = request.headers["x-forwarded-proto"];
+      const isSecure =
+        forwardedProto === "https" ||
+        (Array.isArray(forwardedProto) && forwardedProto.includes("https")) ||
+        (process.env.NEXTAUTH_URL || "").startsWith("https://") ||
+        (process.env.NEXT_PUBLIC_APP_URL || "").startsWith("https://");
+
       const token = await getToken({
         req: request as any,
         secret: process.env.NEXTAUTH_SECRET,
+        secureCookie: isSecure,
       });
       if (token && token.id) {
         authenticatedUserId = Number(token.id);

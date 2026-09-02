@@ -385,12 +385,14 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Bridge Page Link Dropdown */}
+            {/* Bridge Page Link Text Input */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Bridge Page Link</label>
-              <CustomSelect
+              <input
+                type="text"
                 value={bridgePageLink}
-                onChange={(val) => {
+                onChange={(e) => {
+                  const val = e.target.value;
                   setBridgePageLink(val);
                   if (!val) setBuyLink("");
                   if (val && !isValidUrl(val)) {
@@ -399,24 +401,23 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                     setBridgePageLinkError("");
                   }
                 }}
-                placeholder="Select Bridge Page URL..."
-                searchable={true}
-                searchPlaceholder="Select or enter bridge URL..."
-                allowCustom={true}
-                options={bridgeLinkOptions}
+                placeholder="https://..."
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 focus:border-[#6D8196] placeholder:text-slate-400 transition"
               />
               {bridgePageLinkError && (
                 <p className="text-[11px] font-semibold text-rose-500 mt-1">{bridgePageLinkError}</p>
               )}
             </div>
 
-            {/* Buy Link Dropdown */}
+            {/* Buy Link Text Input */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Buy Link</label>
-              <CustomSelect
+              <input
+                type="text"
                 value={buyLink}
                 disabled={!bridgePageLink}
-                onChange={(val) => {
+                onChange={(e) => {
+                  const val = e.target.value;
                   setBuyLink(val);
                   if (val && !isValidUrl(val)) {
                     setBuyLinkError("Must start with http:// or https://");
@@ -424,11 +425,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                     setBuyLinkError("");
                   }
                 }}
-                placeholder={bridgePageLink ? "Select Buy URL..." : "Select bridge page first"}
-                searchable={true}
-                searchPlaceholder="Select or enter buy URL..."
-                allowCustom={true}
-                options={buyLinkOptions}
+                placeholder={bridgePageLink ? "https://..." : "Enter bridge page link first"}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 focus:border-[#6D8196] placeholder:text-slate-400 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-800"
               />
               {buyLinkError && (
                 <p className="text-[11px] font-semibold text-rose-500 mt-1">{buyLinkError}</p>

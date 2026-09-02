@@ -3,7 +3,12 @@ export async function sendRealtimeNotification(
   notification: { id: number; message: string; type: string; createdAt: Date; senderId?: number | null }
 ) {
   try {
-    const baseUrl = (process.env.NEXTAUTH_URL || process.env.SITE_URL || process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${process.env.PORT || "3022"}`).replace(/\/$/, "");
+    // Always call /notify on localhost directly — never through the public domain/Nginx.
+    // This avoids TLS issues and unnecessary round-trips in production.
+    const baseUrl = (
+      process.env.INTERNAL_SERVER_URL ||
+      `http://localhost:${process.env.PORT || "3022"}`
+    ).replace(/\/$/, "");
     const secret = process.env.NEXTAUTH_SECRET;
     await fetch(`${baseUrl}/notify`, {
       method: "POST",
@@ -29,7 +34,11 @@ export async function broadcastRealtimeNotification(
   notification: { id?: number; message: string; type: string; createdAt?: Date; senderId?: number | null; data?: any }
 ) {
   try {
-    const baseUrl = (process.env.NEXTAUTH_URL || process.env.SITE_URL || process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${process.env.PORT || "3022"}`).replace(/\/$/, "");
+    // Always call /notify on localhost directly — never through the public domain/Nginx.
+    const baseUrl = (
+      process.env.INTERNAL_SERVER_URL ||
+      `http://localhost:${process.env.PORT || "3022"}`
+    ).replace(/\/$/, "");
     const secret = process.env.NEXTAUTH_SECRET;
     await fetch(`${baseUrl}/notify`, {
       method: "POST",

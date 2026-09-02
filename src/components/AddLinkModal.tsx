@@ -559,14 +559,16 @@ export default function AddLinkModal({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                {/* Bridge Page Link Dropdown */}
+                {/* Bridge Page Link Text Input */}
                 <div className="space-y-1">
                   <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                     Bridge Page Link
                   </label>
-                  <CustomSelect
+                  <input
+                    type="text"
                     value={bridgePageLink}
-                    onChange={(val) => {
+                    onChange={(e) => {
+                      const val = e.target.value;
                       setBridgePageLink(val);
                       if (val && !isValidUrl(val)) {
                         setBridgeLinkError("Must start with http:// or https://");
@@ -574,25 +576,25 @@ export default function AddLinkModal({
                         setBridgeLinkError("");
                       }
                     }}
-                    placeholder="Select Bridge Page URL..."
-                    searchable={true}
-                    searchPlaceholder="Select or enter bridge URL..."
-                    allowCustom={true}
-                    options={bridgeLinkOptions}
+                    placeholder="https://..."
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 focus:border-[#6D8196] placeholder:text-slate-400 transition"
                   />
                   {bridgeLinkError && (
                     <p className="text-[10px] font-semibold text-rose-500 mt-1">{bridgeLinkError}</p>
                   )}
                 </div>
 
-                {/* Buy Link Dropdown */}
+                {/* Buy Link Text Input */}
                 <div className="space-y-1">
                   <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                     Buy Link
                   </label>
-                  <CustomSelect
+                  <input
+                    type="text"
                     value={buyLink}
-                    onChange={(val) => {
+                    disabled={!bridgePageLink}
+                    onChange={(e) => {
+                      const val = e.target.value;
                       setBuyLink(val);
                       if (val && !isValidUrl(val)) {
                         setBuyLinkError("Must start with http:// or https://");
@@ -600,12 +602,8 @@ export default function AddLinkModal({
                         setBuyLinkError("");
                       }
                     }}
-                    placeholder="Select Buy Link URL..."
-                    searchable={true}
-                    searchPlaceholder="Select or enter buy URL..."
-                    allowCustom={true}
-                    disabled={!bridgePageLink}
-                    options={buyLinkOptions}
+                    placeholder={bridgePageLink ? "https://..." : "Enter bridge page link first"}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 focus:border-[#6D8196] placeholder:text-slate-400 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-800"
                   />
                   {buyLinkError && (
                     <p className="text-[10px] font-semibold text-rose-500 mt-1">{buyLinkError}</p>
