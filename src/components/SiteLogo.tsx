@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Globe } from "lucide-react";
 
 interface SiteLogoProps {
   url?: string | null;
@@ -14,53 +13,84 @@ export default function SiteLogo({
   url,
   name,
   className = "w-10 h-10",
-  iconSize = "w-5 h-5",
 }: SiteLogoProps) {
+  const [sourceIndex, setSourceIndex] = useState(0);
   const [hasError, setHasError] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Extract clean domain (e.g., "https://www.dailyhealthsupplements.com/path" -> "dailyhealthsupplements.com")
-  const domain = url
-    ? url.replace(/^(?:https?:\/\/)?(?:www\.)?/i, "").split("/")[0].trim()
-    : null;
+  let hostname = "";
+  try {
+    if (url) {
+      const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
+      hostname = parsed.hostname;
+    }
+  } catch {
+    hostname = url ? url.replace(/^(?:https?:\/\/)?/i, "").split("/")[0].trim() : "";
+  }
+
+  // Construct prioritized candidate sources for the logo
+  const candidates: string[] = [];
+  if (hostname) {
+    const cleanHost = hostname.replace(/^www\./, "");
+    // 1. DuckDuckGo with www (most reliable for WordPress / custom sites)
+    candidates.push(`https://icons.duckduckgo.com/ip3/www.${cleanHost}.ico`);
+    // 2. DuckDuckGo without www
+    candidates.push(`https://icons.duckduckgo.com/ip3/${cleanHost}.ico`);
+    // 3. Direct domain favicon
+    if (url && url.startsWith("http")) {
+      candidates.push(`${url.replace(/\/$/, "")}/favicon.ico`);
+    }
+    // 4. Google Favicon service
+    candidates.push(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=128`);
+  }
 
   useEffect(() => {
+    setSourceIndex(0);
     setHasError(false);
     setLoaded(false);
   }, [url]);
 
-  // Google Favicon service provides high quality (128px) favicons for domains
-  const faviconUrl = domain && !hasError
-    ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
-    : null;
+  const currentSrc = candidates[sourceIndex];
 
-  if (!faviconUrl || hasError) {
+  const handleImgError = () => {
+    if (sourceIndex + 1 < candidates.length) {
+      setSourceIndex((prev) => prev + 1);
+      setLoaded(false);
+    } else {
+      setHasError(true);
+    }
+  };
+
+  const initials = (name || "S").trim().slice(0, 3).toUpperCase();
+
+  if (!currentSrc || hasError) {
     return (
       <div
-        className={`${className} rounded-xl bg-[#6D8196]/15 border border-[#6D8196]/30 flex items-center justify-center text-[#3D4F61] shrink-0 font-bold text-xs shadow-2xs`}
+        className={`${className} rounded-2xl bg-gradient-to-br from-[#6D8196] to-[#4A4A4A] border border-white/20 flex items-center justify-center text-white shrink-0 font-extrabold text-sm tracking-wider shadow-sm select-none`}
         title={name}
       >
-        {name ? name.substring(0, 2).toUpperCase() : <Globe className={iconSize} />}
+        {initials}
       </div>
     );
   }
 
   return (
     <div
-      className={`${className} rounded-xl bg-white border border-[#CBCBCB]/60 p-1 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden relative group-hover:border-[#6D8196]/50 transition-colors`}
+      className={`${className} rounded-2xl bg-white dark:bg-slate-800 border border-[#CBCBCB]/60 dark:border-slate-700 p-2 flex items-center justify-center shrink-0 shadow-xs overflow-hidden relative`}
       title={name}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={faviconUrl}
+        key={currentSrc}
+        src={currentSrc}
         alt={`${name} logo`}
-        className={`w-full h-full object-contain rounded-lg transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
+        className={`w-full h-full object-contain transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
         onLoad={() => setLoaded(true)}
-        onError={() => setHasError(true)}
+        onError={handleImgError}
       />
       {!loaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#6D8196]/10 text-[#3D4F61]">
-          <Globe className="w-4 h-4 animate-pulse opacity-60" />
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-[#6D8196] font-extrabold text-xs">
+          {initials}
         </div>
       )}
     </div>

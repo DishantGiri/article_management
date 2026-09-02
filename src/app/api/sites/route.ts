@@ -2,15 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { slugifySite } from "@/lib/siteUtils";
 
-// GET /api/sites?categoryId=123  or  GET /api/sites  (all)
+// GET /api/sites?categoryId=123  or  GET /api/sites  (all authorized)
 export async function GET(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    const role = session?.user?.role;
+    const userId = Number(session?.user?.id);
+
+    let allowedSiteIds: number[] | undefined = undefined;
+    // WRITER and TEAM_LEAD can only view their assigned sites
+    if (role === "WRITER" || role === "TEAM_LEAD") {
+      const accesses = await prisma.siteAccess.findMany({
+        where: { userId },
+        select: { siteId: true },
+      });
+      allowedSiteIds = accesses.map((a) => a.siteId);
+    }
+
     const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get("categoryId");
 
     const sites = await prisma.site.findMany({
-      where: categoryId ? { categories: { some: { id: parseInt(categoryId) } } } : undefined,
+      where: {
+        ...(categoryId ? { categories: { some: { id: parseInt(categoryId) } } } : {}),
+        ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
+      },
       select: { 
         id: true, 
         name: true, 
@@ -40,6 +58,7 @@ export async function GET(req: NextRequest) {
       return {
         id: site.id,
         name: site.name,
+        slug: slugifySite(site.name),
         url: site.url,
         categories: site.categories,
         productsCount: site._count.products,

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Globe,
@@ -16,6 +17,8 @@ import {
   ExternalLink,
   Layers,
   Sparkles,
+  ArrowUpRight,
+  ShieldCheck,
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "react-hot-toast";
@@ -23,6 +26,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { useSession } from "next-auth/react";
 import SiteLogo from "@/components/SiteLogo";
 import LoadingScreen from "@/components/LoadingScreen";
+import { slugifySite } from "@/lib/siteUtils";
 
 interface Category {
   id: number;
@@ -32,6 +36,7 @@ interface Category {
 interface SiteData {
   id: number;
   name: string;
+  slug?: string;
   url: string | null;
   productsCount: number;
   categoriesCount: number;
@@ -205,11 +210,27 @@ export default function SitesPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-[#6D8196]" />
-            Sites
-          </h1>
-          <p className="text-[#737373] text-sm mt-0.5 font-medium">Manage websites, default sub IDs, bridge & buy now URLs</p>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight flex items-center gap-2">
+              <Building2 className="w-6 h-6 text-[#6D8196]" />
+              Sites
+            </h1>
+            {!isAdmin ? (
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" />
+                Assigned Sites ({sites.length})
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                All Sites ({sites.length})
+              </span>
+            )}
+          </div>
+          <p className="text-[#737373] text-sm mt-0.5 font-medium">
+            {isAdmin
+              ? "Manage websites, domains, product categories, and assignments"
+              : "Websites assigned to you — click any site to view all its articles and posting dates"}
+          </p>
         </div>
         {isAdmin && (
           <button
@@ -259,7 +280,15 @@ export default function SitesPage() {
                   <div className="flex items-center gap-3">
                     <SiteLogo url={site.url} name={site.name} className="w-10 h-10" />
                     <div>
-                      <h3 className="text-sm font-bold text-[#4A4A4A] leading-tight">{site.name}</h3>
+                      <Link
+                        href={`/sites/${site.slug || slugifySite(site.name)}`}
+                        className="hover:text-[#6D8196] transition block"
+                      >
+                        <h3 className="text-sm font-bold text-[#4A4A4A] leading-tight hover:underline flex items-center gap-1">
+                          <span>{site.name}</span>
+                          <ArrowUpRight className="w-3 h-3 text-[#6D8196] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </h3>
+                      </Link>
                       {site.url && (
                         <a
                           href={site.url}
@@ -322,20 +351,30 @@ export default function SitesPage() {
                 </div>
               </div>
 
-              {/* Stats Footer */}
-              <div className="grid grid-cols-3 gap-2 border-t border-[#CBCBCB]/40 pt-3 mt-auto">
-                <div className="text-center">
-                  <p className="text-lg font-bold text-[#4A4A4A]">{site.productsCount ?? 0}</p>
-                  <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Products</p>
+              {/* Stats Footer & View Articles Button */}
+              <div className="border-t border-[#CBCBCB]/40 pt-3 mt-auto">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-[#4A4A4A]">{site.productsCount ?? 0}</p>
+                    <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Articles</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-[#4A4A4A]">{site.categoriesCount ?? 0}</p>
+                    <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Product Types</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-[#4A4A4A]">{site.linksCount ?? 0}</p>
+                    <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Links</p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-[#4A4A4A]">{site.categoriesCount ?? 0}</p>
-                  <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Product Types</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-[#4A4A4A]">{site.linksCount ?? 0}</p>
-                  <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Links</p>
-                </div>
+
+                <Link
+                  href={`/sites/${site.slug || slugifySite(site.name)}`}
+                  className="mt-3.5 w-full py-2 px-3 rounded-xl bg-[#FAF9F5] hover:bg-[#6D8196] text-[#4A4A4A] hover:text-white border border-[#CBCBCB]/70 hover:border-[#6D8196] text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs group/btn cursor-pointer"
+                >
+                  <span>View Articles ({site.productsCount ?? 0})</span>
+                  <ArrowUpRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                </Link>
               </div>
             </div>
           ))}
