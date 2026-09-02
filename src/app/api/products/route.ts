@@ -265,24 +265,44 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Notify writers who have access to the sites of these products
+    // Notify writers: collect ALL product names per writer, send one grouped notification
+    const writerProductMap = new Map<number, string[]>();
+
     for (const p of createdProducts) {
       const accesses = await prisma.siteAccess.findMany({
         where: { siteId: p.siteId, user: { role: "WRITER" } },
         select: { userId: true },
       });
       for (const access of accesses) {
-        if (access.userId === activeUserId) continue; // Skip logged-in user who added the product
-        const notif = await prisma.notification.create({
-          data: {
-            recipientId: access.userId,
-            senderId: activeUserId,
-            type: "PRODUCT_ADDED",
-            message: `New product "${p.name}" has been added to site "${p.site.name}".`,
-          },
-        });
-        await sendRealtimeNotification(access.userId, notif);
+        if (access.userId === activeUserId) continue;
+        const existing = writerProductMap.get(access.userId) || [];
+        // Avoid duplicating the same product name for the same writer
+        if (!existing.includes(p.name)) {
+          existing.push(p.name);
+        }
+        writerProductMap.set(access.userId, existing);
       }
+    }
+
+    // Send one grouped notification per writer
+    for (const [writerId, productNames] of writerProductMap.entries()) {
+      const count = productNames.length;
+      const nameList = productNames.slice(0, 3).join(", ");
+      const suffix = count > 3 ? ` and ${count - 3} more` : "";
+      const message =
+        count === 1
+          ? `New product "${productNames[0]}" has been added — check your product list.`
+          : `${count} new products added: ${nameList}${suffix}. Check your product list.`;
+
+      const notif = await prisma.notification.create({
+        data: {
+          recipientId: writerId,
+          senderId: activeUserId,
+          type: "PRODUCT_ADDED",
+          message,
+        },
+      });
+      await sendRealtimeNotification(writerId, notif);
     }
 
     return NextResponse.json(createdProducts, { status: 201 });

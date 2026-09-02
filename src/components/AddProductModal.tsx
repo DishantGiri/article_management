@@ -151,17 +151,54 @@ export default function AddProductModal({
   const [batchTrendLevel, setBatchTrendLevel] = useState("HIGH");
   const [showSitesDrawer, setShowSitesDrawer] = useState(false);
 
-  const parseTextToRows = (text: string) => {
+  // Silently parses text into spreadsheet rows without showing a toast.
+  // Used for onChange so every keystroke doesn't trigger a success notification.
+  const updateRowsFromText = (text: string) => {
     setBulkPasteText(text);
     const lines = text
-      .split(/\r?\n/)
+      .replace(/\r/g, "")
+      .split("\n")
       .flatMap((line) => {
         if (line.includes(",") && !line.includes("http://") && !line.includes("https://")) {
           return line.split(",");
         }
         return [line];
       })
-      .map((line) => line.trim().replace(/^[-*•\d.)\s]+/, "").trim())
+      .map((line) => line.trim().replace(/^[-*\u2022\d.)\s]+/, "").trim())
+      .filter((line) => line.length > 0);
+
+    const uniqueNames = Array.from(new Set(lines));
+    if (uniqueNames.length === 0) {
+      setSpreadsheetRows([{ name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }]);
+      return;
+    }
+
+    const newRows: SpreadsheetRow[] = uniqueNames.map((n) => ({
+      name: n,
+      category: batchCategory || form.category || "",
+      affiliateName: batchAffiliate || form.affiliateName || "",
+      trendLevel: batchTrendLevel || form.trendLevel || "HIGH",
+      trendLink: "",
+      previewLink: "",
+      remarks: "",
+    }));
+
+    setSpreadsheetRows(newRows);
+  };
+
+  // Full parse with success toast — only called on explicit paste/clipboard actions.
+  const parseTextToRows = (text: string) => {
+    setBulkPasteText(text);
+    const lines = text
+      .replace(/\r/g, "")
+      .split("\n")
+      .flatMap((line) => {
+        if (line.includes(",") && !line.includes("http://") && !line.includes("https://")) {
+          return line.split(",");
+        }
+        return [line];
+      })
+      .map((line) => line.trim().replace(/^[-*\u2022\d.)\s]+/, "").trim())
       .filter((line) => line.length > 0);
 
     const uniqueNames = Array.from(new Set(lines));
@@ -863,7 +900,19 @@ export default function AddProductModal({
                       <textarea
                         rows={3}
                         value={bulkPasteText}
-                        onChange={(e) => parseTextToRows(e.target.value)}
+                        onChange={(e) => updateRowsFromText(e.target.value)}
+                        onPaste={(e) => {
+                          // Let the browser update the value first, then parse with toast
+                          const pasted = e.clipboardData.getData("text");
+                          if (pasted) {
+                            e.preventDefault();
+                            parseTextToRows(bulkPasteText ? bulkPasteText + "\n" + pasted : pasted);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          // Prevent Enter from accidentally submitting the enclosing form
+                          if (e.key === "Enter") e.stopPropagation();
+                        }}
                         placeholder={"Paste 10+ product names (one per line)...\nExample:\nAlpha Whey Protein\nCreatine Monohydrate 5000\nOmega-3 Triple Strength"}
                         className="w-full px-3 py-2 text-xs font-semibold bg-white border border-[#CBCBCB] rounded-lg text-slate-900 focus:outline-none focus:border-[#6D8196] focus:ring-1 focus:ring-[#6D8196] shadow-2xs resize-none font-mono placeholder:font-sans placeholder:text-slate-400 leading-relaxed"
                       />

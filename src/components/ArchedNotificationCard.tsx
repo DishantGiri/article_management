@@ -164,7 +164,7 @@ export function ArchedNotificationCard({
 
         {/* Content / Message Body with safe internal scrolling for longer notices */}
         <div className="mt-2 sm:mt-2.5 max-h-[160px] xs:max-h-[200px] sm:max-h-[240px] overflow-y-auto pr-1 text-center">
-          <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm mx-auto break-words">
+          <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm mx-auto break-words whitespace-pre-wrap">
             {message}
           </p>
         </div>

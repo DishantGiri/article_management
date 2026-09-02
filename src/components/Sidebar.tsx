@@ -140,6 +140,7 @@ export default function Sidebar() {
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [toast, setToast] = useState<{
     id?: number;
+    title?: string;
     message: string;
     type?: string;
     category?: string;
@@ -257,14 +258,29 @@ export default function Sidebar() {
 
             // Only alert if notification is not silent and has an active message
             if (!notif.silent && notif.message) {
-              if (toastEnabled && notif.type !== "NOTICE_PUBLISHED") {
-                setToast({
-                  id: notif.id,
-                  message: notif.message,
-                  type: notif.type,
-                  category: notif.category || notif.data?.category,
-                  createdAt: notif.createdAt,
-                });
+              if (toastEnabled) {
+                if (notif.type === "NOTICE_PUBLISHED") {
+                  // Show notice title as card title, content as body message
+                  const noticeTitle = notif.data?.title || "New Notice";
+                  const noticeContent = notif.data?.content || notif.message || "";
+                  const snippet = noticeContent.length > 120 ? noticeContent.slice(0, 120) + "\u2026" : noticeContent;
+                  setToast({
+                    id: notif.id,
+                    title: noticeTitle,
+                    message: snippet,
+                    type: notif.type,
+                    category: notif.data?.category,
+                    createdAt: notif.createdAt,
+                  });
+                } else {
+                  setToast({
+                    id: notif.id,
+                    message: notif.message,
+                    type: notif.type,
+                    category: notif.category || notif.data?.category,
+                    createdAt: notif.createdAt,
+                  });
+                }
               }
               setUnreadCount((prev) => prev + 1);
 
@@ -393,7 +409,9 @@ export default function Sidebar() {
         router.push(`/articles?search=${searchParam}`);
       }
     } else {
-      if (toast.type === "LINK_ISSUE" || userRole === "LINKER") {
+      if (toast.type === "NOTICE_PUBLISHED") {
+        router.push("/notices");
+      } else if (toast.type === "LINK_ISSUE" || userRole === "LINKER") {
         router.push("/links");
       } else if (toast.type === "PRODUCT_ADDED") {
         router.push("/products");
@@ -715,6 +733,7 @@ export default function Sidebar() {
             category={toast.category}
             type={toast.type}
             count={unreadCount || 1}
+            title={toast.title}
             message={toast.message}
             createdAt={toast.createdAt}
             actionLabel="View Details"
