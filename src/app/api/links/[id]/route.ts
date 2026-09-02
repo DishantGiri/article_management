@@ -225,6 +225,9 @@ export async function PATCH(
   }
 }
 
+// Support both PUT and PATCH methods
+export const PUT = PATCH;
+
 // DELETE /api/links/[id] — delete link log
 export async function DELETE(
   req: NextRequest,

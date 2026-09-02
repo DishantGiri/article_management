@@ -359,12 +359,14 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               />
             </div>
 
-            {/* Affiliate Link Dropdown */}
+            {/* Affiliate Link Text Input */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Affiliate Link URL *</label>
-              <CustomSelect
+              <input
+                type="text"
                 value={affiliateLink}
-                onChange={(val) => {
+                onChange={(e) => {
+                  const val = e.target.value;
                   setAffiliateLink(val);
                   if (val && !isValidUrl(val)) {
                     setAffiliateLinkError("Must start with http:// or https://");
@@ -372,11 +374,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                     setAffiliateLinkError("");
                   }
                 }}
-                placeholder="Select Affiliate Link URL..."
-                searchable={true}
-                searchPlaceholder="Select or enter URL..."
-                allowCustom={true}
-                options={affiliateLinkOptions}
+                placeholder="https://..."
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 focus:border-[#6D8196] placeholder:text-slate-400 transition"
               />
               {affiliateLinkError && (
                 <p className="text-[11px] font-semibold text-rose-500 mt-1">{affiliateLinkError}</p>
@@ -517,17 +516,15 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
             />
           </div>
 
-          {/* Remarks Dropdown */}
+          {/* Remarks Text Input */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Remarks Template</label>
-            <CustomSelect
+            <input
+              type="text"
               value={linkerRemarks}
-              onChange={(val) => setLinkerRemarks(val)}
-              placeholder="Select Remark from Dropdown..."
-              searchable={true}
-              searchPlaceholder="Select or enter remark..."
-              allowCustom={true}
-              options={REMARK_TEMPLATES}
+              onChange={(e) => setLinkerRemarks(e.target.value)}
+              placeholder="Enter remarks..."
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 focus:border-[#6D8196] placeholder:text-slate-400 transition"
             />
           </div>
 
