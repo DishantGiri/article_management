@@ -236,9 +236,7 @@ export default function Sidebar() {
         ws.onmessage = (event) => {
           try {
             const notif = JSON.parse(event.data);
-            if (notif.senderId && userId && Number(notif.senderId) === Number(userId)) {
-              return;
-            }
+            const isSelf = Boolean(notif.senderId && userId && Number(notif.senderId) === Number(userId));
 
             // If notice published, check if targeted to this user's role
             if (notif.type === "NOTICE_PUBLISHED") {
@@ -247,6 +245,17 @@ export default function Sidebar() {
               if (!isUserTargeted(targetRolesRaw, userRole)) {
                 return;
               }
+            }
+
+            // Always dispatch real-time events first so NoticePopupModal and NoticeBoardPage update immediately without window reload
+            if (notif.type === "NOTICE_PUBLISHED") {
+              window.dispatchEvent(new CustomEvent("notice-published", { detail: notif }));
+            }
+            window.dispatchEvent(new CustomEvent("live-notification", { detail: notif }));
+
+            // Skip sound and toast alerts for self-triggered non-notice actions
+            if (isSelf && notif.type !== "NOTICE_PUBLISHED") {
+              return;
             }
 
             // Notification preferences
@@ -300,14 +309,6 @@ export default function Sidebar() {
                   // Ignore notification construct errors on restricted environments
                 }
               }
-            }
-
-            const customEvent = new CustomEvent("live-notification", { detail: notif });
-            window.dispatchEvent(customEvent);
-
-            // Dispatch notice-published event for the NoticePopupModal
-            if (notif.type === "NOTICE_PUBLISHED") {
-              window.dispatchEvent(new CustomEvent("notice-published", { detail: notif }));
             }
           } catch (err) {
             console.error("Failed to parse live notification", err);

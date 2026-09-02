@@ -78,14 +78,14 @@ app.prepare().then(() => {
           const payloadStr = JSON.stringify({ id, senderId, message, createdAt, type, data });
 
           if (broadcast) {
-            clients.forEach((sockets) => {
-              sockets.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                  client.send(payloadStr);
-                }
-              });
+            let broadcastCount = 0;
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(payloadStr);
+                broadcastCount++;
+              }
             });
-            console.log(`Broadcasted real-time notification: "${message || type}" to ${clients.size} users`);
+            console.log(`Broadcasted real-time notification: "${message || type}" to ${broadcastCount} connected client sockets`);
           } else {
             const sockets = clients.get(Number(recipientId));
             if (sockets && sockets.size > 0) {
@@ -137,10 +137,17 @@ app.prepare().then(() => {
     let authenticatedUserId: number | null = null;
 
     try {
-      // Detect if connection came via HTTPS (Nginx reverse-proxy sets x-forwarded-proto).
-      // next-auth uses the __Secure- prefixed cookie when secureCookie=true,
-      // which is what browsers send over HTTPS. Without this flag the token
-      // lookup always fails in production → WS closes with 1008.
+      // Parse cookies from raw header so NextAuth getToken can inspect them
+      const cookieHeader = request.headers["cookie"] || "";
+      const parsedCookies: Record<string, string> = {};
+      if (cookieHeader) {
+        cookieHeader.split(";").forEach((pair) => {
+          const [k, ...v] = pair.trim().split("=");
+          if (k) parsedCookies[k] = decodeURIComponent(v.join("="));
+        });
+      }
+      (request as any).cookies = parsedCookies;
+
       const forwardedProto = request.headers["x-forwarded-proto"];
       const isSecure =
         forwardedProto === "https" ||
@@ -148,11 +155,22 @@ app.prepare().then(() => {
         (process.env.NEXTAUTH_URL || "").startsWith("https://") ||
         (process.env.NEXT_PUBLIC_APP_URL || "").startsWith("https://");
 
-      const token = await getToken({
+      // Try with secureCookie matching protocol first
+      let token = await getToken({
         req: request as any,
         secret: process.env.NEXTAUTH_SECRET,
         secureCookie: isSecure,
       });
+
+      // Fallback: try alternate secureCookie setting if first attempt returns null
+      if (!token || !token.id) {
+        token = await getToken({
+          req: request as any,
+          secret: process.env.NEXTAUTH_SECRET,
+          secureCookie: !isSecure,
+        });
+      }
+
       if (token && token.id) {
         authenticatedUserId = Number(token.id);
       }
@@ -167,8 +185,8 @@ app.prepare().then(() => {
           // If authenticated session exists, always bind to authenticated user ID
           if (authenticatedUserId !== null) {
             registeredUserId = authenticatedUserId;
-          } else if (dev && data.userId) {
-            // In local development fallback only
+          } else if (data.userId) {
+            // Fallback to client-provided userId
             registeredUserId = Number(data.userId);
           } else {
             console.warn("Rejected unauthenticated WebSocket registration attempt");
