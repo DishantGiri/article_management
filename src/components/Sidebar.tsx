@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone } from "lucide-react";
+import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
@@ -122,6 +122,24 @@ const NAV_ITEMS: NavItem[] = [
     label: "Notice Board",
     roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
     icon: Megaphone,
+  },
+  {
+    href: "/commissions",
+    label: "Commissions",
+    roles: ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "LINKER", "WRITER"],
+    icon: ReceiptText,
+  },
+  {
+    href: "/user-commissions",
+    label: "User Commissions",
+    roles: ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "LINKER", "WRITER"],
+    icon: Users,
+  },
+  {
+    href: "/commission-settings",
+    label: "Commission Settings",
+    roles: ["SUPER_ADMIN"],
+    icon: Coins,
   },
   {
     href: "/settings",

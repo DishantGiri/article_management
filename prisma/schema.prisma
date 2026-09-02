@@ -130,9 +130,10 @@ model Site {
 
   createdAt   DateTime    @default(now())
 
-  categories  Category[]
-  products    Product[]
-  siteAccess  SiteAccess[]
+  categories      Category[]
+  products        Product[]
+  siteAccess      SiteAccess[]
+  commissionSales CommissionSale[]
 }
 
 // Writer access to specific sites (assigned by Admin)
@@ -184,8 +185,9 @@ model Product {
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   addedBy    User     @relation("ProductAddedBy", fields: [addedById], references: [id])
 
-  article    Article?
-  linkLogs   LinkLog[]
+  article         Article?
+  linkLogs        LinkLog[]
+  commissionSales CommissionSale[]
 }
 
 // ─────────────────────────────────────────────
@@ -383,3 +385,77 @@ model NoticeAcknowledgment {
 
   @@unique([noticeId, userId])
 }
+
+// ─────────────────────────────────────────────
+// COMMISSION SETTING
+// ─────────────────────────────────────────────
+
+model CommissionSetting {
+  id          Int      @id @default(autoincrement())
+  category    String   // "NUTRA" | "ECOM"
+  saleType    String   // "FIRST_SALE" | "RESALE"
+  rateType    String   @default("FIXED") // "FIXED" ($) or "PERCENTAGE" (%)
+  currency    String   @default("USD")
+  
+  linker      Float    @default(0)
+  writer      Float    @default(0)
+  tl          Float    @default(0)
+  seo         Float    @default(0)
+  bonusPool   Float    @default(0)
+  partyFund   Float    @default(0)
+  total       Float    @default(0)
+
+  notes       String?  @db.Text
+  updatedById Int?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@unique([category, saleType])
+}
+
+// ─────────────────────────────────────────────
+// COMMISSION SALE (1st Sale & Resale records per product)
+// ─────────────────────────────────────────────
+
+model CommissionSale {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  siteId        Int
+  site          Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  
+  saleType      String   @default("FIRST_SALE") // "FIRST_SALE" | "RESALE"
+  saleDate      DateTime @default(now())
+  
+  // Beneficiaries linked at time of sale
+  writerId      Int?
+  writerName    String?
+  linkerId      Int?
+  linkerName    String?
+  teamLeadId    Int?
+  teamLeadName  String?
+  
+  // Payment status
+  paymentStatus String   @default("PENDING") // "PENDING" | "PAID"
+  paidAt        DateTime?
+  
+  // Commission amounts snapshot in Rs from CommissionSetting
+  amount        Float    @default(0) // Total commission in Rs
+  linkerAmount  Float    @default(0)
+  writerAmount  Float    @default(0)
+  tlAmount      Float    @default(0)
+  seoAmount     Float    @default(0)
+  bonusAmount   Float    @default(0)
+  partyAmount   Float    @default(0)
+  
+  notes         String?  @db.Text
+  createdById   Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([productId])
+  @@index([siteId])
+  @@index([saleType])
+}
+
+

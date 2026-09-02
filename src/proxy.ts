@@ -2,11 +2,11 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  SUPER_ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/product-categories", "/reports", "/history", "/users", "/notifications", "/notices", "/settings", "/team-members", "/calendar"],
-  ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/product-categories", "/reports", "/history", "/users", "/notifications", "/notices", "/settings", "/team-members", "/calendar"],
-  TEAM_LEAD: ["/", "/products", "/articles", "/links", "/reports", "/notifications", "/notices", "/settings", "/team-members", "/calendar"],
-  LINKER: ["/", "/products", "/links", "/sites", "/categories", "/product-categories", "/reports", "/notifications", "/notices", "/settings", "/calendar"],
-  WRITER: ["/", "/products", "/articles", "/reports", "/notifications", "/notices", "/settings", "/calendar"],
+  SUPER_ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/product-categories", "/reports", "/history", "/users", "/notifications", "/notices", "/settings", "/team-members", "/calendar", "/commission-settings", "/commissions", "/user-commissions"],
+  ADMIN: ["/", "/products", "/articles", "/links", "/sites", "/categories", "/product-categories", "/reports", "/history", "/users", "/notifications", "/notices", "/settings", "/team-members", "/calendar", "/commissions", "/user-commissions"],
+  TEAM_LEAD: ["/", "/products", "/articles", "/links", "/reports", "/notifications", "/notices", "/settings", "/team-members", "/calendar", "/commissions", "/user-commissions"],
+  LINKER: ["/", "/products", "/links", "/sites", "/categories", "/product-categories", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/commissions", "/user-commissions"],
+  WRITER: ["/", "/products", "/articles", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/commissions", "/user-commissions"],
 };
 
 function isRouteAllowed(pathname: string, role: string | null | undefined): boolean {

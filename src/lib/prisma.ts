@@ -14,10 +14,11 @@ const adapter = new PrismaMariaDb({
 });
 
 // Prevent multiple instances in Next.js dev (hot-reload)
-const globalForPrisma = globalThis as unknown as { prisma_v15: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma_v18: PrismaClient };
 
 export const prisma =
-  globalForPrisma.prisma_v15 ?? new PrismaClient({ adapter });
+  globalForPrisma.prisma_v18 ?? new PrismaClient({ adapter });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma_v15 = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma_v18 = prisma;
+
 
