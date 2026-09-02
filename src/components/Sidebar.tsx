@@ -267,31 +267,18 @@ export default function Sidebar() {
 
             // Only alert if notification is not silent and has an active message
             if (!notif.silent && notif.message) {
-              if (toastEnabled) {
-                if (notif.type === "NOTICE_PUBLISHED") {
-                  // Show notice title as card title, content as body message
-                  const noticeTitle = notif.data?.title || "New Notice";
-                  const noticeContent = notif.data?.content || notif.message || "";
-                  const snippet = noticeContent.length > 120 ? noticeContent.slice(0, 120) + "\u2026" : noticeContent;
-                  setToast({
-                    id: notif.id,
-                    title: noticeTitle,
-                    message: snippet,
-                    type: notif.type,
-                    category: notif.data?.category,
-                    createdAt: notif.createdAt,
-                  });
-                } else {
-                  setToast({
-                    id: notif.id,
-                    message: notif.message,
-                    type: notif.type,
-                    category: notif.category || notif.data?.category,
-                    createdAt: notif.createdAt,
-                  });
-                }
+              // Notices have their own dedicated center modal (NoticePopupModal),
+              // so avoid showing a duplicate bottom-right toast card for NOTICE_PUBLISHED.
+              if (toastEnabled && notif.type !== "NOTICE_PUBLISHED") {
+                setToast({
+                  id: notif.id,
+                  message: notif.message,
+                  type: notif.type,
+                  category: notif.category || notif.data?.category,
+                  createdAt: notif.createdAt,
+                });
+                setUnreadCount((prev) => prev + 1);
               }
-              setUnreadCount((prev) => prev + 1);
 
               if (soundEnabled) {
                 audioObj.volume = Math.max(0, Math.min(1, isNaN(soundVolume) ? 0.8 : soundVolume));
