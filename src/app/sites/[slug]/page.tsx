@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import SiteLogo from "@/components/SiteLogo";
 import LoadingScreen from "@/components/LoadingScreen";
+import DateRangePicker from "@/components/DateRangePicker";
 import { useSession } from "next-auth/react";
 
 interface SiteCategory {
@@ -228,31 +229,42 @@ export default function SiteDetailPage() {
     };
   }, [slugParam]);
 
+  // Articles filtered by date range
+  const dateFilteredArticles = useMemo(() => {
+    return articles.filter((art) => {
+      if (!startDate && !endDate) return true;
+      const postDateStr = art.dateOfPosting || art.completedAt || art.addedAt;
+      if (!postDateStr) return false;
+      const d = new Date(postDateStr);
+      if (isNaN(d.getTime())) return false;
+      const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      if (startDate && ymd < startDate) return false;
+      if (endDate && ymd > endDate) return false;
+      return true;
+    });
+  }, [articles, startDate, endDate]);
+
+  // Dynamic stats calculated from dateFilteredArticles
+  const statsDisplay = useMemo(() => {
+    return {
+      total: dateFilteredArticles.length,
+      completed: dateFilteredArticles.filter((a) => a.status === "COMPLETED" || a.status === "APPROVED").length,
+      inProgress: dateFilteredArticles.filter((a) => a.status === "IN_PROGRESS").length,
+      pending: dateFilteredArticles.filter((a) => a.status === "PENDING").length,
+      redo: dateFilteredArticles.filter((a) => a.status === "REDO").length,
+    };
+  }, [dateFilteredArticles]);
+
   // Filtered & Sorted Articles
   const filteredArticles = useMemo(() => {
-    return articles
+    return dateFilteredArticles
       .filter((art) => {
-        // Status filter
-        if (statusFilter !== "ALL" && art.status !== statusFilter) {
-          return false;
-        }
-
-        // Date range filter
-        if (startDate || endDate) {
-          const postDateStr = art.dateOfPosting || art.completedAt || art.addedAt;
-          if (!postDateStr) return false;
-          const postDate = new Date(postDateStr);
-          if (isNaN(postDate.getTime())) return false;
-
-          if (startDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            if (postDate < start) return false;
-          }
-          if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-            if (postDate > end) return false;
+        // Status filter: COMPLETED matches both COMPLETED and APPROVED articles
+        if (statusFilter !== "ALL") {
+          if (statusFilter === "COMPLETED") {
+            if (art.status !== "COMPLETED" && art.status !== "APPROVED") return false;
+          } else if (art.status !== statusFilter) {
+            return false;
           }
         }
 
@@ -284,7 +296,7 @@ export default function SiteDetailPage() {
         const dateB = b.dateOfPosting ? new Date(b.dateOfPosting).getTime() : new Date(b.updatedAt).getTime();
         return dateB - dateA;
       });
-  }, [articles, statusFilter, searchQuery, sortBy]);
+  }, [dateFilteredArticles, statusFilter, searchQuery, sortBy]);
 
   // Format Date Helper
   const formatDate = (dateStr: string | null) => {
@@ -468,7 +480,7 @@ export default function SiteDetailPage() {
           <div className="grid grid-cols-2 xs:grid-cols-4 gap-2.5 self-stretch md:self-auto shrink-0">
             <div className="p-3 rounded-xl bg-[#FAF9F5] dark:bg-slate-800/60 border border-[#CBCBCB]/50 dark:border-slate-700 text-center">
               <span className="text-lg sm:text-xl font-black text-[#4A4A4A] dark:text-white block">
-                {stats?.total ?? articles.length}
+                {statsDisplay.total}
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#737373] dark:text-slate-400">
                 Total Articles
@@ -477,7 +489,7 @@ export default function SiteDetailPage() {
 
             <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 text-center">
               <span className="text-lg sm:text-xl font-black text-emerald-700 dark:text-emerald-300 block">
-                {stats?.completed ?? 0}
+                {statsDisplay.completed}
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700/80 dark:text-emerald-400">
                 Completed
@@ -486,7 +498,7 @@ export default function SiteDetailPage() {
 
             <div className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 text-center">
               <span className="text-lg sm:text-xl font-black text-amber-700 dark:text-amber-300 block">
-                {stats?.inProgress ?? 0}
+                {statsDisplay.inProgress}
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700/80 dark:text-amber-400">
                 Writing
@@ -495,7 +507,7 @@ export default function SiteDetailPage() {
 
             <div className="p-3 rounded-xl bg-slate-100/60 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center">
               <span className="text-lg sm:text-xl font-black text-slate-700 dark:text-slate-300 block">
-                {stats?.pending ?? 0}
+                {statsDisplay.pending}
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Pending
@@ -548,13 +560,20 @@ export default function SiteDetailPage() {
                   : "bg-slate-100 dark:bg-slate-800 text-[#737373] dark:text-slate-300 hover:text-[#4A4A4A] dark:hover:text-white"
               }`}
             >
-              All ({articles.length})
+              All ({dateFilteredArticles.length})
             </button>
 
-            {["COMPLETED", "IN_PROGRESS", "PENDING", "REDO"].map((st) => {
-              const count = articles.filter((a) => a.status === st).length;
-              const config = STATUS_CONFIG[st] || STATUS_CONFIG.PENDING;
-              const Icon = config.icon;
+            {[
+              { key: "COMPLETED", label: "Completed", icon: CheckCircle2 },
+              { key: "IN_PROGRESS", label: "In Progress", icon: Clock },
+              { key: "PENDING", label: "Pending", icon: Clock },
+              { key: "REDO", label: "Redo / Revision", icon: RotateCcw },
+            ].map(({ key: st, label, icon: Icon }) => {
+              const count = dateFilteredArticles.filter((a) => {
+                if (st === "COMPLETED") return a.status === "COMPLETED" || a.status === "APPROVED";
+                return a.status === st;
+              }).length;
+
               return (
                 <button
                   key={st}
@@ -566,7 +585,7 @@ export default function SiteDetailPage() {
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  <span>{config.label}</span>
+                  <span>{label}</span>
                   {count > 0 && <span className="opacity-70 text-[10px]">({count})</span>}
                 </button>
               );
@@ -629,45 +648,18 @@ export default function SiteDetailPage() {
               </button>
             </div>
 
-            {/* Custom Date Range Inputs */}
-            <div className="flex items-center gap-1.5 bg-[#FAF9F5] dark:bg-slate-800/80 px-2.5 py-1 rounded-xl border border-[#CBCBCB]/70 dark:border-slate-700 text-xs">
-              <Calendar className="w-3.5 h-3.5 text-[#6D8196] shrink-0" />
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] uppercase font-bold text-[#737373] dark:text-slate-400">From</span>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setDatePreset("CUSTOM");
-                  }}
-                  className="bg-transparent text-xs font-semibold text-[#4A4A4A] dark:text-white focus:outline-none cursor-pointer"
-                />
-              </div>
-              <span className="text-slate-300 dark:text-slate-600">-</span>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] uppercase font-bold text-[#737373] dark:text-slate-400">To</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setDatePreset("CUSTOM");
-                  }}
-                  className="bg-transparent text-xs font-semibold text-[#4A4A4A] dark:text-white focus:outline-none cursor-pointer"
-                />
-              </div>
-
-              {(startDate || endDate) && (
-                <button
-                  onClick={clearDateRange}
-                  className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-white transition cursor-pointer"
-                  title="Clear Date Range Filter"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            {/* Custom Date Range Picker */}
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(start, end) => {
+                setStartDate(start);
+                setEndDate(end);
+                setDatePreset(start && end ? "CUSTOM" : "ALL");
+              }}
+              placeholder="Select Date Range"
+              align="right"
+            />
           </div>
         </div>
 
@@ -708,7 +700,7 @@ export default function SiteDetailPage() {
               {searchQuery
                 ? `No articles match the query "${searchQuery}".`
                 : statusFilter !== "ALL"
-                ? `No articles with status "${statusFilter}" for this site.`
+                ? `No ${statusFilter === "COMPLETED" ? "completed" : statusFilter.toLowerCase().replace("_", " ")} articles found for this site${startDate || endDate ? " in the selected date range" : ""}.`
                 : "No articles have been assigned or created for this site yet."}
             </p>
           </div>
