@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { isUserTargeted } from "@/lib/noticeUtils";
+import CustomSelect from "@/components/CustomSelect";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type NoticeCategoryType = "IMPORTANT" | "GENERAL" | "SUGGESTION" | "URGENT" | "ANNOUNCEMENT";
 type TargetRoleType = "ALL" | "WRITER" | "LINKER" | "TEAM_LEAD" | "ADMIN";
@@ -145,6 +147,7 @@ export default function NoticeBoardPage() {
   const [formContent, setFormContent] = useState("");
   const [formCategory, setFormCategory] = useState<NoticeCategoryType>("GENERAL");
   const [formSelectedRoles, setFormSelectedRoles] = useState<string[]>(["ALL"]);
+  const [deleteNoticeId, setDeleteNoticeId] = useState<number | null>(null);
 
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
 
@@ -272,8 +275,14 @@ export default function NoticeBoardPage() {
   };
 
   // Handle Delete Notice
-  const handleDeleteNotice = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this notice?")) return;
+  const handleDeleteNotice = (id: number) => {
+    setDeleteNoticeId(id);
+  };
+
+  const handleConfirmDeleteNotice = async () => {
+    if (!deleteNoticeId) return;
+    const id = deleteNoticeId;
+    setDeleteNoticeId(null);
     try {
       const res = await fetch(`/api/notices/${id}`, { method: "DELETE" });
       if (res.ok) {
@@ -421,18 +430,20 @@ export default function NoticeBoardPage() {
         {isAdmin && (
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-[#737373] dark:text-slate-400 whitespace-nowrap">Target:</span>
-            <select
+            <CustomSelect
               value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-              className="px-2.5 py-1.5 text-xs font-bold rounded-xl border border-[#CBCBCB]/80 dark:border-slate-700 bg-[#FAF9F5] dark:bg-slate-800 text-[#4A4A4A] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 cursor-pointer"
-            >
-              <option value="ALL">All Roles</option>
-              <option value="GLOBAL_ALL">Broadcast Only (All)</option>
-              <option value="WRITER">Includes Writers</option>
-              <option value="LINKER">Includes Linkers</option>
-              <option value="TEAM_LEAD">Includes Team Leads</option>
-              <option value="ADMIN">Includes Admins</option>
-            </select>
+              onChange={(val) => setSelectedRole(val as any)}
+              options={[
+                { value: "ALL", label: "All Roles" },
+                { value: "GLOBAL_ALL", label: "Broadcast Only (All)" },
+                { value: "WRITER", label: "Includes Writers" },
+                { value: "LINKER", label: "Includes Linkers" },
+                { value: "TEAM_LEAD", label: "Includes Team Leads" },
+                { value: "ADMIN", label: "Includes Admins" },
+              ]}
+              className="w-auto"
+              triggerClassName="px-3 py-1.5 text-xs font-bold rounded-xl border border-[#CBCBCB]/80 dark:border-slate-700 bg-[#FAF9F5] dark:bg-slate-800 text-[#4A4A4A] dark:text-white hover:border-[#6D8196] shadow-2xs whitespace-nowrap min-w-[155px]"
+            />
           </div>
         )}
 
@@ -861,6 +872,18 @@ export default function NoticeBoardPage() {
           </div>
         </div>
       )}
+
+      {/* Custom Confirmation Dialog for Deleting Notice */}
+      <ConfirmDialog
+        isOpen={deleteNoticeId !== null}
+        title="Delete Notice"
+        message="Are you sure you want to delete this notice? This action cannot be undone."
+        confirmLabel="Delete Notice"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmDeleteNotice}
+        onCancel={() => setDeleteNoticeId(null)}
+      />
     </div>
   );
 }

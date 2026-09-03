@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface CommissionTier {
   id?: number;
@@ -127,6 +128,7 @@ export default function CommissionSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Active Category Tab: NUTRA or ECOM
   const [activeCategory, setActiveCategory] = useState<"NUTRA" | "ECOM">("NUTRA");
@@ -245,16 +247,14 @@ export default function CommissionSettingsPage() {
     }
   };
 
-  // Reset to Defaults
-  const handleReset = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to reset all commission allocations to standard defaults?"
-      )
-    ) {
-      return;
-    }
+  // Open Custom Confirmation Popup for Resetting
+  const handleOpenResetConfirm = () => {
+    setShowResetConfirm(true);
+  };
 
+  // Reset to Defaults (Triggered by Custom Popup)
+  const handleExecuteReset = async () => {
+    setShowResetConfirm(false);
     setResetting(true);
     try {
       const res = await fetch("/api/commission-settings/reset", {
@@ -387,7 +387,7 @@ export default function CommissionSettingsPage() {
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 self-stretch sm:self-auto">
             <button
-              onClick={handleReset}
+              onClick={handleOpenResetConfirm}
               disabled={resetting || saving}
               className="px-4 py-2.5 rounded-xl border border-[#CBCBCB]/80 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-300 text-xs font-bold text-[#4A4A4A] dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 transition flex items-center gap-2 shadow-2xs cursor-pointer"
             >
@@ -656,6 +656,18 @@ export default function CommissionSettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Custom Confirmation Dialog for Resetting Defaults */}
+      <ConfirmDialog
+        isOpen={showResetConfirm}
+        title="Reset Commission Defaults"
+        message="Are you sure you want to reset all commission allocations back to standard defaults? Any unsaved changes will be lost."
+        confirmLabel="Reset Defaults"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={handleExecuteReset}
+        onCancel={() => setShowResetConfirm(false)}
+      />
     </div>
   );
 }

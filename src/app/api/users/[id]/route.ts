@@ -111,13 +111,21 @@ export async function PATCH(
     // Handle site access sync if siteIds is provided
     const newRole = role || targetUser.role;
     let siteAccessUpdate = undefined;
-    if (siteIds && Array.isArray(siteIds) && (newRole === "WRITER" || newRole === "TEAM_LEAD")) {
+    if (siteIds !== undefined && Array.isArray(siteIds) && (newRole === "WRITER" || newRole === "TEAM_LEAD")) {
       siteAccessUpdate = {
         deleteMany: {}, // Clear existing
-        create: siteIds.map((siteId: number) => ({ siteId })),
+        create: siteIds.map((siteId: number) => ({ siteId: Number(siteId) })),
       };
-    } else if (newRole !== "WRITER" && newRole !== "TEAM_LEAD") {
+    } else if (role && newRole !== "WRITER" && newRole !== "TEAM_LEAD") {
       siteAccessUpdate = { deleteMany: {} }; // Clear if role changed to non-writer/lead
+    }
+
+    // Resolve teamLeadId updates cleanly (supports migrating, unassigning, and role transitions)
+    let resolvedTeamLeadId: number | null | undefined = undefined;
+    if (newRole !== "WRITER") {
+      resolvedTeamLeadId = null;
+    } else if (teamLeadId !== undefined) {
+      resolvedTeamLeadId = teamLeadId && teamLeadId !== "none" && teamLeadId !== "" ? Number(teamLeadId) : null;
     }
 
     const updated = await prisma.user.update({
@@ -126,8 +134,8 @@ export async function PATCH(
         ...(name ? { name } : {}),
         ...(image !== undefined ? { image } : {}),
         ...(role ? { role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" } : {}),
-        allowLinkLogAccess: newRole === "WRITER" ? !!allowLinkLogAccess : false,
-        teamLeadId: newRole === "WRITER" && teamLeadId ? Number(teamLeadId) : (newRole === "WRITER" ? undefined : null),
+        allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,
+        ...(resolvedTeamLeadId !== undefined ? { teamLeadId: resolvedTeamLeadId } : {}),
         ...(typeof approved === 'boolean' ? { approved } : {}),
         ...(siteAccessUpdate ? { siteAccess: siteAccessUpdate } : {}),
       },

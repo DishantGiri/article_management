@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import CustomSelect from "@/components/CustomSelect";
+import DateRangePicker from "@/components/DateRangePicker";
 import {
   Search,
   Clock,
@@ -387,30 +388,17 @@ export default function HistoryPage() {
           ]}
         />
 
-        {/* Date Filters */}
-        <div className="flex items-center gap-2 border-l border-slate-100 pl-3">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">From</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
+        {/* Date Filter */}
+        <div className="border-l border-slate-100 pl-3">
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
               setCurrentPage(1);
             }}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] bg-white transition"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">To</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] bg-white transition"
+            placeholder="Filter Date Range"
           />
         </div>
       </div>

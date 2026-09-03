@@ -28,6 +28,7 @@ import {
 import SiteLogo from "@/components/SiteLogo";
 import LoadingScreen from "@/components/LoadingScreen";
 import DateRangePicker from "@/components/DateRangePicker";
+import CustomSelect from "@/components/CustomSelect";
 import { useSession } from "next-auth/react";
 
 interface SiteCategory {
@@ -536,15 +537,17 @@ export default function SiteDetailPage() {
           {/* Sort selector */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-[#737373] dark:text-slate-400 hidden sm:inline">Sort:</span>
-            <select
+            <CustomSelect
               value={sortBy}
-              onChange={(e: any) => setSortBy(e.target.value)}
-              className="px-3 py-2 rounded-xl text-xs font-bold bg-[#FAF9F5] dark:bg-slate-800 border border-[#CBCBCB]/70 dark:border-slate-700 text-[#4A4A4A] dark:text-white focus:outline-none cursor-pointer shadow-2xs"
-            >
-              <option value="date-desc">Newest Posted</option>
-              <option value="date-asc">Oldest Posted</option>
-              <option value="title-asc">Title (A-Z)</option>
-            </select>
+              onChange={(val) => setSortBy(val as any)}
+              options={[
+                { value: "date-desc", label: "Newest Posted" },
+                { value: "date-asc", label: "Oldest Posted" },
+                { value: "title-asc", label: "Title (A-Z)" },
+              ]}
+              className="w-auto"
+              triggerClassName="px-3 py-2 rounded-xl text-xs font-bold bg-[#FAF9F5] dark:bg-slate-800 border border-[#CBCBCB]/70 dark:border-slate-700 text-[#4A4A4A] dark:text-white hover:border-[#6D8196] shadow-2xs whitespace-nowrap min-w-[140px]"
+            />
           </div>
         </div>
 

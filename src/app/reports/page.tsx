@@ -28,6 +28,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
 import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
 import CustomSelect from "@/components/CustomSelect";
+import DateRangePicker from "@/components/DateRangePicker";
 
 export default function ReportsPage() {
   const [reportData, setReportData] = useState<any>(null);
@@ -410,32 +411,18 @@ export default function ReportsPage() {
 
         {/* Date Inputs & Generate Button */}
         <div className="pt-3 border-t border-[#CBCBCB]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto">
-            <div className="flex items-center gap-2 w-full">
-              <label className="text-xs font-bold text-[#737373] w-12 sm:w-auto shrink-0">From:</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  setPreset("all");
-                }}
-                className="flex-1 w-full px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#CBCBCB] bg-[#FAF9F5] text-[#4A4A4A] focus:outline-none focus:bg-white"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 w-full">
-              <label className="text-xs font-bold text-[#737373] w-12 sm:w-auto shrink-0">To:</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setPreset("all");
-                }}
-                className="flex-1 w-full px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#CBCBCB] bg-[#FAF9F5] text-[#4A4A4A] focus:outline-none focus:bg-white"
-              />
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[#737373] shrink-0">Custom Period:</span>
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(start, end) => {
+                setStartDate(start);
+                setEndDate(end);
+                setPreset("all");
+              }}
+              placeholder="Select Custom Period"
+            />
           </div>
 
           <button

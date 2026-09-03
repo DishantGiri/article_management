@@ -29,6 +29,9 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
+import CustomSelect from "@/components/CustomSelect";
+import DateRangePicker from "@/components/DateRangePicker";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 interface UserSaleItem {
@@ -99,6 +102,7 @@ export default function UserCommissionsPage() {
   // Statement / Breakdown Modal
   const [statementUser, setStatementUser] = useState<UserCommissionRow | null>(null);
   const [settlingUserId, setSettlingUserId] = useState<number | null>(null);
+  const [payoutTargetUser, setPayoutTargetUser] = useState<UserCommissionRow | null>(null);
 
   // Fetch Data
   const fetchData = async (isBackground = false) => {
@@ -137,23 +141,20 @@ export default function UserCommissionsPage() {
     }
   }, [roleFilter, statusFilter, siteFilter, startDate, endDate, sortBy, status]);
 
-  // Settle All Pending Payouts for a User
-  const handleSettleUserPayout = async (user: UserCommissionRow) => {
+  // Open Custom Confirmation Popup for Payout
+  const handleOpenPayoutConfirm = (user: UserCommissionRow) => {
     if (user.pendingAmount <= 0) {
       toast.error("No pending commissions to settle for this user");
       return;
     }
+    setPayoutTargetUser(user);
+  };
 
-    if (
-      !confirm(
-        `Are you sure you want to mark all pending commissions (Rs. ${user.pendingAmount.toFixed(
-          2
-        )}) as PAID for ${user.name}?`
-      )
-    ) {
-      return;
-    }
-
+  // Settle All Pending Payouts for a User (Triggered by Custom Popup)
+  const handleExecutePayout = async () => {
+    if (!payoutTargetUser) return;
+    const user = payoutTargetUser;
+    setPayoutTargetUser(null);
     setSettlingUserId(user.id);
     try {
       const res = await fetch("/api/commissions/users/payout", {
@@ -440,53 +441,49 @@ export default function UserCommissionsPage() {
             {/* Payment Status Filter */}
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold text-slate-400 uppercase">Status:</span>
-              <select
+              <CustomSelect
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl text-xs bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 cursor-pointer"
-              >
-                <option value="ALL">All Payment Statuses</option>
-                <option value="PENDING">Pending Balance</option>
-                <option value="PAID">Fully Paid</option>
-                <option value="PARTIAL">Partially Paid</option>
-                <option value="NO_SALES">No Earnings Yet</option>
-              </select>
+                onChange={(val) => setStatusFilter(val)}
+                options={[
+                  { value: "ALL", label: "All Payment Statuses" },
+                  { value: "PENDING", label: "Pending Balance" },
+                  { value: "PAID", label: "Fully Paid" },
+                  { value: "PARTIAL", label: "Partially Paid" },
+                  { value: "NO_SALES", label: "No Earnings Yet" },
+                ]}
+                className="w-auto"
+                triggerClassName="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196] shadow-2xs whitespace-nowrap min-w-[155px]"
+              />
             </div>
 
             {/* Site Filter */}
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold text-slate-400 uppercase">Site:</span>
-              <select
+              <CustomSelect
                 value={siteFilter}
-                onChange={(e) => setSiteFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl text-xs bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 cursor-pointer"
-              >
-                <option value="ALL">All Sites</option>
-                {sites.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSiteFilter(val)}
+                options={[
+                  { value: "ALL", label: "All Sites" },
+                  ...sites.map((s) => ({ value: String(s.id), label: s.name })),
+                ]}
+                searchable={sites.length > 5}
+                searchPlaceholder="Search sites..."
+                className="w-auto"
+                triggerClassName="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196] shadow-2xs whitespace-nowrap min-w-[125px]"
+              />
             </div>
 
             {/* Date Range Filters */}
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold text-slate-400 uppercase">Period:</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-2 py-1 rounded-xl text-[11px] bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none"
-                placeholder="From"
-              />
-              <span className="text-slate-400">to</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-2 py-1 rounded-xl text-[11px] bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none"
-                placeholder="To"
+              <DateRangePicker
+                startDate={startDate}
+                endDate={endDate}
+                onChange={(start, end) => {
+                  setStartDate(start);
+                  setEndDate(end);
+                }}
+                placeholder="Select Period Range"
               />
             </div>
           </div>
@@ -496,17 +493,19 @@ export default function UserCommissionsPage() {
             <div className="flex items-center gap-1.5">
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
               <span className="text-[11px] font-bold text-slate-400 uppercase">Sort:</span>
-              <select
+              <CustomSelect
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl text-xs bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer font-semibold"
-              >
-                <option value="totalDesc">Highest Total (Rs.)</option>
-                <option value="pendingDesc">Highest Pending (Rs.)</option>
-                <option value="firstSalesDesc">Most 1st Sales</option>
-                <option value="resalesDesc">Most Resales</option>
-                <option value="nameAsc">Name (A-Z)</option>
-              </select>
+                onChange={(val) => setSortBy(val)}
+                options={[
+                  { value: "totalDesc", label: "Highest Total (Rs.)" },
+                  { value: "pendingDesc", label: "Highest Pending (Rs.)" },
+                  { value: "firstSalesDesc", label: "Most 1st Sales" },
+                  { value: "resalesDesc", label: "Most Resales" },
+                  { value: "nameAsc", label: "Name (A-Z)" },
+                ]}
+                className="w-auto"
+                triggerClassName="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196] shadow-2xs whitespace-nowrap min-w-[170px]"
+              />
             </div>
 
             {(roleFilter !== "ALL" ||
@@ -685,7 +684,7 @@ export default function UserCommissionsPage() {
 
                           {isAdminOrSuperAdmin && user.pendingAmount > 0 && (
                             <button
-                              onClick={() => handleSettleUserPayout(user)}
+                              onClick={() => handleOpenPayoutConfirm(user)}
                               disabled={settlingUserId === user.id}
                               className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-2xs transition flex items-center gap-1 cursor-pointer"
                               title="Settle all pending payouts for this user"
@@ -826,7 +825,7 @@ export default function UserCommissionsPage() {
               <div>
                 {isAdminOrSuperAdmin && statementUser.pendingAmount > 0 && (
                   <button
-                    onClick={() => handleSettleUserPayout(statementUser)}
+                    onClick={() => handleOpenPayoutConfirm(statementUser)}
                     disabled={settlingUserId === statementUser.id}
                     className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
                   >
@@ -850,6 +849,24 @@ export default function UserCommissionsPage() {
           </div>
         </div>
       )}
+
+      {/* Custom Confirmation Dialog for Commission Payout */}
+      <ConfirmDialog
+        isOpen={!!payoutTargetUser}
+        title="Confirm Commission Payout"
+        message={
+          payoutTargetUser
+            ? `Are you sure you want to mark all pending commissions (Rs. ${payoutTargetUser.pendingAmount.toFixed(
+                2
+              )}) as PAID for ${payoutTargetUser.name}? This will record the payout as settled.`
+            : ""
+        }
+        confirmLabel="Confirm Payout"
+        cancelLabel="Cancel"
+        variant="success"
+        onConfirm={handleExecutePayout}
+        onCancel={() => setPayoutTargetUser(null)}
+      />
     </div>
   );
 }

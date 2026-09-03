@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
+import CustomSelect from "@/components/CustomSelect";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 // Flat Commission Sale for the Commission List view
@@ -850,18 +851,20 @@ export default function CommissionsPage() {
 
           {/* Sort By (for Commission List view) */}
           {activeViewTab === "LIST" && (
-            <select
+            <CustomSelect
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-2.5 py-1.5 rounded-xl text-xs bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-semibold focus:outline-none cursor-pointer"
-            >
-              <option value="dateDesc">Date: Newest First</option>
-              <option value="dateAsc">Date: Oldest First</option>
-              <option value="amountDesc">Amount: Highest First</option>
-              <option value="bonusDesc">Bonus Pool: Highest</option>
-              <option value="seoDesc">SEO Pool: Highest</option>
-              <option value="partyDesc">Party Fund: Highest</option>
-            </select>
+              onChange={(val) => setSortBy(val)}
+              options={[
+                { value: "dateDesc", label: "Date: Newest First" },
+                { value: "dateAsc", label: "Date: Oldest First" },
+                { value: "amountDesc", label: "Amount: Highest First" },
+                { value: "bonusDesc", label: "Bonus Pool: Highest" },
+                { value: "seoDesc", label: "SEO Pool: Highest" },
+                { value: "partyDesc", label: "Party Fund: Highest" },
+              ]}
+              className="w-auto"
+              triggerClassName="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196] shadow-2xs whitespace-nowrap min-w-[170px]"
+            />
           )}
 
           {(search ||
@@ -1366,23 +1369,23 @@ export default function CommissionsPage() {
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                   Select Product
                 </label>
-                <select
+                <CustomSelect
                   value={modalProductId}
-                  onChange={(e) => {
-                    setModalProductId(e.target.value);
-                    const found = products.find((p) => p.id === parseInt(e.target.value));
+                  onChange={(val) => {
+                    setModalProductId(val);
+                    const found = products.find((p) => p.id === parseInt(val));
                     setSelectedProductForSale(found || null);
                   }}
-                  className="w-full px-3 py-2 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 cursor-pointer"
-                  required
-                >
-                  <option value="">Select a product...</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.siteName} • {p.categoryName})
-                    </option>
-                  ))}
-                </select>
+                  options={products.map((p) => ({
+                    value: String(p.id),
+                    label: `${p.name} (${p.siteName} • ${p.categoryName})`,
+                  }))}
+                  placeholder="Select a product..."
+                  searchable={true}
+                  searchPlaceholder="Search product by name or site..."
+                  className="w-full"
+                  triggerClassName="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white font-semibold focus:outline-none hover:border-[#6D8196] shadow-2xs"
+                />
               </div>
 
               {/* Sale Type Selector: 1st Sale vs Resale */}
