@@ -13,8 +13,8 @@ export async function PATCH(
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (session.user.role !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Forbidden: Super Admin access required" }, { status: 403 });
+    if (session.user.role !== "SUPER_ADMIN" && session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
     }
 
     const { id } = await params;

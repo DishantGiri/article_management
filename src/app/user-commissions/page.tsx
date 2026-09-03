@@ -168,12 +168,44 @@ export default function UserCommissionsPage() {
         throw new Error(errData.error || "Payout processing failed");
       }
 
-      toast.success(`Settled Rs. ${user.pendingAmount.toFixed(2)} for ${user.name}!`);
+      // 1. Immediately update user in list to PAID with 0 pending balance
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id === user.id) {
+            return {
+              ...u,
+              paidAmount: u.totalAmount,
+              pendingAmount: 0,
+              paymentStatus: "PAID" as const,
+              sales: u.sales ? u.sales.map((s) => ({ ...s, paymentStatus: "PAID" as const })) : [],
+            };
+          }
+          return u;
+        })
+      );
 
+      // 2. Immediately update statement user if open
       if (statementUser && statementUser.id === user.id) {
-        setStatementUser(null);
+        setStatementUser({
+          ...statementUser,
+          paidAmount: statementUser.totalAmount,
+          pendingAmount: 0,
+          paymentStatus: "PAID" as const,
+          sales: statementUser.sales.map((s) => ({ ...s, paymentStatus: "PAID" as const })),
+        });
       }
-      fetchData(true);
+
+      // 3. Immediately update top metric cards
+      setMetrics((prev) => ({
+        ...prev,
+        totalPaid: prev.totalPaid + user.pendingAmount,
+        totalPending: Math.max(0, prev.totalPending - user.pendingAmount),
+      }));
+
+      toast.success(`Settled Rs. ${user.pendingAmount.toFixed(2)} for ${user.name}! Status is now Paid.`);
+
+      // 4. Re-fetch from server to ensure database sync
+      await fetchData(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to process payout");
     } finally {
