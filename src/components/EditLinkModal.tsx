@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import CustomSelect from "@/components/CustomSelect";
 import { Check, Globe, X } from "lucide-react";
+import { LATAM_CODES, COUNTRY_NAMES, getGeoDisplayName } from "@/lib/geo-constants";
 
 interface Product {
   id: number;
@@ -440,7 +441,26 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                 <Globe className="w-3.5 h-3.5 text-emerald-600" />
                 Target Geos <span className="text-rose-500">*</span>
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tier1 = ["US", "UK", "CA", "AU"].filter((g) => allGeos.includes(g));
+                    setGeos(Array.from(new Set([...geos, ...tier1])));
+                  }}
+                  className="px-2 py-0.5 text-xs font-semibold rounded bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 cursor-pointer"
+                >
+                  ⭐ Tier 1
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGeos(Array.from(new Set([...geos, ...LATAM_CODES])));
+                  }}
+                  className="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 cursor-pointer"
+                >
+                  🌎 LATAM (27)
+                </button>
                 <button
                   type="button"
                   onClick={() => setGeos([...allGeos])}
@@ -466,6 +486,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                 if (val === "TIER_1") {
                   const tier1 = ["US", "UK", "CA", "AU"].filter((g) => allGeos.includes(g));
                   setGeos(Array.from(new Set([...geos, ...tier1])));
+                } else if (val === "LATAM") {
+                  setGeos(Array.from(new Set([...geos, ...LATAM_CODES])));
                 } else if (val === "ALL") {
                   setGeos([...allGeos]);
                 } else {
@@ -474,13 +496,14 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               }}
               placeholder="Select Target GEO from Dropdown..."
               searchable={true}
-              searchPlaceholder="Search country code..."
+              searchPlaceholder="Search country name or code (Mexico, Brazil, US, UK...)"
               options={[
                 { value: "TIER_1", label: "⭐ Add Tier 1 Pack (US, UK, CA, AU)" },
+                { value: "LATAM", label: "🌎 Add LATAM Pack (27 Countries: Mexico, Brazil, Argentina...)" },
                 { value: "ALL", label: "🌐 Add All Available GEOs" },
                 ...allGeos.map((g) => ({
                   value: g,
-                  label: geos.includes(g) ? `✓ ${g} (Selected)` : `+ Add ${g}`,
+                  label: geos.includes(g) ? `✓ ${getGeoDisplayName(g)} (Selected)` : `+ Add ${getGeoDisplayName(g)}`,
                 })),
               ]}
             />
@@ -489,18 +512,22 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               <p className="text-[10px] text-rose-500 font-semibold">At least one GEO is required.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {geos.map((geo) => (
-                  <span
-                    key={geo}
-                    onClick={() => toggleGeo(geo)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#6D8196] text-white shadow-2xs cursor-pointer hover:bg-rose-600 transition-colors"
-                    title="Click to remove"
-                  >
-                    <Check className="w-3 h-3" />
-                    <span>{geo}</span>
-                    <X className="w-3 h-3 opacity-70 hover:opacity-100" />
-                  </span>
-                ))}
+                {geos.map((geo) => {
+                  const countryName = COUNTRY_NAMES[geo.toUpperCase()];
+                  const display = countryName && countryName.toUpperCase() !== geo.toUpperCase() ? `${geo} (${countryName})` : geo;
+                  return (
+                    <span
+                      key={geo}
+                      onClick={() => toggleGeo(geo)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#6D8196] text-white shadow-2xs cursor-pointer hover:bg-rose-600 transition-colors"
+                      title={`Click to remove ${getGeoDisplayName(geo)}`}
+                    >
+                      <Check className="w-3 h-3" />
+                      <span>{display}</span>
+                      <X className="w-3 h-3 opacity-70 hover:opacity-100" />
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>

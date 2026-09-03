@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const entriesToCreate: Array<{ affiliateName: string; affiliateLink: string }> =
+    const entriesToCreate: Array<{ affiliateName: string; affiliateLink: string; geos?: string[] }> =
       Array.isArray(affiliateEntries) && affiliateEntries.length > 0
         ? affiliateEntries
         : affiliateName && affiliateLink
@@ -115,7 +115,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Fix 1: Compulsory Geo selection
-    if (!geos || !Array.isArray(geos) || geos.length === 0) {
+    const hasPerEntryGeos = entriesToCreate.some((e) => Array.isArray(e.geos) && e.geos.length > 0);
+    if ((!geos || !Array.isArray(geos) || geos.length === 0) && !hasPerEntryGeos) {
       return NextResponse.json({ error: "At least one GEO must be selected." }, { status: 400 });
     }
 
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
       new Set((geos as string[] || []).map((g: string) => String(g).trim()).filter(Boolean))
     );
 
-    if (uniqueGeos.length === 0) {
+    if (uniqueGeos.length === 0 && !hasPerEntryGeos) {
       return NextResponse.json({ error: "At least one valid GEO must be selected." }, { status: 400 });
     }
 
@@ -167,8 +168,12 @@ export async function POST(req: NextRequest) {
     }
 
     const createdLinks = await prisma.$transaction(
-      entriesToCreate.map((entry) =>
-        prisma.linkLog.create({
+      entriesToCreate.map((entry) => {
+        const itemGeos = Array.isArray(entry.geos) && entry.geos.length > 0
+          ? Array.from(new Set(entry.geos.map((g) => String(g).trim()).filter(Boolean)))
+          : uniqueGeos;
+
+        return prisma.linkLog.create({
           data: {
             productId: parseInt(productId),
             addedById: addedById,
@@ -179,12 +184,12 @@ export async function POST(req: NextRequest) {
             status: targetStatus as any,
             linkerRemarks: linkerRemarks?.trim() || null,
             geos: {
-              create: uniqueGeos.map((geo: string) => ({ geo })),
+              create: itemGeos.map((geo: string) => ({ geo })),
             },
           },
           include: { geos: true, addedBy: { select: { name: true } } },
-        })
-      )
+        });
+      })
     );
 
     // Log creation history for each created link log

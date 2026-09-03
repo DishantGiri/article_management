@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus, Trash2, X, Globe } from "lucide-react";
 import { toast } from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { COUNTRY_NAMES, LATAM_CODES } from "@/lib/geo-constants";
 
 interface GeoEntry {
   id: number;
@@ -73,6 +74,32 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
       await fetchGeos();
     } catch {
       setError("Something went wrong.");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleImportLatam = async () => {
+    setAdding(true);
+    setError("");
+    try {
+      const existingCodes = new Set(geos.map((g) => g.code.toUpperCase()));
+      const missing = LATAM_CODES.filter((c) => !existingCodes.has(c));
+      if (missing.length === 0) {
+        toast.success("All 27 LATAM countries are already added!");
+        return;
+      }
+      for (const code of missing) {
+        await fetch("/api/geos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+      }
+      toast.success(`Imported ${missing.length} LATAM country(ies)!`);
+      await fetchGeos();
+    } catch {
+      setError("Failed to import some LATAM nations.");
     } finally {
       setAdding(false);
     }
@@ -154,9 +181,19 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
           {error && (
             <p className="mt-2 text-xs text-rose-500 font-medium">{error}</p>
           )}
-          <p className="mt-2 text-[10px] text-slate-400 font-medium">
-            Only GEOs added here will appear in the link selector.
-          </p>
+          <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-200/60 flex-wrap gap-2">
+            <p className="text-[10px] text-slate-500 font-medium">
+              Only GEOs added here will appear in the link selector.
+            </p>
+            <button
+              type="button"
+              onClick={handleImportLatam}
+              disabled={adding}
+              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
+            >
+              🌎 Import 27 LATAM Countries
+            </button>
+          </div>
         </div>
 
         {/* List */}
@@ -176,30 +213,35 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
             </div>
           ) : (
             <ul className="space-y-1.5">
-              {geos.map((g) => (
-                <li
-                  key={g.id}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                    <span className="text-sm font-bold text-slate-800 font-mono tracking-wide">{g.code}</span>
-                    <span className="text-[10px] text-slate-400 font-medium">custom</span>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(g.id, g.code)}
-                    disabled={deletingId === g.id}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
-                    title="Delete"
+              {geos.map((g) => {
+                const countryName = COUNTRY_NAMES[g.code.toUpperCase()];
+                return (
+                  <li
+                    key={g.id}
+                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition group"
                   >
-                    {deletingId === g.id ? (
-                      <span className="w-4 h-4 border-2 border-rose-300 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </li>
-              ))}
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="text-sm font-bold text-slate-800 font-mono tracking-wide">{g.code}</span>
+                      {countryName && countryName.toUpperCase() !== g.code.toUpperCase() && (
+                        <span className="text-xs text-slate-500 font-medium">({countryName})</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleDelete(g.id, g.code)}
+                      disabled={deletingId === g.id}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition disabled:opacity-50 cursor-pointer"
+                      title={`Delete ${g.code}`}
+                    >
+                      {deletingId === g.id ? (
+                        <span className="w-4 h-4 border-2 border-rose-300 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
