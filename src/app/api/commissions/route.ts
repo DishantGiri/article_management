@@ -20,6 +20,9 @@ export async function GET(req: NextRequest) {
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (session.user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden: Super Admin access required" }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const siteIdParam = searchParams.get("siteId");
@@ -81,7 +84,65 @@ export async function GET(req: NextRequest) {
       orderBy: { addedAt: "desc" },
     });
 
-    // 4. Transform and enrich each product row
+    // 4. Query all commission sales matching siteId (or all) for the flat Commission List
+    const saleWhere: any = {};
+    if (siteIdParam && siteIdParam !== "ALL") {
+      saleWhere.siteId = parseInt(siteIdParam);
+    }
+
+    const allSalesFromDb = await prisma.commissionSale.findMany({
+      where: saleWhere,
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            category: { select: { id: true, name: true } },
+            article: { select: { id: true, status: true, articleLink: true } },
+          },
+        },
+        site: { select: { id: true, name: true, url: true } },
+      },
+      orderBy: { saleDate: "desc" },
+    });
+
+    // 5. Transform flat Commission Sales List
+    const salesList = allSalesFromDb.map((s) => {
+      const catKey = resolveCategoryKey(s.product?.category?.name);
+      return {
+        id: s.id,
+        productId: s.productId,
+        productName: s.product?.name || "Product #" + s.productId,
+        siteId: s.siteId,
+        siteName: s.site?.name || "General",
+        siteUrl: s.site?.url || null,
+        categoryName: s.product?.category?.name || "Nutra",
+        categoryKey: catKey,
+        articleLink: s.product?.article?.articleLink || null,
+        articleStatus: s.product?.article?.status || "PENDING",
+        saleType: s.saleType as "FIRST_SALE" | "RESALE",
+        saleDate: s.saleDate.toISOString(),
+        writerId: s.writerId,
+        writerName: s.writerName || "Unassigned",
+        writerAmount: parseFloat((s.writerAmount || 0).toFixed(2)),
+        linkerId: s.linkerId,
+        linkerName: s.linkerName || "Unassigned",
+        linkerAmount: parseFloat((s.linkerAmount || 0).toFixed(2)),
+        teamLeadId: s.teamLeadId,
+        teamLeadName: s.teamLeadName || null,
+        tlAmount: parseFloat((s.tlAmount || 0).toFixed(2)),
+        seoAmount: parseFloat((s.seoAmount || 0).toFixed(2)),
+        bonusAmount: parseFloat((s.bonusAmount || 0).toFixed(2)),
+        partyAmount: parseFloat((s.partyAmount || 0).toFixed(2)),
+        amount: parseFloat((s.amount || 0).toFixed(2)),
+        paymentStatus: s.paymentStatus as "PENDING" | "PAID",
+        paidAt: s.paidAt ? s.paidAt.toISOString() : null,
+        notes: s.notes,
+        createdAt: s.createdAt.toISOString(),
+      };
+    });
+
+    // 6. Transform and enrich each product row
     let enriched = products.map((prod) => {
       const catKey = resolveCategoryKey(prod.category?.name);
       const linkerName = prod.addedBy?.name || prod.linkLogs[0]?.addedBy?.name || "Unassigned";
@@ -150,7 +211,46 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 5. Apply Client-side Filtering
+    // 7. Calculate aggregate pool & sales metrics from all sales
+    let totalFirstSales = 0;
+    let totalFirstSalesAmount = 0;
+    let totalResales = 0;
+    let totalResalesAmount = 0;
+    let totalBonusPool = 0;
+    let totalSeoPool = 0;
+    let totalPartyFunds = 0;
+    let totalLinkerAmount = 0;
+    let totalWriterAmount = 0;
+    let totalTlAmount = 0;
+    let totalCommissions = 0;
+    let totalPaid = 0;
+    let totalPending = 0;
+
+    salesList.forEach((s) => {
+      totalCommissions += s.amount;
+      if (s.paymentStatus === "PAID") {
+        totalPaid += s.amount;
+      } else {
+        totalPending += s.amount;
+      }
+
+      if (s.saleType === "FIRST_SALE") {
+        totalFirstSales += 1;
+        totalFirstSalesAmount += s.amount;
+      } else {
+        totalResales += 1;
+        totalResalesAmount += s.amount;
+      }
+
+      totalBonusPool += s.bonusAmount || 0;
+      totalSeoPool += s.seoAmount || 0;
+      totalPartyFunds += s.partyAmount || 0;
+      totalLinkerAmount += s.linkerAmount || 0;
+      totalWriterAmount += s.writerAmount || 0;
+      totalTlAmount += s.tlAmount || 0;
+    });
+
+    // 8. Apply Client-side Filtering to products if requested
     if (search) {
       enriched = enriched.filter((p) =>
         p.name.toLowerCase().includes(search) ||
@@ -168,24 +268,27 @@ export async function GET(req: NextRequest) {
       enriched = enriched.filter((p) => p.categoryKey === categoryParam);
     }
 
-    // 6. Overall Metrics
-    const totalCommissionsAll = enriched.reduce((acc, p) => acc + p.totalCommissionAmount, 0);
-    const totalPaidAll = enriched.reduce((acc, p) => acc + p.paidCommissionAmount, 0);
-    const totalPendingAll = enriched.reduce((acc, p) => acc + p.pendingCommissionAmount, 0);
-    const totalFirstSalesAll = enriched.reduce((acc, p) => acc + p.firstSalesCount, 0);
-    const totalResalesAll = enriched.reduce((acc, p) => acc + p.resalesCount, 0);
-
     return NextResponse.json({
       sites,
       settings: settingsMap,
       products: enriched,
+      sales: salesList,
       metrics: {
         totalProducts: enriched.length,
-        totalCommissions: parseFloat(totalCommissionsAll.toFixed(2)),
-        totalPaid: parseFloat(totalPaidAll.toFixed(2)),
-        totalPending: parseFloat(totalPendingAll.toFixed(2)),
-        totalFirstSales: totalFirstSalesAll,
-        totalResales: totalResalesAll,
+        totalSales: salesList.length,
+        totalCommissions: parseFloat(totalCommissions.toFixed(2)),
+        totalPaid: parseFloat(totalPaid.toFixed(2)),
+        totalPending: parseFloat(totalPending.toFixed(2)),
+        totalFirstSales,
+        totalFirstSalesAmount: parseFloat(totalFirstSalesAmount.toFixed(2)),
+        totalResales,
+        totalResalesAmount: parseFloat(totalResalesAmount.toFixed(2)),
+        totalBonusPool: parseFloat(totalBonusPool.toFixed(2)),
+        totalSeoPool: parseFloat(totalSeoPool.toFixed(2)),
+        totalPartyFunds: parseFloat(totalPartyFunds.toFixed(2)),
+        totalLinkerAmount: parseFloat(totalLinkerAmount.toFixed(2)),
+        totalWriterAmount: parseFloat(totalWriterAmount.toFixed(2)),
+        totalTlAmount: parseFloat(totalTlAmount.toFixed(2)),
       },
     });
   } catch (err: any) {
@@ -203,6 +306,9 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (session.user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden: Super Admin access required" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -259,13 +365,20 @@ export async function POST(req: NextRequest) {
 
     let teamLeadId: number | null = null;
     let teamLeadName: string | null = null;
+
     if (writer?.teamLeadId) {
+      // Writer has a separate assigned Team Lead — credit TL commission to them
       const tl = await prisma.user.findUnique({
         where: { id: writer.teamLeadId },
         select: { id: true, name: true },
       });
       teamLeadId = tl?.id || null;
       teamLeadName = tl?.name || null;
+    } else if (writer?.role === "TEAM_LEAD") {
+      // Special case: the writer IS a Team Lead themselves (no separate TL above them).
+      // Both writer commission AND TL commission go to this same user.
+      teamLeadId = writer.id;
+      teamLeadName = writer.name;
     }
 
     const parsedDate = saleDate ? new Date(saleDate) : new Date();

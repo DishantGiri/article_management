@@ -51,7 +51,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, siteId, categoryId, productCategory, trendLink, trendLevel, affiliateName, previewLink, remarks } = body;
+    const { name, slug, siteId, categoryId, productCategory, trendLink, trendLevel, affiliateName, previewLink, remarks } = body;
 
     const existing = await prisma.product.findUnique({ where: { id: parseInt(id) } });
     if (!existing) {
@@ -100,6 +100,13 @@ export async function PATCH(
       where: { id: parseInt(id) },
       data: {
         ...(name !== undefined ? { name } : {}),
+        ...(slug !== undefined
+          ? {
+              slug: slug
+                ? slug.trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "")
+                : null,
+            }
+          : {}),
         ...(siteId !== undefined ? { siteId: Number(siteId) } : {}),
         ...(categoryId !== undefined ? { categoryId: Number(categoryId) } : {}),
         ...(productCategory !== undefined ? { productCategory: productCategory ? productCategory.trim() : null } : {}),

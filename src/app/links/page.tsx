@@ -15,6 +15,7 @@ import CustomSelect from "@/components/CustomSelect";
 import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import LoadingScreen from "@/components/LoadingScreen";
+import { fuzzyMatchAny } from "@/lib/fuzzy";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -31,7 +32,7 @@ interface LinkLog {
   geos: { geo: string }[];
   addedBy: { name: string };
   updatedBy?: { name: string } | null;
-  product: { name: string; site?: { name: string }; article?: { articleLink?: string | null } };
+  product: { name: string; slug?: string | null; site?: { name: string }; article?: { articleLink?: string | null } };
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -198,8 +199,16 @@ function LinksPageContent() {
 
   const filtered = links.filter((l) => {
     const matchSearch =
-      l.product.name.toLowerCase().includes(search.toLowerCase()) ||
-      l.affiliateName.toLowerCase().includes(search.toLowerCase());
+      !search ||
+      fuzzyMatchAny(
+        [
+          l.product?.name,
+          l.product?.slug,
+          l.affiliateName,
+          l.product?.site?.name,
+        ],
+        search
+      );
     const matchStatus = !statusFilter || l.status === statusFilter;
 
     // Added By filter

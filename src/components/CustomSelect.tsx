@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, ReactNode, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Search, X, Check, Plus } from "lucide-react";
+import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 export interface CustomSelectOption {
   value: string;
@@ -142,14 +143,12 @@ export default function CustomSelect({
     setIsOpen(false);
   };
 
-  // Filter options by search query
+  // Filter options by search query using fuzzy matching
   const filteredOptions = options.filter((opt) => {
     if (!search.trim()) return true;
+    if (opt.isAction) return true;
     const labelStr = typeof opt.label === "string" ? opt.label : opt.value;
-    return (
-      labelStr.toLowerCase().includes(search.toLowerCase()) ||
-      opt.value.toLowerCase().includes(search.toLowerCase())
-    );
+    return fuzzyMatchAny([labelStr, opt.value], search);
   });
 
   const exactMatchExists = options.some(

@@ -10,6 +10,7 @@ import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
+import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 interface Article {
   id: number;
@@ -22,6 +23,7 @@ interface Article {
   product: { 
     id: number; 
     name: string; 
+    slug?: string | null;
     remarks?: string | null;
     site: { name: string }; 
     category: { name: string };
@@ -263,9 +265,16 @@ function ArticlesContent() {
 
   const filtered = articles.filter((a) => {
     const matchSearch =
-      a.product.name.toLowerCase().includes(search.toLowerCase()) ||
-      (a.writer?.name || "").toLowerCase().includes(search.toLowerCase()) ||
-      a.product.site.name.toLowerCase().includes(search.toLowerCase());
+      !search ||
+      fuzzyMatchAny(
+        [
+          a.product?.name,
+          a.product?.slug,
+          a.writer?.name,
+          a.product?.site?.name,
+        ],
+        search
+      );
 
     const matchStatus = !statusFilter || a.status === statusFilter;
     const matchWriter = !writerFilter || a.writer?.name === writerFilter;

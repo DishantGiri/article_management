@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
+import { generateSlug } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ interface FormData {
   categoryId: string;
   siteId: string;
   name: string;
+  slug: string;
   category: string;
   trendLink: string;
   previewLink: string;
@@ -96,11 +98,14 @@ export default function AddProductPage() {
     categoryId: "",
     siteId: "",
     name: "",
+    slug: "",
     category: "",
     trendLink: "",
     previewLink: "",
     remarks: "",
   });
+
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
 
   // Restrict access: only SUPER_ADMIN, ADMIN, LINKER can access this page
   useEffect(() => {
@@ -136,7 +141,13 @@ export default function AddProductPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const update = useCallback((field: keyof FormData, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "name" && !isSlugManuallyEdited) {
+        next.slug = generateSlug(value);
+      }
+      return next;
+    });
     setError("");
 
     if (field === "trendLink" || field === "previewLink") {
@@ -192,6 +203,7 @@ export default function AddProductPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
+          slug: form.slug?.trim() ? generateSlug(form.slug) : generateSlug(form.name),
           categoryIds: [parseInt(form.categoryId)],
           productCategory: form.category.trim() || null,
           trendLink: form.trendLink || null,
@@ -236,7 +248,8 @@ export default function AddProductPage() {
             <button
               id="btn-add-another"
               onClick={() => {
-                setForm({ categoryId: "", siteId: "", name: "", category: "", trendLink: "", previewLink: "", remarks: "" });
+                setForm({ categoryId: "", siteId: "", name: "", slug: "", category: "", trendLink: "", previewLink: "", remarks: "" });
+                setIsSlugManuallyEdited(false);
                 setStep(1);
                 setSuccess(false);
               }}
@@ -416,6 +429,41 @@ export default function AddProductPage() {
                   onChange={(e) => update("name", e.target.value)}
                   placeholder="e.g. Alpha Whey Protein"
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition"
+                />
+              </div>
+
+              {/* Product Slug (Auto-generated & Editable) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Product Slug <span className="text-xs text-gray-400 font-normal">(Auto-generated)</span>
+                  </label>
+                  {isSlugManuallyEdited && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSlugManuallyEdited(false);
+                        setForm((prev) => ({ ...prev, slug: generateSlug(prev.name) }));
+                      }}
+                      className="text-xs font-semibold text-violet-600 hover:underline"
+                    >
+                      Reset to Auto
+                    </button>
+                  )}
+                </div>
+                <input
+                  id="input-product-slug"
+                  type="text"
+                  value={form.slug}
+                  onChange={(e) => {
+                    setIsSlugManuallyEdited(true);
+                    setForm((prev) => ({
+                      ...prev,
+                      slug: e.target.value.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-"),
+                    }));
+                  }}
+                  placeholder="e.g. alpha-whey-protein"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition"
                 />
               </div>
 

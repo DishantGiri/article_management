@@ -14,6 +14,7 @@ import CustomSelect from "@/components/CustomSelect";
 import DateRangePicker from "@/components/DateRangePicker";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import LoadingScreen from "@/components/LoadingScreen";
+import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 interface Category {
   id: number;
@@ -23,6 +24,7 @@ interface Category {
 interface Product {
   id: number;
   name: string;
+  slug?: string | null;
   siteId: number;
   categoryId: number;
   productCategory?: string | null;
@@ -244,13 +246,20 @@ export default function ProductsPage() {
   ) as string[];
 
   const filtered = products.filter((p) => {
-    const s = search.toLowerCase();
     const matchSearch =
       !search ||
-      p.name.toLowerCase().includes(s) ||
-      (p.site?.name && p.site.name.toLowerCase().includes(s)) ||
-      (p.category?.name && p.category.name.toLowerCase().includes(s)) ||
-      (p.addedBy?.name && p.addedBy.name.toLowerCase().includes(s));
+      fuzzyMatchAny(
+        [
+          p.name,
+          p.slug,
+          p.site?.name,
+          p.category?.name,
+          p.productCategory,
+          p.affiliateName,
+          p.addedBy?.name,
+        ],
+        search
+      );
 
     const matchSite =
       !siteFilter ||
@@ -322,12 +331,19 @@ export default function ProductsPage() {
   };
 
   const filteredMyArticles = myArticles.filter((a: any) => {
-    const s = search.toLowerCase();
     const matchSearch =
       !search ||
-      (a.product?.name && a.product.name.toLowerCase().includes(s)) ||
-      (a.product?.site?.name && a.product.site.name.toLowerCase().includes(s)) ||
-      (a.product?.category?.name && a.product.category.name.toLowerCase().includes(s));
+      fuzzyMatchAny(
+        [
+          a.product?.name,
+          a.product?.slug,
+          a.product?.site?.name,
+          a.product?.category?.name,
+          a.product?.productCategory,
+          a.product?.affiliateName,
+        ],
+        search
+      );
 
     const matchSite =
       !siteFilter ||
@@ -728,7 +744,12 @@ export default function ProductsPage() {
                     return (
                       <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-3 py-3.5">
-                          <span className="text-[13px] font-semibold text-slate-800">{p.name}</span>
+                          <div className="flex flex-col">
+                            <span className="text-[13px] font-semibold text-slate-800">{p.name}</span>
+                            {p.slug && (
+                              <span className="text-[11px] font-mono text-slate-400">/{p.slug}</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-3.5">
                           {p.site?.url ? (

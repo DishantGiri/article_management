@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
+import { generateSlug } from "@/lib/utils";
 import {
   Package,
   X,
@@ -17,11 +18,14 @@ import {
   Sparkles,
   Check,
   ChevronDown,
+  ChevronLeft,
+  LayoutGrid,
   ListPlus,
   ClipboardList,
   Table,
   FileSpreadsheet,
   Trash2,
+  RotateCcw,
 } from "lucide-react";
 
 interface Site {
@@ -41,6 +45,7 @@ interface Affiliate {
 
 export interface SpreadsheetRow {
   name: string;
+  slug: string;
   category: string;
   affiliateName: string;
   trendLevel: string;
@@ -52,6 +57,7 @@ export interface SpreadsheetRow {
 interface FormData {
   categoryIds: number[];
   name: string;
+  slug: string;
   category: string;
   trendLink: string;
   trendLevel: string;
@@ -61,12 +67,34 @@ interface FormData {
 }
 
 function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | "single" }) {
-  const steps = entryMode === "bulk"
-    ? ["Product Type", "Bulk Products (Google Sheet)"]
-    : ["Product Type", "Preview Sites", "Details"];
+  if (entryMode === "bulk") {
+    return (
+      <div className="flex items-center justify-center max-w-lg mx-auto w-full mb-4 px-4">
+        <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 shrink-0">
+          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+            ✓
+          </div>
+          <span className="text-slate-300">Product Type</span>
+        </div>
 
+        <div className="h-0.5 flex-1 mx-4 bg-blue-600/40 rounded-full" />
+
+        <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 shrink-0">
+          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+            2
+          </div>
+          <span className="text-slate-200 font-bold">Bulk Products</span>
+          <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded font-medium">
+            Google Sheet
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const steps = ["Product Type", "Preview Sites", "Details"];
   return (
-    <div className={`flex items-center gap-0 ${entryMode === "bulk" ? "mb-3" : "mb-6"}`}>
+    <div className="flex items-center gap-0 mb-6 max-w-xl mx-auto w-full px-2">
       {steps.map((label, i) => {
         const idx = i + 1;
         const active = step === idx;
@@ -77,23 +105,21 @@ function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | 
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                   done
-                    ? "bg-[#6D8196] text-white"
+                    ? "bg-blue-600 text-white"
                     : active
-                    ? "bg-[#6D8196] text-white ring-4 ring-[#6D8196]/20 shadow-xs"
-                    : "bg-slate-100 text-slate-400 border border-slate-200"
+                    ? "bg-blue-600 text-white ring-4 ring-blue-500/20 shadow-xs"
+                    : "bg-slate-800 text-slate-400 border border-slate-700"
                 }`}
               >
                 {done ? (
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
+                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                 ) : (
                   idx
                 )}
               </div>
               <span
                 className={`text-[10px] font-bold tracking-tight whitespace-nowrap ${
-                  active ? "text-[#6D8196]" : done ? "text-[#4A4A4A]" : "text-slate-400"
+                  active ? "text-blue-400" : done ? "text-slate-300" : "text-slate-500"
                 }`}
               >
                 {label}
@@ -102,7 +128,7 @@ function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | 
             {i < steps.length - 1 && (
               <div
                 className={`h-0.5 flex-1 mx-2 mb-4 rounded transition-all duration-500 ${
-                  done ? "bg-emerald-400" : "bg-slate-200"
+                  done ? "bg-blue-600" : "bg-slate-800"
                 }`}
               />
             )}
@@ -142,7 +168,7 @@ export default function AddProductModal({
   const [entryMode, setEntryMode] = useState<"single" | "bulk">("bulk");
   const [bulkPasteText, setBulkPasteText] = useState("");
   const [spreadsheetRows, setSpreadsheetRows] = useState<SpreadsheetRow[]>([
-    { name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
+    { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
   ]);
 
   // Batch Fill Helpers
@@ -169,12 +195,13 @@ export default function AddProductModal({
 
     const uniqueNames = Array.from(new Set(lines));
     if (uniqueNames.length === 0) {
-      setSpreadsheetRows([{ name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }]);
+      setSpreadsheetRows([{ name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }]);
       return;
     }
 
     const newRows: SpreadsheetRow[] = uniqueNames.map((n) => ({
       name: n,
+      slug: generateSlug(n),
       category: batchCategory || form.category || "",
       affiliateName: batchAffiliate || form.affiliateName || "",
       trendLevel: batchTrendLevel || form.trendLevel || "HIGH",
@@ -206,6 +233,7 @@ export default function AddProductModal({
 
     const newRows: SpreadsheetRow[] = uniqueNames.map((n) => ({
       name: n,
+      slug: generateSlug(n),
       category: batchCategory || form.category || "",
       affiliateName: batchAffiliate || form.affiliateName || "",
       trendLevel: batchTrendLevel || form.trendLevel || "HIGH",
@@ -221,7 +249,20 @@ export default function AddProductModal({
   const updateSpreadsheetRow = (index: number, field: keyof SpreadsheetRow, value: string) => {
     setSpreadsheetRows((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
+      const current = next[index];
+      const updated = { ...current, [field]: value };
+
+      // Auto-generate slug when product name is modified (unless user already customized slug)
+      if (field === "name") {
+        const prevAutoSlug = generateSlug(current.name);
+        if (!current.slug || current.slug === prevAutoSlug) {
+          updated.slug = generateSlug(value);
+        }
+      } else if (field === "slug") {
+        updated.slug = value.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-");
+      }
+
+      next[index] = updated;
       return next;
     });
   };
@@ -231,6 +272,7 @@ export default function AddProductModal({
       ...prev,
       {
         name: "",
+        slug: "",
         category: batchCategory || form.category || "",
         affiliateName: batchAffiliate || form.affiliateName || "",
         trendLevel: batchTrendLevel || "HIGH",
@@ -245,7 +287,7 @@ export default function AddProductModal({
     setSpreadsheetRows((prev) => {
       const next = prev.filter((_, i) => i !== index);
       if (next.length === 0) {
-        return [{ name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }];
+        return [{ name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }];
       }
       return next;
     });
@@ -266,6 +308,7 @@ export default function AddProductModal({
   const [form, setForm] = useState<FormData>({
     categoryIds: [],
     name: "",
+    slug: "",
     category: "",
     trendLink: "",
     trendLevel: "HIGH",
@@ -273,6 +316,9 @@ export default function AddProductModal({
     previewLink: "",
     remarks: "",
   });
+
+  // Track if user manually modified slug in single mode
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
 
   // Deselected/excluded sites state
   const [excludedSiteIds, setExcludedSiteIds] = useState<number[]>([]);
@@ -353,7 +399,7 @@ export default function AddProductModal({
       setEntryMode("bulk");
       setBulkPasteText("");
       setSpreadsheetRows([
-        { name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
+        { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
       ]);
       setBatchCategory("");
       setBatchAffiliate("");
@@ -362,6 +408,7 @@ export default function AddProductModal({
       setForm({
         categoryIds: [],
         name: "",
+        slug: "",
         category: "",
         trendLink: "",
         trendLevel: "HIGH",
@@ -369,6 +416,7 @@ export default function AddProductModal({
         previewLink: "",
         remarks: "",
       });
+      setIsSlugManuallyEdited(false);
       setLoading(true);
       Promise.all([
         fetch("/api/categories").then((r) => r.json()),
@@ -390,7 +438,13 @@ export default function AddProductModal({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const update = useCallback((field: keyof FormData, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "name" && !isSlugManuallyEdited) {
+        next.slug = generateSlug(value);
+      }
+      return next;
+    });
     setError("");
 
     if (field === "trendLink" || field === "previewLink") {
@@ -456,13 +510,7 @@ export default function AddProductModal({
           toast.error(msg);
           return;
         }
-        if (!r.trendLink.trim()) {
-          const msg = `Row #${rowNum} ("${r.name}"): Trend Link URL is compulsory.`;
-          setError(msg);
-          toast.error(msg);
-          return;
-        }
-        if (!isValidUrl(r.trendLink)) {
+        if (r.trendLink.trim() && !isValidUrl(r.trendLink)) {
           const msg = `Row #${rowNum} ("${r.name}"): Trend Link must start with http:// or https:// and be a valid URL.`;
           setError(msg);
           toast.error(msg);
@@ -492,6 +540,7 @@ export default function AddProductModal({
           body: JSON.stringify({
             products: validRows.map((r) => ({
               name: r.name.trim(),
+              slug: r.slug?.trim() ? generateSlug(r.slug) : generateSlug(r.name),
               productCategory: r.category.trim(),
               affiliateName: r.affiliateName.trim(),
               trendLevel: r.trendLevel || "HIGH",
@@ -545,12 +594,7 @@ export default function AddProductModal({
       toast.error("Trend Level is compulsory.");
       return;
     }
-    if (!form.trendLink.trim()) {
-      setError("Trend Link URL is compulsory.");
-      toast.error("Trend Link URL is compulsory.");
-      return;
-    }
-    if (!isValidUrl(form.trendLink)) {
+    if (form.trendLink.trim() && !isValidUrl(form.trendLink)) {
       setError("Please enter a valid Trend Link URL (must start with http:// or https://)");
       toast.error("Invalid Trend Link URL.");
       return;
@@ -586,6 +630,7 @@ export default function AddProductModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
+          slug: form.slug?.trim() ? generateSlug(form.slug) : generateSlug(form.name),
           categoryIds: form.categoryIds,
           excludedSiteIds,
           productCategory: form.category.trim() || null,
@@ -634,30 +679,31 @@ export default function AddProductModal({
   if (!isOpen || !canAddProduct) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-2 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-      <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col border border-slate-100 transition-all duration-300 ${
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/75 backdrop-blur-sm animate-fadeIn">
+      <div className={`bg-[#0f172a] text-slate-100 rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col border border-slate-800 transition-all duration-300 ${
         entryMode === "bulk" && step === 2
-          ? "w-[99vw] max-w-[99.2vw] h-[98vh] max-h-[98vh]"
-          : "max-w-2xl max-h-[92vh]"
+          ? "w-[98vw] max-w-[1550px] h-[95vh] max-h-[96vh]"
+          : "w-[96vw] max-w-4xl max-h-[92vh]"
       }`}>
         {/* Modal Header */}
-        <div className="px-5 sm:px-6 py-3.5 bg-[#4A4A4A] text-white flex items-center justify-between shrink-0">
+        <div className="px-5 sm:px-6 py-3 bg-[#0f172a] border-b border-slate-800 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#6D8196]/30 border border-[#6D8196]/40 flex items-center justify-center text-white shadow-inner">
-              <Package className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-inner">
+              <LayoutGrid className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight">Add New Product</h2>
-              <p className="text-xs text-[#EAEAEA] font-medium">
-                {entryMode === "bulk" && step === 2
-                  ? "Bulk Spreadsheet Mode — Full-Width Google Sheets Style Table"
-                  : "Select product type, websites, trend rating & affiliate info"}
-              </p>
+              <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                <span>Add New Product</span>
+                <span className="text-slate-600 font-normal">·</span>
+                <span className="text-xs text-slate-400 font-normal">
+                  {entryMode === "bulk" && step === 2 ? "Bulk Spreadsheet Mode" : "Product Setup"}
+                </span>
+              </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-[#EAEAEA] hover:text-white flex items-center justify-center transition cursor-pointer"
+            className="w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -684,6 +730,7 @@ export default function AddProductModal({
                     setForm({
                       categoryIds: [],
                       name: "",
+                      slug: "",
                       category: "",
                       trendLink: "",
                       trendLevel: "HIGH",
@@ -691,8 +738,9 @@ export default function AddProductModal({
                       previewLink: "",
                       remarks: "",
                     });
+                    setIsSlugManuallyEdited(false);
                     setSpreadsheetRows([
-                      { name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
+                      { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
                     ]);
                     setBulkPasteText("");
                     setStep(1);
@@ -723,14 +771,14 @@ export default function AddProductModal({
 
               {/* STEP 1: Choose Product Type */}
               {step === 1 && (
-                <div className="space-y-4">
+                <div className="space-y-5 max-w-4xl mx-auto w-full py-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-blue-400" />
                         Select Product Type <span className="text-rose-500">*</span>
                       </label>
-                      <p className="text-[11px] text-[#737373] mt-0.5">
+                      <p className="text-[11px] text-slate-400 mt-0.5">
                         Choose the product type for your products (e.g. Ecomm, Supplement)
                       </p>
                     </div>
@@ -738,7 +786,7 @@ export default function AddProductModal({
                       <button
                         type="button"
                         onClick={() => setShowAddCat(!showAddCat)}
-                        className="text-xs font-bold text-[#6D8196] hover:text-[#5A6D81] flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         {showAddCat ? "Cancel" : "Add Product Type"}
@@ -747,18 +795,18 @@ export default function AddProductModal({
                   </div>
 
                   {showAddCat && (
-                    <form onSubmit={handleInlineAddCat} className="p-3 bg-[#FAF9F5] rounded-xl border border-[#CBCBCB]/60 space-y-2">
+                    <form onSubmit={handleInlineAddCat} className="p-3.5 bg-[#131d31] rounded-xl border border-slate-800 space-y-2.5">
                       <input
                         type="text"
                         value={newCatName}
                         onChange={(e) => setNewCatName(e.target.value)}
                         placeholder="Product type name (e.g. Skin Care, Ecomm, Supplements)"
-                        className="w-full px-3 py-2 bg-white border border-[#CBCBCB] rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6D8196]"
+                        className="w-full px-3 py-2 bg-[#0b1120] border border-slate-800 rounded-lg text-xs font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                       />
                       <button
                         type="submit"
                         disabled={addingCat || !newCatName.trim()}
-                        className="w-full py-1.5 bg-[#6D8196] text-white rounded-lg text-xs font-bold hover:bg-[#5A6D81] disabled:opacity-50 transition cursor-pointer shadow-xs"
+                        className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition cursor-pointer shadow-sm"
                       >
                         {addingCat ? "Saving..." : "Create & Select"}
                       </button>
@@ -766,11 +814,11 @@ export default function AddProductModal({
                   )}
 
                   {loading ? (
-                    <div className="text-center py-8 text-xs text-slate-500 font-semibold">Loading product types...</div>
+                    <div className="text-center py-12 text-xs text-slate-400 font-medium">Loading product types...</div>
                   ) : categories.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-slate-500 italic">No product types found. Click "+ Add Product Type" above.</div>
+                    <div className="text-center py-8 text-xs text-slate-400 italic">No product types found. Click "+ Add Product Type" above.</div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 pr-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto p-1 pr-2">
                       {categories.map((c) => {
                         const selected = form.categoryIds.includes(c.id);
                         return (
@@ -785,16 +833,16 @@ export default function AddProductModal({
                                   : [...prev.categoryIds, c.id],
                               }));
                             }}
-                            className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                            className={`p-3.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
                               selected
-                                ? "bg-[#6D8196]/15 border-[#6D8196]/40 text-[#3D4F61] font-bold shadow-2xs"
-                                : "bg-white border-slate-200 text-slate-700 font-semibold hover:border-slate-300"
+                                ? "bg-blue-600/20 border-blue-500 text-white font-bold shadow-sm ring-1 ring-blue-500/40"
+                                : "bg-[#131d31] border-slate-800 text-slate-300 font-medium hover:border-slate-700 hover:bg-slate-800/50"
                             }`}
                           >
                             <span className="text-xs truncate">{c.name}</span>
                             <div
                               className={`w-4 h-4 rounded-md flex items-center justify-center border transition ${
-                                selected ? "bg-[#6D8196] border-[#6D8196] text-white" : "border-slate-300 bg-white"
+                                selected ? "bg-blue-600 border-blue-500 text-white" : "border-slate-700 bg-[#0b1120]"
                               }`}
                             >
                               {selected && <Check className="w-3 h-3 stroke-[3]" />}
@@ -809,7 +857,7 @@ export default function AddProductModal({
                     <button
                       disabled={form.categoryIds.length === 0}
                       onClick={() => setStep(2)}
-                      className="w-full py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white font-bold text-xs disabled:opacity-50 transition cursor-pointer shadow-xs"
+                      className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer shadow-md shadow-blue-600/20"
                     >
                       Continue ({form.categoryIds.length} selected)
                     </button>
@@ -821,27 +869,27 @@ export default function AddProductModal({
               {step === 2 && entryMode === "bulk" && (
                 <div className="space-y-4">
                   {/* Mode Switcher */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-extrabold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                          <FileSpreadsheet className="w-4 h-4 text-[#6D8196]" />
-                          Bulk Products Spreadsheet (Google Sheets Style)
+                        <span className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <FileSpreadsheet className="w-4 h-4 text-blue-400" />
+                          Bulk Products Spreadsheet
                         </span>
-                        <span className="text-[10px] font-extrabold bg-[#6D8196]/15 text-[#3D4F61] px-2 py-0.5 rounded-md border border-[#6D8196]/30">
-                          Default
+                        <span className="text-[10px] font-bold bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded">
+                          DEFAULT
                         </span>
                       </div>
-                      <p className="text-[11px] text-[#737373] mt-0.5">
-                        Selected Type: <strong className="text-slate-800">{getCategoryNames()}</strong> • Direct paste 10+ products or edit directly in the table
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Selected: <strong className="text-slate-200">{getCategoryNames() || "Selected Type"}</strong> · Direct paste 10+ products or edit directly in the table
                       </p>
                     </div>
 
-                    <div className="inline-flex p-1 bg-[#FAF9F5] border border-[#CBCBCB]/70 rounded-xl shrink-0 self-start sm:self-auto">
+                    <div className="inline-flex p-1 bg-[#0b1120] border border-slate-800 rounded-xl shrink-0 self-start sm:self-auto">
                       <button
                         type="button"
                         onClick={() => setEntryMode("bulk")}
-                        className="px-3 py-1 rounded-lg text-xs font-bold transition bg-[#6D8196] text-white shadow-2xs cursor-pointer flex items-center gap-1.5"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-blue-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer"
                       >
                         <Table className="w-3.5 h-3.5" />
                         Bulk Spreadsheet
@@ -849,8 +897,9 @@ export default function AddProductModal({
                       <button
                         type="button"
                         onClick={() => setEntryMode("single")}
-                        className="px-3 py-1 rounded-lg text-xs font-bold transition text-[#737373] hover:text-[#4A4A4A] cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200 flex items-center gap-1.5 cursor-pointer"
                       >
+                        <ClipboardList className="w-3.5 h-3.5" />
                         Single Product Form
                       </button>
                     </div>
@@ -859,12 +908,11 @@ export default function AddProductModal({
                   {/* Control Center: Side-by-Side Direct Paste & Batch Fill Cards */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 shrink-0">
                     {/* Card 1: Direct Paste Box (6 columns) */}
-                    <div className="lg:col-span-6 bg-[#FAF9F5] border border-[#CBCBCB] rounded-xl p-3 flex flex-col justify-between shadow-2xs hover:border-[#6D8196]/60 transition-colors">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold text-[#4A4A4A] flex items-center gap-1.5 uppercase tracking-wider">
-                          <ClipboardList className="w-3.5 h-3.5 text-[#6D8196]" />
-                          1. Direct Paste Products
-                          <span className="text-rose-500">*</span>
+                    <div className="lg:col-span-6 bg-[#131d31] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5 tracking-wide">
+                          <ClipboardList className="w-3.5 h-3.5 text-blue-400" />
+                          1. Direct Paste Products <span className="text-rose-500">*</span>
                         </label>
                         <div className="flex items-center gap-2">
                           <button
@@ -877,9 +925,9 @@ export default function AddProductModal({
                                 toast.error("Please paste directly into the box");
                               }
                             }}
-                            className="px-2 py-0.5 text-[11px] font-bold text-[#6D8196] bg-white border border-[#6D8196]/30 hover:bg-[#6D8196]/10 rounded-md transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                            className="px-2.5 py-1 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition flex items-center gap-1.5 cursor-pointer"
                           >
-                            <ClipboardList className="w-3 h-3" />
+                            <ClipboardList className="w-3.5 h-3.5 text-slate-400" />
                             Paste Clipboard
                           </button>
                           {bulkPasteText && (
@@ -887,9 +935,9 @@ export default function AddProductModal({
                               type="button"
                               onClick={() => {
                                 setBulkPasteText("");
-                                setSpreadsheetRows([{ name: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }]);
+                                setSpreadsheetRows([{ name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }]);
                               }}
-                              className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                              className="text-xs font-bold text-rose-400 hover:underline cursor-pointer"
                             >
                               Clear
                             </button>
@@ -898,11 +946,10 @@ export default function AddProductModal({
                       </div>
 
                       <textarea
-                        rows={3}
+                        rows={4}
                         value={bulkPasteText}
                         onChange={(e) => updateRowsFromText(e.target.value)}
                         onPaste={(e) => {
-                          // Let the browser update the value first, then parse with toast
                           const pasted = e.clipboardData.getData("text");
                           if (pasted) {
                             e.preventDefault();
@@ -910,86 +957,78 @@ export default function AddProductModal({
                           }
                         }}
                         onKeyDown={(e) => {
-                          // Prevent Enter from accidentally submitting the enclosing form
                           if (e.key === "Enter") e.stopPropagation();
                         }}
-                        placeholder={"Paste 10+ product names (one per line)...\nExample:\nAlpha Whey Protein\nCreatine Monohydrate 5000\nOmega-3 Triple Strength"}
-                        className="w-full px-3 py-2 text-xs font-semibold bg-white border border-[#CBCBCB] rounded-lg text-slate-900 focus:outline-none focus:border-[#6D8196] focus:ring-1 focus:ring-[#6D8196] shadow-2xs resize-none font-mono placeholder:font-sans placeholder:text-slate-400 leading-relaxed"
+                        placeholder={"Paste 10+ product names (one per line)...\nExample:\nAlpha Whey Protein\nCreatine Monohydrate 500g\nPre-Workout Booster"}
+                        className="w-full px-3 py-2.5 text-xs font-mono bg-[#0b1120] border border-slate-800 rounded-xl text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 resize-none leading-relaxed"
                       />
 
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mt-1.5">
-                        <span className="flex items-center gap-1.5 text-[#3D4F61]">
-                          {spreadsheetRows.filter((r) => r.name.trim()).length > 0 ? (
-                            <>
-                              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-                              <strong className="text-emerald-700 font-bold">{spreadsheetRows.filter((r) => r.name.trim()).length}</strong> product(s) in spreadsheet
-                            </>
-                          ) : (
-                            "Paste from Excel, Google Sheets, or notepad"
-                          )}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">Auto-populates table</span>
+                      <div className="flex items-center justify-between text-xs text-slate-400 mt-2">
+                        <span>Paste from Excel, Google Sheets, or notepad</span>
+                        <span>Auto-populates table</span>
                       </div>
                     </div>
 
                     {/* Card 2: Batch Fill & Sites Toolbar (6 columns) */}
-                    <div className="lg:col-span-6 bg-white border border-[#CBCBCB] rounded-xl p-3 flex flex-col justify-between shadow-2xs">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-bold text-[#4A4A4A] flex items-center gap-1.5 uppercase tracking-wider">
-                          <Sparkles className="w-3.5 h-3.5 text-[#6D8196]" />
-                          2. Batch Fill All Rows
+                    <div className="lg:col-span-6 bg-[#131d31] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
+                          Fill All Rows
                         </span>
                         <button
                           type="button"
                           onClick={() => setShowSitesDrawer(!showSitesDrawer)}
-                          className="px-2 py-0.5 text-[11px] font-bold text-[#3D4F61] bg-[#FAF9F5] hover:bg-[#6D8196]/10 border border-[#CBCBCB] rounded-md transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                          className="px-2.5 py-0.5 text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full transition flex items-center gap-1.5 cursor-pointer"
                         >
-                          <Globe className="w-3 h-3 text-[#6D8196]" />
-                          {activeSites.length} Sites Included {showSitesDrawer ? "▲" : "▼"}
+                          <Globe className="w-3 h-3 text-blue-400" />
+                          {activeSites.length} Site{activeSites.length !== 1 ? "s" : ""} Included {showSitesDrawer ? "▲" : "▼"}
                         </button>
                       </div>
+                      <p className="text-xs text-slate-400 mb-2.5">
+                        Choose values once and apply them to every row in the table at once.
+                      </p>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 my-1">
+                      <div className="space-y-2.5 my-1">
                         <div>
-                          <label className="block text-[10px] font-bold text-[#737373] uppercase mb-0.5">Category</label>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">CATEGORY</label>
                           <CustomSelect
                             value={batchCategory}
                             onChange={(val) => setBatchCategory(val)}
-                            placeholder="Select Category..."
+                            placeholder="Select category..."
                             searchable={true}
                             searchPlaceholder="Search category..."
                             className="w-full"
-                            triggerClassName="w-full px-2.5 py-1.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                            triggerClassName="w-full px-3 py-2 bg-[#0b1120] border border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-200 focus:outline-none"
                             options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-[#737373] uppercase mb-0.5">Affiliate Network</label>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">AFFILIATE NETWORK</label>
                           <CustomSelect
                             value={batchAffiliate}
                             onChange={(val) => setBatchAffiliate(val)}
-                            placeholder="Select Affiliate..."
+                            placeholder="Select network..."
                             searchable={true}
                             searchPlaceholder="Search affiliate..."
                             allowCustom={true}
                             className="w-full"
-                            triggerClassName="w-full px-2.5 py-1.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                            triggerClassName="w-full px-3 py-2 bg-[#0b1120] border border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-200 focus:outline-none"
                             options={affiliates.map((aff) => ({ value: aff.name, label: aff.name }))}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-[#737373] uppercase mb-0.5">Trend Level</label>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">TREND LEVEL</label>
                           <CustomSelect
                             value={batchTrendLevel}
                             onChange={(val) => setBatchTrendLevel(val)}
                             className="w-full"
-                            triggerClassName="w-full px-2.5 py-1.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800"
+                            triggerClassName="w-full px-3 py-2 bg-[#0b1120] border border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-200 focus:outline-none"
                             options={[
-                              { value: "HIGH", label: "🔥 High Trend" },
-                              { value: "MODERATE", label: "📈 Moderate Trend" },
-                              { value: "LOW", label: "📉 Low / Stable" },
+                              { value: "HIGH", label: "High Trend" },
+                              { value: "MODERATE", label: "Moderate Trend" },
+                              { value: "LOW", label: "Low / Stable" },
                             ]}
                           />
                         </div>
@@ -998,20 +1037,19 @@ export default function AddProductModal({
                       <button
                         type="button"
                         onClick={applyBatchToAll}
-                        className="w-full py-1.5 bg-[#FAF9F5] hover:bg-[#6D8196]/15 hover:border-[#6D8196] border border-[#CBCBCB] text-[#3D4F61] text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs mt-1"
+                        className="w-full py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-md mt-2 cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-[#6D8196]" />
-                        Apply Batch Attributes to All Rows
+                        Apply to All Rows →
                       </button>
                     </div>
                   </div>
 
                   {/* Sites Exclusion / Customization Collapsible */}
                   {showSitesDrawer && (
-                    <div className="p-3 bg-[#FAF9F5] rounded-xl border border-[#CBCBCB]/80 space-y-2 animate-fadeIn">
-                      <div className="flex items-center justify-between text-xs font-bold text-[#4A4A4A]">
+                    <div className="p-3.5 bg-[#131d31] rounded-xl border border-slate-800 space-y-2 animate-fadeIn">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-300">
                         <span>Included Websites for ({getCategoryNames()})</span>
-                        <span className="text-[11px] text-slate-500 font-medium">Click to exclude any site from this upload</span>
+                        <span className="text-[11px] text-slate-400 font-medium">Click to exclude any site from this upload</span>
                       </div>
                       <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                         {previewSites.map((site: any) => {
@@ -1027,12 +1065,12 @@ export default function AddProductModal({
                               }}
                               className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${
                                 isExcluded
-                                  ? "bg-slate-100 text-slate-400 border-slate-200 line-through opacity-60"
-                                  : "bg-white text-slate-800 border-[#6D8196]/40 font-bold shadow-2xs"
+                                  ? "bg-slate-900/60 text-slate-500 border-slate-800 line-through opacity-60"
+                                  : "bg-[#0b1120] text-slate-200 border-blue-500/50 font-bold shadow-xs"
                               }`}
                             >
                               <span>{site.name}</span>
-                              {isExcluded ? <Plus className="w-3 h-3 text-slate-400" /> : <Check className="w-3 h-3 text-[#6D8196]" />}
+                              {isExcluded ? <Plus className="w-3 h-3 text-slate-500" /> : <Check className="w-3 h-3 text-blue-400" />}
                             </button>
                           );
                         })}
@@ -1040,113 +1078,135 @@ export default function AddProductModal({
                     </div>
                   )}
 
+                  {/* Section Divider & Title */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-200 shrink-0">
+                      <Table className="w-4 h-4 text-blue-400" />
+                      <span>Product Table</span>
+                    </div>
+                    <div className="h-px flex-1 bg-slate-800" />
+                    <div className="text-xs text-slate-400 shrink-0">
+                      {spreadsheetRows.filter((r) => r.name.trim()).length} products · {activeSites.length} preview site{activeSites.length !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+
                   {/* 3. The Google Sheets Style Table */}
-                  <div className="border border-[#CBCBCB] rounded-2xl overflow-hidden shadow-xs bg-white flex-1 flex flex-col min-h-0">
-                    <div className="overflow-x-auto max-h-[58vh] overflow-y-auto flex-1">
-                      <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
-                        <thead className="bg-[#FAF9F5] sticky top-0 z-10 border-b border-[#CBCBCB] text-[#4A4A4A] text-[11px] font-extrabold uppercase tracking-wider">
+                  <div className="border border-slate-800 rounded-xl overflow-hidden shadow-xs bg-[#0b1120] flex-1 flex flex-col min-h-0">
+                    <div className="overflow-x-auto max-h-[50vh] overflow-y-auto flex-1">
+                      <table className="w-full text-left border-collapse table-fixed min-w-[1050px]">
+                        <thead className="bg-[#162033] sticky top-0 z-10 border-b border-slate-800 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                           <tr>
-                            <th className="w-10 py-2.5 px-2 text-center border-r border-[#CBCBCB]/60">#</th>
-                            <th className="w-[23%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Product Name <span className="text-rose-500">*</span></th>
-                            <th className="w-[11%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Category <span className="text-rose-500">*</span></th>
-                            <th className="w-[16%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Affiliate Network <span className="text-rose-500">*</span></th>
-                            <th className="w-[11%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Trend Level <span className="text-rose-500">*</span></th>
-                            <th className="w-[14%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Trend Link <span className="text-rose-500">*</span></th>
-                            <th className="w-[14%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Preview Link <span className="text-rose-500">*</span></th>
-                            <th className="w-[11%] py-2.5 px-3 border-r border-[#CBCBCB]/60">Remarks</th>
+                            <th className="w-10 py-2.5 px-2 text-center border-r border-slate-800/80">#</th>
+                            <th className="w-[18%] py-2.5 px-3 border-r border-slate-800/80">Product Name <span className="text-rose-500">*</span></th>
+                            <th className="w-[14%] py-2.5 px-3 border-r border-slate-800/80">Slug <span className="text-slate-500 text-[9px] font-normal lowercase">(auto)</span></th>
+                            <th className="w-[11%] py-2.5 px-3 border-r border-slate-800/80">Category <span className="text-rose-500">*</span></th>
+                            <th className="w-[14%] py-2.5 px-3 border-r border-slate-800/80">Affiliate Network <span className="text-rose-500">*</span></th>
+                            <th className="w-[10%] py-2.5 px-3 border-r border-slate-800/80">Trend <span className="text-rose-500">*</span></th>
+                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-800/80">Trend Link</th>
+                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-800/80">Preview Link <span className="text-rose-500">*</span></th>
+                            <th className="w-[10%] py-2.5 px-3 border-r border-slate-800/80">Notes</th>
                             <th className="w-10 py-2.5 px-1 text-center"></th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 text-xs">
+                        <tbody className="divide-y divide-slate-800/60 text-xs">
                           {spreadsheetRows.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/70 transition-colors group">
-                              <td className="py-1 px-2 text-center text-slate-400 font-bold bg-slate-50/40 border-r border-[#CBCBCB]/40">
+                            <tr key={idx} className="hover:bg-slate-800/40 transition-colors group">
+                              <td className="py-1 px-2 text-center text-slate-500 font-bold bg-slate-900/40 border-r border-slate-800/60">
                                 {idx + 1}
                               </td>
-                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                              <td className="py-1 px-2 border-r border-slate-800/60">
                                 <input
                                   type="text"
                                   value={row.name}
                                   onChange={(e) => updateSpreadsheetRow(idx, "name", e.target.value)}
-                                  placeholder={`Product #${idx + 1} name *`}
-                                  className="w-full px-2 py-1.5 text-xs font-bold text-slate-900 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                  placeholder={`Product name *`}
+                                  className="w-full px-2 py-1.5 text-xs font-semibold text-slate-100 bg-[#131d31] border border-slate-800 focus:border-blue-500 focus:bg-[#162238] rounded-lg focus:outline-none"
                                 />
                               </td>
-                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40 min-w-[150px]">
+                              <td className="py-1 px-2 border-r border-slate-800/60">
+                                <input
+                                  type="text"
+                                  value={row.slug}
+                                  onChange={(e) => updateSpreadsheetRow(idx, "slug", e.target.value)}
+                                  placeholder="auto-slug"
+                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-300 bg-[#131d31] border border-slate-800 focus:border-blue-500 focus:bg-[#162238] rounded-lg focus:outline-none"
+                                />
+                              </td>
+                              <td className="py-1 px-2 border-r border-slate-800/60 min-w-[140px]">
                                 <CustomSelect
                                   value={row.category}
                                   onChange={(val) => updateSpreadsheetRow(idx, "category", val)}
-                                  placeholder="Select Category *"
+                                  placeholder="Category *"
                                   searchable={true}
                                   searchPlaceholder="Search category..."
                                   portal={true}
                                   className="w-full"
-                                  triggerClassName="w-full px-2 py-1.5 bg-white border border-[#CBCBCB]/60 hover:border-[#6D8196] rounded-lg text-xs font-medium text-slate-800 focus:outline-none"
+                                  triggerClassName="w-full px-2 py-1.5 bg-[#131d31] border border-slate-800 hover:border-blue-500 rounded-lg text-xs font-medium text-slate-200 focus:outline-none"
                                   options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                                 />
                               </td>
-                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                              <td className="py-1 px-2 border-r border-slate-800/60">
                                 <CustomSelect
                                   value={row.affiliateName}
                                   onChange={(val) => updateSpreadsheetRow(idx, "affiliateName", val)}
-                                  placeholder="Select Affiliate *"
+                                  placeholder="Affiliate *"
                                   searchable={true}
                                   searchPlaceholder="Search affiliate..."
                                   allowCustom={true}
                                   portal={true}
-                                  minWidth={220}
+                                  minWidth={200}
                                   className="w-full"
-                                  triggerClassName="w-full px-2 py-1.5 text-xs text-slate-800 bg-transparent hover:bg-white border border-transparent hover:border-[#CBCBCB] focus:border-[#6D8196] rounded-lg transition-all"
+                                  triggerClassName="w-full px-2 py-1.5 text-xs text-slate-200 bg-[#131d31] border border-slate-800 hover:border-blue-500 rounded-lg"
                                   options={affiliates.map((aff) => ({ value: aff.name, label: aff.name }))}
                                 />
                               </td>
-                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                              <td className="py-1 px-2 border-r border-slate-800/60">
                                 <CustomSelect
                                   value={row.trendLevel}
                                   onChange={(val) => updateSpreadsheetRow(idx, "trendLevel", val)}
                                   portal={true}
-                                  minWidth={140}
+                                  minWidth={120}
                                   className="w-full"
-                                  triggerClassName="w-full px-2 py-1.5 text-xs font-semibold text-slate-800 bg-transparent hover:bg-white border border-transparent hover:border-[#CBCBCB] focus:border-[#6D8196] rounded-lg transition-all"
+                                  triggerClassName="w-full px-2 py-1.5 text-xs font-semibold text-slate-200 bg-[#131d31] border border-slate-800 hover:border-blue-500 rounded-lg"
                                   options={[
-                                    { value: "HIGH", label: "🔥 High" },
-                                    { value: "MODERATE", label: "📈 Moderate" },
-                                    { value: "LOW", label: "📉 Low" },
+                                    { value: "HIGH", label: "High" },
+                                    { value: "MODERATE", label: "Moderate" },
+                                    { value: "LOW", label: "Low" },
                                   ]}
                                 />
                               </td>
-                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                              <td className="py-1 px-2 border-r border-slate-800/60">
                                 <input
                                   type="url"
                                   value={row.trendLink}
                                   onChange={(e) => updateSpreadsheetRow(idx, "trendLink", e.target.value)}
-                                  placeholder="https://... *"
-                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-800 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                  placeholder="https://... (optional)"
+                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-300 bg-[#131d31] border border-slate-800 focus:border-blue-500 focus:bg-[#162238] rounded-lg focus:outline-none"
                                 />
                               </td>
-                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                              <td className="py-1 px-2 border-r border-slate-800/60">
                                 <input
                                   type="url"
                                   value={row.previewLink}
                                   onChange={(e) => updateSpreadsheetRow(idx, "previewLink", e.target.value)}
                                   placeholder="https://... *"
-                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-800 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-300 bg-[#131d31] border border-slate-800 focus:border-blue-500 focus:bg-[#162238] rounded-lg focus:outline-none"
                                 />
                               </td>
-                              <td className="py-1 px-2 border-r border-[#CBCBCB]/40">
+                              <td className="py-1 px-2 border-r border-slate-800/60">
                                 <input
                                   type="text"
                                   value={row.remarks}
                                   onChange={(e) => updateSpreadsheetRow(idx, "remarks", e.target.value)}
                                   placeholder="Notes..."
-                                  className="w-full px-2 py-1.5 text-xs text-slate-800 bg-transparent focus:bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#6D8196]"
+                                  className="w-full px-2 py-1.5 text-xs text-slate-300 bg-[#131d31] border border-slate-800 focus:border-blue-500 focus:bg-[#162238] rounded-lg focus:outline-none"
                                 />
                               </td>
                               <td className="py-1 px-2 text-center">
                                 <button
                                   type="button"
                                   onClick={() => removeSpreadsheetRow(idx)}
-                                  className="w-6 h-6 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer mx-auto"
+                                  className="w-6 h-6 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 flex items-center justify-center transition cursor-pointer mx-auto"
                                   title="Delete row"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1158,38 +1218,37 @@ export default function AddProductModal({
                       </table>
                     </div>
 
-                    <div className="px-4 py-2.5 bg-[#FAF9F5] border-t border-[#CBCBCB] flex items-center justify-between text-xs">
+                    <div className="px-4 py-2.5 bg-[#131d31] border-t border-slate-800 flex items-center justify-between text-xs">
                       <button
                         type="button"
                         onClick={addSpreadsheetRow}
-                        className="font-bold text-[#6D8196] hover:text-[#5A6D81] flex items-center gap-1.5 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-[#CBCBCB] shadow-2xs hover:bg-slate-50 transition"
+                        className="font-bold text-slate-200 hover:text-white flex items-center gap-1.5 cursor-pointer bg-[#0b1120] px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 transition"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         Add Blank Row
                       </button>
 
-                      <div className="flex items-center gap-3 text-slate-500 font-semibold">
-                        <span>{spreadsheetRows.filter((r) => r.name.trim()).length} Products in Sheet</span>
-                        <span>•</span>
-                        <span>{activeSites.length} Preview Sites included</span>
+                      <div className="text-slate-400 font-medium">
+                        {spreadsheetRows.length} row{spreadsheetRows.length !== 1 ? "s" : ""} in table
                       </div>
                     </div>
                   </div>
 
                   {/* Footer Action Buttons */}
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex items-center justify-between gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition text-xs shadow-2xs cursor-pointer"
+                      className="py-2.5 px-4 rounded-xl border border-slate-800 bg-[#131d31] hover:bg-slate-800 text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center gap-1.5"
                     >
+                      <ChevronLeft className="w-4 h-4" />
                       Back to Product Type
                     </button>
                     <button
                       type="button"
                       disabled={spreadsheetRows.filter((r) => r.name.trim()).length === 0 || submitting}
                       onClick={handleSubmit}
-                      className="flex-1 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white font-bold text-xs shadow-xs disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      className="py-2.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
                       {submitting ? (
                         "Saving Products..."
@@ -1203,23 +1262,23 @@ export default function AddProductModal({
 
               {/* STEP 2: PREVIEW SITES (IF IN SINGLE MODE) */}
               {step === 2 && entryMode === "single" && (
-                <div className="space-y-4">
+                <div className="space-y-4 max-w-4xl mx-auto w-full">
                   {/* Mode Switcher */}
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                     <div>
-                      <span className="text-xs font-bold text-[#4A4A4A] uppercase tracking-wider">
+                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                         Product Entry Mode
                       </span>
-                      <p className="text-[11px] text-[#737373]">
+                      <p className="text-xs text-slate-400">
                         Switch to Bulk Spreadsheet or continue with Single Product Form
                       </p>
                     </div>
 
-                    <div className="inline-flex p-1 bg-[#FAF9F5] border border-[#CBCBCB]/70 rounded-xl">
+                    <div className="inline-flex p-1 bg-[#0b1120] border border-slate-800 rounded-xl">
                       <button
                         type="button"
                         onClick={() => setEntryMode("bulk")}
-                        className="px-3 py-1 rounded-lg text-xs font-bold transition text-[#737373] hover:text-[#4A4A4A] cursor-pointer flex items-center gap-1.5"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200 cursor-pointer flex items-center gap-1.5"
                       >
                         <Table className="w-3.5 h-3.5" />
                         Bulk Spreadsheet
@@ -1227,7 +1286,7 @@ export default function AddProductModal({
                       <button
                         type="button"
                         onClick={() => setEntryMode("single")}
-                        className="px-3 py-1 rounded-lg text-xs font-bold transition bg-[#6D8196] text-white shadow-2xs cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-blue-600 text-white shadow-sm cursor-pointer"
                       >
                         Single Product Form
                       </button>
@@ -1235,15 +1294,15 @@ export default function AddProductModal({
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
+                    <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-blue-400" />
                       Associated Websites ({getCategoryNames()})
                     </label>
                     {isAdmin && (
                       <button
                         type="button"
                         onClick={() => setShowAddSite(!showAddSite)}
-                        className="text-xs font-bold text-[#6D8196] hover:text-[#5A6D81] flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         {showAddSite ? "Cancel" : "Add Website"}
@@ -1252,25 +1311,25 @@ export default function AddProductModal({
                   </div>
 
                   {showAddSite && (
-                    <form onSubmit={handleInlineAddSite} className="p-3 bg-[#FAF9F5] rounded-xl border border-[#CBCBCB]/60 space-y-2">
+                    <form onSubmit={handleInlineAddSite} className="p-3.5 bg-[#131d31] rounded-xl border border-slate-800 space-y-2.5">
                       <input
                         type="text"
                         value={newSiteName}
                         onChange={(e) => setNewSiteName(e.target.value)}
                         placeholder="Site Name (e.g. Health Daily)"
-                        className="w-full px-3 py-2 bg-white border border-[#CBCBCB] rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6D8196]"
+                        className="w-full px-3 py-2 bg-[#0b1120] border border-slate-800 rounded-lg text-xs font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                       />
                       <input
                         type="url"
                         value={newSiteUrl}
                         onChange={(e) => setNewSiteUrl(e.target.value)}
                         placeholder="Site URL (https://...)"
-                        className="w-full px-3 py-2 bg-white border border-[#CBCBCB] rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6D8196]"
+                        className="w-full px-3 py-2 bg-[#0b1120] border border-slate-800 rounded-lg text-xs font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                       />
                       <button
                         type="submit"
                         disabled={addingSite || !newSiteName.trim()}
-                        className="w-full py-1.5 bg-[#6D8196] text-white rounded-lg text-xs font-bold hover:bg-[#5A6D81] disabled:opacity-50 transition cursor-pointer shadow-xs"
+                        className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition cursor-pointer shadow-sm"
                       >
                         {addingSite ? "Saving..." : "Create & Link"}
                       </button>
@@ -1278,11 +1337,11 @@ export default function AddProductModal({
                   )}
 
                   {previewSites.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-slate-500 italic">
+                    <div className="text-center py-8 text-xs text-slate-400 italic">
                       No websites found for selected categories. Click "+ Add Website" above to configure one.
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-52 overflow-y-auto p-1 pr-2">
+                    <div className="space-y-2 max-h-56 overflow-y-auto p-1 pr-2">
                       {previewSites.map((site: any) => {
                         const isExcluded = excludedSiteIds.includes(site.id);
                         return (
@@ -1290,23 +1349,23 @@ export default function AddProductModal({
                             key={site.id}
                             className={`w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all ${
                               isExcluded
-                                ? "bg-slate-50/50 border-slate-200 text-slate-400 opacity-60"
-                                : "bg-[#FAF9F5] border-[#CBCBCB]/60 text-slate-800"
+                                ? "bg-slate-900/60 border-slate-800 text-slate-500 opacity-60"
+                                : "bg-[#131d31] border-slate-800 text-slate-200"
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <span className="text-xs font-bold truncate">{site.name}</span>
                               {site.url && (
-                                <span className="text-[11px] text-slate-400 font-mono truncate hidden sm:inline">
+                                <span className="text-[11px] text-slate-500 font-mono truncate hidden sm:inline">
                                   ({site.url})
                                 </span>
                               )}
                               {isExcluded ? (
-                                <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md font-bold shrink-0">
+                                <span className="text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-md font-bold shrink-0">
                                   Excluded
                                 </span>
                               ) : (
-                                <span className="text-[10px] bg-[#6D8196]/15 text-[#3D4F61] px-2 py-0.5 rounded-md font-bold border border-[#6D8196]/30 shrink-0">
+                                <span className="text-[10px] bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-md font-bold shrink-0">
                                   Auto-assigned
                                 </span>
                               )}
@@ -1318,19 +1377,19 @@ export default function AddProductModal({
                                   isExcluded ? prev.filter((id) => id !== site.id) : [...prev, site.id]
                                 );
                               }}
-                              className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                              className={`p-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 shrink-0 ${
                                 isExcluded
-                                  ? "text-[#6D8196] hover:bg-[#6D8196]/10"
-                                  : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                  ? "text-blue-400 hover:bg-blue-600/10"
+                                  : "text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
                               }`}
                               title={isExcluded ? "Re-include this site" : "Remove/Deselect this site"}
                             >
                               {isExcluded ? (
-                                <span className="text-[11px] font-bold text-[#6D8196]">Re-include</span>
+                                <span className="text-[11px] font-bold text-blue-400">Re-include</span>
                               ) : (
                                 <>
-                                  <X className="w-4 h-4 text-slate-400 hover:text-rose-600" />
-                                  <span className="text-[11px] font-bold text-slate-500 hover:text-rose-600">Remove</span>
+                                  <X className="w-4 h-4 text-slate-400 hover:text-rose-400" />
+                                  <span className="text-[11px] font-bold text-slate-400 hover:text-rose-400">Remove</span>
                                 </>
                               )}
                             </button>
@@ -1342,15 +1401,18 @@ export default function AddProductModal({
 
                   <div className="flex gap-3 pt-2">
                     <button
+                      type="button"
                       onClick={() => setStep(1)}
-                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition text-xs cursor-pointer"
+                      className="flex-1 py-2.5 rounded-xl border border-slate-800 bg-[#131d31] hover:bg-slate-800 text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
+                      <ChevronLeft className="w-4 h-4" />
                       Back
                     </button>
                     <button
+                      type="button"
                       disabled={activeSites.length === 0}
                       onClick={() => setStep(3)}
-                      className="flex-1 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white font-bold text-xs disabled:opacity-50 transition cursor-pointer shadow-xs"
+                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs disabled:opacity-40 transition cursor-pointer shadow-md shadow-blue-600/20"
                     >
                       Continue ({activeSites.length} site{activeSites.length !== 1 ? "s" : ""})
                     </button>
@@ -1360,28 +1422,86 @@ export default function AddProductModal({
 
               {/* STEP 3: DETAILS (IF IN SINGLE MODE) */}
               {step === 3 && entryMode === "single" && (
-                <div className="space-y-4">
-                  {/* Grid 2-Column: Product Name & Affiliate Dropdown */}
+                <div className="space-y-4 max-w-4xl mx-auto w-full">
+                  {/* Grid 2-Column: Product Name & Slug */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Product Name */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                        <Package className="w-3.5 h-3.5 text-[#6D8196]" />
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Package className="w-3.5 h-3.5 text-blue-400" />
                         Product Name <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={form.name}
                         onChange={(e) => update("name", e.target.value)}
-                        placeholder="e.g. Alpha Whey"
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
+                        placeholder="e.g. Alpha Whey Protein"
+                        className="w-full px-3.5 py-2.5 bg-[#0b1120] border border-slate-800 rounded-xl text-sm font-semibold text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all shadow-xs"
+                      />
+                    </div>
+
+                    {/* Product Slug (Auto-generated & Editable) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                          <Link2 className="w-3.5 h-3.5 text-blue-400" />
+                          Product Slug <span className="text-slate-400 font-normal text-[10px] normal-case">(Auto-generated)</span>
+                        </label>
+                        {isSlugManuallyEdited && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsSlugManuallyEdited(false);
+                              setForm((prev) => ({ ...prev, slug: generateSlug(prev.name) }));
+                            }}
+                            className="text-[10px] font-bold text-blue-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                            title="Reset to auto-generated slug"
+                          >
+                            <RotateCcw className="w-2.5 h-2.5" />
+                            <span>Reset to Auto</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={form.slug}
+                        onChange={(e) => {
+                          setIsSlugManuallyEdited(true);
+                          setForm((prev) => ({
+                            ...prev,
+                            slug: e.target.value.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-"),
+                          }));
+                        }}
+                        placeholder="e.g. alpha-whey-protein"
+                        className="w-full px-3.5 py-2.5 bg-[#0b1120] border border-slate-800 rounded-xl text-xs font-mono text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all shadow-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Grid 2-Column: Category & Affiliate Network */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Category */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-blue-400" />
+                        Category <span className="text-rose-500">*</span>
+                      </label>
+                      <CustomSelect
+                        value={form.category}
+                        onChange={(val) => update("category", val)}
+                        placeholder="Select Product Category..."
+                        searchable={true}
+                        searchPlaceholder="Search category..."
+                        className="w-full"
+                        triggerClassName="w-full px-3.5 py-2.5 bg-[#0b1120] border border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-200 focus:outline-none"
+                        options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                       />
                     </div>
 
                     {/* Affiliate Network Dropdown */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                        <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-blue-400" />
                         Affiliate Network / Name <span className="text-rose-500">*</span>
                       </label>
                       {!showCustomAffiliate ? (
@@ -1396,6 +1516,7 @@ export default function AddProductModal({
                             }
                           }}
                           placeholder="Select Affiliate..."
+                          triggerClassName="w-full px-3.5 py-2.5 bg-[#0b1120] border border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-200 focus:outline-none"
                           options={[
                             ...affiliates.map((aff) => ({ value: aff.name, label: aff.name })),
                             { value: "__NEW__", label: "+ Add Custom Affiliate...", isAction: true }
@@ -1408,12 +1529,12 @@ export default function AddProductModal({
                             value={customAffiliate}
                             onChange={(e) => setCustomAffiliate(e.target.value)}
                             placeholder="Enter affiliate name..."
-                            className="flex-1 px-3.5 py-2.5 bg-white border border-[#6D8196] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
+                            className="flex-1 px-3.5 py-2.5 bg-[#0b1120] border border-slate-800 rounded-xl text-xs font-semibold text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                           />
                           <button
                             type="button"
                             onClick={() => setShowCustomAffiliate(false)}
-                            className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 border border-[#CBCBCB] rounded-xl hover:bg-slate-50 cursor-pointer"
+                            className="px-3 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 border border-slate-800 rounded-xl hover:bg-slate-800 cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -1426,51 +1547,52 @@ export default function AddProductModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Trend Rating Dropdown */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                        <TrendingUp className="w-3.5 h-3.5 text-[#6D8196]" />
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
                         Trend Level <span className="text-rose-500">*</span>
                       </label>
                       <CustomSelect
                         value={form.trendLevel}
                         onChange={(val) => update("trendLevel", val)}
                         placeholder="Select Trend Level..."
+                        triggerClassName="w-full px-3.5 py-2.5 bg-[#0b1120] border border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-200 focus:outline-none"
                         options={[
-                          { value: "HIGH", label: "🔥 High Trend" },
-                          { value: "MODERATE", label: "📈 Moderate Trend" },
-                          { value: "LOW", label: "📉 Low / Stable" },
+                          { value: "HIGH", label: "High Trend" },
+                          { value: "MODERATE", label: "Moderate Trend" },
+                          { value: "LOW", label: "Low / Stable" },
                         ]}
                       />
                     </div>
 
                     {/* Trend Link */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                        <Link2 className="w-3.5 h-3.5 text-[#6D8196]" />
-                        Trend Link URL <span className="text-rose-500">*</span>
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Link2 className="w-3.5 h-3.5 text-blue-400" />
+                        Trend Link URL <span className="text-slate-400 font-normal text-[10px] normal-case">(Optional)</span>
                       </label>
                       <input
                         type="url"
                         value={form.trendLink}
                         onChange={(e) => update("trendLink", e.target.value)}
-                        placeholder="https://..."
-                        className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
+                        placeholder="https://... (optional)"
+                        className={`w-full px-3.5 py-2.5 bg-[#0b1120] border rounded-xl text-xs font-mono text-slate-200 placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${
                           fieldErrors.trendLink
-                            ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                            : "border-[#CBCBCB] focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                            ? "border-rose-500/60 focus:ring-1 focus:ring-rose-500"
+                            : "border-slate-800 focus:border-blue-500"
                         }`}
                       />
                       {fieldErrors.trendLink && (
-                        <p className="text-xs font-semibold text-rose-500">{fieldErrors.trendLink}</p>
+                        <p className="text-xs font-semibold text-rose-400">{fieldErrors.trendLink}</p>
                       )}
                     </div>
                   </div>
 
-                  {/* Grid 2-Column: Preview Link & Category */}
+                  {/* Grid 2-Column: Preview Link & Remarks */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Preview Link */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-blue-400" />
                         Preview Link URL <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -1478,60 +1600,44 @@ export default function AddProductModal({
                         value={form.previewLink}
                         onChange={(e) => update("previewLink", e.target.value)}
                         placeholder="https://..."
-                        className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
+                        className={`w-full px-3.5 py-2.5 bg-[#0b1120] border rounded-xl text-xs font-mono text-slate-200 placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${
                           fieldErrors.previewLink
-                            ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                            : "border-[#CBCBCB] focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                            ? "border-rose-500/60 focus:ring-1 focus:ring-rose-500"
+                            : "border-slate-800 focus:border-blue-500"
                         }`}
                       />
                       {fieldErrors.previewLink && (
-                        <p className="text-xs font-semibold text-rose-500">{fieldErrors.previewLink}</p>
+                        <p className="text-xs font-semibold text-rose-400">{fieldErrors.previewLink}</p>
                       )}
                     </div>
 
-                    {/* New Defined Category Field */}
+                    {/* Remarks */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
-                        <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
-                        Category <span className="text-rose-500">*</span>
-                      </label>
-                      <CustomSelect
-                        value={form.category}
-                        onChange={(val) => update("category", val)}
-                        placeholder="Select Product Category..."
-                        searchable={true}
-                        searchPlaceholder="Search category..."
-                        className="w-full"
-                        options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">Remarks</label>
+                      <input
+                        type="text"
+                        value={form.remarks}
+                        onChange={(e) => update("remarks", e.target.value)}
+                        placeholder="Optional notes or instructions..."
+                        className="w-full px-3.5 py-2.5 bg-[#0b1120] border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 transition-all shadow-xs"
                       />
                     </div>
                   </div>
 
-                  {/* Remarks */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider">Remarks</label>
-                    <textarea
-                      rows={2}
-                      value={form.remarks}
-                      onChange={(e) => update("remarks", e.target.value)}
-                      placeholder="Optional notes or instructions..."
-                      className="w-full px-3.5 py-2 bg-white border border-[#CBCBCB] rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all resize-none shadow-2xs"
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex gap-3 pt-3">
                     <button
                       type="button"
                       onClick={() => setStep(2)}
-                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition text-xs shadow-2xs cursor-pointer"
+                      className="flex-1 py-2.5 rounded-xl border border-slate-800 bg-[#131d31] hover:bg-slate-800 text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
+                      <ChevronLeft className="w-4 h-4" />
                       Back to Websites
                     </button>
                     <button
                       type="button"
                       disabled={!form.name.trim() || submitting}
                       onClick={handleSubmit}
-                      className="flex-1 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white font-bold text-xs shadow-xs disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg shadow-blue-600/20 disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
                       {submitting ? "Saving..." : "Add Product"}
                     </button>

@@ -48,6 +48,7 @@ import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
 import LoadingScreen from "@/components/LoadingScreen";
+import { fuzzyMatchAny } from "@/lib/fuzzy";
 import CustomSelect from "@/components/CustomSelect";
 
 interface DashboardData {
@@ -1824,7 +1825,9 @@ function WriterAvailableAssignments({
 
   const filteredArticles = useMemo(() => {
     return pendingArticles.filter((a) => {
-      const matchSearch = a.product?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchSearch =
+        !searchQuery.trim() ||
+        fuzzyMatchAny([a.product?.name, a.product?.slug, a.product?.site?.name], searchQuery);
       const matchSite = siteFilter === "ALL" || a.product?.site?.name === siteFilter;
       return matchSearch && matchSite;
     });

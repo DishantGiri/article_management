@@ -16,6 +16,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+import { generateSlug } from "@/lib/utils";
+
 interface Site {
   id: number;
   name: string;
@@ -38,6 +40,7 @@ interface EditProductModalProps {
   product: {
     id: number;
     name: string;
+    slug?: string | null;
     productCategory?: string | null;
     trendLink?: string | null;
     trendLevel?: string | null;
@@ -77,6 +80,8 @@ export default function EditProductModal({
   const [error, setError] = useState("");
 
   const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [isSlugEdited, setIsSlugEdited] = useState(false);
   const [siteId, setSiteId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [category, setCategory] = useState("");
@@ -95,6 +100,9 @@ export default function EditProductModal({
   useEffect(() => {
     if (isOpen && product) {
       setName(product.name || "");
+      const initialSlug = product.slug || generateSlug(product.name || "");
+      setSlug(initialSlug);
+      setIsSlugEdited(Boolean(product.slug && product.slug !== generateSlug(product.name || "")));
       setSiteId(product.siteId?.toString() || "");
       setCategoryId(product.categoryId?.toString() || "");
       setCategory(product.productCategory || "");
@@ -170,6 +178,7 @@ export default function EditProductModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          slug: slug.trim() ? generateSlug(slug) : generateSlug(name),
           siteId: parseInt(siteId),
           categoryId: parseInt(categoryId),
           productCategory: category.trim() || null,
@@ -235,7 +244,7 @@ export default function EditProductModal({
             </div>
           ) : (
             <>
-              {/* Product Name & Affiliate */}
+              {/* Product Name & Product Slug */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -245,12 +254,53 @@ export default function EditProductModal({
                   <input
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      setName(newName);
+                      if (!isSlugEdited) {
+                        setSlug(generateSlug(newName));
+                      }
+                    }}
                     placeholder="Product Name"
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
                   />
                 </div>
 
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-[#6D8196]" />
+                      Product Slug <span className="text-slate-400 font-normal text-[10px] normal-case">(Auto-generated)</span>
+                    </label>
+                    {isSlugEdited && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSlugEdited(false);
+                          setSlug(generateSlug(name));
+                        }}
+                        className="text-[10px] font-bold text-[#6D8196] hover:underline"
+                        title="Reset slug to match product name"
+                      >
+                        Reset to Auto
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => {
+                      setIsSlugEdited(true);
+                      setSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-"));
+                    }}
+                    placeholder="e.g. product-slug"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Affiliate & Product Category */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
@@ -292,6 +342,22 @@ export default function EditProductModal({
                     </div>
                   )}
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
+                    Product Category
+                  </label>
+                  <CustomSelect
+                    value={category}
+                    onChange={(val) => setCategory(val)}
+                    placeholder="Select Product Category..."
+                    searchable={true}
+                    searchPlaceholder="Search category..."
+                    className="w-full"
+                    options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
+                  />
+                </div>
               </div>
 
               {/* Site & Product Type */}
@@ -323,24 +389,8 @@ export default function EditProductModal({
                 </div>
               </div>
 
-              {/* Category & Trend Level */}
+              {/* Trend Level & Trend Link */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
-                    Product Category
-                  </label>
-                  <CustomSelect
-                    value={category}
-                    onChange={(val) => setCategory(val)}
-                    placeholder="Select Product Category..."
-                    searchable={true}
-                    searchPlaceholder="Search category..."
-                    className="w-full"
-                    options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
-                  />
-                </div>
-
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                     <TrendingUp className="w-3.5 h-3.5 text-[#6D8196]" />
@@ -357,10 +407,7 @@ export default function EditProductModal({
                     ]}
                   />
                 </div>
-              </div>
 
-              {/* Trend Link & Preview Link */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Link2 className="w-3.5 h-3.5 text-[#6D8196]" />
@@ -389,7 +436,10 @@ export default function EditProductModal({
                     <p className="text-xs font-semibold text-rose-500">{trendLinkError}</p>
                   )}
                 </div>
+              </div>
 
+              {/* Preview Link & Remarks */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
@@ -418,18 +468,17 @@ export default function EditProductModal({
                     <p className="text-xs font-semibold text-rose-500">{previewLinkError}</p>
                   )}
                 </div>
-              </div>
 
-              {/* Remarks */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Remarks</label>
-                <textarea
-                  rows={2}
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Optional notes or instructions..."
-                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all resize-none shadow-2xs"
-                />
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Remarks</label>
+                  <input
+                    type="text"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Optional notes or instructions..."
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center gap-3 pt-4 border-t border-slate-100 justify-end">

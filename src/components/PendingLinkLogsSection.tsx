@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Search, AlertTriangle, Plus, ChevronDown, ChevronUp, LayoutGrid, List, Filter, X, Building2 } from "lucide-react";
+import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 interface PendingProduct {
   id: number;
@@ -44,12 +45,12 @@ export default function PendingLinkLogsSection({
 
   const uniqueSites = useMemo(() => Object.keys(siteCounts).sort(), [siteCounts]);
 
-  // Filter products by search and site
+  // Filter products by search and site using fuzzy search
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchesSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.site?.name && p.site.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        !searchQuery.trim() ||
+        fuzzyMatchAny([p.name, p.site?.name], searchQuery);
       const matchesSite = selectedSite === "ALL" || (p.site?.name || "Unassigned") === selectedSite;
       return matchesSearch && matchesSite;
     });

@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
 
     interface IncomingProduct {
       name: string;
+      slug?: string | null;
       productCategory?: string | null;
       affiliateName?: string | null;
       trendLevel?: string | null;
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
       productItems = products
         .map((p) => ({
           name: typeof p.name === "string" ? p.name.trim() : "",
+          slug: typeof p.slug === "string" ? p.slug.trim() : (typeof body.slug === "string" ? body.slug.trim() : null),
           productCategory: p.productCategory?.trim() || productCategory?.trim() || null,
           affiliateName: p.affiliateName?.trim() || affiliateName?.trim() || null,
           trendLevel: p.trendLevel || trendLevel || "HIGH",
@@ -60,12 +62,13 @@ export async function POST(req: NextRequest) {
         .filter(Boolean)
         .map((n) => ({
           name: n,
+          slug: typeof body.slug === "string" ? body.slug.trim() : null,
           productCategory: productCategory?.trim() || null,
           affiliateName: affiliateName?.trim() || null,
           trendLevel: trendLevel || "HIGH",
-          trendLink: trendLink || null,
-          previewLink: previewLink || null,
-          remarks: remarks || null,
+          trendLink: trendLink?.trim() || null,
+          previewLink: previewLink?.trim() || null,
+          remarks: remarks?.trim() || null,
         }));
     }
 
@@ -103,7 +106,7 @@ export async function POST(req: NextRequest) {
       if (!p.trendLevel || !p.trendLevel.trim()) {
         return NextResponse.json({ error: `Product "${p.name}": Trend Level is required.` }, { status: 400 });
       }
-      if (!p.trendLink || !p.trendLink.trim() || !isValidUrl(p.trendLink)) {
+      if (p.trendLink && p.trendLink.trim() && !isValidUrl(p.trendLink)) {
         return NextResponse.json({ error: `Product "${p.name}": Valid Trend Link URL is required (must start with http:// or https://).` }, { status: 400 });
       }
       if (!p.previewLink || !p.previewLink.trim() || !isValidUrl(p.previewLink)) {
@@ -202,8 +205,13 @@ export async function POST(req: NextRequest) {
           if (excludedSet.has(site.id)) {
             continue;
           }
+          const finalSlug = item.slug && item.slug.trim()
+            ? item.slug.trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "")
+            : item.name.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+
           productsToCreate.push({
             name: item.name,
+            slug: finalSlug || null,
             siteId: site.id,
             categoryId: cat.id,
             productCategory: item.productCategory || null,
@@ -247,7 +255,7 @@ export async function POST(req: NextRequest) {
     // Auto-create LinkLog for each product with affiliateName
     for (const p of createdProducts) {
       if (p.affiliateName && p.affiliateName.trim()) {
-        const slug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        const slug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
         const buyUrl = p.site.url ? `${p.site.url.replace(/\/+$/, "")}/${slug}` : null;
 
         await prisma.linkLog.create({

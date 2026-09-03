@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
+import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 interface UserSaleItem {
   saleId: number;
@@ -217,16 +218,13 @@ export default function UserCommissionsPage() {
     }
   };
 
-  // Filter users by text search
+  // Filter users by text search using fuzzy matching
   const filteredUsers = useMemo(() => {
     if (!search.trim()) return users;
-    const query = search.toLowerCase();
-    return users.filter(
-      (u) =>
-        u.name.toLowerCase().includes(query) ||
-        u.email.toLowerCase().includes(query) ||
-        u.role.toLowerCase().includes(query)
-    );
+    return users.filter((u) => {
+      const productNames = u.sales?.map((s) => s.productName) || [];
+      return fuzzyMatchAny([u.name, u.email, u.role, ...productNames], search);
+    });
   }, [users, search]);
 
   const isAdminOrSuperAdmin =
@@ -274,15 +272,26 @@ export default function UserCommissionsPage() {
 
           {/* Navigation Toggle & Actions */}
           <div className="flex items-center gap-2.5 self-stretch sm:self-auto flex-wrap">
-            {/* View Switcher: Products View vs Users View */}
+            {/* View Switcher: Commission List vs Products vs Users */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold shrink-0">
-              <Link
-                href="/commissions"
-                className="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 transition flex items-center gap-1.5"
-              >
-                <Package className="w-3.5 h-3.5" />
-                <span>By Products</span>
-              </Link>
+              {session?.user?.role === "SUPER_ADMIN" && (
+                <>
+                  <Link
+                    href="/commissions"
+                    className="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1.5"
+                  >
+                    <ReceiptText className="w-3.5 h-3.5" />
+                    <span>Commission List</span>
+                  </Link>
+                  <Link
+                    href="/commissions?tab=products"
+                    className="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1.5"
+                  >
+                    <Package className="w-3.5 h-3.5" />
+                    <span>By Products</span>
+                  </Link>
+                </>
+              )}
               <span className="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-[#6D8196]" />
                 <span>By Users</span>

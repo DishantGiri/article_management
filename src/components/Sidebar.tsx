@@ -126,7 +126,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/commissions",
     label: "Commissions",
-    roles: ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "LINKER", "WRITER"],
+    roles: ["SUPER_ADMIN"],
     icon: ReceiptText,
   },
   {
