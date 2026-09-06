@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
             articleLink: true,
             completedAt: true,
             productCreatedAt: true,
-            writer: { select: { id: true, name: true } },
+            writer: { select: { id: true, name: true, hasLeftCompany: true, approved: true } },
           },
         },
         linkLogs: {
@@ -149,6 +149,11 @@ export async function GET(req: NextRequest) {
       const linkerId = prod.addedBy?.id || prod.linkLogs[0]?.addedBy?.id || null;
       const writerName = prod.article?.writer?.name || "Unassigned";
       const writerId = prod.article?.writer?.id || null;
+      const writerHasLeft = Boolean(
+        prod.article?.writer?.hasLeftCompany ||
+        (prod.article?.writer && !prod.article?.writer?.approved) ||
+        !prod.article?.writer
+      );
 
       const firstSales = prod.commissionSales.filter((s) => s.saleType === "FIRST_SALE");
       const resales = prod.commissionSales.filter((s) => s.saleType === "RESALE");
@@ -191,6 +196,7 @@ export async function GET(req: NextRequest) {
         linkerName,
         writerId,
         writerName,
+        writerHasLeft,
         articleStatus: prod.article?.status || "PENDING",
         articleLink: prod.article?.articleLink || null,
         firstSalesCount: firstSales.length,
@@ -219,6 +225,7 @@ export async function GET(req: NextRequest) {
     let totalBonusPool = 0;
     let totalSeoPool = 0;
     let totalPartyFunds = 0;
+    let totalTransferredToParty = 0;
     let totalLinkerAmount = 0;
     let totalWriterAmount = 0;
     let totalTlAmount = 0;
@@ -245,6 +252,7 @@ export async function GET(req: NextRequest) {
       totalBonusPool += s.bonusAmount || 0;
       totalSeoPool += s.seoAmount || 0;
       totalPartyFunds += s.partyAmount || 0;
+      totalTransferredToParty += s.writerTransferredToParty || 0;
       totalLinkerAmount += s.linkerAmount || 0;
       totalWriterAmount += s.writerAmount || 0;
       totalTlAmount += s.tlAmount || 0;
@@ -286,6 +294,7 @@ export async function GET(req: NextRequest) {
         totalBonusPool: parseFloat(totalBonusPool.toFixed(2)),
         totalSeoPool: parseFloat(totalSeoPool.toFixed(2)),
         totalPartyFunds: parseFloat(totalPartyFunds.toFixed(2)),
+        totalTransferredToParty: parseFloat(totalTransferredToParty.toFixed(2)),
         totalLinkerAmount: parseFloat(totalLinkerAmount.toFixed(2)),
         totalWriterAmount: parseFloat(totalWriterAmount.toFixed(2)),
         totalTlAmount: parseFloat(totalTlAmount.toFixed(2)),
@@ -312,7 +321,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { productId, saleType, saleDate, paymentStatus, notes } = body;
+    const { productId, saleType, saleDate, paymentStatus, notes, writerLeftCompany } = body;
 
     if (!productId) {
       return NextResponse.json({ error: "Product ID is required" }, { status: 400 });
@@ -353,15 +362,26 @@ export async function POST(req: NextRequest) {
     // Default amounts if setting not found
     const amount = setting?.total || 0;
     const linkerAmount = setting?.linker || 0;
-    const writerAmount = setting?.writer || 0;
+    const baseWriterAmount = setting?.writer || 0;
     const tlAmount = setting?.tl || 0;
     const seoAmount = setting?.seo || 0;
     const bonusAmount = setting?.bonusPool || 0;
-    const partyAmount = setting?.partyFund || 0;
+    const basePartyAmount = setting?.partyFund || 0;
 
     // Beneficiaries
     const linker = product.addedBy || product.linkLogs[0]?.addedBy;
     const writer = product.article?.writer;
+
+    // Determine if writer has left the company
+    const isWriterLeft =
+      writerLeftCompany !== undefined
+        ? Boolean(writerLeftCompany)
+        : Boolean(writer?.hasLeftCompany || (writer && !writer.approved) || !writer);
+
+    // If writer has left, their commission transfers to the Office Party Fund
+    const writerTransferredToParty = isWriterLeft ? baseWriterAmount : 0;
+    const writerAmount = isWriterLeft ? 0 : baseWriterAmount;
+    const partyAmount = basePartyAmount + writerTransferredToParty;
 
     let teamLeadId: number | null = null;
     let teamLeadName: string | null = null;
@@ -393,7 +413,7 @@ export async function POST(req: NextRequest) {
         saleType: type,
         saleDate: isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
         writerId: writer?.id || null,
-        writerName: writer?.name || null,
+        writerName: writer?.name || (isWriterLeft ? "Departed Writer" : null),
         linkerId: linker?.id || null,
         linkerName: linker?.name || null,
         teamLeadId,
@@ -407,6 +427,8 @@ export async function POST(req: NextRequest) {
         seoAmount,
         bonusAmount,
         partyAmount,
+        writerLeftCompany: isWriterLeft,
+        writerTransferredToParty,
         notes: notes?.trim() || null,
         createdById: session.user.id ? Number(session.user.id) : null,
       },

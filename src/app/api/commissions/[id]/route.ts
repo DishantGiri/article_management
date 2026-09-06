@@ -24,7 +24,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { paymentStatus, notes, saleDate } = body;
+    const { paymentStatus, notes, saleDate, writerLeftCompany } = body;
 
     const data: any = {};
     if (paymentStatus) {
@@ -38,6 +38,27 @@ export async function PATCH(
       const parsed = new Date(saleDate);
       if (!isNaN(parsed.getTime())) {
         data.saleDate = parsed;
+      }
+    }
+
+    if (writerLeftCompany !== undefined) {
+      const existingSale = await prisma.commissionSale.findUnique({ where: { id: saleId } });
+      if (existingSale && existingSale.writerLeftCompany !== Boolean(writerLeftCompany)) {
+        const isNowLeft = Boolean(writerLeftCompany);
+        data.writerLeftCompany = isNowLeft;
+        if (isNowLeft) {
+          // Transfer writerAmount to partyAmount
+          const transfer = existingSale.writerAmount;
+          data.writerAmount = 0;
+          data.partyAmount = existingSale.partyAmount + transfer;
+          data.writerTransferredToParty = (existingSale.writerTransferredToParty || 0) + transfer;
+        } else {
+          // Restore from partyAmount back to writerAmount
+          const restore = existingSale.writerTransferredToParty || 0;
+          data.writerAmount = restore;
+          data.partyAmount = Math.max(0, existingSale.partyAmount - restore);
+          data.writerTransferredToParty = 0;
+        }
       }
     }
 

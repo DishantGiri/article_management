@@ -73,6 +73,7 @@ model User {
   email     String   @unique
   role      Role?
   approved  Boolean  @default(false)
+  hasLeftCompany Boolean @default(false)
   image     String?
   allowLinkLogAccess Boolean @default(false)
   createdAt DateTime @default(now())
@@ -448,6 +449,8 @@ model CommissionSale {
   seoAmount     Float    @default(0)
   bonusAmount   Float    @default(0)
   partyAmount   Float    @default(0)
+  writerLeftCompany Boolean @default(false)
+  writerTransferredToParty Float @default(0)
   
   notes         String?  @db.Text
   createdById   Int?

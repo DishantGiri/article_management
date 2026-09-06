@@ -32,6 +32,7 @@ export async function GET(
         role: true,
         allowLinkLogAccess: true,
         approved: true,
+        hasLeftCompany: true,
         siteAccess: { select: { site: { select: { id: true, name: true } } } },
       },
     });
@@ -65,7 +66,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, role, image, siteIds, allowLinkLogAccess, teamLeadId, approved } = body;
+    const { name, role, image, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany } = body;
 
     const callerId = Number(session.user.id);
     const callerRole = session.user.role || "";
@@ -77,7 +78,7 @@ export async function PATCH(
     }
 
     // Non-admin cannot modify role, approval, or site access
-    if (!isAdmin && (role || approved !== undefined || siteIds !== undefined || allowLinkLogAccess !== undefined)) {
+    if (!isAdmin && (role || approved !== undefined || siteIds !== undefined || allowLinkLogAccess !== undefined || hasLeftCompany !== undefined)) {
       return NextResponse.json({ error: "Forbidden: Only administrators can modify roles and permissions." }, { status: 403 });
     }
 
@@ -137,6 +138,7 @@ export async function PATCH(
         allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,
         ...(resolvedTeamLeadId !== undefined ? { teamLeadId: resolvedTeamLeadId } : {}),
         ...(typeof approved === 'boolean' ? { approved } : {}),
+        ...(typeof hasLeftCompany === 'boolean' ? { hasLeftCompany } : {}),
         ...(siteAccessUpdate ? { siteAccess: siteAccessUpdate } : {}),
       },
       include: {

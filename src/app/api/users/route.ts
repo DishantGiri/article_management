@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, email, role, siteIds, allowLinkLogAccess, teamLeadId, approved } = body;
+    const { name, email, role, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany } = body;
 
     if (!name || !email || !role) {
       return NextResponse.json({ error: "name, email, and role are required" }, { status: 400 });
@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
         allowLinkLogAccess: role === "WRITER" ? !!allowLinkLogAccess : false,
         teamLeadId: role === "WRITER" && teamLeadId ? Number(teamLeadId) : null,
         approved: typeof approved === 'boolean' ? approved : true,
+        hasLeftCompany: Boolean(hasLeftCompany),
         siteAccess: (role === "WRITER" || role === "TEAM_LEAD") && siteIds && Array.isArray(siteIds)
           ? {
               create: siteIds.map((siteId: number) => ({ siteId })),
