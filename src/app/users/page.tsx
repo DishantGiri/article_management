@@ -55,6 +55,7 @@ interface User {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | null;
   allowLinkLogAccess: boolean;
   approved: boolean;
+  hasLeftCompany?: boolean;
   siteAccess: {
     site: {
       id: number;
@@ -163,6 +164,7 @@ export default function UsersPage() {
     teamLeadId: "",
     allowLinkLogAccess: false,
     approved: true,
+    hasLeftCompany: false,
   });
 
   // 5. Delete Confirm Dialog
@@ -351,6 +353,36 @@ export default function UsersPage() {
     }
   };
 
+  // Quick Toggle Left Company Status
+  const handleQuickToggleLeftCompany = async (u: User) => {
+    if (!isAdminOrSuperAdmin) return;
+    if (u.role === "SUPER_ADMIN" && !isSuperAdmin) {
+      toast.error("Cannot modify Super Admin");
+      return;
+    }
+    const nextLeft = !u.hasLeftCompany;
+    try {
+      const res = await fetch(`/api/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hasLeftCompany: nextLeft }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to toggle departure status");
+      }
+      const updatedUser = await res.json();
+      setUsers((prev) => prev.map((user) => (user.id === u.id ? updatedUser : user)));
+      toast.success(
+        nextLeft
+          ? `${u.name} marked as Left Company. Commissions will route to Party Fund!`
+          : `${u.name} marked as active employee.`
+      );
+    } catch (e: any) {
+      toast.error(e.message || "Failed to toggle departure status");
+    }
+  };
+
   // 5. Delete User
   const handleOpenDelete = (u: User) => {
     if (u.role === "SUPER_ADMIN" && !isSuperAdmin) {
@@ -388,6 +420,7 @@ export default function UsersPage() {
       teamLeadId: "",
       allowLinkLogAccess: false,
       approved: true,
+      hasLeftCompany: false,
     });
     setError("");
     setShowModal(true);
@@ -403,6 +436,7 @@ export default function UsersPage() {
       teamLeadId: u.teamLead ? String(u.teamLead.id) : "",
       allowLinkLogAccess: u.allowLinkLogAccess,
       approved: u.approved,
+      hasLeftCompany: Boolean(u.hasLeftCompany),
     });
     setError("");
     setShowModal(true);
@@ -469,6 +503,8 @@ export default function UsersPage() {
       // Status filter
       if (statusFilter === "APPROVED" && !u.approved) return false;
       if (statusFilter === "PENDING" && u.approved) return false;
+      if (statusFilter === "LEFT" && !u.hasLeftCompany) return false;
+      if (statusFilter === "ACTIVE" && u.hasLeftCompany) return false;
 
       // Fuzzy Search
       if (search.trim()) {
@@ -807,6 +843,8 @@ export default function UsersPage() {
                 }}
                 options={[
                   { value: "ALL", label: "All Status" },
+                  { value: "ACTIVE", label: "Active Employees" },
+                  { value: "LEFT", label: "Left Company" },
                   { value: "APPROVED", label: "Approved Only" },
                   { value: "PENDING", label: "Pending Only" },
                 ]}
@@ -880,30 +918,42 @@ export default function UsersPage() {
                         </div>
                       </div>
 
-                      {/* Approval Status Badge / Toggle */}
-                      {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
-                        <button
-                          onClick={() => handleQuickToggleApproval(u)}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer shrink-0 ${
-                            u.approved
-                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100"
-                              : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60 hover:bg-amber-100"
-                          }`}
-                          title="Click to toggle approval status"
-                        >
-                          {u.approved ? "✓ Approved" : "⏳ Pending"}
-                        </button>
-                      ) : (
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border shrink-0 ${
-                            u.approved
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}
-                        >
-                          {u.approved ? "Approved" : "Pending"}
-                        </span>
-                      )}
+                      {/* Status Badges */}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {u.hasLeftCompany && (
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shadow-2xs flex items-center gap-1"
+                            title="Writer has left company. Future commissions will transfer to Office Party Fund."
+                          >
+                            <UserX className="w-2.5 h-2.5" />
+                            Left Co.
+                          </span>
+                        )}
+                        {/* Approval Status Badge / Toggle */}
+                        {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                          <button
+                            onClick={() => handleQuickToggleApproval(u)}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer shrink-0 ${
+                              u.approved
+                                ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100"
+                                : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60 hover:bg-amber-100"
+                            }`}
+                            title="Click to toggle approval status"
+                          >
+                            {u.approved ? "✓ Approved" : "⏳ Pending"}
+                          </button>
+                        ) : (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border shrink-0 ${
+                              u.approved
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            }`}
+                          >
+                            {u.approved ? "Approved" : "Pending"}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Role Badge */}
@@ -1048,6 +1098,26 @@ export default function UsersPage() {
                         >
                           <Globe className="w-3 h-3 text-blue-500" />
                           <span>Sites</span>
+                        </button>
+                      )}
+
+                      {/* Left Company Departure Toggle */}
+                      {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) && (
+                        <button
+                          onClick={() => handleQuickToggleLeftCompany(u)}
+                          className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs ${
+                            u.hasLeftCompany
+                              ? "bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100"
+                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-rose-300 hover:text-rose-600"
+                          }`}
+                          title={
+                            u.hasLeftCompany
+                              ? "Writer marked as departed (Commissions divert to Party Fund). Click to reactivate."
+                              : "Mark writer as departed from company (future commissions will route to Office Party Fund)"
+                          }
+                        >
+                          <UserX className={`w-3 h-3 ${u.hasLeftCompany ? "text-rose-600" : "text-slate-400"}`} />
+                          <span>{u.hasLeftCompany ? "Left Co." : "Depart"}</span>
                         </button>
                       )}
                     </div>
@@ -1213,28 +1283,55 @@ export default function UsersPage() {
 
                       {/* Approval Status */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
-                          <button
-                            onClick={() => handleQuickToggleApproval(u)}
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer ${
-                              u.approved
-                                ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                                : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                            }`}
-                          >
-                            {u.approved ? "✓ Approved" : "⏳ Pending"}
-                          </button>
-                        ) : (
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                              u.approved
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
-                            }`}
-                          >
-                            {u.approved ? "Approved" : "Pending"}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                            <button
+                              onClick={() => handleQuickToggleLeftCompany(u)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer flex items-center gap-1 ${
+                                u.hasLeftCompany
+                                  ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 hover:bg-rose-100"
+                                  : "bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-rose-300 hover:text-rose-600"
+                              }`}
+                              title={
+                                u.hasLeftCompany
+                                  ? "Marked as Left Company (Commissions divert to Party Fund). Click to reactivate."
+                                  : "Click to mark as Left Company (commissions route to Party Fund)"
+                              }
+                            >
+                              <UserX className="w-2.5 h-2.5" />
+                              {u.hasLeftCompany ? "Left Co." : "Active"}
+                            </button>
+                          ) : u.hasLeftCompany ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 flex items-center gap-1">
+                              <UserX className="w-2.5 h-2.5" />
+                              Left Co.
+                            </span>
+                          ) : null}
+
+                          {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                            <button
+                              onClick={() => handleQuickToggleApproval(u)}
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer ${
+                                u.approved
+                                  ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                                  : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                              }`}
+                              title="Click to toggle approval status"
+                            >
+                              {u.approved ? "✓ Approved" : "⏳ Pending"}
+                            </button>
+                          ) : (
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                                u.approved
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                              }`}
+                            >
+                              {u.approved ? "Approved" : "Pending"}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Actions */}
@@ -1769,6 +1866,17 @@ export default function UsersPage() {
                     onChange={(checked) => setForm({ ...form, approved: checked })}
                     label="Approve User Access"
                     subLabel="Unapproved users cannot log in to the application."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="bg-[#FAF9F5] dark:bg-slate-850 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <Toggle
+                    checked={form.hasLeftCompany}
+                    onChange={(checked) => setForm({ ...form, hasLeftCompany: checked })}
+                    label="Has Left Company (Former Employee)"
+                    subLabel="When enabled, any future product commissions from articles written by this user are automatically diverted to the Office Party Fund."
                   />
                 </div>
               </div>

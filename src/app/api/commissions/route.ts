@@ -134,6 +134,8 @@ export async function GET(req: NextRequest) {
         seoAmount: parseFloat((s.seoAmount || 0).toFixed(2)),
         bonusAmount: parseFloat((s.bonusAmount || 0).toFixed(2)),
         partyAmount: parseFloat((s.partyAmount || 0).toFixed(2)),
+        writerLeftCompany: s.writerLeftCompany || false,
+        writerTransferredToParty: parseFloat((s.writerTransferredToParty || 0).toFixed(2)),
         amount: parseFloat((s.amount || 0).toFixed(2)),
         paymentStatus: s.paymentStatus as "PENDING" | "PAID",
         paidAt: s.paidAt ? s.paidAt.toISOString() : null,
