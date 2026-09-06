@@ -70,6 +70,8 @@ export interface CommissionSaleItem {
   seoAmount: number;
   bonusAmount: number;
   partyAmount: number;
+  writerLeftCompany?: boolean;
+  writerTransferredToParty?: number;
   amount: number;
   paymentStatus: "PENDING" | "PAID";
   paidAt: string | null;
@@ -90,6 +92,7 @@ export interface ProductCommissionRow {
   linkerName: string;
   writerId: number | null;
   writerName: string;
+  writerHasLeft?: boolean;
   articleStatus: string;
   articleLink: string | null;
   firstSalesCount: number;
@@ -149,6 +152,7 @@ export default function CommissionsPage() {
     totalBonusPool: 0,
     totalSeoPool: 0,
     totalPartyFunds: 0,
+    totalTransferredToParty: 0,
     totalLinkerAmount: 0,
     totalWriterAmount: 0,
     totalTlAmount: 0,
@@ -174,6 +178,7 @@ export default function CommissionsPage() {
   );
   const [modalPaymentStatus, setModalPaymentStatus] = useState<"PENDING" | "PAID">("PENDING");
   const [modalNotes, setModalNotes] = useState<string>("");
+  const [modalWriterLeftCompany, setModalWriterLeftCompany] = useState<boolean>(false);
   const [submittingSale, setSubmittingSale] = useState(false);
 
   // Modal: Single Sale Details Breakdown
@@ -230,16 +235,19 @@ export default function CommissionsPage() {
   }, [activeSiteTab, status, session]);
 
   // Open Record Sale Modal
-  const handleOpenAddSale = (
-    product?: ProductCommissionRow | null,
+  const handleOpenRecordSale = (
+    product?: ProductCommissionRow,
     defaultType: "FIRST_SALE" | "RESALE" = "FIRST_SALE"
   ) => {
     if (product) {
       setSelectedProductForSale(product);
       setModalProductId(String(product.id));
+      setModalWriterLeftCompany(Boolean(product.writerHasLeft));
     } else {
-      setSelectedProductForSale(products[0] || null);
-      setModalProductId(products[0] ? String(products[0].id) : "");
+      const first = products[0] || null;
+      setSelectedProductForSale(first);
+      setModalProductId(first ? String(first.id) : "");
+      setModalWriterLeftCompany(Boolean(first?.writerHasLeft));
     }
     setModalSaleType(defaultType);
     setModalSaleDate(new Date().toISOString().split("T")[0]);
@@ -268,6 +276,7 @@ export default function CommissionsPage() {
           saleDate: modalSaleDate,
           paymentStatus: modalPaymentStatus,
           notes: modalNotes,
+          writerLeftCompany: modalWriterLeftCompany,
         }),
       });
 
@@ -722,9 +731,13 @@ export default function CommissionsPage() {
               Rs. {metrics.totalPartyFunds.toFixed(2)}
             </div>
             <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-rose-100 dark:border-rose-950">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Allocation</span>
-              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200">
-                Celebration Pool
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate" title={metrics.totalTransferredToParty > 0 ? `Includes Rs. ${metrics.totalTransferredToParty.toFixed(2)} from departed writers` : undefined}>
+                {metrics.totalTransferredToParty > 0
+                  ? `+Rs. ${metrics.totalTransferredToParty.toFixed(0)} from departed`
+                  : "Allocation"}
+              </span>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 shrink-0">
+                Party Fund
               </span>
             </div>
           </div>
@@ -1019,9 +1032,18 @@ export default function CommissionsPage() {
                               <span className="font-semibold text-slate-700 dark:text-slate-200">
                                 {sale.writerName}
                               </span>
-                              <span className="font-bold text-emerald-600 dark:text-emerald-400 ml-auto">
-                                Rs. {sale.writerAmount.toFixed(0)}
-                              </span>
+                              {sale.writerLeftCompany ? (
+                                <span
+                                  className="ml-auto inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                                  title={`Writer left company — Rs. ${(sale.writerTransferredToParty || 0).toFixed(0)} commission transferred to Party Fund`}
+                                >
+                                  Left → Party
+                                </span>
+                              ) : (
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400 ml-auto">
+                                  Rs. {sale.writerAmount.toFixed(0)}
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="text-slate-400 font-bold w-10">Linker:</span>
@@ -1064,9 +1086,25 @@ export default function CommissionsPage() {
 
                         {/* Party Fund */}
                         <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-black bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40 shadow-2xs">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-black border shadow-2xs ${
+                              sale.writerLeftCompany
+                                ? "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700"
+                                : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40"
+                            }`}
+                            title={
+                              sale.writerLeftCompany
+                                ? `Includes +Rs. ${(sale.writerTransferredToParty || 0).toFixed(0)} from departed writer`
+                                : undefined
+                            }
+                          >
                             <PartyPopper className="w-3 h-3 text-rose-500" />
                             <span>Rs. {sale.partyAmount.toFixed(0)}</span>
+                            {sale.writerLeftCompany && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-white/70 dark:bg-slate-900/70 font-bold">
+                                +Writer
+                              </span>
+                            )}
                           </span>
                         </td>
 
@@ -1375,6 +1413,7 @@ export default function CommissionsPage() {
                     setModalProductId(val);
                     const found = products.find((p) => p.id === parseInt(val));
                     setSelectedProductForSale(found || null);
+                    setModalWriterLeftCompany(Boolean(found?.writerHasLeft));
                   }}
                   options={products.map((p) => ({
                     value: String(p.id),
@@ -1424,7 +1463,7 @@ export default function CommissionsPage() {
 
               {/* Rate & Pool Preview */}
               {selectedProductForSale && (
-                <div className="p-3 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="p-3 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-500 uppercase">
                       Total Commission ({selectedProductForSale.categoryKey}):
@@ -1437,6 +1476,45 @@ export default function CommissionsPage() {
                     </span>
                   </div>
 
+                  {/* Writer departure toggle */}
+                  <div
+                    className={`p-2.5 rounded-xl border space-y-1.5 transition-all ${
+                      modalWriterLeftCompany
+                        ? "bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60"
+                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Writer:</span>
+                        <span className="font-extrabold text-slate-800 dark:text-white truncate text-xs">
+                          {selectedProductForSale.writerName || "Unassigned"}
+                        </span>
+                        {modalWriterLeftCompany && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-100 dark:bg-rose-900/80 text-rose-700 dark:text-rose-300 shrink-0">
+                            Left Company
+                          </span>
+                        )}
+                      </div>
+
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={modalWriterLeftCompany}
+                          onChange={(e) => setModalWriterLeftCompany(e.target.checked)}
+                          className="w-3.5 h-3.5 text-rose-600 rounded border-slate-300 focus:ring-rose-500 cursor-pointer"
+                        />
+                        <span>Left Company</span>
+                      </label>
+                    </div>
+
+                    {modalWriterLeftCompany && (
+                      <p className="text-[11px] text-rose-700 dark:text-rose-300 font-medium leading-tight">
+                        ⚡ Writer commission will be transferred directly to the <strong>Office Party Fund</strong>.
+                      </p>
+                    )}
+                  </div>
+
                   {/* Fund Distribution Breakdown */}
                   {(() => {
                     const brk =
@@ -1445,7 +1523,13 @@ export default function CommissionsPage() {
                         : selectedProductForSale.rates.resaleBreakdown;
                     if (!brk) return null;
                     return (
-                      <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[10px]">
+                      <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[10px]">
+                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+                          <span className="text-slate-400 block font-semibold">Writer</span>
+                          <span className={`font-extrabold ${modalWriterLeftCompany ? "text-slate-400 line-through" : "text-emerald-600 dark:text-emerald-400"}`}>
+                            Rs. {modalWriterLeftCompany ? 0 : brk.writer}
+                          </span>
+                        </div>
                         <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
                           <span className="text-slate-400 block font-semibold">Bonus Pool</span>
                           <span className="font-extrabold text-amber-600 dark:text-amber-400">
@@ -1458,10 +1542,10 @@ export default function CommissionsPage() {
                             Rs. {brk.seo}
                           </span>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+                        <div className={`p-1.5 rounded-lg border text-center ${modalWriterLeftCompany ? "bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"}`}>
                           <span className="text-slate-400 block font-semibold">Party Fund</span>
                           <span className="font-extrabold text-rose-600 dark:text-rose-400">
-                            Rs. {brk.partyFund}
+                            Rs. {brk.partyFund + (modalWriterLeftCompany ? brk.writer : 0)}
                           </span>
                         </div>
                       </div>
@@ -1676,6 +1760,11 @@ export default function CommissionsPage() {
                   <span className="text-base font-black text-rose-800 dark:text-rose-300 mt-0.5 block">
                     Rs. {detailsSale.partyAmount.toFixed(2)}
                   </span>
+                  {detailsSale.writerLeftCompany && (
+                    <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400 block mt-0.5">
+                      (+Rs. {(detailsSale.writerTransferredToParty || 0).toFixed(0)} from departed writer)
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
