@@ -8,6 +8,7 @@ import FormattedRemarks from "@/components/FormattedRemarks";
 import AddProductModal from "@/components/AddProductModal";
 import EditProductModal from "@/components/EditProductModal";
 import ImportProductModal from "@/components/ImportProductModal";
+import AssignmentDetailsModal from "@/components/AssignmentDetailsModal";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
@@ -1096,135 +1097,16 @@ export default function ProductsPage() {
       />
 
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Assignment Details</h2>
-              <button onClick={() => setSelectedProduct(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto space-y-6">
-              <div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">{selectedProduct.name}</h3>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 font-medium">
-                  <span className="flex items-center gap-1.5"><FileText className="w-4 h-4 text-[#6D8196]" /> {selectedProduct.site.name}</span>
-                  <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4 text-[#6D8196]" /> Product Type: {selectedProduct.category?.name || "—"}</span>
-                  <span className="flex items-center gap-1.5"><Tag className="w-4 h-4 text-[#6D8196]" /> Category: {selectedProduct.productCategory || "—"}</span>
-                </div>
-              </div>
-
-              {(selectedProduct.trendLink || selectedProduct.previewLink) && (
-                <div className="flex gap-3">
-                  {selectedProduct.trendLink && (
-                    <a href={selectedProduct.trendLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">
-                      <ExternalLink className="w-4 h-4" /> Trend Link
-                    </a>
-                  )}
-                  {selectedProduct.previewLink && (
-                    <a href={selectedProduct.previewLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-semibold transition">
-                      <Globe className="w-4 h-4" /> Preview Link
-                    </a>
-                  )}
-                </div>
-              )}
-
-              {selectedProduct.remarks && (
-                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-sm text-amber-800">
-                  <span className="font-bold block mb-1">Remarks:</span>
-                  {selectedProduct.remarks}
-                </div>
-              )}
-
-              <div>
-                <h4 className="text-sm font-bold text-slate-800 mb-3">Links & Geos</h4>
-                {selectedProduct.linkLogs && selectedProduct.linkLogs.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedProduct.linkLogs.map((log: any) => (
-                      <div key={log.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <div className="flex justify-between items-start mb-1">
-                          <p className="font-bold text-slate-800 text-xs">{log.affiliateName}</p>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{log.status}</span>
-                        </div>
-                        <div className="space-y-1 mb-2">
-                          {log.affiliateLink && (
-                            <div><span className="text-[9px] font-bold text-slate-400 uppercase">Affiliate Link:</span> <a href={log.affiliateLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate">{log.affiliateLink}</a></div>
-                          )}
-                          {log.bridgePageLink && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center justify-between">
-                                Bridge Page:
-                                <button onClick={() => { navigator.clipboard.writeText(log.bridgePageLink); toast.success("Copied bridge page link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Bridge Page Link"><Copy className="w-3 h-3" /></button>
-                              </span> 
-                              <a href={log.bridgePageLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.bridgePageLink}</a>
-                            </div>
-                          )}
-                          {log.buyLink && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center justify-between">
-                                Buy Link:
-                                <button onClick={() => { navigator.clipboard.writeText(log.buyLink); toast.success("Copied buy link!"); }} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition" title="Copy Buy Link"><Copy className="w-3 h-3" /></button>
-                              </span> 
-                              <a href={log.buyLink} target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-600 hover:underline break-all block truncate mt-0.5">{log.buyLink}</a>
-                            </div>
-                          )}
-                          <FormattedRemarks remarks={log.linkerRemarks} textClass="text-[10px]" />
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {log.geos?.map((g: any) => (
-                            <span key={g.geo} className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[9px] font-bold text-slate-500 uppercase">{g.geo}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400 italic">No links configured yet.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
-              <button onClick={() => setSelectedProduct(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-white transition">Close</button>
-              
-              {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD") && selectedProduct.article?.status === "PENDING" && (
-                <button 
-                  onClick={async () => {
-                    if (!selectedProduct.article) return;
-                    try {
-                      const uId = session?.user?.id || 1;
-                      const res = await fetch(`/api/articles/${selectedProduct.article.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
-                      });
-                      if (res.ok) {
-                        toast.success("Started! Redirecting to tracker...");
-                        setTimeout(() => { window.location.href = "/#writer-tracker"; }, 600);
-                      } else {
-                        const err = await res.json();
-                        toast.error(err.error || "Failed to start writing");
-                      }
-                    } catch (e: any) {
-                      toast.error(e.message || "Failed to start writing");
-                    }
-                  }}
-                  className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition flex items-center gap-2"
-                >
-                  <PlayCircle className="w-4 h-4" /> Start Writing
-                </button>
-              )}
-
-              {currentUserRole !== "WRITER" && currentUserRole !== "LINKER" && selectedProduct.article && (
-                <Link 
-                  href={`/articles/${selectedProduct.article.id}`}
-                  className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition flex items-center gap-2"
-                >
-                  <ExternalLink className="w-4 h-4" /> View Article Tracking
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
+        <AssignmentDetailsModal
+          product={selectedProduct as any}
+          currentUserRole={currentUserRole}
+          currentUserId={session?.user?.id}
+          onClose={() => setSelectedProduct(null)}
+          onReportIssue={(prod) => {
+            setSelectedProduct(null);
+            setReportingProduct(prod as any);
+          }}
+        />
       )}
       {/* Report Link Issue Modal */}
       {reportingProduct && (
