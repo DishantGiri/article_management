@@ -21,9 +21,10 @@ import {
   Clock,
   Sparkles,
   Share2,
+  Calendar,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import FormattedRemarks from "@/components/FormattedRemarks";
+import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 export interface AssignmentProduct {
@@ -306,14 +307,22 @@ export default function AssignmentDetailsModal({
 
             {/* Product Remarks */}
             {product.remarks && (
-              <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/30 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-400 block mb-0.5">
-                    Product Instructions / Remarks
-                  </span>
-                  <p className="font-medium leading-relaxed">{product.remarks}</p>
+              <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/30 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-400">
+                      Product Instructions / Remarks
+                    </span>
+                  </div>
+                  {product.addedAt && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-900/60 shadow-2xs">
+                      <Calendar className="w-3 h-3 text-amber-500 shrink-0" />
+                      {formatRemarkDate(product.addedAt)}
+                    </span>
+                  )}
                 </div>
+                <FormattedRemarks remarks={product.remarks} date={product.addedAt} textClass="text-xs font-medium" />
               </div>
             )}
 
@@ -660,7 +669,7 @@ export default function AssignmentDetailsModal({
                 {/* Remarks */}
                 {currentLog.linkerRemarks && (
                   <div className="pt-1">
-                    <FormattedRemarks remarks={currentLog.linkerRemarks} textClass="text-xs" />
+                    <FormattedRemarks remarks={currentLog.linkerRemarks} date={currentLog.addedAt} textClass="text-xs" />
                   </div>
                 )}
 

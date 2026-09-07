@@ -34,6 +34,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import CustomSelect from "@/components/CustomSelect";
+import { formatRemarkDate } from "@/components/FormattedRemarks";
 
 interface Article {
   id: number;
@@ -295,7 +296,9 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   const latestReview = article.reviews && article.reviews.length > 0 ? article.reviews[0] : null;
 
   // Extract writer remarks from history
-  const writerRemarks = article.history?.find((h) => h.notes?.includes("Writer remarks:"))?.notes?.split("Writer remarks:")?.[1]?.trim() || "";
+  const writerRemarkHistoryItem = article.history?.find((h) => h.notes?.includes("Writer remarks:"));
+  const writerRemarks = writerRemarkHistoryItem?.notes?.split("Writer remarks:")?.[1]?.trim() || "";
+  const writerRemarksDate = writerRemarkHistoryItem?.updatedAt || article.updatedAt;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1500px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A] space-y-6">
@@ -1042,11 +1045,19 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
               {/* Writer Remarks */}
               {writerRemarks && (
-                <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-1">
-                  <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">
-                    Writer Remarks
-                  </span>
-                  <p className="text-xs text-indigo-900 font-medium whitespace-pre-wrap">
+                <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">
+                      Writer Remarks
+                    </span>
+                    {writerRemarksDate && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 bg-white px-2 py-0.5 rounded-md border border-indigo-200/80 shadow-2xs">
+                        <Calendar className="w-3 h-3 text-indigo-400 shrink-0" />
+                        {formatRemarkDate(writerRemarksDate)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-indigo-900 font-medium whitespace-pre-wrap leading-relaxed">
                     {writerRemarks}
                   </p>
                 </div>
@@ -1054,11 +1065,19 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
               {/* Linker Remarks */}
               {product.remarks && (
-                <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-xl space-y-1">
-                  <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
-                    Linker / Product Remarks
-                  </span>
-                  <p className="text-xs text-amber-900 font-medium whitespace-pre-wrap">
+                <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
+                      Linker / Product Remarks
+                    </span>
+                    {product.addedAt && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-white px-2 py-0.5 rounded-md border border-amber-200/80 shadow-2xs">
+                        <Calendar className="w-3 h-3 text-amber-500 shrink-0" />
+                        {formatRemarkDate(product.addedAt)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-amber-900 font-medium whitespace-pre-wrap leading-relaxed">
                     {product.remarks}
                   </p>
                 </div>

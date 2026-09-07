@@ -29,6 +29,7 @@ interface EditLinkModalProps {
     buyLink?: string | null;
     status: string;
     linkerRemarks?: string | null;
+    addedAt?: string;
     geos: { geo: string }[];
   } | null;
 }
@@ -324,7 +325,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
           {link.linkerRemarks && link.linkerRemarks.includes("[Flagged by") && (
             <div className="mb-2">
-              <FormattedRemarks remarks={link.linkerRemarks} />
+              <FormattedRemarks remarks={link.linkerRemarks} date={link.addedAt} />
             </div>
           )}
 

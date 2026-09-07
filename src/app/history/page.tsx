@@ -20,9 +20,11 @@ import {
   Globe,
   MessageSquare,
   Sparkles,
+  Calendar,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import LoadingScreen from "@/components/LoadingScreen";
+import { formatRemarkDate } from "@/components/FormattedRemarks";
 
 interface HistoryRecord {
   id: string;
@@ -646,11 +648,17 @@ export default function HistoryPage() {
 
                           {/* Writer remarks if present */}
                           {writerRemarks && (
-                            <div className="p-2 bg-indigo-50/70 border border-indigo-100 rounded-xl text-xs text-indigo-900 font-medium">
-                              <span className="font-bold text-indigo-800 block text-[10px] uppercase">
-                                Writer Remarks:
-                              </span>
-                              &quot;{writerRemarks}&quot;
+                            <div className="p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-xl text-xs text-indigo-900 font-medium space-y-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-bold text-indigo-800 block text-[10px] uppercase">
+                                  Writer Remarks:
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 bg-white px-1.5 py-0.5 rounded border border-indigo-200/80 shadow-2xs">
+                                  <Calendar className="w-2.5 h-2.5 text-indigo-400" />
+                                  {formatRemarkDate(record.updatedAt || record.createdAt)}
+                                </span>
+                              </div>
+                              <p className="leading-relaxed">&quot;{writerRemarks}&quot;</p>
                             </div>
                           )}
 

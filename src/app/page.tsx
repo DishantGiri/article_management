@@ -1902,7 +1902,7 @@ function WriterActiveFocusWorkspace({
                 <FileText className="w-3.5 h-3.5 text-slate-500" />
                 Product Brief & Research Notes
               </div>
-              <FormattedRemarks remarks={article.product.remarks} textClass="text-xs text-slate-600 dark:text-slate-300" />
+              <FormattedRemarks remarks={article.product.remarks} date={article.product.addedAt} textClass="text-xs text-slate-600 dark:text-slate-300" />
             </div>
           )}
 
@@ -2126,7 +2126,7 @@ function WriterActiveFocusWorkspace({
                           <p className="font-bold text-amber-900 dark:text-amber-200 text-[11px] uppercase tracking-wider">
                             Linker Instructions:
                           </p>
-                          <FormattedRemarks remarks={log.linkerRemarks} textClass="text-xs text-amber-900/90 dark:text-amber-200/90" />
+                          <FormattedRemarks remarks={log.linkerRemarks} date={log.addedAt} textClass="text-xs text-amber-900/90 dark:text-amber-200/90" />
                         </div>
                       )}
                     </div>
@@ -2648,7 +2648,7 @@ function WriterAvailableAssignments({
               {selectedArticle.product.remarks && (
                 <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-xl border border-amber-200/80 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200">
                   <span className="font-bold block mb-1">Remarks from Linker:</span>
-                  <FormattedRemarks remarks={selectedArticle.product.remarks} />
+                  <FormattedRemarks remarks={selectedArticle.product.remarks} date={selectedArticle.product.addedAt} />
                 </div>
               )}
             </div>

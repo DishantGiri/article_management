@@ -137,8 +137,9 @@ export async function PATCH(
           ? `${caller.name} (${caller.role ? caller.role.replace("_", " ") : "USER"})`
           : "Someone";
 
+        const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const currentRemarks = updated.linkerRemarks || "";
-        const formattedRemark = `[Flagged by ${callerLabel}]: ${issueMessage}${
+        const formattedRemark = `[Flagged by ${callerLabel} • ${dateStr}]: ${issueMessage}${
           currentRemarks ? ` \n${currentRemarks}` : ""
         }`;
 

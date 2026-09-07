@@ -48,11 +48,13 @@ export async function POST(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
     // If product has existing link logs, update them to ISSUE
     if (product.linkLogs && product.linkLogs.length > 0) {
       for (const log of product.linkLogs) {
         const currentRemarks = log.linkerRemarks || "";
-        const formattedRemark = `[Flagged by ${callerLabel}]: ${issueMessage.trim()}${
+        const formattedRemark = `[Flagged by ${callerLabel} • ${dateStr}]: ${issueMessage.trim()}${
           currentRemarks ? `\n${currentRemarks}` : ""
         }`;
 
@@ -78,7 +80,7 @@ export async function POST(
       }
     } else {
       // Create a new LinkLog in ISSUE status for this product
-      const formattedRemark = `[Flagged by ${callerLabel}]: ${issueMessage.trim()}`;
+      const formattedRemark = `[Flagged by ${callerLabel} • ${dateStr}]: ${issueMessage.trim()}`;
       const newLog = await prisma.linkLog.create({
         data: {
           productId: product.id,

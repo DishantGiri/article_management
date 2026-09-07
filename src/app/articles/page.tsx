@@ -5,12 +5,13 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag } from "lucide-react";
+import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag, Calendar } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
+import { formatRemarkDate } from "@/components/FormattedRemarks";
 
 interface Article {
   id: number;
@@ -30,7 +31,7 @@ interface Article {
     linkLogs?: { linkerRemarks?: string | null; addedAt: string }[];
   };
   writer?: { id: number; name: string };
-  history?: { notes?: string | null; updatedAt: string }[];
+  history?: { notes?: string | null; updatedAt?: string; createdAt?: string }[];
 }
 
 function PriorityBadge({ priority }: { priority: "LOW" | "MEDIUM" | "HIGH" }) {
@@ -90,7 +91,7 @@ function ArticlesContent() {
   const [flagInstructions, setFlagInstructions] = useState<string>("");
   const [teamMembers, setTeamMembers] = useState<{ id: number; name: string; email: string }[]>([]);
   const [submittingFlag, setSubmittingFlag] = useState(false);
-  const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; linker: string; productName: string } | null>(null);
+  const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; writerDate?: string; linker: string; linkerDate?: string; productName: string } | null>(null);
   const [selectedArticleIds, setSelectedArticleIds] = useState<number[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
   const { data: session, status: sessionStatus } = useSession();
@@ -409,30 +410,47 @@ function ArticlesContent() {
     );
   };
 
-  const getWriterRemarks = (article: any) => {
-    if (!article.history || !Array.isArray(article.history)) return "";
+  const getWriterRemarksInfo = (article: any) => {
+    if (!article.history || !Array.isArray(article.history)) return { remarks: "", date: "" };
     for (const h of article.history) {
       if (h.notes && h.notes.includes("Writer remarks:")) {
         const parts = h.notes.split("Writer remarks:");
         const remarks = parts[parts.length - 1].trim();
-        if (remarks) return remarks;
+        if (remarks) return { remarks, date: h.createdAt || h.updatedAt || article.updatedAt };
       }
     }
-    return "";
+    return { remarks: "", date: "" };
   };
 
-  const getLinkerRemarks = (article: any) => {
+  const getWriterRemarks = (article: any) => getWriterRemarksInfo(article).remarks;
+
+  const getLinkerRemarksInfo = (article: any) => {
     const logs = article.product?.linkLogs || [];
     const latestLogWithRemarks = logs.find((l: any) => l.linkerRemarks);
     const linkerRemark = latestLogWithRemarks?.linkerRemarks;
     const productRemark = article.product?.remarks;
     if (linkerRemark && productRemark) {
-      return `${linkerRemark} (Product: ${productRemark})`;
+      return {
+        remarks: `${linkerRemark} (Product: ${productRemark})`,
+        date: latestLogWithRemarks?.addedAt || article.product?.addedAt
+      };
     }
-    if (linkerRemark) return linkerRemark;
-    if (productRemark) return productRemark;
-    return "";
+    if (linkerRemark) {
+      return {
+        remarks: linkerRemark,
+        date: latestLogWithRemarks?.addedAt
+      };
+    }
+    if (productRemark) {
+      return {
+        remarks: productRemark,
+        date: article.product?.addedAt
+      };
+    }
+    return { remarks: "", date: "" };
   };
+
+  const getLinkerRemarks = (article: any) => getLinkerRemarksInfo(article).remarks;
 
   const handleExportCSV = () => {
     const headers = ["ID", "Product", "Site", "Category", "Writer", "Status", "Article Link", "Date", "Writer Remarks", "Linker Remarks"];
@@ -896,7 +914,17 @@ function ArticlesContent() {
                       <td className="px-4 py-3.5 text-center">
                         {(writerRemarks || linkerRemarks) ? (
                           <button
-                            onClick={() => setSelectedRemarks({ writer: writerRemarks, linker: linkerRemarks, productName: a.product.name })}
+                            onClick={() => {
+                              const writerInfo = getWriterRemarksInfo(a);
+                              const linkerInfo = getLinkerRemarksInfo(a);
+                              setSelectedRemarks({
+                                writer: writerInfo.remarks,
+                                writerDate: writerInfo.date,
+                                linker: linkerInfo.remarks,
+                                linkerDate: linkerInfo.date,
+                                productName: a.product.name
+                              });
+                            }}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-650 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all text-[10px] font-bold cursor-pointer shadow-sm"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1414,17 +1442,37 @@ function ArticlesContent() {
             </div>
             <div className="p-6 space-y-4">
               {selectedRemarks.writer && (
-                <div className="space-y-1">
-                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">WRITER REMARKS</span>
-                  <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap leading-relaxed">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">
+                      Writer Remarks
+                    </span>
+                    {selectedRemarks.writerDate && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs">
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                        {formatRemarkDate(selectedRemarks.writerDate)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap leading-relaxed font-medium">
                     {selectedRemarks.writer}
                   </p>
                 </div>
               )}
               {selectedRemarks.linker && (
-                <div className="space-y-1">
-                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200">LINKER REMARKS</span>
-                  <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap leading-relaxed">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
+                      Linker Remarks
+                    </span>
+                    {selectedRemarks.linkerDate && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs">
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                        {formatRemarkDate(selectedRemarks.linkerDate)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap leading-relaxed font-medium">
                     {selectedRemarks.linker}
                   </p>
                 </div>
