@@ -38,10 +38,12 @@ import {
   ArrowUpDown,
   Filter,
   Package,
+  Wallet,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import CustomSelect from "@/components/CustomSelect";
+import DateRangePicker from "@/components/DateRangePicker";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 // Flat Commission Sale for the Commission List view
@@ -101,7 +103,7 @@ export interface ProductCommissionRow {
   totalCommissionAmount: number;
   paidCommissionAmount: number;
   pendingCommissionAmount: number;
-  overallPaymentStatus: "PAID" | "PENDING" | "NO_SALES";
+  overallPaymentStatus: "PAID" | "PENDING" | "PARTIAL" | "NO_SALES";
   latestDate: string;
   sales: any[];
   rates: {
@@ -163,10 +165,14 @@ export default function CommissionsPage() {
 
   // Filters
   const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [saleTypeFilter, setSaleTypeFilter] = useState<string>("ALL"); // "ALL" | "FIRST_SALE" | "RESALE"
   const [statusFilter, setStatusFilter] = useState<string>("ALL");     // "ALL" | "PAID" | "PENDING"
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL"); // "ALL" | "NUTRA" | "ECOM"
   const [sortBy, setSortBy] = useState<string>("dateDesc");
+  const [productSortBy, setProductSortBy] = useState<string>("salesDesc");
+  const [showPoolDetails, setShowPoolDetails] = useState<boolean>(false);
 
   // Modal: Record Sale (Works for both specific product or any product selector)
   const [isRecordSaleModalOpen, setIsRecordSaleModalOpen] = useState(false);
@@ -188,8 +194,28 @@ export default function CommissionsPage() {
   const [historyProduct, setHistoryProduct] = useState<ProductCommissionRow | null>(null);
   const [updatingSaleId, setUpdatingSaleId] = useState<number | null>(null);
 
+  // Handle Tab Change with URL sync
+  const handleTabChange = (tab: "LIST" | "PRODUCTS") => {
+    setActiveViewTab(tab);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (tab === "PRODUCTS") {
+        params.set("tab", "products");
+      } else {
+        params.delete("tab");
+      }
+      const query = params.toString() ? `?${params.toString()}` : "";
+      router.replace(`/commissions${query}`, { scroll: false });
+    }
+  };
+
   // Fetch Commission Data
-  const fetchData = async (siteId = activeSiteTab, isBackground = false) => {
+  const fetchData = async (
+    siteId = activeSiteTab,
+    start = startDate,
+    end = endDate,
+    isBackground = false
+  ) => {
     if (session?.user?.role !== "SUPER_ADMIN") {
       setLoading(false);
       return;
@@ -206,6 +232,8 @@ export default function CommissionsPage() {
       if (search) params.append("search", search);
       if (statusFilter !== "ALL") params.append("paymentStatus", statusFilter);
       if (categoryFilter !== "ALL") params.append("category", categoryFilter);
+      if (start) params.append("startDate", start);
+      if (end) params.append("endDate", end);
 
       const res = await fetch(`/api/commissions?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load commissions data");
@@ -227,12 +255,12 @@ export default function CommissionsPage() {
   useEffect(() => {
     if (status !== "loading") {
       if (session?.user?.role === "SUPER_ADMIN") {
-        fetchData(activeSiteTab);
+        fetchData(activeSiteTab, startDate, endDate);
       } else {
         setLoading(false);
       }
     }
-  }, [activeSiteTab, status, session]);
+  }, [activeSiteTab, startDate, endDate, status, session]);
 
   // Open Record Sale Modal
   const handleOpenRecordSale = (
@@ -290,7 +318,7 @@ export default function CommissionsPage() {
       );
       setIsRecordSaleModalOpen(false);
       setSelectedProductForSale(null);
-      fetchData(activeSiteTab, true);
+      fetchData(activeSiteTab, startDate, endDate, true);
     } catch (err: any) {
       toast.error(err.message || "Error saving sale");
     } finally {
@@ -319,6 +347,40 @@ export default function CommissionsPage() {
         prev.map((s) => (s.id === saleId ? { ...s, paymentStatus: nextStatus } : s))
       );
 
+      // Update in products state
+      setProducts((prev) =>
+        prev.map((p) => {
+          if (p.sales && p.sales.some((s: any) => s.id === saleId)) {
+            const updatedSales = p.sales.map((s: any) =>
+              s.id === saleId ? { ...s, paymentStatus: nextStatus } : s
+            );
+            const newPaid = updatedSales
+              .filter((s: any) => s.paymentStatus === "PAID")
+              .reduce((acc: number, s: any) => acc + (s.amount || 0), 0);
+            const newPending = updatedSales
+              .filter((s: any) => s.paymentStatus === "PENDING")
+              .reduce((acc: number, s: any) => acc + (s.amount || 0), 0);
+            const newOverallStatus =
+              updatedSales.length === 0
+                ? "NO_SALES"
+                : newPending === 0
+                ? "PAID"
+                : newPaid === 0
+                ? "PENDING"
+                : "PARTIAL";
+
+            return {
+              ...p,
+              sales: updatedSales,
+              paidCommissionAmount: parseFloat(newPaid.toFixed(2)),
+              pendingCommissionAmount: parseFloat(newPending.toFixed(2)),
+              overallPaymentStatus: newOverallStatus,
+            };
+          }
+          return p;
+        })
+      );
+
       // Update in details modal if active
       if (detailsSale && detailsSale.id === saleId) {
         setDetailsSale({ ...detailsSale, paymentStatus: nextStatus });
@@ -329,10 +391,31 @@ export default function CommissionsPage() {
         const updatedSales = historyProduct.sales.map((s) =>
           s.id === saleId ? { ...s, paymentStatus: nextStatus } : s
         );
-        setHistoryProduct({ ...historyProduct, sales: updatedSales });
+        const newPaid = updatedSales
+          .filter((s) => s.paymentStatus === "PAID")
+          .reduce((acc, s) => acc + (s.amount || 0), 0);
+        const newPending = updatedSales
+          .filter((s) => s.paymentStatus === "PENDING")
+          .reduce((acc, s) => acc + (s.amount || 0), 0);
+        const newOverallStatus =
+          updatedSales.length === 0
+            ? "NO_SALES"
+            : newPending === 0
+            ? "PAID"
+            : newPaid === 0
+            ? "PENDING"
+            : "PARTIAL";
+
+        setHistoryProduct({
+          ...historyProduct,
+          sales: updatedSales,
+          paidCommissionAmount: parseFloat(newPaid.toFixed(2)),
+          pendingCommissionAmount: parseFloat(newPending.toFixed(2)),
+          overallPaymentStatus: newOverallStatus,
+        });
       }
 
-      fetchData(activeSiteTab, true);
+      fetchData(activeSiteTab, startDate, endDate, true);
     } catch (err: any) {
       toast.error(err.message || "Failed to update");
     } finally {
@@ -399,7 +482,7 @@ export default function CommissionsPage() {
 
   // Filtered Products for the "By Products" view
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       if (search.trim()) {
         const match = fuzzyMatchAny(
           [p.name, p.siteName, p.writerName, p.linkerName, p.categoryName],
@@ -407,11 +490,93 @@ export default function CommissionsPage() {
         );
         if (!match) return false;
       }
-      if (statusFilter !== "ALL" && p.overallPaymentStatus !== statusFilter) return false;
+      if (statusFilter !== "ALL") {
+        if (statusFilter === "PAID" && p.paidCommissionAmount <= 0) return false;
+        if (statusFilter === "PENDING" && p.pendingCommissionAmount <= 0) return false;
+        if (statusFilter === "PARTIAL" && p.overallPaymentStatus !== "PARTIAL") return false;
+      }
       if (categoryFilter !== "ALL" && p.categoryKey !== categoryFilter) return false;
       return true;
     });
-  }, [products, search, statusFilter, categoryFilter]);
+
+    list.sort((a, b) => {
+      switch (productSortBy) {
+        case "salesDesc":
+          if (b.totalSalesCount !== a.totalSalesCount) return b.totalSalesCount - a.totalSalesCount;
+          return b.totalCommissionAmount - a.totalCommissionAmount;
+        case "commissionDesc":
+          return b.totalCommissionAmount - a.totalCommissionAmount;
+        case "paidDesc":
+          return b.paidCommissionAmount - a.paidCommissionAmount;
+        case "pendingDesc":
+          return b.pendingCommissionAmount - a.pendingCommissionAmount;
+        case "nameAsc":
+          return a.name.localeCompare(b.name);
+        case "dateDesc":
+          return new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime();
+        default:
+          if (b.totalSalesCount !== a.totalSalesCount) return b.totalSalesCount - a.totalSalesCount;
+          return b.totalCommissionAmount - a.totalCommissionAmount;
+      }
+    });
+
+    return list;
+  }, [products, search, statusFilter, categoryFilter, productSortBy]);
+
+  // Dynamic Summaries based on active view tab
+  const productSummary = useMemo(() => {
+    let totalCommission = 0;
+    let totalPaid = 0;
+    let totalPending = 0;
+    let totalFirstSales = 0;
+    let totalResales = 0;
+    let totalSales = 0;
+
+    filteredProducts.forEach((p) => {
+      totalCommission += p.totalCommissionAmount;
+      totalPaid += p.paidCommissionAmount;
+      totalPending += p.pendingCommissionAmount;
+      totalFirstSales += p.firstSalesCount;
+      totalResales += p.resalesCount;
+      totalSales += p.totalSalesCount;
+    });
+
+    return {
+      totalCommission,
+      totalPaid,
+      totalPending,
+      totalFirstSales,
+      totalResales,
+      totalSales,
+    };
+  }, [filteredProducts]);
+
+  const salesSummary = useMemo(() => {
+    let totalCommission = 0;
+    let totalPaid = 0;
+    let totalPending = 0;
+    let totalFirstSales = 0;
+    let totalResales = 0;
+
+    filteredSales.forEach((s) => {
+      totalCommission += s.amount;
+      if (s.paymentStatus === "PAID") totalPaid += s.amount;
+      else totalPending += s.amount;
+      if (s.saleType === "FIRST_SALE") totalFirstSales += 1;
+      else totalResales += 1;
+    });
+
+    return {
+      totalCommission,
+      totalPaid,
+      totalPending,
+      totalFirstSales,
+      totalResales,
+      totalSales: filteredSales.length,
+    };
+  }, [filteredSales]);
+
+  const activeSummary = activeViewTab === "PRODUCTS" ? productSummary : salesSummary;
 
   if (status === "loading" || (loading && session?.user?.role === "SUPER_ADMIN")) {
     return (
@@ -493,7 +658,7 @@ export default function CommissionsPage() {
             {/* View Switcher Tabs */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold shrink-0">
               <button
-                onClick={() => setActiveViewTab("LIST")}
+                onClick={() => handleTabChange("LIST")}
                 className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   activeViewTab === "LIST"
                     ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
@@ -505,7 +670,7 @@ export default function CommissionsPage() {
               </button>
 
               <button
-                onClick={() => setActiveViewTab("PRODUCTS")}
+                onClick={() => handleTabChange("PRODUCTS")}
                 className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   activeViewTab === "PRODUCTS"
                     ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
@@ -536,7 +701,7 @@ export default function CommissionsPage() {
 
             {/* Refresh Button */}
             <button
-              onClick={() => fetchData(activeSiteTab, true)}
+              onClick={() => fetchData(activeSiteTab, startDate, endDate, true)}
               disabled={refreshing}
               className="px-3.5 py-2 rounded-xl border border-[#CBCBCB]/80 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold text-[#4A4A4A] dark:text-slate-200 transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
               title="Refresh Data"
@@ -622,166 +787,164 @@ export default function CommissionsPage() {
         </div>
       </div>
 
-      {/* ─── 5 SPECIALIZED METRIC CARDS (1st Sale, Resales, Bonus, SEO, Party) ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-        {/* CARD 1: Total 1st Sales */}
+      {/* ─── 4 SIMPLIFIED PRIMARY METRIC CARDS (Total Commission, Paid, Unpaid, Volume) ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* CARD 1: Total Commissions */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-purple-200/70 dark:border-purple-900/60 shadow-xs flex flex-col justify-between relative overflow-hidden group hover:border-purple-400 transition">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] uppercase font-bold text-purple-600 dark:text-purple-400 tracking-wider flex items-center gap-1.5">
+              <Coins className="w-3.5 h-3.5 text-purple-500" />
+              <span>Total Commission</span>
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+              <Wallet className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+              Rs. {activeSummary.totalCommission.toFixed(2)}
+            </div>
+            <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
+                {activeSummary.totalSales} total sales
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200">
+                {activeSummary.totalFirstSales} 1st | {activeSummary.totalResales} re
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD 2: Paid Commission */}
+        <div 
+          onClick={() => setStatusFilter(statusFilter === "PAID" ? "ALL" : "PAID")}
+          className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between relative overflow-hidden group transition cursor-pointer ${
+            statusFilter === "PAID"
+              ? "border-emerald-500 ring-2 ring-emerald-500/20"
+              : "border-emerald-200/70 dark:border-emerald-900/60 hover:border-emerald-400"
+          }`}
+          title="Click to filter by Paid status"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Paid Commission</span>
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <Check className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+              Rs. {activeSummary.totalPaid.toFixed(2)}
+            </div>
+            <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-emerald-100 dark:border-emerald-950">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Settled Payouts</span>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200">
+                {activeSummary.totalCommission > 0 
+                  ? `${Math.round((activeSummary.totalPaid / activeSummary.totalCommission) * 100)}% Paid` 
+                  : "Settled"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD 3: Unpaid (Pending) Commission */}
+        <div 
+          onClick={() => setStatusFilter(statusFilter === "PENDING" ? "ALL" : "PENDING")}
+          className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between relative overflow-hidden group transition cursor-pointer ${
+            statusFilter === "PENDING"
+              ? "border-amber-500 ring-2 ring-amber-500/20"
+              : "border-amber-200/70 dark:border-amber-900/60 hover:border-amber-400"
+          }`}
+          title="Click to filter by Unpaid / Pending status"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] uppercase font-bold text-amber-600 dark:text-amber-400 tracking-wider flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-amber-500" />
+              <span>Unpaid / Pending</span>
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
+              Rs. {activeSummary.totalPending.toFixed(2)}
+            </div>
+            <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-amber-100 dark:border-amber-950">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Awaiting Settlement</span>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200">
+                {activeSummary.totalCommission > 0 
+                  ? `${Math.round((activeSummary.totalPending / activeSummary.totalCommission) * 100)}% Unpaid` 
+                  : "Unpaid"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD 4: Volume / Active Catalog */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200/70 dark:border-blue-900/60 shadow-xs flex flex-col justify-between relative overflow-hidden group hover:border-blue-400 transition">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase font-bold text-blue-600 dark:text-blue-400 tracking-wider">
-              Total 1st Sales
+            <span className="text-[11px] uppercase font-bold text-blue-600 dark:text-blue-400 tracking-wider flex items-center gap-1.5">
+              <Package className="w-3.5 h-3.5 text-blue-500" />
+              <span>{activeViewTab === "PRODUCTS" ? "Catalog Overview" : "Sales Volume"}</span>
             </span>
             <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <Award className="w-4 h-4" />
+              <Layers className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2">
             <div className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-300 tracking-tight">
-              {metrics.totalFirstSales} <span className="text-xs font-semibold text-slate-400">sales</span>
+              {activeViewTab === "PRODUCTS" ? `${filteredProducts.length} Products` : `${filteredSales.length} Sales`}
             </div>
             <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-blue-100 dark:border-blue-950">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Total Revenue</span>
-              <span className="text-xs font-black text-blue-700 dark:text-blue-300">
-                Rs. {metrics.totalFirstSalesAmount.toFixed(2)}
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
+                {startDate || endDate ? "In Selected Range" : "All Time"}
               </span>
-            </div>
-          </div>
-        </div>
-
-        {/* CARD 2: Total Resales */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-purple-200/70 dark:border-purple-900/60 shadow-xs flex flex-col justify-between relative overflow-hidden group hover:border-purple-400 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase font-bold text-purple-600 dark:text-purple-400 tracking-wider">
-              Total Resales
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-              <RefreshCw className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black text-purple-700 dark:text-purple-300 tracking-tight">
-              {metrics.totalResales} <span className="text-xs font-semibold text-slate-400">sales</span>
-            </div>
-            <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-purple-100 dark:border-purple-950">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Total Revenue</span>
-              <span className="text-xs font-black text-purple-700 dark:text-purple-300">
-                Rs. {metrics.totalResalesAmount.toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* CARD 3: Bonus Pool */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200/70 dark:border-amber-900/60 shadow-xs flex flex-col justify-between relative overflow-hidden group hover:border-amber-400 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase font-bold text-amber-600 dark:text-amber-400 tracking-wider">
-              Bonus Pool
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <Gift className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black text-amber-700 dark:text-amber-300 tracking-tight">
-              Rs. {metrics.totalBonusPool.toFixed(2)}
-            </div>
-            <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-amber-100 dark:border-amber-950">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Allocation</span>
-              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200">
-                Team Performance
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* CARD 4: SEO Pool */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-teal-200/70 dark:border-teal-900/60 shadow-xs flex flex-col justify-between relative overflow-hidden group hover:border-teal-400 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase font-bold text-teal-600 dark:text-teal-400 tracking-wider">
-              SEO Pool
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black text-teal-700 dark:text-teal-300 tracking-tight">
-              Rs. {metrics.totalSeoPool.toFixed(2)}
-            </div>
-            <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-teal-100 dark:border-teal-950">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Allocation</span>
-              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-200">
-                Site Rankings
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* CARD 5: Party Funds */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200/70 dark:border-rose-900/60 shadow-xs flex flex-col justify-between relative overflow-hidden group hover:border-rose-400 transition sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase font-bold text-rose-600 dark:text-rose-400 tracking-wider">
-              Party Funds
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-              <PartyPopper className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black text-rose-700 dark:text-rose-300 tracking-tight">
-              Rs. {metrics.totalPartyFunds.toFixed(2)}
-            </div>
-            <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-rose-100 dark:border-rose-950">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate" title={metrics.totalTransferredToParty > 0 ? `Includes Rs. ${metrics.totalTransferredToParty.toFixed(2)} from departed writers` : undefined}>
-                {metrics.totalTransferredToParty > 0
-                  ? `+Rs. ${metrics.totalTransferredToParty.toFixed(0)} from departed`
-                  : "Allocation"}
-              </span>
-              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 shrink-0">
-                Party Fund
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200">
+                {sites.length} Active Sites
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ─── SECONDARY OVERVIEW BAR: Turnover & Settled vs Pending ─── */}
-      <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4 text-xs">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400 font-bold uppercase text-[10px]">Total Commissions:</span>
-            <span className="text-sm font-black text-slate-800 dark:text-white">
-              Rs. {metrics.totalCommissions.toFixed(2)}
+      {/* ─── SECONDARY OVERVIEW BAR: Fund Pools & Beneficiary Shares ─── */}
+      <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-2xl p-3.5 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Fund Pools:</span>
             </span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/40 text-[11px] font-bold text-amber-800 dark:text-amber-300">
+              <Gift className="w-3 h-3 text-amber-500" />
+              <span>Bonus Pool: <strong>Rs. {metrics.totalBonusPool.toFixed(2)}</strong></span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/40 text-[11px] font-bold text-teal-800 dark:text-teal-300">
+              <TrendingUp className="w-3 h-3 text-teal-500" />
+              <span>SEO Pool: <strong>Rs. {metrics.totalSeoPool.toFixed(2)}</strong></span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/40 text-[11px] font-bold text-rose-800 dark:text-rose-300">
+              <PartyPopper className="w-3 h-3 text-rose-500" />
+              <span>Party Fund: <strong>Rs. {metrics.totalPartyFunds.toFixed(2)}</strong></span>
+            </div>
           </div>
-          <span className="text-slate-300 dark:text-slate-700">•</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase text-[10px]">Paid:</span>
-            <span className="font-extrabold text-emerald-700 dark:text-emerald-300">
-              Rs. {metrics.totalPaid.toFixed(2)}
-            </span>
-          </div>
-          <span className="text-slate-300 dark:text-slate-700">•</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-amber-600 dark:text-amber-400 font-bold uppercase text-[10px]">Pending:</span>
-            <span className="font-extrabold text-amber-700 dark:text-amber-300">
-              Rs. {metrics.totalPending.toFixed(2)}
-            </span>
-          </div>
-        </div>
 
-        {/* Team Beneficiary Shares summary */}
-        <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-          <span>Writer Share: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalWriterAmount.toFixed(2)}</strong></span>
-          <span>•</span>
-          <span>Linker Share: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalLinkerAmount.toFixed(2)}</strong></span>
-          <span>•</span>
-          <span>TL Share: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalTlAmount.toFixed(2)}</strong></span>
+          <div className="flex items-center gap-2.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            <span>Writer: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalWriterAmount.toFixed(0)}</strong></span>
+            <span>•</span>
+            <span>Linker: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalLinkerAmount.toFixed(0)}</strong></span>
+            <span>•</span>
+            <span>TL: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalTlAmount.toFixed(0)}</strong></span>
+          </div>
         </div>
       </div>
 
       {/* ─── SEARCH & FILTER TOOLBAR ─────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="relative w-full md:w-80">
+      <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        <div className="relative w-full lg:w-72 shrink-0">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -804,7 +967,19 @@ export default function CommissionsPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
+        <div className="flex items-center gap-2 self-stretch lg:self-auto flex-wrap">
+          {/* Date Range Filter */}
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+            }}
+            placeholder="Filter by Range"
+            align="right"
+          />
+
           {/* Sale Type Filter (for Commission List view) */}
           {activeViewTab === "LIST" && (
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
@@ -830,17 +1005,21 @@ export default function CommissionsPage() {
 
           {/* Payment Status Filter */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
-            {["ALL", "PAID", "PENDING"].map((status) => (
+            {[
+              { key: "ALL", label: "All Status" },
+              { key: "PAID", label: "Paid" },
+              { key: "PENDING", label: "Unpaid / Pending" },
+            ].map((st) => (
               <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
+                key={st.key}
+                onClick={() => setStatusFilter(st.key)}
                 className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${
-                  statusFilter === status
+                  statusFilter === st.key
                     ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                     : "text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A]"
                 }`}
               >
-                {status === "ALL" ? "All Status" : status}
+                {st.label}
               </button>
             ))}
           </div>
@@ -862,7 +1041,25 @@ export default function CommissionsPage() {
             ))}
           </div>
 
-          {/* Sort By (for Commission List view) */}
+          {/* Sort By for By Products view */}
+          {activeViewTab === "PRODUCTS" && (
+            <CustomSelect
+              value={productSortBy}
+              onChange={(val) => setProductSortBy(val)}
+              options={[
+                { value: "salesDesc", label: "Sales: Most Sales First" },
+                { value: "commissionDesc", label: "Commission: Highest First" },
+                { value: "pendingDesc", label: "Unpaid: Highest First" },
+                { value: "paidDesc", label: "Paid: Highest First" },
+                { value: "dateDesc", label: "Date: Most Recent" },
+                { value: "nameAsc", label: "Product Name (A-Z)" },
+              ]}
+              className="w-auto"
+              triggerClassName="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196] shadow-2xs whitespace-nowrap min-w-[170px]"
+            />
+          )}
+
+          {/* Sort By for Commission List view */}
           {activeViewTab === "LIST" && (
             <CustomSelect
               value={sortBy}
@@ -881,19 +1078,24 @@ export default function CommissionsPage() {
           )}
 
           {(search ||
+            startDate ||
+            endDate ||
             statusFilter !== "ALL" ||
             categoryFilter !== "ALL" ||
             saleTypeFilter !== "ALL") && (
             <button
               onClick={() => {
                 setSearch("");
+                setStartDate("");
+                setEndDate("");
                 setStatusFilter("ALL");
                 setCategoryFilter("ALL");
                 setSaleTypeFilter("ALL");
               }}
-              className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+              className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer flex items-center gap-1"
             >
-              Reset
+              <X className="w-3.5 h-3.5" />
+              <span>Reset</span>
             </button>
           )}
         </div>
@@ -1157,6 +1359,24 @@ export default function CommissionsPage() {
       ) : (
         /* ─── MAIN VIEW 2: BY PRODUCTS VIEW ─────────────────────────── */
         <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-[#4A4A4A] dark:text-white">
+                Products Commission Overview ({filteredProducts.length})
+              </span>
+              <span className="text-xs text-slate-400">
+                • Showing 1st sales, resales, paid & unpaid commissions
+              </span>
+            </div>
+            <button
+              onClick={() => handleOpenRecordSale(null)}
+              className="px-3 py-1.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white text-xs font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Record Sale</span>
+            </button>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#FAF9F5] dark:bg-slate-850/80 border-b border-[#CBCBCB]/50 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-[#737373] dark:text-slate-400">
@@ -1311,10 +1531,15 @@ export default function CommissionsPage() {
                               <Check className="w-3 h-3" />
                               <span>Paid</span>
                             </span>
+                          ) : prod.overallPaymentStatus === "PARTIAL" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
+                              <Clock className="w-3 h-3" />
+                              <span>Partial</span>
+                            </span>
                           ) : prod.overallPaymentStatus === "PENDING" ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40">
                               <Clock className="w-3 h-3" />
-                              <span>Pending</span>
+                              <span>Unpaid</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-400">
@@ -1332,20 +1557,44 @@ export default function CommissionsPage() {
                           })}
                         </td>
 
-                        {/* Commission Amount */}
+                        {/* Commission Amount: Total, Paid & Unpaid */}
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <div className="font-black text-sm text-[#4A4A4A] dark:text-white">
                             Rs. {prod.totalCommissionAmount.toFixed(2)}
                           </div>
-                          <div className="text-[10px] text-slate-400">
-                            {hasSales ? (
-                              <span>{prod.totalSalesCount} total sales</span>
-                            ) : (
+                          {hasSales ? (
+                            <div className="space-y-0.5 mt-1">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <span
+                                  className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                    prod.paidCommissionAmount > 0
+                                      ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/40"
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                                  }`}
+                                >
+                                  Paid: Rs. {prod.paidCommissionAmount.toFixed(2)}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                    prod.pendingCommissionAmount > 0
+                                      ? "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/40"
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                                  }`}
+                                >
+                                  Unpaid: Rs. {prod.pendingCommissionAmount.toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                {prod.totalSalesCount} total sales ({prod.firstSalesCount} 1st | {prod.resalesCount} re)
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-slate-400 mt-0.5">
                               <span>
                                 1st: Rs.{prod.rates.firstSaleTotal} | Re: Rs.{prod.rates.resaleTotal}
                               </span>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </td>
 
                         {/* Actions */}
@@ -1813,8 +2062,21 @@ export default function CommissionsPage() {
                   Sales History: {historyProduct.name}
                 </h3>
                 <p className="text-xs text-[#737373] dark:text-slate-400 mt-0.5">
-                  {historyProduct.siteName} • {historyProduct.categoryName} • Total Commissions: Rs. {historyProduct.totalCommissionAmount.toFixed(2)}
+                  {historyProduct.siteName} • {historyProduct.categoryName}
                 </p>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs font-bold">
+                  <span className="text-slate-800 dark:text-white">
+                    Total: Rs. {historyProduct.totalCommissionAmount.toFixed(2)}
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    Paid: Rs. {historyProduct.paidCommissionAmount.toFixed(2)}
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  <span className="text-amber-600 dark:text-amber-400">
+                    Unpaid: Rs. {historyProduct.pendingCommissionAmount.toFixed(2)}
+                  </span>
+                </div>
               </div>
               <button
                 onClick={() => setHistoryProduct(null)}

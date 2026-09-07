@@ -29,6 +29,21 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search")?.toLowerCase().trim();
     const paymentStatus = searchParams.get("paymentStatus");
     const categoryParam = searchParams.get("category"); // "NUTRA" | "ECOM"
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+
+    // Build date filter if provided
+    const saleDateFilter: any = {};
+    if (startDateParam || endDateParam) {
+      if (startDateParam) {
+        saleDateFilter.gte = new Date(startDateParam);
+      }
+      if (endDateParam) {
+        const end = new Date(endDateParam);
+        end.setHours(23, 59, 59, 999);
+        saleDateFilter.lte = end;
+      }
+    }
 
     // 1. Fetch all sites with product counts for navbar tabs
     const sites = await prisma.site.findMany({
@@ -78,16 +93,20 @@ export async function GET(req: NextRequest) {
           select: { id: true, affiliateName: true, addedBy: { select: { id: true, name: true } } },
         },
         commissionSales: {
+          where: Object.keys(saleDateFilter).length > 0 ? { saleDate: saleDateFilter } : undefined,
           orderBy: { saleDate: "desc" },
         },
       },
       orderBy: { addedAt: "desc" },
     });
 
-    // 4. Query all commission sales matching siteId (or all) for the flat Commission List
+    // 4. Query all commission sales matching siteId (or all) and date range for the flat Commission List
     const saleWhere: any = {};
     if (siteIdParam && siteIdParam !== "ALL") {
       saleWhere.siteId = parseInt(siteIdParam);
+    }
+    if (Object.keys(saleDateFilter).length > 0) {
+      saleWhere.saleDate = saleDateFilter;
     }
 
     const allSalesFromDb = await prisma.commissionSale.findMany({
@@ -170,10 +189,17 @@ export async function GET(req: NextRequest) {
         .reduce((acc, s) => acc + (s.amount || 0), 0);
 
       // Payment status determination for the product
-      let overallPaymentStatus: "PAID" | "PENDING" | "NO_SALES" = "NO_SALES";
+      let overallPaymentStatus: "PAID" | "PENDING" | "PARTIAL" | "NO_SALES" = "NO_SALES";
       if (prod.commissionSales.length > 0) {
         const hasPending = prod.commissionSales.some((s) => s.paymentStatus === "PENDING");
-        overallPaymentStatus = hasPending ? "PENDING" : "PAID";
+        const hasPaid = prod.commissionSales.some((s) => s.paymentStatus === "PAID");
+        if (hasPending && hasPaid) {
+          overallPaymentStatus = "PARTIAL";
+        } else if (hasPending) {
+          overallPaymentStatus = "PENDING";
+        } else {
+          overallPaymentStatus = "PAID";
+        }
       }
 
       // Expected rates from CommissionSetting for this category
@@ -271,7 +297,15 @@ export async function GET(req: NextRequest) {
     }
 
     if (paymentStatus && paymentStatus !== "ALL") {
-      enriched = enriched.filter((p) => p.overallPaymentStatus === paymentStatus);
+      if (paymentStatus === "PAID") {
+        enriched = enriched.filter((p) => p.overallPaymentStatus === "PAID" || p.paidCommissionAmount > 0);
+      } else if (paymentStatus === "PENDING") {
+        enriched = enriched.filter((p) => p.overallPaymentStatus === "PENDING" || p.pendingCommissionAmount > 0);
+      } else if (paymentStatus === "PARTIAL") {
+        enriched = enriched.filter((p) => p.overallPaymentStatus === "PARTIAL");
+      } else {
+        enriched = enriched.filter((p) => p.overallPaymentStatus === paymentStatus);
+      }
     }
 
     if (categoryParam && categoryParam !== "ALL") {
