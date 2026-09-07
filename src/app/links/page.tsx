@@ -63,11 +63,12 @@ function LinksPageContent() {
   const router = useRouter();
   const urlProductId = searchParams.get("productId");
   const urlSearch = searchParams.get("search");
+  const urlStatus = searchParams.get("status");
 
   const [links, setLinks] = useState<LinkLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(urlSearch || "");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(urlStatus || "");
   const [showOnlyDeadLinks, setShowOnlyDeadLinks] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
@@ -98,6 +99,24 @@ function LinksPageContent() {
       setIsAddLinkOpen(true);
     }
   }, [urlProductId]);
+
+  // Sync search and status filter when searchParams changes (e.g. from notification click)
+  useEffect(() => {
+    const s = searchParams.get("search");
+    const st = searchParams.get("status");
+    if (s !== null) {
+      setSearch(s);
+      setStatusFilter(st || "");
+      setUserFilter("");
+      setShowOnlyDeadLinks(false);
+      setStartDate("");
+      setEndDate("");
+      setCurrentPage(1);
+    } else if (st !== null) {
+      setStatusFilter(st);
+      setCurrentPage(1);
+    }
+  }, [searchParams]);
 
   const handleExportCSV = () => {
     const headers = ["ID", "Product", "Site", "Article Link", "Bridge Page", "Affiliate Name", "Affiliate Link", "Geos", "Status", "Added By", "Date", "Remarks"];
@@ -206,13 +225,23 @@ function LinksPageContent() {
           l.product?.slug,
           l.affiliateName,
           l.product?.site?.name,
+          String(l.id),
+          String(l.productId),
         ],
         search
       );
-    const matchStatus = !statusFilter || l.status === statusFilter;
+
+    const isExactSearchMatch = Boolean(
+      search &&
+      (l.product?.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
+       l.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim() ||
+       l.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
+    );
+
+    const matchStatus = !statusFilter || l.status === statusFilter || isExactSearchMatch;
 
     // Added By filter
-    const matchUser = !userFilter || l.addedBy?.name === userFilter;
+    const matchUser = !userFilter || l.addedBy?.name === userFilter || isExactSearchMatch;
 
     // Date Range filter
     let matchDate = true;
@@ -555,7 +584,7 @@ function LinksPageContent() {
             {search && (
               <button
                 type="button"
-                onClick={() => { setSearch(""); setCurrentPage(1); }}
+                onClick={() => { setSearch(""); router.replace("/links"); setCurrentPage(1); }}
                 className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
@@ -652,9 +681,20 @@ function LinksPageContent() {
                 {paginated.map((l) => {
                   const statusStyle = STATUS_STYLES[l.status] || STATUS_STYLES.REQUESTED;
                   const statusLabel = STATUS_LABELS[l.status] || l.status;
+                  const isNotificationMatch = Boolean(
+                    search &&
+                    (l.product?.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
+                     l.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim() ||
+                     l.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
+                  );
                   
                   return (
-                    <tr key={l.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <tr
+                      key={l.id}
+                      className={`hover:bg-slate-50/50 transition-colors group ${
+                        isNotificationMatch ? "bg-amber-50/30 ring-1 ring-amber-400/40" : ""
+                      }`}
+                    >
                       <td className="px-3 py-3.5 max-w-[240px]">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[13px] font-semibold text-slate-800 break-words block">{l.product.name}</span>

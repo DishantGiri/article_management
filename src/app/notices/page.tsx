@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Megaphone,
   Plus,
@@ -126,14 +127,23 @@ const ROLE_BADGE_CONFIG: Record<string, { label: string; bg: string; text: strin
   SUPER_ADMIN: { label: "Super Admins", bg: "bg-rose-50 dark:bg-rose-950/40", text: "text-rose-700 dark:text-rose-300", border: "border-rose-200 dark:border-rose-800/50", icon: Shield },
 };
 
-export default function NoticeBoardPage() {
+function NoticeBoardContent() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [selectedRole, setSelectedRole] = useState<string>("ALL");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+
+  useEffect(() => {
+    const s = searchParams.get("search");
+    if (s !== null) {
+      setSearchQuery(s);
+    }
+  }, [searchParams]);
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -885,5 +895,19 @@ export default function NoticeBoardPage() {
         onCancel={() => setDeleteNoticeId(null)}
       />
     </div>
+  );
+}
+
+export default function NoticeBoardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-20 min-h-screen">
+          <div className="w-8 h-8 border-4 border-[#6D8196]/20 border-t-[#6D8196] rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <NoticeBoardContent />
+    </Suspense>
   );
 }

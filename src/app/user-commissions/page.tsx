@@ -251,10 +251,13 @@ export default function UserCommissionsPage() {
     }
   };
 
-  // Filter users by text search using fuzzy matching
+  // Filter users by text search using fuzzy matching (guarantee exclusion of ADMIN and SUPER_ADMIN)
   const filteredUsers = useMemo(() => {
-    if (!search.trim()) return users;
-    return users.filter((u) => {
+    const commissionEligible = users.filter(
+      (u) => u.role !== "ADMIN" && u.role !== "SUPER_ADMIN"
+    );
+    if (!search.trim()) return commissionEligible;
+    return commissionEligible.filter((u) => {
       const productNames = u.sales?.map((s) => s.productName) || [];
       return fuzzyMatchAny([u.name, u.email, u.role, ...productNames], search);
     });
@@ -443,14 +446,13 @@ export default function UserCommissionsPage() {
             )}
           </div>
 
-          {/* Role Filter Tabs */}
+          {/* Role Filter Tabs (Only commission-eligible roles) */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold overflow-x-auto max-w-full">
             {[
               { key: "ALL", label: "All Roles" },
               { key: "WRITER", label: "Writers" },
               { key: "LINKER", label: "Linkers" },
               { key: "TEAM_LEAD", label: "Team Leads" },
-              { key: "ADMIN", label: "Admins" },
             ].map((tab) => (
               <button
                 key={tab.key}

@@ -54,6 +54,7 @@ import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
 import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import CustomSelect from "@/components/CustomSelect";
+import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 
 interface DashboardData {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -273,6 +274,9 @@ export default function DashboardPage() {
         console.error("Failed to mark notification as read:", err);
       }
     }
+    setShowBellDropdown(false);
+    const targetUrl = getNotificationTargetUrl(n, currentUserRole);
+    router.push(targetUrl);
   };
 
   useEffect(() => {
@@ -516,22 +520,11 @@ export default function DashboardPage() {
                     <p className="text-xs text-slate-400 italic text-center py-6">No notifications in the past month</p>
                   ) : (
                     notifications.slice(0, 10).map((n) => {
-                      const match = n.message.match(/"([^"]+)"/);
-                      const prodName = match ? match[1] : "";
-
-                      let linkUrl = "";
-                      if (prodName) {
-                        linkUrl = currentUserRole === "WRITER"
-                          ? `/articles?search=${encodeURIComponent(prodName)}`
-                          : `/links?search=${encodeURIComponent(prodName)}`;
-                      } else {
-                        linkUrl = currentUserRole === "WRITER" ? "/articles" : "/links";
-                      }
+                      const linkUrl = getNotificationTargetUrl(n, currentUserRole);
 
                       return (
-                        <Link
+                        <div
                           key={n.id}
-                          href={linkUrl}
                           onClick={() => handleNotificationClick(n)}
                           className={`p-3 rounded-xl border text-xs flex flex-col gap-1.5 transition-all block cursor-pointer ${
                             !n.isRead
@@ -550,7 +543,7 @@ export default function DashboardPage() {
                           <span className="text-[10px] text-slate-400 font-medium self-end">
                             {new Date(n.createdAt).toLocaleDateString()}
                           </span>
-                        </Link>
+                        </div>
                       );
                     })
                   )}

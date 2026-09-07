@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2 } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -9,7 +9,7 @@ import AddProductModal from "@/components/AddProductModal";
 import EditProductModal from "@/components/EditProductModal";
 import ImportProductModal from "@/components/ImportProductModal";
 import AssignmentDetailsModal from "@/components/AssignmentDetailsModal";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import DateRangePicker from "@/components/DateRangePicker";
@@ -50,16 +50,24 @@ const STATUS_COLORS: Record<string, string> = {
   REDO: "bg-rose-50 text-rose-700 border border-rose-200/60",
 };
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const { data: session, status: sessionStatus } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const urlSearch = searchParams.get("search");
+  const urlStatus = searchParams.get("status");
+  const urlSite = searchParams.get("site");
+  const urlCategory = searchParams.get("category");
+
   const [mounted, setMounted] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [siteFilter, setSiteFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [search, setSearch] = useState(urlSearch || "");
+  const [siteFilter, setSiteFilter] = useState(urlSite || "");
+  const [categoryFilter, setCategoryFilter] = useState(urlCategory || "");
+  const [statusFilter, setStatusFilter] = useState(urlStatus || "");
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -69,7 +77,32 @@ export default function ProductsPage() {
   const [activeTab, setActiveTab] = useState<"products" | "my-articles">("products");
   const [myArticles, setMyArticles] = useState<any[]>([]);
   const itemsPerPage = 10;
-  const router = useRouter();
+
+  // Sync search and filter params whenever searchParams changes (e.g. from notification click)
+  useEffect(() => {
+    const s = searchParams.get("search");
+    const st = searchParams.get("status");
+    const site = searchParams.get("site");
+    const cat = searchParams.get("category");
+
+    if (s !== null) {
+      setSearch(s);
+      setStatusFilter(st || "");
+      setSiteFilter(site || "");
+      setCategoryFilter(cat || "");
+      setUserFilter("");
+      setStartDate("");
+      setEndDate("");
+      setCurrentPage(1);
+    } else {
+      if (st !== null) setStatusFilter(st);
+      if (site !== null) setSiteFilter(site);
+      if (cat !== null) setCategoryFilter(cat);
+      if (st !== null || site !== null || cat !== null) {
+        setCurrentPage(1);
+      }
+    }
+  }, [searchParams]);
 
   // Report Link Issue state
   const [reportingProduct, setReportingProduct] = useState<Product | null>(null);
@@ -262,14 +295,23 @@ export default function ProductsPage() {
         search
       );
 
+    const isExactSearchMatch = Boolean(
+      search &&
+      (p.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
+       p.slug?.toLowerCase().trim() === search.toLowerCase().trim() ||
+       p.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
+    );
+
     const matchSite =
       !siteFilter ||
+      isExactSearchMatch ||
       p.site?.id?.toString() === siteFilter ||
       p.siteId?.toString() === siteFilter ||
       (p.site?.name && p.site.name.toLowerCase() === siteFilter.toLowerCase());
 
     const matchCategory =
       !categoryFilter ||
+      isExactSearchMatch ||
       p.category?.id?.toString() === categoryFilter ||
       p.categoryId?.toString() === categoryFilter ||
       (p.category?.name && p.category.name.toLowerCase() === categoryFilter.toLowerCase()) ||
@@ -278,7 +320,9 @@ export default function ProductsPage() {
     // Status Filter
     let matchStatus = true;
     const currentStatus = p.article?.status || "PENDING";
-    if (statusFilter) {
+    if (isExactSearchMatch) {
+      matchStatus = true;
+    } else if (statusFilter) {
       matchStatus = currentStatus === statusFilter;
     } else if (currentUserRole === "WRITER") {
       // By default, remove completed & approved products from writer's available queue
@@ -346,17 +390,26 @@ export default function ProductsPage() {
         search
       );
 
+    const isExactSearchMatch = Boolean(
+      search &&
+      (a.product?.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
+       a.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim() ||
+       a.product?.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
+    );
+
     const matchSite =
       !siteFilter ||
+      isExactSearchMatch ||
       a.product?.site?.id?.toString() === siteFilter ||
       (a.product?.site?.name && a.product.site.name.toLowerCase() === siteFilter.toLowerCase());
 
     const matchCategory =
       !categoryFilter ||
+      isExactSearchMatch ||
       a.product?.category?.id?.toString() === categoryFilter ||
       (a.product?.category?.name && a.product.category.name.toLowerCase() === categoryFilter.toLowerCase());
 
-    const matchStatus = !statusFilter || a.status === statusFilter;
+    const matchStatus = !statusFilter || a.status === statusFilter || isExactSearchMatch;
 
     return matchSearch && matchSite && matchCategory && matchStatus;
   });
@@ -611,7 +664,7 @@ export default function ProductsPage() {
             {search && (
               <button
                 type="button"
-                onClick={() => { setSearch(""); setCurrentPage(1); }}
+                onClick={() => { setSearch(""); router.replace("/products"); setCurrentPage(1); }}
                 className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
@@ -1224,5 +1277,13 @@ export default function ProductsPage() {
         onCancel={() => setConfirmOpen(false)}
       />
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }

@@ -492,7 +492,7 @@ export async function GET(req: NextRequest) {
     let individualCommission = null;
     const targetUserId = parseInt(String(userId || session.user.id || "0"), 10);
 
-    if (targetUserId > 0) {
+    if (targetUserId > 0 && role !== "ADMIN" && role !== "SUPER_ADMIN") {
       try {
         const userPendingSales = await prisma.commissionSale.findMany({
           where: {

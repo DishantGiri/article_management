@@ -11,6 +11,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
 import { isUserTargeted } from "@/lib/noticeUtils";
+import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
 
@@ -394,37 +395,11 @@ export default function Sidebar() {
       }
     }
 
-    const msg = toast.message;
-    const match = msg.match(/"([^"]+)"/);
-    const productName = match ? match[1] : null;
-
     setToast(null);
 
-    if (msg.toLowerCase().includes("changes requested") || msg.toLowerCase().includes("redo") || msg.toLowerCase().includes("wrong")) {
-      router.push("/?tab=write");
-      return;
-    }
-
     const userRole = session?.user?.role || "WRITER";
-
-    if (productName) {
-      const searchParam = encodeURIComponent(productName);
-      if (toast.type === "LINK_ISSUE" || msg.toLowerCase().includes("link")) {
-        router.push(`/links?search=${searchParam}`);
-      } else {
-        router.push(`/articles?search=${searchParam}`);
-      }
-    } else {
-      if (toast.type === "NOTICE_PUBLISHED") {
-        router.push("/notices");
-      } else if (toast.type === "LINK_ISSUE" || userRole === "LINKER") {
-        router.push("/links");
-      } else if (toast.type === "PRODUCT_ADDED") {
-        router.push("/products");
-      } else {
-        router.push("/notifications");
-      }
-    }
+    const targetUrl = getNotificationTargetUrl(toast, userRole);
+    router.push(targetUrl);
   };
 
   const visibleNavItems = currentUser?.role

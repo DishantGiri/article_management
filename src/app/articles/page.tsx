@@ -71,9 +71,9 @@ function ArticlesContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const [statusFilter, setStatusFilter] = useState("");
-  const [writerFilter, setWriterFilter] = useState("");
-  const [siteFilter, setSiteFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "");
+  const [writerFilter, setWriterFilter] = useState(searchParams.get("writer") || "");
+  const [siteFilter, setSiteFilter] = useState(searchParams.get("site") || "");
 
   const [currentUserRole, setCurrentUserRole] = useState("");
   const [stats, setStats] = useState<any>(null);
@@ -99,6 +99,29 @@ function ArticlesContent() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Listen to searchParams changes (e.g. when clicked from notification) and update filters
+  useEffect(() => {
+    const s = searchParams.get("search");
+    const st = searchParams.get("status");
+    const w = searchParams.get("writer");
+    const site = searchParams.get("site");
+
+    if (s !== null) {
+      setSearch(s);
+      setStatusFilter(st || "");
+      setWriterFilter(w || "");
+      setSiteFilter(site || "");
+      setCurrentPage(1);
+    } else {
+      if (st !== null) setStatusFilter(st);
+      if (w !== null) setWriterFilter(w);
+      if (site !== null) setSiteFilter(site);
+      if (st !== null || w !== null || site !== null) {
+        setCurrentPage(1);
+      }
+    }
+  }, [searchParams]);
 
   const isManager = currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD";
 
@@ -272,13 +295,22 @@ function ArticlesContent() {
           a.product?.slug,
           a.writer?.name,
           a.product?.site?.name,
+          String(a.id),
+          String(a.product?.id),
         ],
         search
       );
 
-    const matchStatus = !statusFilter || a.status === statusFilter;
-    const matchWriter = !writerFilter || a.writer?.name === writerFilter;
-    const matchSite = !siteFilter || a.product.site.name === siteFilter;
+    // Exact search match override guarantees that the specific notification item is always displayed
+    const isExactSearchMatch = Boolean(
+      search &&
+      (a.product?.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
+       a.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim())
+    );
+
+    const matchStatus = !statusFilter || a.status === statusFilter || isExactSearchMatch;
+    const matchWriter = !writerFilter || a.writer?.name === writerFilter || isExactSearchMatch;
+    const matchSite = !siteFilter || a.product.site.name === siteFilter || isExactSearchMatch;
 
     return matchSearch && matchStatus && matchWriter && matchSite;
   });
@@ -633,7 +665,7 @@ function ArticlesContent() {
       {/* Filters Bar */}
       <div className="flex items-center gap-3 mt-4 mb-2">
         {/* Search */}
-        <div className="relative flex-1 max-w-sm bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="relative flex-1 max-w-sm bg-white rounded-xl border border-slate-200 shadow-sm flex items-center">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="w-4 h-4 text-slate-400" />
           </div>
@@ -642,8 +674,21 @@ function ArticlesContent() {
             placeholder="Search articles..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-            className="w-full pl-9 pr-4 py-2 border-none text-sm focus:outline-none focus:ring-0 bg-transparent placeholder-slate-400 font-medium text-slate-700"
+            className="w-full pl-9 pr-8 py-2 border-none text-sm focus:outline-none focus:ring-0 bg-transparent placeholder-slate-400 font-medium text-slate-700"
           />
+          {search && (
+            <button
+              onClick={() => {
+                setSearch("");
+                router.replace("/articles");
+                setCurrentPage(1);
+              }}
+              className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition cursor-pointer"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Status Filter */}
@@ -781,9 +826,23 @@ function ArticlesContent() {
                   const writerRemarks = getWriterRemarks(a);
                   const linkerRemarks = getLinkerRemarks(a);
                   const isSelected = selectedArticleIds.includes(a.id);
+                  const isNotificationMatch = Boolean(
+                    search &&
+                    (a.product?.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
+                     a.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim())
+                  );
                   
                   return (
-                    <tr key={a.id} className={`hover:bg-slate-50/50 transition-colors group ${isSelected ? "bg-[#FAF9F5]" : ""}`}>
+                    <tr
+                      key={a.id}
+                      className={`hover:bg-slate-50/50 transition-colors group ${
+                        isSelected
+                          ? "bg-[#FAF9F5]"
+                          : isNotificationMatch
+                          ? "bg-amber-50/30 ring-1 ring-amber-400/40"
+                          : ""
+                      }`}
+                    >
                       {isManager && (
                         <td className="px-3 py-3.5 text-center">
                           {a.status !== "APPROVED" ? (

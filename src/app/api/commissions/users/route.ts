@@ -25,8 +25,13 @@ export async function GET(req: NextRequest) {
       orderBy: { name: "asc" },
     });
 
-    // 2. Fetch all users
+    // 2. Fetch all commission-eligible users (exclude ADMIN and SUPER_ADMIN)
     const users = await prisma.user.findMany({
+      where: {
+        role: {
+          in: ["WRITER", "LINKER", "TEAM_LEAD"],
+        },
+      },
       select: {
         id: true,
         name: true,

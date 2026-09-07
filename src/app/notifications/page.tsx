@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 
 interface Notification {
   id: number;
@@ -84,8 +85,6 @@ export default function NotificationsPage() {
       setMarking(false);
     }
   };
-
-import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 
   const handleNotificationClick = async (notification: Notification) => {
     // 1. Mark as read in DB if it's currently unread
@@ -266,9 +265,26 @@ import { getNotificationTargetUrl } from "@/lib/notificationRouting";
                     <p className={`text-sm leading-snug truncate ${!notification.isRead ? "font-bold text-[#4A4A4A]" : "font-medium text-slate-600"}`}>
                       {notification.message}
                     </p>
-                    <p className="text-xs text-[#737373] mt-0.5">
-                      Click to view associated product and details.
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {(() => {
+                        const targetUrl = getNotificationTargetUrl(notification, session?.user?.role || "WRITER");
+                        const dest = targetUrl.startsWith("/links")
+                          ? "Links (Filter Applied)"
+                          : targetUrl.startsWith("/articles")
+                          ? "Articles (Filter Applied)"
+                          : targetUrl.startsWith("/products")
+                          ? "Products (Filter Applied)"
+                          : targetUrl.startsWith("/notices")
+                          ? "Notice Board"
+                          : "Workspace";
+
+                        return (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#6D8196] bg-[#6D8196]/10 px-2 py-0.5 rounded-md">
+                            <span>→ Open in {dest}</span>
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3.5 flex-shrink-0">
