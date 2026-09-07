@@ -44,6 +44,60 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   document.documentElement.setAttribute('data-theme', 'light');
                 }
               } catch (e) {}
+
+              // Shield against third-party Chrome extension crashes (e.g. M_ID in 200.js)
+              if (typeof window !== 'undefined') {
+                window.addEventListener('unhandledrejection', function(event) {
+                  var reason = event.reason;
+                  var stack = (reason && reason.stack) || '';
+                  var msg = (reason && reason.message) || String(reason || '');
+                  if (
+                    stack.indexOf('chrome-extension://') !== -1 ||
+                    stack.indexOf('moz-extension://') !== -1 ||
+                    msg.indexOf('M_ID') !== -1
+                  ) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                  }
+                }, true);
+
+                window.addEventListener('error', function(event) {
+                  var filename = event.filename || '';
+                  var stack = (event.error && event.error.stack) || '';
+                  var msg = event.message || '';
+                  if (
+                    filename.indexOf('chrome-extension://') !== -1 ||
+                    filename.indexOf('moz-extension://') !== -1 ||
+                    stack.indexOf('chrome-extension://') !== -1 ||
+                    msg.indexOf('M_ID') !== -1
+                  ) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                  }
+                }, true);
+
+                // Strip extension-injected attributes (like bis_skin_checked) before React hydration
+                try {
+                  var observer = new MutationObserver(function(mutations) {
+                    for (var i = 0; i < mutations.length; i++) {
+                      var m = mutations[i];
+                      if (m.type === 'attributes' && m.attributeName === 'bis_skin_checked') {
+                        m.target.removeAttribute('bis_skin_checked');
+                      }
+                    }
+                  });
+                  observer.observe(document.documentElement, {
+                    attributes: true,
+                    subtree: true,
+                    attributeFilter: ['bis_skin_checked'],
+                  });
+                  window.addEventListener('DOMContentLoaded', function() {
+                    setTimeout(function() {
+                      observer.disconnect();
+                    }, 4000);
+                  });
+                } catch (e) {}
+              }
             `,
           }}
         />

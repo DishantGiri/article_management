@@ -11,6 +11,44 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch((err) => console.log('Service Worker registration failed:', err));
     }
+
+    // Shield against third-party Chrome extension errors
+    const handleRejection = (e: PromiseRejectionEvent) => {
+      const reason = e.reason;
+      const stack = (reason && reason.stack) || "";
+      const msg = (reason && reason.message) || String(reason || "");
+      if (
+        stack.includes("chrome-extension://") ||
+        stack.includes("moz-extension://") ||
+        msg.includes("M_ID")
+      ) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+
+    const handleError = (e: ErrorEvent) => {
+      const filename = e.filename || "";
+      const stack = (e.error && e.error.stack) || "";
+      const msg = e.message || "";
+      if (
+        filename.includes("chrome-extension://") ||
+        filename.includes("moz-extension://") ||
+        stack.includes("chrome-extension://") ||
+        msg.includes("M_ID")
+      ) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+
+    window.addEventListener("unhandledrejection", handleRejection, true);
+    window.addEventListener("error", handleError, true);
+
+    return () => {
+      window.removeEventListener("unhandledrejection", handleRejection, true);
+      window.removeEventListener("error", handleError, true);
+    };
   }, []);
 
   return (
