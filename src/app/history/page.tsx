@@ -655,7 +655,7 @@ export default function HistoryPage() {
                                 </span>
                                 <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 bg-white px-1.5 py-0.5 rounded border border-indigo-200/80 shadow-2xs">
                                   <Calendar className="w-2.5 h-2.5 text-indigo-400" />
-                                  {formatRemarkDate(record.updatedAt || record.createdAt)}
+                                  {formatRemarkDate(record.updatedAt)}
                                 </span>
                               </div>
                               <p className="leading-relaxed">&quot;{writerRemarks}&quot;</p>
