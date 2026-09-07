@@ -131,6 +131,7 @@ export default function CommissionsPage() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
 
   // View Mode: "LIST" (Commission List) or "PRODUCTS" (Grouped by Products)
   const initialTab = searchParams.get("tab") === "products" ? "PRODUCTS" : "LIST";
@@ -169,6 +170,7 @@ export default function CommissionsPage() {
   const [endDate, setEndDate] = useState<string>("");
   const [saleTypeFilter, setSaleTypeFilter] = useState<string>("ALL"); // "ALL" | "FIRST_SALE" | "RESALE"
   const [statusFilter, setStatusFilter] = useState<string>("ALL");     // "ALL" | "PAID" | "PENDING"
+  const [assignmentFilter, setAssignmentFilter] = useState<string>("ALL"); // "ALL" | "ASSIGNED" | "UNASSIGNED"
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL"); // "ALL" | "NUTRA" | "ECOM"
   const [sortBy, setSortBy] = useState<string>("dateDesc");
   const [productSortBy, setProductSortBy] = useState<string>("salesDesc");
@@ -194,18 +196,17 @@ export default function CommissionsPage() {
   const [historyProduct, setHistoryProduct] = useState<ProductCommissionRow | null>(null);
   const [updatingSaleId, setUpdatingSaleId] = useState<number | null>(null);
 
-  // Handle Tab Change with URL sync
+  // Handle Tab Change with URL sync (pure client-side toggle without triggering App Router loading transitions)
   const handleTabChange = (tab: "LIST" | "PRODUCTS") => {
     setActiveViewTab(tab);
     if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
+      const url = new URL(window.location.href);
       if (tab === "PRODUCTS") {
-        params.set("tab", "products");
+        url.searchParams.set("tab", "products");
       } else {
-        params.delete("tab");
+        url.searchParams.delete("tab");
       }
-      const query = params.toString() ? `?${params.toString()}` : "";
-      router.replace(`/commissions${query}`, { scroll: false });
+      window.history.replaceState(null, "", url.toString());
     }
   };
 
@@ -221,7 +222,7 @@ export default function CommissionsPage() {
       return;
     }
 
-    if (!isBackground) setLoading(true);
+    if (!hasLoadedInitial && !isBackground) setLoading(true);
     else setRefreshing(true);
 
     try {
@@ -249,6 +250,7 @@ export default function CommissionsPage() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setHasLoadedInitial(true);
     }
   };
 
@@ -453,6 +455,26 @@ export default function CommissionsPage() {
       result = result.filter((s) => s.paymentStatus === statusFilter);
     }
 
+    if (assignmentFilter === "ASSIGNED") {
+      result = result.filter(
+        (s) =>
+          Boolean(
+            s.writerName &&
+            s.writerName.trim().toLowerCase() !== "unassigned" &&
+            s.writerName.trim().toLowerCase() !== "n/a" &&
+            s.writerId !== null
+          )
+      );
+    } else if (assignmentFilter === "UNASSIGNED") {
+      result = result.filter(
+        (s) =>
+          !s.writerName ||
+          s.writerName.trim().toLowerCase() === "unassigned" ||
+          s.writerName.trim().toLowerCase() === "n/a" ||
+          s.writerId === null
+      );
+    }
+
     if (categoryFilter !== "ALL") {
       result = result.filter((s) => s.categoryKey === categoryFilter);
     }
@@ -478,7 +500,7 @@ export default function CommissionsPage() {
     });
 
     return result;
-  }, [sales, search, saleTypeFilter, statusFilter, categoryFilter, sortBy]);
+  }, [sales, search, saleTypeFilter, statusFilter, assignmentFilter, categoryFilter, sortBy]);
 
   // Filtered Products for the "By Products" view
   const filteredProducts = useMemo(() => {
@@ -495,6 +517,14 @@ export default function CommissionsPage() {
         if (statusFilter === "PENDING" && p.pendingCommissionAmount <= 0) return false;
         if (statusFilter === "PARTIAL" && p.overallPaymentStatus !== "PARTIAL") return false;
       }
+      const isAssigned = Boolean(
+        p.writerName &&
+        p.writerName.trim().toLowerCase() !== "unassigned" &&
+        p.writerName.trim().toLowerCase() !== "n/a" &&
+        p.writerId !== null
+      );
+      if (assignmentFilter === "ASSIGNED" && !isAssigned) return false;
+      if (assignmentFilter === "UNASSIGNED" && isAssigned) return false;
       if (categoryFilter !== "ALL" && p.categoryKey !== categoryFilter) return false;
       return true;
     });
@@ -521,7 +551,7 @@ export default function CommissionsPage() {
     });
 
     return list;
-  }, [products, search, statusFilter, categoryFilter, productSortBy]);
+  }, [products, search, statusFilter, assignmentFilter, categoryFilter, productSortBy]);
 
   // Dynamic Summaries based on active view tab
   const productSummary = useMemo(() => {
@@ -578,9 +608,9 @@ export default function CommissionsPage() {
 
   const activeSummary = activeViewTab === "PRODUCTS" ? productSummary : salesSummary;
 
-  if (status === "loading" || (loading && session?.user?.role === "SUPER_ADMIN")) {
+  if (!hasLoadedInitial && (status === "loading" || loading)) {
     return (
-      <div className="p-6 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950">
+      <div className="p-6 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950" suppressHydrationWarning>
         <LoadingScreen
           message={status === "loading" ? "Authenticating..." : "Loading commissions dashboard..."}
           subtext={
@@ -597,7 +627,7 @@ export default function CommissionsPage() {
   // Super Admin Role Verification
   if (!session || session.user?.role !== "SUPER_ADMIN") {
     return (
-      <div className="p-6 sm:p-12 max-w-2xl mx-auto min-h-screen flex flex-col items-center justify-center text-center bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-100">
+      <div className="p-6 sm:p-12 max-w-2xl mx-auto min-h-screen flex flex-col items-center justify-center text-center bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-100" suppressHydrationWarning>
         <div className="w-16 h-16 rounded-3xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-5 shadow-sm">
           <ShieldAlert className="w-8 h-8" />
         </div>
@@ -626,7 +656,7 @@ export default function CommissionsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-100 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-100 space-y-6" suppressHydrationWarning>
       {/* ─── TOP HEADER BANNER ────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs relative overflow-hidden">
         {/* Ambient Top Glow */}
@@ -1024,6 +1054,27 @@ export default function CommissionsPage() {
             ))}
           </div>
 
+          {/* Writer Assignment Filter */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
+            {[
+              { key: "ALL", label: "All Writers" },
+              { key: "ASSIGNED", label: "Assigned" },
+              { key: "UNASSIGNED", label: "Unassigned" },
+            ].map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setAssignmentFilter(item.key)}
+                className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${
+                  assignmentFilter === item.key
+                    ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
+                    : "text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A]"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
           {/* Category Filter */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
             {["ALL", "NUTRA", "ECOM"].map((cat) => (
@@ -1081,6 +1132,7 @@ export default function CommissionsPage() {
             startDate ||
             endDate ||
             statusFilter !== "ALL" ||
+            assignmentFilter !== "ALL" ||
             categoryFilter !== "ALL" ||
             saleTypeFilter !== "ALL") && (
             <button
@@ -1089,6 +1141,7 @@ export default function CommissionsPage() {
                 setStartDate("");
                 setEndDate("");
                 setStatusFilter("ALL");
+                setAssignmentFilter("ALL");
                 setCategoryFilter("ALL");
                 setSaleTypeFilter("ALL");
               }}

@@ -139,10 +139,18 @@ export async function GET(req: NextRequest) {
         orderBy: { completedAt: "desc" },
         include: {
           product: {
-            include: { site: { select: { name: true } } }
-          }
+            include: {
+              site: { select: { name: true } },
+              category: { select: { name: true } },
+            },
+          },
+          reviews: {
+            orderBy: { reviewedAt: "desc" },
+            take: 1,
+            select: { suggestion: true, approved: true, reviewedBy: { select: { name: true } } },
+          },
         },
-        take: 5,
+        take: 10,
       }),
 
       // LINKER: Products added by this linker
@@ -480,6 +488,126 @@ export async function GET(req: NextRequest) {
       ...(affiliateNetworksGroup || []).map((a: any) => a.name)
     ]);
 
+    // ─── Individual Unpaid Commission for WRITER, LINKER, TEAM_LEAD ───
+    let individualCommission = null;
+    const targetUserId = parseInt(String(userId || session.user.id || "0"), 10);
+
+    if (targetUserId > 0) {
+      try {
+        const userPendingSales = await prisma.commissionSale.findMany({
+          where: {
+            paymentStatus: "PENDING",
+            OR: [
+              { writerId: targetUserId },
+              { linkerId: targetUserId },
+              { teamLeadId: targetUserId },
+            ],
+          },
+          include: {
+            product: { select: { name: true } },
+            site: { select: { name: true } },
+          },
+          orderBy: { saleDate: "desc" },
+        });
+
+        let unpaidAmount = 0;
+        let pendingSalesCount = 0;
+        const recentPendingSales = [];
+
+        for (const sale of userPendingSales) {
+          let earned = 0;
+          const roles: string[] = [];
+
+          if (sale.writerId === targetUserId && !sale.writerLeftCompany && (sale.writerAmount || 0) > 0) {
+            earned += sale.writerAmount;
+            roles.push("Writer");
+          }
+          if (sale.linkerId === targetUserId && (sale.linkerAmount || 0) > 0) {
+            earned += sale.linkerAmount;
+            roles.push("Linker");
+          }
+          if (sale.teamLeadId === targetUserId && (sale.tlAmount || 0) > 0) {
+            earned += sale.tlAmount;
+            roles.push("Team Lead");
+          }
+
+          if (earned > 0) {
+            unpaidAmount += earned;
+            pendingSalesCount += 1;
+            if (recentPendingSales.length < 5) {
+              recentPendingSales.push({
+                saleId: sale.id,
+                productName: sale.product?.name || "Product",
+                siteName: sale.site?.name || "Site",
+                saleType: sale.saleType,
+                saleDate: sale.saleDate.toISOString(),
+                roleEarnedAs: roles.join(" & "),
+                amount: parseFloat(earned.toFixed(2)),
+              });
+            }
+          }
+        }
+
+        individualCommission = {
+          unpaidAmount: parseFloat(unpaidAmount.toFixed(2)),
+          pendingSalesCount,
+          recentPendingSales,
+        };
+      } catch (err) {
+        console.error("Failed to compute individualCommission:", err);
+      }
+    }
+
+    // ─── WRITER PERFORMANCE METRICS & VELOCITY ───
+    let writerStats = null;
+    if (targetUserId > 0 && (role === "WRITER" || role === "TEAM_LEAD")) {
+      try {
+        const [
+          writerApprovedCount,
+          writerInReviewCount,
+          writerRedoCount,
+          writerCompletedToday,
+          writerTotalCompleted,
+          writerTimeAgg,
+        ] = await Promise.all([
+          prisma.article.count({ where: { writerId: targetUserId, status: "APPROVED" } }),
+          prisma.article.count({ where: { writerId: targetUserId, status: "COMPLETED" } }),
+          prisma.article.count({ where: { writerId: targetUserId, status: "REDO" } }),
+          prisma.article.count({
+            where: {
+              writerId: targetUserId,
+              status: { in: ["COMPLETED", "APPROVED"] },
+              completedAt: { gte: startOfToday },
+            },
+          }),
+          prisma.article.count({
+            where: { writerId: targetUserId, status: { in: ["COMPLETED", "APPROVED"] } },
+          }),
+          prisma.article.aggregate({
+            where: {
+              writerId: targetUserId,
+              status: { in: ["COMPLETED", "APPROVED"] },
+              writingTimeMin: { gt: 0 },
+            },
+            _avg: { writingTimeMin: true },
+          }),
+        ]);
+
+        writerStats = {
+          approvedCount: writerApprovedCount,
+          inReviewCount: writerInReviewCount,
+          redoCount: writerRedoCount,
+          completedToday: writerCompletedToday,
+          totalCompleted: writerTotalCompleted,
+          avgWritingTimeMin: writerTimeAgg._avg.writingTimeMin
+            ? Math.round(writerTimeAgg._avg.writingTimeMin)
+            : null,
+        };
+      } catch (err) {
+        console.error("Failed to compute writerStats:", err);
+      }
+    }
+
     return NextResponse.json({
       role,
       general: {
@@ -512,6 +640,8 @@ export async function GET(req: NextRequest) {
       linkerProducts,
       linkerLinks,
       flaggedLinks,
+      individualCommission,
+      writerStats,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message, stack: e.stack }, { status: 500 });

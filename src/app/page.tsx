@@ -40,6 +40,10 @@ import {
   Layers,
   BarChart3,
   Award,
+  Wallet,
+  Eye,
+  EyeOff,
+  Info,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
@@ -53,6 +57,27 @@ import CustomSelect from "@/components/CustomSelect";
 
 interface DashboardData {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
+  individualCommission?: {
+    unpaidAmount: number;
+    pendingSalesCount: number;
+    recentPendingSales?: {
+      saleId: number;
+      productName: string;
+      siteName: string;
+      saleType: string;
+      saleDate: string;
+      roleEarnedAs: string;
+      amount: number;
+    }[];
+  } | null;
+  writerStats?: {
+    approvedCount: number;
+    inReviewCount: number;
+    redoCount: number;
+    completedToday: number;
+    totalCompleted: number;
+    avgWritingTimeMin: number | null;
+  } | null;
   general: {
     totalProducts: number;
     pendingArticles: number;
@@ -155,6 +180,8 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showBellDropdown, setShowBellDropdown] = useState(false);
   const [tlTab, setTlTab] = useState<"check" | "write">("check");
+  const [showCommission, setShowCommission] = useState(false);
+  const [showCommissionDetailsModal, setShowCommissionDetailsModal] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -371,7 +398,61 @@ export default function DashboardPage() {
         </div>
 
         {/* Action Controls & Notifications */}
-        <div className="flex items-center gap-3 self-start md:self-center">
+        <div className="flex items-center gap-3 self-start md:self-center flex-wrap">
+          {/* Individual Unpaid Commission Widget (WRITER, LINKER, TEAM_LEAD) */}
+          {(currentUserRole === "WRITER" || currentUserRole === "LINKER" || currentUserRole === "TEAM_LEAD") && (
+            <div
+              onClick={() => setShowCommission((prev) => !prev)}
+              className="flex items-center bg-white/95 dark:bg-slate-800/95 border border-[#CBCBCB]/70 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700/80 rounded-2xl px-3.5 py-1.5 shadow-2xs gap-2.5 cursor-pointer select-none transition group hover:shadow-xs"
+              title={showCommission ? "Click to hide (display in XXXX)" : "Click to unhide commission"}
+            >
+              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/70 dark:border-amber-800/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Wallet className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+                    Unpaid Commission
+                  </span>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" title="Pending Payout" />
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-sm sm:text-base font-black text-slate-800 dark:text-white font-mono tracking-tight">
+                    {showCommission
+                      ? `Rs. ${(data?.individualCommission?.unpaidAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : "Rs. XXXX"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowCommission((prev) => !prev);
+                    }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition cursor-pointer"
+                    title={showCommission ? "Hide unpaid commission" : "Show unpaid commission"}
+                    aria-label={showCommission ? "Hide unpaid commission" : "Show unpaid commission"}
+                  >
+                    {showCommission ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-slate-500" />}
+                  </button>
+                  {showCommission && (data?.individualCommission?.recentPendingSales?.length ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowCommissionDetailsModal(true);
+                      }}
+                      className="p-1 rounded-lg text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition cursor-pointer"
+                      title="View Pending Sales Breakdown"
+                      aria-label="View Pending Sales Breakdown"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => fetchDashboardData(false)}
             disabled={refreshing}
@@ -591,6 +672,92 @@ export default function DashboardPage() {
           onStartWriting={handleStartWriting}
           onRefresh={() => fetchDashboardData(false)}
         />
+      )}
+
+      {/* ─── MODAL: INDIVIDUAL UNPAID COMMISSION BREAKDOWN ────────── */}
+      {showCommissionDetailsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-scaleIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Wallet className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    Unpaid Commission Details
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Your individual pending commission payouts
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCommissionDetailsModal(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
+                  Total Individual Pending
+                </span>
+                <span className="text-xl font-black text-amber-900 dark:text-amber-200 font-mono">
+                  Rs. {(data?.individualCommission?.unpaidAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                {data?.individualCommission?.pendingSalesCount || 0} sales
+              </span>
+            </div>
+
+            <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Pending Sales Breakdown
+              </span>
+              {data?.individualCommission?.recentPendingSales && data.individualCommission.recentPendingSales.length > 0 ? (
+                data.individualCommission.recentPendingSales.map((sale) => (
+                  <div
+                    key={sale.saleId}
+                    className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-extrabold text-slate-800 dark:text-white truncate">
+                        {sale.productName}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {sale.siteName} • {sale.roleEarnedAs} • {sale.saleType === "FIRST_SALE" ? "1st Sale" : "Resale"}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-mono font-black text-amber-600 dark:text-amber-400">
+                        +Rs. {sale.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      </p>
+                      <span className="inline-block text-[10px] font-bold text-amber-500 uppercase">
+                        Pending
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 italic text-center py-4">No pending sales recorded</p>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCommissionDetailsModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1302,9 +1469,111 @@ function WriterFocusStudio({
   onRefresh: () => void;
 }) {
   const activeArticle = data.writerInProgressArticles?.[0];
+  const stats = data.writerStats || {
+    approvedCount: 0,
+    inReviewCount: 0,
+    redoCount: 0,
+    completedToday: 0,
+    totalCompleted: 0,
+    avgWritingTimeMin: null,
+  };
+  const availableCount = data.writerPendingArticles?.length || 0;
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-6 sm:space-y-8 animate-fadeIn">
+      {/* ─── WRITER TOP STATS OVERVIEW CARDS ─────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        {/* 1. Available Products */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs flex flex-col justify-between card-hover-effect">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+              Available Products
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <Package className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">{availableCount}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Ready to claim</p>
+          </div>
+        </div>
+
+        {/* 2. Today's Output */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs flex flex-col justify-between card-hover-effect">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              Delivered Today
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <Zap className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">{stats.completedToday}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Submitted today</p>
+          </div>
+        </div>
+
+        {/* 3. In Editorial Review */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs flex flex-col justify-between card-hover-effect">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+              In Quality Review
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">{stats.inReviewCount}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Awaiting TL check</p>
+          </div>
+        </div>
+
+        {/* 4. Total Approved */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs flex flex-col justify-between card-hover-effect">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              Approved Articles
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">{stats.approvedCount}</p>
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 flex items-center gap-1">
+              {stats.avgWritingTimeMin ? `⚡ ~${stats.avgWritingTimeMin}m avg velocity` : "Passed review"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Redo Warning Alert (if any article has been sent back for revisions) */}
+      {stats.redoCount > 0 && (
+        <div className="p-4 bg-rose-50/90 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between shadow-2xs gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold text-rose-900 dark:text-rose-200">
+                Action Required: {stats.redoCount} article{stats.redoCount === 1 ? "" : "s"} need{stats.redoCount === 1 ? "s" : ""} revision
+              </p>
+              <p className="text-[11px] text-rose-700 dark:text-rose-300">
+                Please review Team Lead notes and update the requested changes.
+              </p>
+            </div>
+          </div>
+          {activeArticle?.status === "REDO" && (
+            <span className="self-start sm:self-auto px-3 py-1 bg-rose-600 text-white rounded-xl text-xs font-bold shrink-0">
+              Active in Workspace Below
+            </span>
+          )}
+        </div>
+      )}
+
       {activeArticle ? (
         // STATE 1: ACTIVE ASSIGNMENT FOCUS WORKSTATION
         <WriterActiveFocusWorkspace
@@ -1314,7 +1583,7 @@ function WriterFocusStudio({
           onSuccess={onRefresh}
         />
       ) : (
-        // STATE 2: AVAILABLE ASSIGNMENTS DISCOVERY
+        // STATE 2: AVAILABLE PRODUCTS DISCOVERY
         <WriterAvailableAssignments
           pendingArticles={data.writerPendingArticles || []}
           completedArticles={data.writerCompletedArticles || []}
@@ -1352,6 +1621,7 @@ function WriterActiveFocusWorkspace({
   const [reportingLink, setReportingLink] = useState<any>(null);
   const [issueMessage, setIssueMessage] = useState("");
   const [submittingReport, setSubmittingReport] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (article.articleLink) {
@@ -1368,6 +1638,16 @@ function WriterActiveFocusWorkspace({
       return () => clearInterval(interval);
     }
   }, [article.startedAt]);
+
+  const handleCopyLink = (url: string, id: string, label: string) => {
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopiedId(id);
+    toast.success(`${label} copied to clipboard!`);
+    setTimeout(() => {
+      setCopiedId((prev) => (prev === id ? null : prev));
+    }, 2000);
+  };
 
   const handleStartRevision = async () => {
     setStartingRevision(true);
@@ -1453,45 +1733,65 @@ function WriterActiveFocusWorkspace({
   return (
     <div className="space-y-6">
       {/* Active Focus Alert Banner */}
-      <div className="p-4 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl flex items-center justify-between shadow-2xs">
-        <div className="flex items-center gap-2.5">
-          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
-            Active Assignment in Progress — Complete this article to unlock the next assignment.
+      <div className="p-4 bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/20 dark:border-emerald-800/60 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
           </span>
+          <div>
+            <span className="text-xs font-black text-emerald-950 dark:text-emerald-200">
+              Active Focus Mode — Currently Writing
+            </span>
+            <span className="text-[11px] text-emerald-700/80 dark:text-emerald-400 ml-2 hidden sm:inline font-medium">
+              Complete and submit this article to unlock subsequent assignments.
+            </span>
+          </div>
         </div>
+        {article.startedAt && (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/90 dark:bg-slate-900/90 border border-emerald-200/70 dark:border-emerald-800/50 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-300 shadow-2xs">
+            <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Time on task: {formatTime(elapsed)}</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Product Specs & Links */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs p-6 relative space-y-6">
-          {/* Header Status & Timer */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        {/* Left 2 Cols: Product Specs, External Links & Affiliate Links */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-6 sm:p-7 relative space-y-6">
+          {/* Header Status Bar & Meta */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div className="flex items-center gap-2">
               {article.status === "REDO" ? (
-                <span className="px-3 py-1 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60 rounded-full text-xs font-bold flex items-center gap-1.5">
+                <span className="px-3 py-1 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/70 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-2xs">
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                   Needs Changes / Revision
                 </span>
               ) : (
-                <span className="px-3 py-1 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 rounded-full text-xs font-bold flex items-center gap-1.5">
+                <span className="px-3 py-1 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/70 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-2xs">
                   <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                   In Progress
                 </span>
               )}
+
+              {article.priority === "HIGH" && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-1">
+                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> High Priority
+                </span>
+              )}
             </div>
 
-            <div className="text-right">
-              {/* Live stopwatch is hidden from writers */}
-            </div>
+            <span className="text-[11px] font-mono font-bold text-slate-400 dark:text-slate-500">
+              ART-#{article.id}
+            </span>
           </div>
 
           {/* Redo Notice Banner */}
           {article.status === "REDO" && article.reviews && article.reviews.length > 0 && (
-            <div className="p-4 bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 rounded-2xl space-y-2">
+            <div className="p-4 bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 rounded-2xl space-y-2">
               <div className="flex items-center gap-2 text-rose-900 dark:text-rose-300 font-bold text-xs">
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
-                Revision Requested by {article.reviews[0].reviewedBy?.name || "Team Lead"}
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>Revision Requested by {article.reviews[0].reviewedBy?.name || "Team Lead"}</span>
               </div>
               {article.reviews[0].suggestion && (
                 <p className="text-xs text-rose-800 dark:text-rose-200 bg-white dark:bg-slate-900/90 p-3 rounded-xl border border-rose-100 dark:border-rose-900/40 italic">
@@ -1517,122 +1817,348 @@ function WriterActiveFocusWorkspace({
           )}
 
           {/* Product Specs */}
-          <div>
-            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{article.product.name}</h2>
-            <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold mt-2">
-              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700 rounded-lg">{article.product.site.name}</span>
-              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700 rounded-lg">{article.product.category.name}</span>
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    {article.product.name}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(article.product.name);
+                      toast.success("Product name copied!");
+                    }}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    title="Copy product name"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                  {/* Site Pill */}
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700 rounded-lg text-xs font-bold shadow-2xs">
+                    <Globe className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    {article.product.site.name}
+                  </span>
+
+                  {/* Category Pill */}
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700 rounded-lg text-xs font-bold shadow-2xs">
+                    <Layers className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    {article.product.category.name}
+                  </span>
+
+                  {/* Defined Product Category if present */}
+                  {article.product.productCategory && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60 rounded-lg text-xs font-bold">
+                      {article.product.productCategory}
+                    </span>
+                  )}
+
+                  {/* Trend Velocity if present */}
+                  {article.product.trendLevel && (
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                      article.product.trendLevel === "HIGH"
+                        ? "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/60 dark:border-slate-700"
+                    }`}>
+                      <TrendingUp className="w-3 h-3" />
+                      {article.product.trendLevel} Velocity
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* External Links */}
-          <div className="flex flex-wrap gap-3 pt-2">
-            {article.product.trendLink && (
-              <a
-                href={article.product.trendLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition border border-transparent dark:border-slate-700"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> Trend Link
-              </a>
-            )}
-            {article.product.previewLink && (
-              <a
-                href={article.product.previewLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold transition border border-transparent dark:border-indigo-800/60"
-              >
-                <Globe className="w-3.5 h-3.5" /> Preview Link
-              </a>
-            )}
-          </div>
+          {/* External Reference & Preview Links */}
+          {(article.product.trendLink || article.product.previewLink) && (
+            <div className="flex flex-wrap gap-2.5 pt-1">
+              {article.product.trendLink && (
+                <a
+                  href={article.product.trendLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition border border-slate-200/60 dark:border-slate-700 shadow-2xs hover:shadow-xs group cursor-pointer"
+                >
+                  <TrendingUp className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-800 dark:text-slate-400 dark:group-hover:text-slate-200 transition" />
+                  <span>Trend Reference</span>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 transition" />
+                </a>
+              )}
+              {article.product.previewLink && (
+                <a
+                  href={article.product.previewLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-50/90 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold transition border border-indigo-200/60 dark:border-indigo-800/60 shadow-2xs hover:shadow-xs group cursor-pointer"
+                >
+                  <Globe className="w-3.5 h-3.5 text-indigo-500 group-hover:text-indigo-700 dark:text-indigo-400 dark:group-hover:text-indigo-200 transition" />
+                  <span>Live Site Preview</span>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-indigo-400 opacity-60 group-hover:opacity-100 transition" />
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Product Editorial Brief / Remarks */}
+          {article.product.remarks && (
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                <FileText className="w-3.5 h-3.5 text-slate-500" />
+                Product Brief & Research Notes
+              </div>
+              <FormattedRemarks remarks={article.product.remarks} textClass="text-xs text-slate-600 dark:text-slate-300" />
+            </div>
+          )}
 
           {/* Affiliate Links Section */}
-          <div className="space-y-3 pt-4 border-t border-slate-100">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Affiliate & Bridge Links</h3>
+          <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <LinkIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                    Affiliate & Bridge Links
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Copy and embed these verified tracking links inside your article content.
+                  </p>
+                </div>
+              </div>
+              {article.product.linkLogs?.length > 0 && (
+                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                  {article.product.linkLogs.length} {article.product.linkLogs.length === 1 ? "Link" : "Links"} Configured
+                </span>
+              )}
+            </div>
+
             {article.product.linkLogs?.length > 0 ? (
-              <div className="space-y-3">
-                {article.product.linkLogs.map((log: any) => (
-                  <div key={log.id} className="p-4 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700 space-y-2">
-                    <div className="flex justify-between items-start">
-                      <p className="font-bold text-slate-900 dark:text-slate-100 text-xs">{log.affiliateName}</p>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          log.status === "ISSUE" ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300" : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/60"
-                        }`}>
-                          {log.status}
-                        </span>
-                        {log.status !== "ISSUE" && (
-                          <button
-                            onClick={() => {
-                              setReportingLink(log);
-                              setIssueMessage("");
-                            }}
-                            className="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/50 transition cursor-pointer"
+              <div className="space-y-4">
+                {article.product.linkLogs.map((log: any) => {
+                  const hasGeos = log.geos && log.geos.length > 0;
+                  return (
+                    <div
+                      key={log.id}
+                      className="p-4 sm:p-5 bg-slate-50/80 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-4 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-2xs"
+                    >
+                      {/* Card Header: Network Name, Geos, Status, and Flag Issue */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-700/60">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                            <p className="font-black text-slate-900 dark:text-white text-sm">
+                              {log.affiliateName || "Affiliate Network"}
+                            </p>
+                          </div>
+
+                          {/* Target GEOs if available */}
+                          {hasGeos && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {log.geos.map((g: any) => (
+                                <span
+                                  key={g.id || g.geo}
+                                  className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-850 border border-slate-200/80 dark:border-slate-700 text-[10px] font-extrabold text-slate-700 dark:text-slate-200 shadow-2xs"
+                                  title={`Target country: ${g.geo}`}
+                                >
+                                  🌍 {g.geo}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Status Pill */}
+                          <span
+                            className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                              log.status === "ISSUE"
+                                ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+                                : log.status === "APPROVED"
+                                ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/60"
+                            }`}
                           >
-                            Flag Issue
-                          </button>
+                            {log.status === "ISSUE" ? "Issue Reported" : log.status === "APPROVED" ? "Verified Active" : "Requested"}
+                          </span>
+
+                          {/* Flag Issue Button */}
+                          {log.status !== "ISSUE" && (
+                            <button
+                              onClick={() => {
+                                setReportingLink(log);
+                                setIssueMessage("");
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 px-2.5 py-1 rounded-lg border border-rose-200/80 dark:border-rose-900/50 transition cursor-pointer shadow-2xs"
+                            >
+                              <AlertTriangle className="w-3 h-3" />
+                              <span>Flag Issue</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Links Section */}
+                      <div className="space-y-3">
+                        {/* Buy Link */}
+                        {log.buyLink && (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wide">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Buy Link
+                              </span>
+                              <span className="text-[10px] text-slate-400">Primary CTA / Purchase URL</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700/80 rounded-xl p-1.5 pl-3 transition-all hover:border-slate-300 dark:hover:border-slate-600 focus-within:border-indigo-500">
+                              <span className="text-[10px] font-black font-mono text-slate-400 uppercase select-none">
+                                URL:
+                              </span>
+                              <a
+                                href={log.buyLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 text-xs font-mono text-indigo-600 dark:text-indigo-400 hover:underline truncate"
+                                title={log.buyLink}
+                              >
+                                {log.buyLink}
+                              </a>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleCopyLink(log.buyLink, `buy-${log.id}`, "Buy link")}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    copiedId === `buy-${log.id}`
+                                      ? "bg-emerald-600 text-white shadow-xs"
+                                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                                  }`}
+                                  title="Copy Buy Link"
+                                >
+                                  {copiedId === `buy-${log.id}` ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                                <a
+                                  href={log.buyLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                  title="Open in new tab"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Bridge Page Link */}
+                        {log.bridgePageLink && (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wide">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                Bridge Page Link
+                              </span>
+                              <span className="text-[10px] text-slate-400">Presell / Bridge Page URL</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700/80 rounded-xl p-1.5 pl-3 transition-all hover:border-slate-300 dark:hover:border-slate-600 focus-within:border-indigo-500">
+                              <span className="text-[10px] font-black font-mono text-slate-400 uppercase select-none">
+                                URL:
+                              </span>
+                              <a
+                                href={log.bridgePageLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 text-xs font-mono text-indigo-600 dark:text-indigo-400 hover:underline truncate"
+                                title={log.bridgePageLink}
+                              >
+                                {log.bridgePageLink}
+                              </a>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleCopyLink(log.bridgePageLink, `bridge-${log.id}`, "Bridge link")}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    copiedId === `bridge-${log.id}`
+                                      ? "bg-emerald-600 text-white shadow-xs"
+                                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                                  }`}
+                                  title="Copy Bridge Link"
+                                >
+                                  {copiedId === `bridge-${log.id}` ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                                <a
+                                  href={log.bridgePageLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                  title="Open in new tab"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Fallback if neither bridge nor buy is entered yet */}
+                        {!log.buyLink && !log.bridgePageLink && (
+                          <p className="text-xs text-slate-400 italic">No specific URLs entered yet for this network.</p>
                         )}
                       </div>
-                    </div>
 
-                    <div className="space-y-1 text-xs">
-                      {log.bridgePageLink && (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">Bridge:</span>
-                          <a href={log.bridgePageLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline truncate flex-1 font-mono text-[11px]">
-                            {log.bridgePageLink}
-                          </a>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(log.bridgePageLink);
-                              toast.success("Bridge link copied!");
-                            }}
-                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
-                            title="Copy Bridge Link"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-
-                      {log.buyLink && (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">Buy Link:</span>
-                          <a href={log.buyLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline truncate flex-1 font-mono text-[11px]">
-                            {log.buyLink}
-                          </a>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(log.buyLink);
-                              toast.success("Buy link copied!");
-                            }}
-                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
-                            title="Copy Buy Link"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                          </button>
+                      {/* Linker Remarks */}
+                      {log.linkerRemarks && (
+                        <div className="p-3 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-900/50 rounded-xl space-y-1 text-xs">
+                          <p className="font-bold text-amber-900 dark:text-amber-200 text-[11px] uppercase tracking-wider">
+                            Linker Instructions:
+                          </p>
+                          <FormattedRemarks remarks={log.linkerRemarks} textClass="text-xs text-amber-900/90 dark:text-amber-200/90" />
                         </div>
                       )}
                     </div>
-
-                    <FormattedRemarks remarks={log.linkerRemarks} textClass="text-[11px]" />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <p className="text-xs text-slate-400 italic">No links configured for this product.</p>
+              <div className="p-8 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 text-center space-y-2">
+                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+                  <LinkIcon className="w-5 h-5" />
+                </div>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No Affiliate Links Configured Yet</p>
+                <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                  The linking team is preparing the tracking links for this product. You can continue writing your article in the meantime.
+                </p>
+              </div>
             )}
           </div>
         </div>
 
         {/* Right 1 Col: Submit Work Station */}
         <div>
-          <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs p-6 sticky top-6 space-y-5">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-6 sticky top-6 space-y-5">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Submit Finished Article</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Submit Finished Article</h3>
               <p className="text-xs text-slate-400 mt-0.5">Paste your Google Docs or WordPress link below.</p>
             </div>
 
@@ -1654,7 +2180,7 @@ function WriterActiveFocusWorkspace({
                   }
                 }}
                 placeholder="https://docs.google.com/..."
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-slate-900 dark:text-slate-100 focus:outline-none transition bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-900 ${
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-slate-900 dark:text-slate-100 focus:outline-none transition bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-900 ${
                   articleLinkError ? "border-rose-400 focus:ring-1 focus:ring-rose-400" : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-[#6D8196]"
                 } ${!revisionStarted ? "opacity-50 cursor-not-allowed" : ""}`}
               />
@@ -1671,7 +2197,7 @@ function WriterActiveFocusWorkspace({
                 onChange={(e) => setWriterNotes(e.target.value)}
                 placeholder="Mention any key updates or considerations for the team lead..."
                 rows={3}
-                className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#6D8196] resize-none ${
+                className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#6D8196] resize-none ${
                   !revisionStarted ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               />
@@ -1681,7 +2207,7 @@ function WriterActiveFocusWorkspace({
               <button
                 onClick={handleMarkCompleted}
                 disabled={!revisionStarted || !articleLink.trim() || submitting}
-                className="w-full py-3 bg-[#6D8196] hover:bg-[#5A6D81] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:border dark:disabled:border-slate-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
+                className="w-full py-3 bg-[#6D8196] hover:bg-[#5A6D81] dark:bg-indigo-600 dark:hover:bg-indigo-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:border dark:disabled:border-slate-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 {article.status === "REDO" ? "Submit Revision" : "Mark as Completed"}
@@ -1704,19 +2230,19 @@ function WriterActiveFocusWorkspace({
 
       {/* Special Approval Modal */}
       {showApprovalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 border border-slate-100 animate-scaleIn">
-            <h3 className="text-base font-bold text-slate-900">Request Special Approval</h3>
-            <p className="text-xs text-slate-500">Explain why this article can be finalized without a document link.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 border border-slate-100 dark:border-slate-800 animate-scaleIn">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Request Special Approval</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Explain why this article can be finalized without a document link.</p>
             <textarea
               rows={3}
               value={approvalReason}
               onChange={(e) => setApprovalReason(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]"
               placeholder="e.g. Published directly on CMS, bypass required..."
             />
             <div className="flex justify-end gap-2.5">
-              <button onClick={() => setShowApprovalModal(false)} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold">
+              <button onClick={() => setShowApprovalModal(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition">
                 Cancel
               </button>
               <button
@@ -1733,29 +2259,29 @@ function WriterActiveFocusWorkspace({
 
       {/* Report Link Issue Modal */}
       {reportingLink && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 border border-slate-100 animate-scaleIn">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 border border-slate-100 dark:border-slate-800 animate-scaleIn">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-rose-500" />
                 Report Link Issue
               </h3>
-              <button onClick={() => setReportingLink(null)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setReportingLink(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-xs text-slate-600">
-              Reporting issue for link <strong className="text-slate-900">&quot;{reportingLink.affiliateName}&quot;</strong>:
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Reporting issue for link <strong className="text-slate-900 dark:text-white">&quot;{reportingLink.affiliateName}&quot;</strong>:
             </p>
             <textarea
               rows={4}
               value={issueMessage}
               onChange={(e) => setIssueMessage(e.target.value)}
               placeholder="Describe the issue (e.g. 404 dead link, wrong redirection)..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
             <div className="flex justify-end gap-2.5">
-              <button onClick={() => setReportingLink(null)} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold">
+              <button onClick={() => setReportingLink(null)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition">
                 Cancel
               </button>
               <button
@@ -1814,46 +2340,78 @@ function WriterAvailableAssignments({
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [siteFilter, setSiteFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
 
   const sites = useMemo(() => {
     const s = new Set<string>();
     pendingArticles.forEach((a) => {
       if (a.product?.site?.name) s.add(a.product.site.name);
     });
-    return Array.from(s);
+    return Array.from(s).sort();
+  }, [pendingArticles]);
+
+  const categories = useMemo(() => {
+    const c = new Set<string>();
+    pendingArticles.forEach((a) => {
+      if (a.product?.category?.name) c.add(a.product.category.name);
+    });
+    return Array.from(c).sort();
   }, [pendingArticles]);
 
   const filteredArticles = useMemo(() => {
     return pendingArticles.filter((a) => {
       const matchSearch =
         !searchQuery.trim() ||
-        fuzzyMatchAny([a.product?.name, a.product?.slug, a.product?.site?.name], searchQuery);
+        fuzzyMatchAny([a.product?.name, a.product?.slug, a.product?.site?.name, a.product?.category?.name], searchQuery);
       const matchSite = siteFilter === "ALL" || a.product?.site?.name === siteFilter;
-      return matchSearch && matchSite;
+      const matchCategory = categoryFilter === "ALL" || a.product?.category?.name === categoryFilter;
+      return matchSearch && matchSite && matchCategory;
     });
-  }, [pendingArticles, searchQuery, siteFilter]);
+  }, [pendingArticles, searchQuery, siteFilter, categoryFilter]);
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs overflow-hidden">
+        {/* Header & Filter Controls */}
+        <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Available Assignments ({filteredArticles.length})</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Select a product assignment to inspect details and claim it</p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                Available Products ({filteredArticles.length})
+              </h2>
+              {filteredArticles.length !== pendingArticles.length && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#6D8196]/15 text-[#3D4F61] dark:text-slate-300">
+                  filtered from {pendingArticles.length}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Select any ready product to inspect links, guidelines, and claim it
+            </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Search Input */}
+            <div className="relative min-w-[200px] flex-1 sm:flex-initial">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search by name, site, category..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#6D8196] text-slate-800"
+                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#6D8196] text-slate-800 dark:text-slate-200"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
+            {/* Site Filter */}
             {sites.length > 1 && (
               <CustomSelect
                 value={siteFilter}
@@ -1863,79 +2421,184 @@ function WriterAvailableAssignments({
                   ...sites.map((site) => ({ value: site, label: site })),
                 ]}
                 className="w-36"
-                triggerClassName="px-3 py-1.5 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+                triggerClassName="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
                 portal={true}
               />
+            )}
+
+            {/* Category Filter */}
+            {categories.length > 1 && (
+              <CustomSelect
+                value={categoryFilter}
+                onChange={(val) => setCategoryFilter(val)}
+                options={[
+                  { value: "ALL", label: "All Categories" },
+                  ...categories.map((cat) => ({ value: cat, label: cat })),
+                ]}
+                className="w-36"
+                triggerClassName="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+                portal={true}
+              />
+            )}
+
+            {/* Reset Filters */}
+            {(searchQuery || siteFilter !== "ALL" || categoryFilter !== "ALL") && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSiteFilter("ALL");
+                  setCategoryFilter("ALL");
+                }}
+                className="px-2.5 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
+              >
+                Reset
+              </button>
             )}
           </div>
         </div>
 
+        {/* Product Cards Grid */}
         {filteredArticles.length === 0 ? (
           <div className="p-16 text-center text-slate-400 text-xs">
-            No pending articles available for your authorized sites at this time.
+            <Package className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
+            <p className="font-semibold text-slate-600 dark:text-slate-400">No matching products found</p>
+            <p className="text-[11px] mt-1 text-slate-400">Try adjusting your search query or active site/category filters.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6 bg-slate-50/50">
-            {filteredArticles.map((a: any) => (
-              <div
-                key={a.id}
-                onClick={() => setSelectedArticle(a)}
-                className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-[#6D8196] shadow-2xs card-hover-effect cursor-pointer flex flex-col justify-between h-40"
-              >
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm line-clamp-2 leading-snug">{a.product.name}</h3>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">
-                      {a.product.site.name}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-5 sm:p-6 bg-slate-50/50 dark:bg-slate-950/30">
+            {filteredArticles.map((a: any) => {
+              const linkCount = a.product.linkLogs?.length || 0;
+              const geosSet = new Set<string>();
+              const affiliateSet = new Set<string>();
+
+              a.product.linkLogs?.forEach((l: any) => {
+                if (l.affiliateName) affiliateSet.add(l.affiliateName);
+                l.geos?.forEach((g: any) => geosSet.add(g.geo));
+              });
+
+              const affiliateNames = Array.from(affiliateSet);
+              const geos = Array.from(geosSet);
+
+              return (
+                <div
+                  key={a.id}
+                  onClick={() => setSelectedArticle(a)}
+                  className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-[#6D8196] dark:hover:border-[#6D8196] shadow-2xs card-hover-effect cursor-pointer flex flex-col justify-between transition-all group min-h-[175px]"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold border border-slate-200/60 dark:border-slate-700">
+                          {a.product.site.name}
+                        </span>
+                        {a.product.category?.name && (
+                          <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-2.5 py-0.5 rounded-lg text-[10px] font-bold border border-indigo-200/50 dark:border-indigo-900/40">
+                            {a.product.category.name}
+                          </span>
+                        )}
+                      </div>
+                      {a.priority === "HIGH" && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center gap-1 shrink-0">
+                          <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> High Priority
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-sm line-clamp-2 leading-snug group-hover:text-[#6D8196] transition-colors">
+                      {a.product.name}
+                    </h3>
+
+                    {/* Affiliate Networks & Geos Tags */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {affiliateNames.slice(0, 2).map((aff) => (
+                        <span
+                          key={aff}
+                          className="text-[10px] font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md border border-slate-200/50 dark:border-slate-700"
+                        >
+                          {aff}
+                        </span>
+                      ))}
+                      {affiliateNames.length > 2 && (
+                        <span className="text-[10px] text-slate-400">+{affiliateNames.length - 2}</span>
+                      )}
+                      {geos.length > 0 && (
+                        <span className="text-[10px] text-slate-400 font-mono ml-auto">
+                          🌍 {geos.slice(0, 3).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs mt-3">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
+                      <LinkIcon className="w-3 h-3 text-slate-400" />
+                      {linkCount} link{linkCount === 1 ? "" : "s"} ready
                     </span>
-                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">
-                      {a.product.category.name}
+                    <span className="font-bold text-[#6D8196] group-hover:text-[#5A6D81] flex items-center gap-1 text-xs">
+                      Inspect & Claim <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </span>
                   </div>
                 </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                  <span className="text-[11px] text-slate-400 font-medium">{a.product.linkLogs?.length || 0} links ready</span>
-                  <span className="font-bold text-[#6D8196] flex items-center gap-1 text-xs">
-                    Inspect & Claim <ArrowUpRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       <RecentCompletionsTable completedArticles={completedArticles} />
 
-      {/* Assignment Preview Modal */}
+      {/* Product Preview Modal */}
       {selectedArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-scaleIn">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">Assignment Brief</h2>
-              <button onClick={() => setSelectedArticle(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-scaleIn">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <Package className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">Product Brief</h2>
+                  <p className="text-[11px] text-slate-400">Review specs and claim article</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedArticle(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-6">
+            <div className="p-6 overflow-y-auto space-y-5">
               <div>
-                <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">{selectedArticle.product.name}</h3>
-                <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold mt-2">
-                  <span className="px-2.5 py-1 bg-slate-100 rounded-lg text-slate-700">{selectedArticle.product.site.name}</span>
-                  <span className="px-2.5 py-1 bg-slate-100 rounded-lg text-slate-700">{selectedArticle.product.category.name}</span>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">
+                  {selectedArticle.product.name}
+                </h3>
+                <div className="flex items-center gap-2 text-xs font-bold mt-2.5 flex-wrap">
+                  <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
+                    {selectedArticle.product.site.name}
+                  </span>
+                  {selectedArticle.product.category?.name && (
+                    <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg text-indigo-700 dark:text-indigo-300">
+                      {selectedArticle.product.category.name}
+                    </span>
+                  )}
+                  {selectedArticle.product.linkLogs?.length > 0 && (
+                    <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/60 rounded-lg text-emerald-700 dark:text-emerald-300">
+                      {selectedArticle.product.linkLogs.length} Links Available
+                    </span>
+                  )}
                 </div>
               </div>
 
               {(selectedArticle.product.trendLink || selectedArticle.product.previewLink) && (
-                <div className="flex gap-3">
+                <div className="flex gap-2.5 flex-wrap">
                   {selectedArticle.product.trendLink && (
                     <a
                       href={selectedArticle.product.trendLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition"
                     >
                       <ExternalLink className="w-3.5 h-3.5" /> Trend Link
                     </a>
@@ -1945,7 +2608,7 @@ function WriterAvailableAssignments({
                       href={selectedArticle.product.previewLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition"
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold transition"
                     >
                       <Globe className="w-3.5 h-3.5" /> Preview Link
                     </a>
@@ -1953,20 +2616,56 @@ function WriterAvailableAssignments({
                 </div>
               )}
 
+              {/* Configured Links Preview */}
+              {selectedArticle.product.linkLogs && selectedArticle.product.linkLogs.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Configured Links ({selectedArticle.product.linkLogs.length})
+                  </span>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {selectedArticle.product.linkLogs.map((log: any) => (
+                      <div
+                        key={log.id}
+                        className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <span className="font-extrabold text-slate-800 dark:text-slate-200 block truncate">
+                            {log.affiliateName || "Affiliate Link"}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            Status: {log.status} • Geos: {log.geos?.map((g: any) => g.geo).join(", ") || "Global"}
+                          </span>
+                        </div>
+                        {log.buyLink && (
+                          <a
+                            href={log.buyLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline shrink-0"
+                          >
+                            Buy Link ↗
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {selectedArticle.product.remarks && (
-                <div className="bg-amber-50 p-4 rounded-xl border border-amber-200/60 text-xs text-amber-900">
+                <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-xl border border-amber-200/80 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200">
                   <span className="font-bold block mb-1">Remarks from Linker:</span>
-                  {selectedArticle.product.remarks}
+                  <FormattedRemarks remarks={selectedArticle.product.remarks} />
                 </div>
               )}
             </div>
 
-            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 bg-slate-50 dark:bg-slate-800/50 rounded-b-3xl">
               <button
                 onClick={() => setSelectedArticle(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
-                Close
+                Cancel
               </button>
               <button
                 onClick={() => {
@@ -1987,51 +2686,127 @@ function WriterAvailableAssignments({
 
 function RecentCompletionsTable({ completedArticles }: { completedArticles: any[] }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs overflow-hidden">
-      <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
-        <h3 className="font-bold text-slate-900 text-sm">Your Recent Completions</h3>
-        <span className="text-xs text-slate-400 font-medium">Your latest submitted articles</span>
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Your Recent Completions</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Track live editorial review and approvals</p>
+        </div>
+        <span className="text-xs font-semibold px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl self-start sm:self-auto">
+          {completedArticles.length} recent articles
+        </span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              <th className="px-6 py-3">Product Name</th>
-              <th className="px-6 py-3">Site</th>
-              <th className="px-6 py-3 text-center">Completed Date</th>
-              <th className="px-6 py-3 text-right">Status</th>
+            <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+              <th className="px-6 py-3.5">Product</th>
+              <th className="px-6 py-3.5">Site & Category</th>
+              <th className="px-6 py-3.5 text-center">Completed</th>
+              <th className="px-6 py-3.5 text-center">Writing Duration</th>
+              <th className="px-6 py-3.5 text-right">Editorial Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
             {completedArticles.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-xs text-slate-400">
-                  No completed articles yet.
+                <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-400">
+                  <p className="font-semibold text-slate-500">No completed articles yet</p>
+                  <p className="text-[11px] mt-1 text-slate-400">Claim an available product above and start writing</p>
                 </td>
               </tr>
             ) : (
-              completedArticles.map((a: any) => (
-                <tr key={a.id} className="hover:bg-slate-50 transition">
-                  <td className="px-6 py-3.5">
-                    <p className="text-xs font-bold text-slate-900 line-clamp-1">{a.product.name}</p>
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <span className="text-[11px] font-medium text-slate-500">{a.product.site.name}</span>
-                  </td>
-                  <td className="px-6 py-3.5 text-center">
-                    <span className="text-xs font-medium text-slate-500">
-                      {a.completedAt
-                        ? new Date(a.completedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })
-                        : "--"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3.5 text-right">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/60 text-[10px] font-bold text-emerald-700">
-                      <Check className="w-3 h-3" /> Submitted
-                    </span>
-                  </td>
-                </tr>
-              ))
+              completedArticles.map((a: any) => {
+                const isApproved = a.status === "APPROVED";
+                const isCompleted = a.status === "COMPLETED";
+                const isRedo = a.status === "REDO";
+                const review = a.reviews?.[0];
+
+                return (
+                  <tr key={a.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition">
+                    <td className="px-6 py-3.5">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-extrabold text-slate-900 dark:text-white line-clamp-1">
+                          {a.product?.name}
+                        </p>
+                        {a.articleLink && (
+                          <a
+                            href={a.articleLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition shrink-0"
+                            title="Open submitted article link"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+                      {review?.suggestion && (
+                        <p className="text-[11px] text-slate-400 italic mt-0.5 line-clamp-1" title={review.suggestion}>
+                          &quot;{review.suggestion}&quot;
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                          {a.product?.site?.name}
+                        </span>
+                        {a.product?.category?.name && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            {a.product.category.name}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3.5 text-center whitespace-nowrap">
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                        {a.completedAt
+                          ? new Date(a.completedAt).toLocaleDateString([], {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "--"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-center whitespace-nowrap">
+                      {a.writingTimeMin && a.writingTimeMin > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {a.writingTimeMin >= 60
+                            ? `${Math.floor(a.writingTimeMin / 60)}h ${a.writingTimeMin % 60}m`
+                            : `${a.writingTimeMin}m`}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">--</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                      {isApproved && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[10px] font-black text-emerald-700 dark:text-emerald-300">
+                          <CheckCircle2 className="w-3 h-3" /> Approved
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-[10px] font-black text-sky-700 dark:text-sky-300">
+                          <Clock className="w-3 h-3" /> Under Review
+                        </span>
+                      )}
+                      {isRedo && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-[10px] font-black text-rose-700 dark:text-rose-300">
+                          <AlertTriangle className="w-3 h-3" /> Needs Changes
+                        </span>
+                      )}
+                      {!isApproved && !isCompleted && !isRedo && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">
+                          {a.status}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
