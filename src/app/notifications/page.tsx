@@ -85,6 +85,8 @@ export default function NotificationsPage() {
     }
   };
 
+import { getNotificationTargetUrl } from "@/lib/notificationRouting";
+
   const handleNotificationClick = async (notification: Notification) => {
     // 1. Mark as read in DB if it's currently unread
     if (!notification.isRead) {
@@ -107,32 +109,10 @@ export default function NotificationsPage() {
       }
     }
 
-    // 2. Redirect based on notification type and message content
-    const msg = notification.message;
-    const match = msg.match(/"([^"]+)"/);
-    const productName = match ? match[1] : null;
-
-    if (msg.toLowerCase().includes("changes requested") || msg.toLowerCase().includes("redo") || msg.toLowerCase().includes("wrong")) {
-      router.push("/?tab=write");
-      return;
-    }
-
+    // 2. Redirect based on notification type, message content, and apply accurate filters
     const userRole = session?.user?.role || "WRITER";
-
-    if (productName) {
-      const searchParam = encodeURIComponent(productName);
-      if (notification.type === "LINK_ISSUE" || msg.toLowerCase().includes("link")) {
-        router.push(`/links?search=${searchParam}`);
-      } else {
-        router.push(`/articles?search=${searchParam}`);
-      }
-    } else {
-      if (userRole === "LINKER") {
-        router.push("/links");
-      } else {
-        router.push("/articles");
-      }
-    }
+    const targetUrl = getNotificationTargetUrl(notification, userRole);
+    router.push(targetUrl);
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
