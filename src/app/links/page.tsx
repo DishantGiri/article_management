@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown } from "lucide-react";
+import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check } from "lucide-react";
 import { toast } from "react-hot-toast";
 import AddLinkModal from "@/components/AddLinkModal";
 import FormattedRemarks from "@/components/FormattedRemarks";
@@ -29,7 +29,7 @@ interface LinkLog {
   linkerRemarks?: string | null;
   status: string;
   addedAt: string;
-  geos: { geo: string }[];
+  geos: { id?: number; geo: string; affiliateLink?: string | null }[];
   addedBy: { name: string };
   updatedBy?: { name: string } | null;
   product: { name: string; slug?: string | null; site?: { name: string }; article?: { articleLink?: string | null } };
@@ -81,6 +81,21 @@ function LinksPageContent() {
   const [preselectedProductId, setPreselectedProductId] = useState<number | null>(urlProductId ? parseInt(urlProductId) : null);
   const [currentUserRole, setCurrentUserRole] = useState("");
   const itemsPerPage = 10;
+
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [expandedGeos, setExpandedGeos] = useState<Record<number, boolean>>({});
+
+  const handleCopy = (text: string, key: string, label: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast.success(`Copied ${label}!`);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const toggleExpandGeos = (linkId: number) => {
+    setExpandedGeos((prev) => ({ ...prev, [linkId]: !prev[linkId] }));
+  };
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -186,7 +201,32 @@ function LinksPageContent() {
       fetch(`/api/dashboard?userId=${uId}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/products?userId=${uId}`).then((r) => (r.ok ? r.json() : [])),
     ]).then(([linksData, dashboardData, productsData]) => {
-      const arr = Array.isArray(linksData) ? linksData : [];
+      const rawArr = Array.isArray(linksData) ? linksData : [];
+      // Consolidate duplicate entries for same product & affiliate setup so one product is displayed with all its geo links
+      const map = new Map<string, any>();
+      for (const item of rawArr) {
+        const key = `${item.productId}_${(item.affiliateName || "").toLowerCase()}_${item.bridgePageLink || ""}_${item.buyLink || ""}_${item.status}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            ...item,
+            geos: [...(item.geos || []).map((g: any) => ({ ...g, affiliateLink: g.affiliateLink || item.affiliateLink }))],
+          });
+        } else {
+          const existing = map.get(key)!;
+          for (const g of item.geos || []) {
+            const existingGeoIndex = existing.geos.findIndex((eg: any) => eg.geo === g.geo);
+            if (existingGeoIndex === -1) {
+              existing.geos.push({
+                ...g,
+                affiliateLink: g.affiliateLink || item.affiliateLink,
+              });
+            } else if (!existing.geos[existingGeoIndex].affiliateLink && (g.affiliateLink || item.affiliateLink)) {
+              existing.geos[existingGeoIndex].affiliateLink = g.affiliateLink || item.affiliateLink;
+            }
+          }
+        }
+      }
+      const arr = Array.from(map.values());
       setLinks(arr);
       setStats(dashboardData);
 
@@ -739,18 +779,138 @@ function LinksPageContent() {
                       <td className="px-3 py-3.5">
                         <span className="text-[13px] font-medium text-slate-600">{l.affiliateName}</span>
                       </td>
-                      <td className="px-3 py-3.5">
-                        <div className="flex gap-1 flex-wrap">
-                          {l.geos && l.geos.length > 0 ? (
-                            l.geos.map(g => (
-                              <span key={g.geo} className="px-1.5 py-0.5 rounded bg-[#FAF9F5] text-[#4A4A4A] text-[10px] font-bold uppercase border border-[#CBCBCB]">
-                                {g.geo}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-[12px] font-semibold text-slate-300">--</span>
-                          )}
-                        </div>
+                      <td className="px-3 py-3.5 min-w-[220px] max-w-[340px]">
+                        {(() => {
+                          const geoLinks = (l.geos || []).map((g) => ({
+                            geo: g.geo,
+                            link: g.affiliateLink || l.affiliateLink || "",
+                          }));
+                          const hasDistinctGeoLinks =
+                            geoLinks.length > 0 &&
+                            new Set(geoLinks.map((g) => g.link).filter(Boolean)).size > 1;
+                          const isExpanded = Boolean(expandedGeos[l.id]);
+                          const displayed = isExpanded ? geoLinks : geoLinks.slice(0, 3);
+
+                          if (geoLinks.length === 0) {
+                            return <span className="text-[12px] font-semibold text-slate-300">--</span>;
+                          }
+
+                          if (hasDistinctGeoLinks) {
+                            return (
+                              <div className="flex flex-col gap-1.5">
+                                {displayed.map((g) => (
+                                  <div
+                                    key={g.geo}
+                                    className="flex items-center gap-1.5 bg-[#FAF9F5] dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] shadow-2xs group/geo"
+                                  >
+                                    <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 text-[#3D4F61] dark:text-slate-200 font-extrabold text-[10px] uppercase border border-slate-200 dark:border-slate-600 shrink-0">
+                                      {g.geo}
+                                    </span>
+                                    {g.link ? (
+                                      <div className="flex items-center gap-1 min-w-0 flex-1">
+                                        <a
+                                          href={g.link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs font-mono text-[#6D8196] hover:text-[#4A4A4A] dark:text-indigo-400 hover:underline truncate"
+                                          title={g.link}
+                                        >
+                                          {g.link.replace(/^https?:\/\/(www\.)?/, "")}
+                                        </a>
+                                        <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopy(g.link, `geo-${l.id}-${g.geo}`, `${g.geo} link`)}
+                                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer"
+                                            title={`Copy ${g.geo} link`}
+                                          >
+                                            {copiedKey === `geo-${l.id}-${g.geo}` ? (
+                                              <Check className="w-3 h-3 text-emerald-600" />
+                                            ) : (
+                                              <Copy className="w-3 h-3" />
+                                            )}
+                                          </button>
+                                          <a
+                                            href={g.link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
+                                            title={`Open ${g.geo} link`}
+                                          >
+                                            <ExternalLink className="w-3 h-3" />
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 italic">No link</span>
+                                    )}
+                                  </div>
+                                ))}
+                                {geoLinks.length > 3 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpandGeos(l.id)}
+                                    className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline text-left cursor-pointer"
+                                  >
+                                    {isExpanded ? "▲ Show less" : `▼ +${geoLinks.length - 3} more country links`}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          // Shared single link for all GEOs
+                          return (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex gap-1 flex-wrap">
+                                {l.geos.map((g) => (
+                                  <span
+                                    key={g.geo}
+                                    className="px-1.5 py-0.5 rounded bg-[#FAF9F5] text-[#4A4A4A] text-[10px] font-bold uppercase border border-[#CBCBCB]"
+                                  >
+                                    {g.geo}
+                                  </span>
+                                ))}
+                              </div>
+                              {l.affiliateLink && (
+                                <div className="flex items-center gap-1 mt-0.5 bg-[#FAF9F5] dark:bg-slate-800/80 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700">
+                                  <a
+                                    href={l.affiliateLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-mono text-[#6D8196] hover:text-[#4A4A4A] hover:underline truncate max-w-[170px]"
+                                    title={l.affiliateLink}
+                                  >
+                                    {l.affiliateLink.replace(/^https?:\/\/(www\.)?/, "")}
+                                  </a>
+                                  <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopy(l.affiliateLink, `aff-${l.id}`, "Affiliate link")}
+                                      className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                                      title="Copy affiliate link"
+                                    >
+                                      {copiedKey === `aff-${l.id}` ? (
+                                        <Check className="w-3 h-3 text-emerald-600" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                    <a
+                                      href={l.affiliateLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
+                                      title="Open affiliate link"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-3 py-3.5">
                         <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${statusStyle}`}>

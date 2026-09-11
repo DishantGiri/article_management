@@ -59,7 +59,7 @@ export interface AssignmentProduct {
     linkerRemarks?: string | null;
     addedAt?: string;
     updatedAt?: string;
-    geos?: Array<{ geo: string }>;
+    geos?: Array<{ geo: string; affiliateLink?: string | null }>;
   }>;
 }
 
@@ -607,7 +607,73 @@ export default function AssignmentDetailsModal({
                   </div>
 
                   {/* Affiliate Link */}
-                  {currentLog.affiliateLink && (
+                  {/* Affiliate Destination Link(s) */}
+                  {currentLog.geos && currentLog.geos.some((g) => g.affiliateLink && g.affiliateLink !== currentLog.affiliateLink) ? (
+                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs space-y-2">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Link2 className="w-3.5 h-3.5 text-[#6D8196] shrink-0" />
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                          Country-Specific Affiliate Links ({currentLog.geos.length})
+                        </span>
+                      </div>
+                      <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                        {currentLog.geos.map((g) => (
+                          <div
+                            key={g.geo}
+                            className="flex items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-800/80 rounded-lg border border-slate-200/60 dark:border-slate-700/60 text-xs"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 font-extrabold text-[10px] uppercase border border-slate-200 dark:border-slate-600 shrink-0">
+                                {g.geo}
+                              </span>
+                              <a
+                                href={g.affiliateLink || currentLog.affiliateLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline truncate block"
+                              >
+                                {g.affiliateLink || currentLog.affiliateLink}
+                              </a>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() =>
+                                  handleCopy(
+                                    g.affiliateLink || currentLog.affiliateLink!,
+                                    `geo-aff-${currentLog.id}-${g.geo}`,
+                                    `${g.geo} Affiliate Link`
+                                  )
+                                }
+                                className="p-1 px-2 rounded bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold flex items-center gap-1 border border-slate-200 dark:border-slate-600 cursor-pointer"
+                                title={`Copy ${g.geo} link`}
+                              >
+                                {copiedKey === `geo-aff-${currentLog.id}-${g.geo}` ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span className="text-emerald-600">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3 text-slate-400" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                              <a
+                                href={g.affiliateLink || currentLog.affiliateLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 px-1.5 rounded bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600"
+                                title="Open Link"
+                              >
+                                <ExternalLink className="w-3 h-3 text-slate-400" />
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : currentLog.affiliateLink ? (
                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-1.5">
@@ -663,7 +729,7 @@ export default function AssignmentDetailsModal({
                         {currentLog.affiliateLink}
                       </a>
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Remarks */}

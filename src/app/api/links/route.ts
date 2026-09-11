@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { productId, bridgePageLink, buyLink, affiliateName, affiliateLink, affiliateEntries, geos, status, linkerRemarks } = body;
+    const { productId, bridgePageLink, buyLink, affiliateName, affiliateLink, affiliateEntries, countryLinks, geos, status, linkerRemarks } = body;
 
     const VALID_LINK_STATUSES = [
       "REQUESTED",
@@ -97,12 +97,76 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const entriesToCreate: Array<{ affiliateName: string; affiliateLink: string; geos?: string[] }> =
-      Array.isArray(affiliateEntries) && affiliateEntries.length > 0
-        ? affiliateEntries
-        : affiliateName && affiliateLink
-        ? [{ affiliateName, affiliateLink }]
-        : [];
+    const uniqueGeos = Array.from(
+      new Set(((geos as string[]) || []).map((g: string) => String(g).trim().toUpperCase()).filter(Boolean))
+    );
+
+    // Consolidate entries into unified network groups so ONE LinkLog is created per product/network!
+    type NormalizedGeo = { geo: string; affiliateLink: string };
+    type UnifiedEntry = {
+      affiliateName: string;
+      affiliateLink: string;
+      geos: NormalizedGeo[];
+    };
+
+    const unifiedMap = new Map<string, UnifiedEntry>();
+
+    if (Array.isArray(countryLinks) && countryLinks.length > 0) {
+      for (const c of countryLinks) {
+        const netName = (c.affiliateName || affiliateName || "Standard").trim();
+        const affLink = (c.affiliateLink || affiliateLink || "").trim();
+        const geoCode = String(c.geo || "").trim().toUpperCase();
+        if (!geoCode) continue;
+
+        if (!unifiedMap.has(netName)) {
+          unifiedMap.set(netName, {
+            affiliateName: netName,
+            affiliateLink: affLink,
+            geos: [],
+          });
+        }
+        const existing = unifiedMap.get(netName)!;
+        if (!existing.affiliateLink && affLink) existing.affiliateLink = affLink;
+        if (!existing.geos.some((g) => g.geo === geoCode)) {
+          existing.geos.push({ geo: geoCode, affiliateLink: affLink });
+        }
+      }
+    } else if (Array.isArray(affiliateEntries) && affiliateEntries.length > 0) {
+      for (const entry of affiliateEntries) {
+        const netName = (entry.affiliateName || "Standard").trim();
+        const affLink = (entry.affiliateLink || "").trim();
+        if (!unifiedMap.has(netName)) {
+          unifiedMap.set(netName, {
+            affiliateName: netName,
+            affiliateLink: affLink,
+            geos: [],
+          });
+        }
+        const existing = unifiedMap.get(netName)!;
+        if (!existing.affiliateLink && affLink) existing.affiliateLink = affLink;
+
+        const entryGeos = Array.isArray(entry.geos) && entry.geos.length > 0
+          ? entry.geos
+          : uniqueGeos;
+
+        for (const g of entryGeos) {
+          const geoCode = (typeof g === "string" ? g : g?.geo || "").trim().toUpperCase();
+          const geoLink = (typeof g === "object" && g?.affiliateLink ? g.affiliateLink : affLink).trim();
+          if (geoCode && !existing.geos.some((item) => item.geo === geoCode)) {
+            existing.geos.push({ geo: geoCode, affiliateLink: geoLink || affLink });
+          }
+        }
+      }
+    } else if (affiliateName && affiliateLink) {
+      const netName = affiliateName.trim();
+      unifiedMap.set(netName, {
+        affiliateName: netName,
+        affiliateLink: affiliateLink.trim(),
+        geos: uniqueGeos.map((g) => ({ geo: g, affiliateLink: affiliateLink.trim() })),
+      });
+    }
+
+    const entriesToCreate: UnifiedEntry[] = Array.from(unifiedMap.values());
 
     if (!productId || entriesToCreate.length === 0) {
       return NextResponse.json({ error: "productId and at least one affiliate network entry (affiliateName & affiliateLink) are required" }, { status: 400 });
@@ -112,20 +176,9 @@ export async function POST(req: NextRequest) {
       if (!entry.affiliateName?.trim() || !entry.affiliateLink?.trim()) {
         return NextResponse.json({ error: "Affiliate Name and Affiliate Link are required for all network entries." }, { status: 400 });
       }
-    }
-
-    // Fix 1: Compulsory Geo selection
-    const hasPerEntryGeos = entriesToCreate.some((e) => Array.isArray(e.geos) && e.geos.length > 0);
-    if ((!geos || !Array.isArray(geos) || geos.length === 0) && !hasPerEntryGeos) {
-      return NextResponse.json({ error: "At least one GEO must be selected." }, { status: 400 });
-    }
-
-    const uniqueGeos = Array.from(
-      new Set((geos as string[] || []).map((g: string) => String(g).trim()).filter(Boolean))
-    );
-
-    if (uniqueGeos.length === 0 && !hasPerEntryGeos) {
-      return NextResponse.json({ error: "At least one valid GEO must be selected." }, { status: 400 });
+      if (entry.geos.length === 0) {
+        return NextResponse.json({ error: "At least one valid GEO must be selected." }, { status: 400 });
+      }
     }
 
     const addedById = session.user.id;
@@ -169,10 +222,6 @@ export async function POST(req: NextRequest) {
 
     const createdLinks = await prisma.$transaction(
       entriesToCreate.map((entry) => {
-        const itemGeos = Array.isArray(entry.geos) && entry.geos.length > 0
-          ? Array.from(new Set(entry.geos.map((g) => String(g).trim()).filter(Boolean)))
-          : uniqueGeos;
-
         return prisma.linkLog.create({
           data: {
             productId: parseInt(productId),
@@ -184,7 +233,10 @@ export async function POST(req: NextRequest) {
             status: targetStatus as any,
             linkerRemarks: linkerRemarks?.trim() || null,
             geos: {
-              create: itemGeos.map((geo: string) => ({ geo })),
+              create: entry.geos.map((g) => ({
+                geo: g.geo,
+                affiliateLink: g.affiliateLink || entry.affiliateLink.trim(),
+              })),
             },
           },
           include: { geos: true, addedBy: { select: { name: true } } },

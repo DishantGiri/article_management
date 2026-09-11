@@ -991,14 +991,31 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
                     {log.geos?.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {log.geos.map((g: any) => (
-                          <span
-                            key={g.geo}
-                            className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-600"
-                          >
-                            {g.geo}
-                          </span>
-                        ))}
+                        {log.geos.map((g: any) => {
+                          const geoLink = g.affiliateLink || log.affiliateLink;
+                          return (
+                            <span
+                              key={g.geo}
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-600 shadow-2xs"
+                            >
+                              <span>{g.geo}</span>
+                              {geoLink && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(geoLink);
+                                    toast.success(`${g.geo} affiliate link copied!`);
+                                  }}
+                                  className="p-0.5 hover:bg-slate-100 rounded text-slate-400 hover:text-indigo-600 transition cursor-pointer"
+                                  title={`Copy ${g.geo} link`}
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

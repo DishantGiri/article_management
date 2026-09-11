@@ -492,9 +492,20 @@ export default function AddLinkModal({
           addedById: mockUserId,
           bridgePageLink: bridgePageLink || null,
           buyLink: buyLink || null,
-          affiliateEntries: entriesToCreate,
-          affiliateName: entriesToCreate[0]?.affiliateName.trim() || "",
-          affiliateLink: entriesToCreate[0]?.affiliateLink.trim() || "",
+          countryLinks: useCountrySpecificLinks ? countryLinks : undefined,
+          affiliateEntries: useCountrySpecificLinks
+            ? undefined
+            : affiliateEntries.map((a) => ({
+                affiliateName: a.affiliateName.trim(),
+                affiliateLink: a.affiliateLink.trim(),
+                geos,
+              })),
+          affiliateName: useCountrySpecificLinks
+            ? countryLinks[0]?.affiliateName.trim() || defaultAffiliateName || allAffiliates[0] || "Standard"
+            : affiliateEntries[0]?.affiliateName.trim() || "",
+          affiliateLink: useCountrySpecificLinks
+            ? countryLinks[0]?.affiliateLink.trim() || ""
+            : affiliateEntries[0]?.affiliateLink.trim() || "",
           geos,
           status,
           linkerRemarks: linkerRemarks || null,
@@ -508,7 +519,7 @@ export default function AddLinkModal({
 
       toast.success(
         useCountrySpecificLinks
-          ? `Successfully added ${entriesToCreate.length} country link log(s)!`
+          ? `Successfully added product link with ${countryLinks.length} country link(s)!`
           : `Successfully added ${affiliateEntries.length} link log entry(ies)!`
       );
       if (onSuccess) onSuccess();
@@ -1198,8 +1209,9 @@ export default function AddLinkModal({
             {selectedProduct ? (
               <span className="text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                {useCountrySpecificLinks ? countryLinks.length : affiliateEntries.length} link log{" "}
-                {(useCountrySpecificLinks ? countryLinks.length : affiliateEntries.length) !== 1 ? "entries" : "entry"}{" "}
+                {useCountrySpecificLinks
+                  ? `${countryLinks.length} country link${countryLinks.length !== 1 ? "s" : ""} configured for 1 product`
+                  : `${affiliateEntries.length} link log ${affiliateEntries.length !== 1 ? "entries" : "entry"}`}{" "}
                 ready for {selectedProduct.site?.name}
               </span>
             ) : (
@@ -1223,8 +1235,10 @@ export default function AddLinkModal({
             >
               {submitting
                 ? "Saving..."
-                : `Add ${useCountrySpecificLinks ? countryLinks.length : affiliateEntries.length} Link Log${
-                    (useCountrySpecificLinks ? countryLinks.length : affiliateEntries.length) !== 1 ? "s" : ""
+                : useCountrySpecificLinks
+                ? `Save Product (${countryLinks.length} Country Links)`
+                : `Add ${affiliateEntries.length} Link Log${
+                    affiliateEntries.length !== 1 ? "s" : ""
                   }`}
             </button>
           </div>
