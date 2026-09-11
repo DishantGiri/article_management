@@ -281,9 +281,10 @@ model LinkLog {
 
 // GEO entries for a link (multi-select support)
 model LinkGeo {
-  id        Int    @id @default(autoincrement())
-  linkLogId Int
-  geo       String // e.g. "US", "UK", "CA"
+  id            Int     @id @default(autoincrement())
+  linkLogId     Int
+  geo           String  // e.g. "US", "UK", "CA"
+  affiliateLink String? @db.Text
 
   linkLog LinkLog @relation(fields: [linkLogId], references: [id], onDelete: Cascade)
 
