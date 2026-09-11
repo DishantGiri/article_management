@@ -155,7 +155,11 @@ export async function PATCH(
         ...(image !== undefined ? { image } : {}),
         ...(role ? { role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" } : {}),
         allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,
-        ...(resolvedTeamLeadId !== undefined ? { teamLeadId: resolvedTeamLeadId } : {}),
+        ...(resolvedTeamLeadId !== undefined
+          ? resolvedTeamLeadId
+            ? { teamLead: { connect: { id: resolvedTeamLeadId } } }
+            : { teamLead: { disconnect: true } }
+          : {}),
         ...(finalApproved !== undefined ? { approved: finalApproved } : {}),
         ...(finalHasLeftCompany !== undefined ? { hasLeftCompany: finalHasLeftCompany } : {}),
         ...(finalCommissionToPartyFund !== undefined ? { commissionToPartyFund: finalCommissionToPartyFund } : {}),

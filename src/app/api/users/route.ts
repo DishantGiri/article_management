@@ -81,7 +81,9 @@ export async function POST(req: NextRequest) {
         email: trimmedEmail,
         role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD",
         allowLinkLogAccess: role === "WRITER" ? !!allowLinkLogAccess : false,
-        teamLeadId: role === "WRITER" && teamLeadId ? Number(teamLeadId) : null,
+        ...(role === "WRITER" && teamLeadId
+          ? { teamLead: { connect: { id: Number(teamLeadId) } } }
+          : {}),
         approved: finalApproved,
         hasLeftCompany: finalHasLeft,
         commissionToPartyFund: finalCommToParty,
