@@ -130,7 +130,9 @@ function ProductsPageContent() {
       p.trendLink || "",
       p.previewLink || "",
       p.remarks || "",
-      p.article?.status || "PENDING",
+      (!p.article?.writer && (p.article?.status === "APPROVED" || p.article?.status === "COMPLETED" || p.article?.status === "IN_PROGRESS"))
+        ? "PENDING"
+        : p.article?.status || "PENDING",
       (p.linkLogs?.length || 0).toString(),
       p.addedBy?.name || "",
       new Date(p.addedAt).toLocaleDateString()
@@ -319,7 +321,11 @@ function ProductsPageContent() {
     
     // Status Filter
     let matchStatus = true;
-    const currentStatus = p.article?.status || "PENDING";
+    const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
+    const rawStatus = p.article?.status || "PENDING";
+    const currentStatus = (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
+      ? "PENDING"
+      : rawStatus;
     if (isExactSearchMatch) {
       matchStatus = true;
     } else if (statusFilter) {
@@ -793,7 +799,11 @@ function ProductsPageContent() {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {paginated.map((p: any) => {
-                    const status = p.article?.status || "PENDING";
+                    const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
+                    const rawStatus = p.article?.status || "PENDING";
+                    const status = (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
+                      ? "PENDING"
+                      : rawStatus;
                     
                     return (
                       <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">

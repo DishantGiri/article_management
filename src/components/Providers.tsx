@@ -1,12 +1,19 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
+import type { Session } from "next-auth";
 import { Toaster } from "react-hot-toast";
 import { useEffect } from "react";
 import { ThemeProvider } from "@/context/ThemeContext";
 import NoticePopupModal from "@/components/NoticePopupModal";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({
+  children,
+  session,
+}: {
+  children: React.ReactNode;
+  session?: Session | null;
+}) {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch((err) => console.log('Service Worker registration failed:', err));
@@ -52,7 +59,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SessionProvider refetchOnWindowFocus={false}>
+    <SessionProvider session={session} refetchOnWindowFocus={false}>
       <ThemeProvider>
         {children}
         <NoticePopupModal />

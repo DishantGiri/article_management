@@ -33,6 +33,7 @@ export async function GET(
         allowLinkLogAccess: true,
         approved: true,
         hasLeftCompany: true,
+        commissionToPartyFund: true,
         siteAccess: { select: { site: { select: { id: true, name: true } } } },
       },
     });
@@ -66,7 +67,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, role, image, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany } = body;
+    const { name, role, image, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany, commissionToPartyFund } = body;
 
     const callerId = Number(session.user.id);
     const callerRole = session.user.role || "";
@@ -78,7 +79,7 @@ export async function PATCH(
     }
 
     // Non-admin cannot modify role, approval, or site access
-    if (!isAdmin && (role || approved !== undefined || siteIds !== undefined || allowLinkLogAccess !== undefined || hasLeftCompany !== undefined)) {
+    if (!isAdmin && (role || approved !== undefined || siteIds !== undefined || allowLinkLogAccess !== undefined || hasLeftCompany !== undefined || commissionToPartyFund !== undefined)) {
       return NextResponse.json({ error: "Forbidden: Only administrators can modify roles and permissions." }, { status: 403 });
     }
 
@@ -91,9 +92,9 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Cannot modify SUPER_ADMIN users (except themselves for profile name/image)
-    if (targetUser.role === "SUPER_ADMIN" && callerId !== parseInt(id)) {
-      return NextResponse.json({ error: "Cannot modify other Super Admin users." }, { status: 403 });
+    // Only SUPER_ADMIN can modify other SUPER_ADMIN users
+    if (targetUser.role === "SUPER_ADMIN" && callerRole !== "SUPER_ADMIN" && !isSelf) {
+      return NextResponse.json({ error: "Forbidden: Only Super Admins can modify Super Admin users." }, { status: 403 });
     }
 
     // Only SUPER_ADMIN can modify ADMIN users
@@ -101,12 +102,17 @@ export async function PATCH(
       return NextResponse.json({ error: "Only Super Admins can modify Admin user roles." }, { status: 403 });
     }
 
-    // Only SUPER_ADMIN can assign ADMIN role, and nobody can assign SUPER_ADMIN role
-    if (role === "SUPER_ADMIN" && targetUser.role !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Cannot assign Super Admin role." }, { status: 403 });
+    // Only SUPER_ADMIN can assign ADMIN or SUPER_ADMIN role
+    if ((role === "SUPER_ADMIN" || role === "ADMIN") && callerRole !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: `Only Super Admins can assign ${role === "SUPER_ADMIN" ? "Super Admin" : "Admin"} roles.` }, { status: 403 });
     }
-    if (role === "ADMIN" && callerRole !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Only Super Admins can assign Admin roles." }, { status: 403 });
+
+    // Safety guard: ensure the platform has at least 1 Super Admin remaining if demoting
+    if (targetUser.role === "SUPER_ADMIN" && role && role !== "SUPER_ADMIN") {
+      const superAdminCount = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
+      if (superAdminCount <= 1) {
+        return NextResponse.json({ error: "Cannot change role: The system must maintain at least one Super Admin." }, { status: 400 });
+      }
     }
 
     // Handle site access sync if siteIds is provided
@@ -129,6 +135,19 @@ export async function PATCH(
       resolvedTeamLeadId = teamLeadId && teamLeadId !== "none" && teamLeadId !== "" ? Number(teamLeadId) : null;
     }
 
+    // Enforce mutual exclusion: if hasLeftCompany is true, approved must be false (and commissionToPartyFund false)
+    // If approved is true, hasLeftCompany must be false
+    let finalApproved = typeof approved === 'boolean' ? approved : undefined;
+    let finalHasLeftCompany = typeof hasLeftCompany === 'boolean' ? hasLeftCompany : undefined;
+    let finalCommissionToPartyFund = typeof commissionToPartyFund === 'boolean' ? commissionToPartyFund : undefined;
+
+    if (finalHasLeftCompany === true) {
+      finalApproved = false;
+      finalCommissionToPartyFund = false;
+    } else if (finalApproved === true) {
+      finalHasLeftCompany = false;
+    }
+
     const updated = await prisma.user.update({
       where: { id: parseInt(id) },
       data: {
@@ -137,8 +156,9 @@ export async function PATCH(
         ...(role ? { role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" } : {}),
         allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,
         ...(resolvedTeamLeadId !== undefined ? { teamLeadId: resolvedTeamLeadId } : {}),
-        ...(typeof approved === 'boolean' ? { approved } : {}),
-        ...(typeof hasLeftCompany === 'boolean' ? { hasLeftCompany } : {}),
+        ...(finalApproved !== undefined ? { approved: finalApproved } : {}),
+        ...(finalHasLeftCompany !== undefined ? { hasLeftCompany: finalHasLeftCompany } : {}),
+        ...(finalCommissionToPartyFund !== undefined ? { commissionToPartyFund: finalCommissionToPartyFund } : {}),
         ...(siteAccessUpdate ? { siteAccess: siteAccessUpdate } : {}),
       },
       include: {
@@ -147,6 +167,48 @@ export async function PATCH(
         teamMembers: { select: { id: true, name: true } },
       },
     });
+
+    // If commissionToPartyFund is turned on, divert any existing pending commissions for this user to Party Fund
+    if (commissionToPartyFund === true) {
+      const targetUserId = parseInt(id);
+      const pendingSales = await prisma.commissionSale.findMany({
+        where: {
+          paymentStatus: "PENDING",
+          OR: [
+            { writerId: targetUserId, writerAmount: { gt: 0 } },
+            { linkerId: targetUserId, linkerAmount: { gt: 0 } },
+            { teamLeadId: targetUserId, tlAmount: { gt: 0 } },
+          ],
+        },
+      });
+
+      for (const sale of pendingSales) {
+        let transfer = 0;
+        const updateData: any = {};
+
+        if (sale.writerId === targetUserId && sale.writerAmount > 0) {
+          transfer += sale.writerAmount;
+          updateData.writerAmount = 0;
+          updateData.writerTransferredToParty = (sale.writerTransferredToParty || 0) + sale.writerAmount;
+        }
+        if (sale.linkerId === targetUserId && sale.linkerAmount > 0) {
+          transfer += sale.linkerAmount;
+          updateData.linkerAmount = 0;
+        }
+        if (sale.teamLeadId === targetUserId && sale.tlAmount > 0) {
+          transfer += sale.tlAmount;
+          updateData.tlAmount = 0;
+        }
+
+        if (transfer > 0) {
+          updateData.partyAmount = sale.partyAmount + transfer;
+          await prisma.commissionSale.update({
+            where: { id: sale.id },
+            data: updateData,
+          });
+        }
+      }
+    }
 
     return NextResponse.json(updated);
   } catch (err) {
@@ -184,7 +246,16 @@ export async function DELETE(
 
     // Delete restrictions
     if (targetUser.role === "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Cannot delete Super Admin users." }, { status: 403 });
+      if (callerRole !== "SUPER_ADMIN") {
+        return NextResponse.json({ error: "Forbidden: Only Super Admins can delete Super Admin users." }, { status: 403 });
+      }
+      if (session.user.id === parseInt(id)) {
+        return NextResponse.json({ error: "You cannot delete your own Super Admin account." }, { status: 400 });
+      }
+      const superAdminCount = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
+      if (superAdminCount <= 1) {
+        return NextResponse.json({ error: "Cannot delete: The system must maintain at least one Super Admin." }, { status: 400 });
+      }
     }
     if (targetUser.role === "ADMIN" && callerRole !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Only Super Admins can delete Admin users." }, { status: 403 });
@@ -200,8 +271,14 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[DELETE /api/users/[id]]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (err?.code === "P2003") {
+      return NextResponse.json(
+        { error: "Cannot delete user with associated work records (articles, links, products, or logs). Mark them as 'Left Company' instead." },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 });
   }
 }

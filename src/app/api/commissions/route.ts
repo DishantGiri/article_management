@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
             articleLink: true,
             completedAt: true,
             productCreatedAt: true,
-            writer: { select: { id: true, name: true, hasLeftCompany: true, approved: true } },
+            writer: { select: { id: true, name: true, hasLeftCompany: true, commissionToPartyFund: true, approved: true } },
           },
         },
         linkLogs: {
@@ -175,6 +175,7 @@ export async function GET(req: NextRequest) {
         (prod.article?.writer && !prod.article?.writer?.approved) ||
         !prod.article?.writer
       );
+      const writerToPartyFund = Boolean(prod.article?.writer?.commissionToPartyFund);
 
       const firstSales = prod.commissionSales.filter((s) => s.saleType === "FIRST_SALE");
       const resales = prod.commissionSales.filter((s) => s.saleType === "RESALE");
@@ -225,6 +226,7 @@ export async function GET(req: NextRequest) {
         writerId,
         writerName,
         writerHasLeft,
+        writerToPartyFund,
         articleStatus: prod.article?.status || "PENDING",
         articleLink: prod.article?.articleLink || null,
         firstSalesCount: firstSales.length,
@@ -397,9 +399,9 @@ export async function POST(req: NextRequest) {
 
     // Default amounts if setting not found
     const amount = setting?.total || 0;
-    const linkerAmount = setting?.linker || 0;
+    const baseLinkerAmount = setting?.linker || 0;
     const baseWriterAmount = setting?.writer || 0;
-    const tlAmount = setting?.tl || 0;
+    const baseTlAmount = setting?.tl || 0;
     const seoAmount = setting?.seo || 0;
     const bonusAmount = setting?.bonusPool || 0;
     const basePartyAmount = setting?.partyFund || 0;
@@ -408,34 +410,55 @@ export async function POST(req: NextRequest) {
     const linker = product.addedBy || product.linkLogs[0]?.addedBy;
     const writer = product.article?.writer;
 
-    // Determine if writer has left the company
+    // Determine if writer has left the company or has commission routed to Party Fund
     const isWriterLeft =
       writerLeftCompany !== undefined
         ? Boolean(writerLeftCompany)
         : Boolean(writer?.hasLeftCompany || (writer && !writer.approved) || !writer);
 
-    // If writer has left, their commission transfers to the Office Party Fund
-    const writerTransferredToParty = isWriterLeft ? baseWriterAmount : 0;
-    const writerAmount = isWriterLeft ? 0 : baseWriterAmount;
-    const partyAmount = basePartyAmount + writerTransferredToParty;
+    const isWriterToParty = isWriterLeft || Boolean(writer?.commissionToPartyFund);
+
+    // If writer has left or commission routed to party fund, their commission transfers to the Office Party Fund
+    const writerTransferredToParty = isWriterToParty ? baseWriterAmount : 0;
+    const writerAmount = isWriterToParty ? 0 : baseWriterAmount;
+
+    // Linker commission routed to party fund if linker has commissionToPartyFund
+    let linkerTransferred = 0;
+    let linkerAmount = baseLinkerAmount;
+    if (linker?.commissionToPartyFund) {
+      linkerTransferred = baseLinkerAmount;
+      linkerAmount = 0;
+    }
 
     let teamLeadId: number | null = null;
     let teamLeadName: string | null = null;
+    let tlTransferred = 0;
+    let tlAmount = baseTlAmount;
 
     if (writer?.teamLeadId) {
       // Writer has a separate assigned Team Lead — credit TL commission to them
       const tl = await prisma.user.findUnique({
         where: { id: writer.teamLeadId },
-        select: { id: true, name: true },
+        select: { id: true, name: true, commissionToPartyFund: true },
       });
       teamLeadId = tl?.id || null;
       teamLeadName = tl?.name || null;
+      if (tl?.commissionToPartyFund) {
+        tlTransferred = tlAmount;
+        tlAmount = 0;
+      }
     } else if (writer?.role === "TEAM_LEAD") {
       // Special case: the writer IS a Team Lead themselves (no separate TL above them).
       // Both writer commission AND TL commission go to this same user.
       teamLeadId = writer.id;
       teamLeadName = writer.name;
+      if (writer.commissionToPartyFund) {
+        tlTransferred = tlAmount;
+        tlAmount = 0;
+      }
     }
+
+    const partyAmount = basePartyAmount + writerTransferredToParty + linkerTransferred + tlTransferred;
 
     const parsedDate = saleDate ? new Date(saleDate) : new Date();
     const status = paymentStatus === "PAID" ? "PAID" : "PENDING";

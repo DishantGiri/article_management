@@ -26,6 +26,7 @@ import {
   Eye,
   SlidersHorizontal,
   Package,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -54,6 +55,8 @@ interface UserCommissionRow {
   email: string;
   role: string;
   image: string | null;
+  hasLeftCompany?: boolean;
+  commissionToPartyFund?: boolean;
   teamLeadName: string | null;
   firstSalesCount: number;
   firstSalesAmount: number;
@@ -612,9 +615,17 @@ export default function UserCommissionsPage() {
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <span className="font-extrabold text-slate-900 dark:text-white block truncate">
-                              {user.name}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-extrabold text-slate-900 dark:text-white truncate">
+                                {user.name}
+                              </span>
+                              {user.commissionToPartyFund && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs" title="Commissions routed directly to Party Fund">
+                                  <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+                                  Party Fund
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] text-slate-400 block truncate">
                               {user.email}
                             </span>

@@ -168,6 +168,15 @@ export async function PATCH(
       );
     }
 
+    // Cannot approve, redo, or complete an article without an assigned writer
+    const effectiveWriterId = writerId !== undefined ? (writerId ? parseInt(writerId) : null) : existing.writerId;
+    if ((status === "APPROVED" || status === "REDO" || status === "COMPLETED") && !effectiveWriterId) {
+      return NextResponse.json(
+        { error: "Cannot review, approve, or complete an article without an assigned writer." },
+        { status: 400 }
+      );
+    }
+
     // Priority change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN
     if (priority !== undefined) {
       if (!["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
@@ -204,6 +213,7 @@ export async function PATCH(
               name: currentProductName,
             },
             status: { in: ["IN_PROGRESS", "COMPLETED", "APPROVED"] },
+            writerId: { not: null },
           },
           include: {
             writer: { select: { name: true } },

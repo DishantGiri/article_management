@@ -200,12 +200,19 @@ function ArticlesContent() {
     if (selectedArticleIds.length === 0 || bulkApproving) return;
     setBulkApproving(true);
     try {
-      const promises = selectedArticleIds.map((articleId) =>
+      const validArticles = articles.filter(
+        (a) => selectedArticleIds.includes(a.id) && a.writer?.id
+      );
+      if (validArticles.length === 0) {
+        toast.error("Cannot approve articles with no assigned writer.");
+        return;
+      }
+      const promises = validArticles.map((article) =>
         fetch("/api/reviews", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            articleId,
+            articleId: article.id,
             reviewedById: currentUserId,
             approved: true,
             suggestion: "Bulk approved by Team Lead",
@@ -803,15 +810,15 @@ function ArticlesContent() {
                         type="checkbox"
                         checked={
                           paginated.length > 0 &&
-                          paginated.filter((a: any) => a.status !== "APPROVED").length > 0 &&
+                          paginated.filter((a: any) => a.status !== "APPROVED" && a.writer?.id).length > 0 &&
                           paginated
-                            .filter((a: any) => a.status !== "APPROVED")
+                            .filter((a: any) => a.status !== "APPROVED" && a.writer?.id)
                             .every((a: any) => selectedArticleIds.includes(a.id))
                         }
                         onChange={(e) => {
                           if (e.target.checked) {
                             const eligibleIds = paginated
-                              .filter((a: any) => a.status !== "APPROVED")
+                              .filter((a: any) => a.status !== "APPROVED" && a.writer?.id)
                               .map((a: any) => a.id);
                             setSelectedArticleIds((prev) => Array.from(new Set([...prev, ...eligibleIds])));
                           } else {
@@ -820,7 +827,7 @@ function ArticlesContent() {
                           }
                         }}
                         className="w-4 h-4 rounded border-slate-300 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
-                        title="Select all unapproved on current page"
+                        title="Select all unapproved articles with assigned writers on current page"
                       />
                     </th>
                   )}
@@ -863,7 +870,7 @@ function ArticlesContent() {
                     >
                       {isManager && (
                         <td className="px-3 py-3.5 text-center">
-                          {a.status !== "APPROVED" ? (
+                          {a.status !== "APPROVED" && a.writer?.id ? (
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -874,8 +881,10 @@ function ArticlesContent() {
                               }}
                               className="w-4 h-4 rounded border-slate-300 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
                             />
-                          ) : (
+                          ) : a.status === "APPROVED" ? (
                             <span className="text-emerald-600 font-bold text-xs" title="Already Approved">✓</span>
+                          ) : (
+                            <span className="text-slate-300 text-xs" title="Unassigned — cannot approve">-</span>
                           )}
                         </td>
                       )}

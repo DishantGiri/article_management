@@ -356,6 +356,7 @@ export async function GET(req: NextRequest) {
             OR: [
               { article: null },
               { article: { status: { in: ["PENDING", "IN_PROGRESS", "REDO"] } } },
+              { article: { writerId: null } },
             ],
           }
         : {}),

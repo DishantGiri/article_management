@@ -7,7 +7,6 @@ import {
   Search,
   Plus,
   Pencil,
-  Trash2,
   X,
   Calendar as CalendarIcon,
   ArrowRightLeft,
@@ -39,7 +38,6 @@ import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "react-hot-toast";
-import ConfirmDialog from "@/components/ConfirmDialog";
 import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 
@@ -56,6 +54,7 @@ interface User {
   allowLinkLogAccess: boolean;
   approved: boolean;
   hasLeftCompany?: boolean;
+  commissionToPartyFund?: boolean;
   siteAccess: {
     site: {
       id: number;
@@ -165,10 +164,34 @@ export default function UsersPage() {
     allowLinkLogAccess: false,
     approved: true,
     hasLeftCompany: false,
+    commissionToPartyFund: false,
   });
 
-  // 5. Delete Confirm Dialog
-  const [deleteTargetUser, setDeleteTargetUser] = useState<User | null>(null);
+  // Email validation for Add User
+  const emailValidationError = useMemo(() => {
+    if (editingUserId) return null;
+    const trimmed = form.email.trim();
+    if (!trimmed) return null;
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(trimmed)) {
+      return "Invalid email format (e.g. name@fishtailinfosolutions.com)";
+    }
+    if (!trimmed.toLowerCase().endsWith("@fishtailinfosolutions.com")) {
+      return "Email must belong to @fishtailinfosolutions.com";
+    }
+    if (users.some((u) => u.email.toLowerCase() === trimmed.toLowerCase())) {
+      return "This email is already in use by another user";
+    }
+    return null;
+  }, [form.email, editingUserId, users]);
+
+  const isEmailValid = useMemo(() => {
+    if (editingUserId) return true;
+    const trimmed = form.email.trim();
+    if (!trimmed) return false;
+    return emailValidationError === null;
+  }, [form.email, editingUserId, emailValidationError]);
 
   // Available Team Leads
   const teamLeads = useMemo(() => users.filter((u) => u.role === "TEAM_LEAD"), [users]);
@@ -336,10 +359,14 @@ export default function UsersPage() {
     }
     const nextApproved = !u.approved;
     try {
+      const payload: any = { approved: nextApproved };
+      if (nextApproved) {
+        payload.hasLeftCompany = false;
+      }
       const res = await fetch(`/api/users/${u.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approved: nextApproved }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -362,10 +389,15 @@ export default function UsersPage() {
     }
     const nextLeft = !u.hasLeftCompany;
     try {
+      const payload: any = { hasLeftCompany: nextLeft };
+      if (nextLeft) {
+        payload.approved = false;
+        payload.commissionToPartyFund = false;
+      }
       const res = await fetch(`/api/users/${u.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hasLeftCompany: nextLeft }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -375,7 +407,7 @@ export default function UsersPage() {
       setUsers((prev) => prev.map((user) => (user.id === u.id ? updatedUser : user)));
       toast.success(
         nextLeft
-          ? `${u.name} marked as Left Company. Commissions will route to Party Fund!`
+          ? `${u.name} marked as Left Company. Access revoked & commissions routed to Party Fund!`
           : `${u.name} marked as active employee.`
       );
     } catch (e: any) {
@@ -383,33 +415,37 @@ export default function UsersPage() {
     }
   };
 
-  // 5. Delete User
-  const handleOpenDelete = (u: User) => {
+  // Quick Toggle Commission to Party Fund
+  const handleQuickTogglePartyFund = async (u: User) => {
+    if (!isAdminOrSuperAdmin) return;
     if (u.role === "SUPER_ADMIN" && !isSuperAdmin) {
-      toast.error("Cannot delete Super Admin");
+      toast.error("Cannot modify Super Admin");
       return;
     }
-    setDeleteTargetUser(u);
-  };
-
-  const handleExecuteDelete = async () => {
-    if (!deleteTargetUser) return;
-    const targetId = deleteTargetUser.id;
-    setDeleteTargetUser(null);
+    const nextParty = !u.commissionToPartyFund;
     try {
-      const res = await fetch(`/api/users/${targetId}?creatorId=${currentUserId}`, {
-        method: "DELETE",
+      const res = await fetch(`/api/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commissionToPartyFund: nextParty }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete user");
-      setUsers((prev) => prev.filter((u) => u.id !== targetId));
-      toast.success("User deleted successfully!");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to toggle party fund routing");
+      }
+      const updatedUser = await res.json();
+      setUsers((prev) => prev.map((user) => (user.id === u.id ? updatedUser : user)));
+      toast.success(
+        nextParty
+          ? `${u.name}'s commissions will route directly to Party Fund!`
+          : `${u.name}'s commissions restored to standard payout.`
+      );
     } catch (e: any) {
-      toast.error(e.message || "Failed to delete user");
+      toast.error(e.message || "Failed to toggle party fund routing");
     }
   };
 
-  // 6. Full Add / Edit Modal
+  // 5. Full Add / Edit Modal
   const openAddModal = () => {
     setEditingUserId(null);
     setForm({
@@ -421,6 +457,7 @@ export default function UsersPage() {
       allowLinkLogAccess: false,
       approved: true,
       hasLeftCompany: false,
+      commissionToPartyFund: false,
     });
     setError("");
     setShowModal(true);
@@ -428,6 +465,7 @@ export default function UsersPage() {
 
   const openEditModal = (u: User) => {
     setEditingUserId(u.id);
+    const hasLeft = Boolean(u.hasLeftCompany);
     setForm({
       name: u.name,
       email: u.email,
@@ -435,20 +473,60 @@ export default function UsersPage() {
       siteIds: u.siteAccess ? u.siteAccess.map((sa) => sa.site.id) : [],
       teamLeadId: u.teamLead ? String(u.teamLead.id) : "",
       allowLinkLogAccess: u.allowLinkLogAccess,
-      approved: u.approved,
-      hasLeftCompany: Boolean(u.hasLeftCompany),
+      approved: hasLeft ? false : Boolean(u.approved),
+      hasLeftCompany: hasLeft,
+      commissionToPartyFund: hasLeft ? false : Boolean(u.commissionToPartyFund),
     });
     setError("");
     setShowModal(true);
   };
 
   const handleSaveUser = async () => {
+    const trimmedName = form.name.trim();
+    if (!trimmedName) {
+      setError("Please enter a user name");
+      return;
+    }
+
+    if (!editingUserId) {
+      const trimmedEmail = form.email.trim().toLowerCase();
+      if (!trimmedEmail) {
+        setError("Please enter an email address");
+        return;
+      }
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        setError("Please enter a valid email format (e.g. name@fishtailinfosolutions.com)");
+        return;
+      }
+      if (!trimmedEmail.endsWith("@fishtailinfosolutions.com")) {
+        setError("Email must belong to @fishtailinfosolutions.com corporate domain");
+        return;
+      }
+      if (users.some((u) => u.email.toLowerCase() === trimmedEmail)) {
+        setError("A user with this email address already exists");
+        return;
+      }
+    }
+
     setSaving(true);
     setError("");
     try {
       const url = editingUserId ? `/api/users/${editingUserId}` : "/api/users";
       const method = editingUserId ? "PATCH" : "POST";
-      const payload = { ...form, creatorId: currentUserId };
+      const payload: any = {
+        ...form,
+        name: trimmedName,
+        email: form.email.trim().toLowerCase(),
+        creatorId: currentUserId,
+      };
+
+      if (payload.hasLeftCompany) {
+        payload.approved = false;
+        payload.commissionToPartyFund = false;
+      } else if (payload.approved) {
+        payload.hasLeftCompany = false;
+      }
 
       const res = await fetch(url, {
         method,
@@ -923,10 +1001,19 @@ export default function UsersPage() {
                         {u.hasLeftCompany && (
                           <span
                             className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shadow-2xs flex items-center gap-1"
-                            title="Writer has left company. Future commissions will transfer to Office Party Fund."
+                            title="User has left company. Future commissions will transfer to Office Party Fund."
                           >
                             <UserX className="w-2.5 h-2.5" />
                             Left Co.
+                          </span>
+                        )}
+                        {u.commissionToPartyFund && (
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs flex items-center gap-1"
+                            title="Commissions route directly to Office Party Fund while user remains active."
+                          >
+                            <Sparkles className="w-2.5 h-2.5 text-purple-600 dark:text-purple-400" />
+                            Party Fund
                           </span>
                         )}
                         {/* Approval Status Badge / Toggle */}
@@ -1133,22 +1220,13 @@ export default function UsersPage() {
                       </Link>
 
                       {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) && (
-                        <>
-                          <button
-                            onClick={() => openEditModal(u)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
-                            title="Edit full user details"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenDelete(u)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
-                            title="Delete user"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </>
+                        <button
+                          onClick={() => openEditModal(u)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                          title="Edit full user details"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1310,6 +1388,30 @@ export default function UsersPage() {
 
                           {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
                             <button
+                              onClick={() => handleQuickTogglePartyFund(u)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer flex items-center gap-1 ${
+                                u.commissionToPartyFund
+                                  ? "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 hover:bg-purple-100"
+                                  : "bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-purple-300 hover:text-purple-600"
+                              }`}
+                              title={
+                                u.commissionToPartyFund
+                                  ? "Commissions route directly to Party Fund. Click to restore personal payout."
+                                  : "Click to route this user's commissions directly to Party Fund"
+                              }
+                            >
+                              <Sparkles className="w-2.5 h-2.5 text-purple-600 dark:text-purple-400" />
+                              {u.commissionToPartyFund ? "Party Fund" : "Personal"}
+                            </button>
+                          ) : u.commissionToPartyFund ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5 text-purple-600 dark:text-purple-400" />
+                              Party Fund
+                            </span>
+                          ) : null}
+
+                          {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                            <button
                               onClick={() => handleQuickToggleApproval(u)}
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer ${
                                 u.approved
@@ -1354,22 +1456,13 @@ export default function UsersPage() {
                             <CalendarIcon className="w-4 h-4" />
                           </Link>
                           {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) && (
-                            <>
-                              <button
-                                onClick={() => openEditModal(u)}
-                                className="p-1 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition cursor-pointer"
-                                title="Edit User"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleOpenDelete(u)}
-                                className="p-1 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition cursor-pointer"
-                                title="Delete User"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </>
+                            <button
+                              onClick={() => openEditModal(u)}
+                              className="p-1 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition cursor-pointer"
+                              title="Edit User"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
                       </td>
@@ -1666,6 +1759,12 @@ export default function UsersPage() {
                             desc: "Full administrative capabilities across users, articles, and logs",
                             color: "text-blue-600",
                           },
+                          {
+                            role: "SUPER_ADMIN",
+                            label: "Super Admin",
+                            desc: "Complete platform command, full authority to manage all roles and super admins",
+                            color: "text-purple-600",
+                          },
                         ]
                       : []),
                   ].map((r) => {
@@ -1743,82 +1842,195 @@ export default function UsersPage() {
       {/* MODAL 4: FULL ADD / EDIT USER MODAL                               */}
       {/* ───────────────────────────────────────────────────────────────── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden animate-scaleIn">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <h2 className="text-base font-black text-slate-900 dark:text-white">
-                {editingUserId ? "Edit User Profile" : "Add New User"}
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-2xl sm:max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleIn">
+            {/* Modal Header */}
+            <div className="px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#6D8196] to-slate-800 flex items-center justify-center text-white shadow-sm">
+                  {editingUserId ? <Users className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                    {editingUserId ? "Edit User Profile" : "Add New User"}
+                  </h2>
+                  <p className="text-[11px] text-slate-400 font-semibold">
+                    {editingUserId
+                      ? "Update user details, permissions, and site assignments"
+                      : "Create a new corporate account with custom role and site access"}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4 text-xs">
+            {/* Modal Body */}
+            <div className="p-6 sm:p-8 space-y-5 text-xs overflow-y-auto flex-1">
               {error && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 text-xs font-bold rounded-xl border border-rose-200">
-                  {error}
+                <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 text-xs font-bold rounded-xl border border-rose-200 dark:border-rose-800 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40"
-                  placeholder="e.g. Sarah Mitchell"
-                />
+              {/* Name & Email in 2-column Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                    Full Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 transition placeholder:text-slate-400"
+                    placeholder="e.g. Sarah Mitchell"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Email Address <span className="text-rose-500">*</span>
+                    </label>
+                    {!editingUserId && form.email.trim() && !form.email.toLowerCase().endsWith("@fishtailinfosolutions.com") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const prefix = form.email.trim().split("@")[0];
+                          if (prefix) setForm({ ...form, email: `${prefix}@fishtailinfosolutions.com` });
+                        }}
+                        className="text-[10px] font-bold text-[#6D8196] hover:text-[#5A6D81] bg-[#6D8196]/10 hover:bg-[#6D8196]/20 px-2 py-0.5 rounded-md transition cursor-pointer"
+                        title="Auto-append corporate domain"
+                      >
+                        + @fishtailinfosolutions.com
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={form.email}
+                      disabled={!!editingUserId}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition disabled:opacity-60 pr-9 placeholder:text-slate-400 ${
+                        !editingUserId && form.email.trim()
+                          ? emailValidationError
+                            ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400/30"
+                            : "border-emerald-400 dark:border-emerald-600 focus:ring-2 focus:ring-emerald-400/30"
+                          : "border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-[#6D8196]/40"
+                      }`}
+                      placeholder="name@fishtailinfosolutions.com"
+                    />
+                    {!editingUserId && form.email.trim() && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        {emailValidationError ? (
+                          <AlertCircle className="w-4 h-4 text-rose-500" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {!editingUserId && form.email.trim() && emailValidationError && (
+                    <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1 mt-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{emailValidationError}</span>
+                    </p>
+                  )}
+                  {!editingUserId && form.email.trim() && !emailValidationError && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-1.5 animate-fadeIn">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Valid corporate email address</span>
+                    </p>
+                  )}
+                  {editingUserId && (
+                    <p className="text-[10px] text-slate-400 font-medium mt-1">
+                      Email address cannot be changed after account creation.
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={form.email}
-                  disabled={!!editingUserId}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 disabled:opacity-60"
-                  placeholder="sarah@example.com"
-                />
+              {/* Role & Assign Team Lead in 2-column Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                    Role <span className="text-rose-500">*</span>
+                  </label>
+                  <CustomSelect
+                    value={form.role}
+                    onChange={(val) => setForm({ ...form, role: val })}
+                    placeholder="Select Role..."
+                    options={[
+                      { value: "WRITER", label: "Writer" },
+                      { value: "LINKER", label: "Linker" },
+                      { value: "TEAM_LEAD", label: "Team Lead" },
+                      ...(isSuperAdmin
+                        ? [
+                            { value: "ADMIN", label: "Admin" },
+                            { value: "SUPER_ADMIN", label: "Super Admin" },
+                          ]
+                        : []),
+                    ]}
+                    className="w-full"
+                    triggerClassName="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white font-semibold"
+                  />
+                </div>
+
+                {form.role === "WRITER" ? (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                      Assign Team Lead
+                    </label>
+                    <CustomSelect
+                      value={form.teamLeadId}
+                      onChange={(val) => setForm({ ...form, teamLeadId: val })}
+                      placeholder="No Team Lead"
+                      options={[
+                        { value: "", label: "No Team Lead" },
+                        ...teamLeads.map((tl) => ({ value: String(tl.id), label: tl.name })),
+                      ]}
+                      className="w-full"
+                      triggerClassName="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white font-semibold"
+                    />
+                  </div>
+                ) : (
+                  <div className="hidden sm:block" />
+                )}
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Role
-                </label>
-                <CustomSelect
-                  value={form.role}
-                  onChange={(val) => setForm({ ...form, role: val })}
-                  placeholder="Select Role..."
-                  options={[
-                    { value: "WRITER", label: "Writer" },
-                    { value: "LINKER", label: "Linker" },
-                    { value: "TEAM_LEAD", label: "Team Lead" },
-                    ...(isSuperAdmin ? [{ value: "ADMIN", label: "Admin" }] : []),
-                    ...(form.role === "SUPER_ADMIN"
-                      ? [{ value: "SUPER_ADMIN", label: "Super Admin" }]
-                      : []),
-                  ]}
-                  className="w-full"
-                  triggerClassName="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white font-semibold"
-                />
-              </div>
-
+              {/* Assign Websites */}
               {(form.role === "WRITER" || form.role === "TEAM_LEAD") && (
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                    Assign Websites ({form.siteIds.length} Selected)
-                  </label>
-                  <div className="space-y-2 max-h-36 overflow-y-auto p-3 bg-[#FAF9F5] dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Assign Websites ({form.siteIds.length} Selected)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, siteIds: sites.map((s) => s.id) })}
+                        className="text-[10px] font-bold text-[#6D8196] hover:underline cursor-pointer"
+                      >
+                        Select All
+                      </button>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, siteIds: [] })}
+                        className="text-[10px] font-bold text-slate-400 hover:underline cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-3.5 bg-[#FAF9F5] dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800">
                     {sites.map((site) => (
                       <Toggle
                         key={site.id}
@@ -1840,84 +2052,90 @@ export default function UsersPage() {
                 </div>
               )}
 
-              {form.role === "WRITER" && (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                    Assign Team Lead
-                  </label>
-                  <CustomSelect
-                    value={form.teamLeadId}
-                    onChange={(val) => setForm({ ...form, teamLeadId: val })}
-                    placeholder="No Team Lead"
-                    options={[
-                      { value: "", label: "No Team Lead" },
-                      ...teamLeads.map((tl) => ({ value: String(tl.id), label: tl.name })),
-                    ]}
-                    className="w-full"
-                    triggerClassName="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white font-semibold"
-                  />
-                </div>
-              )}
-
-              <div>
-                <div className="bg-[#FAF9F5] dark:bg-slate-850 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+              {/* Toggles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="bg-[#FAF9F5] dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
                   <Toggle
                     checked={form.approved}
-                    onChange={(checked) => setForm({ ...form, approved: checked })}
+                    onChange={(checked) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        approved: checked,
+                        ...(checked ? { hasLeftCompany: false } : {}),
+                      }))
+                    }
                     label="Approve User Access"
                     subLabel="Unapproved users cannot log in to the application."
                   />
                 </div>
-              </div>
 
-              <div>
-                <div className="bg-[#FAF9F5] dark:bg-slate-850 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="bg-[#FAF9F5] dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
                   <Toggle
                     checked={form.hasLeftCompany}
-                    onChange={(checked) => setForm({ ...form, hasLeftCompany: checked })}
-                    label="Has Left Company (Former Employee)"
-                    subLabel="When enabled, any future product commissions from articles written by this user are automatically diverted to the Office Party Fund."
+                    onChange={(checked) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        hasLeftCompany: checked,
+                        ...(checked ? { approved: false, commissionToPartyFund: false } : {}),
+                      }))
+                    }
+                    label="Has Left Company"
+                    subLabel="User has departed. Future commissions route to Party Fund."
+                  />
+                </div>
+
+                <div className="bg-[#FAF9F5] dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <Toggle
+                    checked={form.commissionToPartyFund}
+                    onChange={(checked) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        commissionToPartyFund: checked,
+                        ...(checked ? { hasLeftCompany: false } : {}),
+                      }))
+                    }
+                    label="Commission in Party Fund"
+                    subLabel="Directly diverts all earned commissions to Office Party Fund while user remains active."
                   />
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-[#FAF9F5] dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveUser}
-                disabled={saving || !form.name || (!editingUserId && !form.email)}
-                className="px-5 py-2 bg-[#6D8196] hover:bg-[#5A6D81] disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
-              >
-                {saving ? "Saving..." : editingUserId ? "Save Profile" : "Add User"}
-              </button>
+            {/* Modal Footer */}
+            <div className="px-6 sm:px-8 py-4 bg-[#FAF9F5] dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+              <div className="text-[11px] font-semibold text-slate-400">
+                {!editingUserId && !isEmailValid && form.email.trim() ? (
+                  <span className="text-rose-500 font-bold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Fix email error to proceed
+                  </span>
+                ) : (
+                  <span>
+                    Fields marked with <span className="text-rose-500 font-bold">*</span> are required
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveUser}
+                  disabled={saving || !form.name.trim() || (!editingUserId && (!form.email.trim() || !isEmailValid))}
+                  className="px-6 py-2.5 bg-[#6D8196] hover:bg-[#5A6D81] disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+                >
+                  {saving ? "Saving..." : editingUserId ? "Save Profile" : "Add User"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ───────────────────────────────────────────────────────────────── */}
-      {/* MODAL 5: CONFIRM DELETE DIALOG                                    */}
-      {/* ───────────────────────────────────────────────────────────────── */}
-      <ConfirmDialog
-        isOpen={deleteTargetUser !== null}
-        title="Delete User"
-        message={
-          deleteTargetUser
-            ? `Are you sure you want to delete user ${deleteTargetUser.name} (${deleteTargetUser.email})? This action cannot be undone.`
-            : ""
-        }
-        confirmLabel="Delete User"
-        cancelLabel="Cancel"
-        variant="danger"
-        onConfirm={handleExecuteDelete}
-        onCancel={() => setDeleteTargetUser(null)}
-      />
+
     </div>
   );
 }

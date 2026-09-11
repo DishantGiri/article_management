@@ -53,7 +53,13 @@ function SignInContent() {
     if (!email) return;
     setLoading(true);
     try {
-      await signIn("credentials", { email, callbackUrl });
+      const res = await signIn("credentials", { email, callbackUrl, redirect: false });
+      if (res?.ok) {
+        router.push(callbackUrl);
+        router.refresh();
+      } else {
+        setLoading(false);
+      }
     } catch (e) {
       console.error(e);
       setLoading(false);

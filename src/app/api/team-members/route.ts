@@ -17,23 +17,37 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    let teamLeadId = callerId;
+    const isAdminOrSuperAdmin = callerRole === "ADMIN" || callerRole === "SUPER_ADMIN";
     const { searchParams } = new URL(req.url);
     const requestedUserId = searchParams.get("userId");
 
-    // Only Admin or Super Admin can inspect another team lead's members
-    if ((callerRole === "ADMIN" || callerRole === "SUPER_ADMIN") && requestedUserId) {
-      teamLeadId = parseInt(requestedUserId);
+    let whereClause: any = {
+      role: "WRITER",
+      hasLeftCompany: false,
+    };
+
+    if (isAdminOrSuperAdmin) {
+      if (requestedUserId && requestedUserId !== "all" && requestedUserId !== String(callerId)) {
+        whereClause.teamLeadId = parseInt(requestedUserId);
+      }
+    } else {
+      whereClause.teamLeadId = callerId;
     }
 
     // Fetch team members (writers) and their articles
     const teamMembers = await prisma.user.findMany({
-      where: { teamLeadId },
+      where: whereClause,
       select: {
         id: true,
         name: true,
         email: true,
         createdAt: true,
+        teamLead: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         articles: {
           select: {
             id: true,
@@ -80,6 +94,7 @@ export async function GET(req: NextRequest) {
         name: member.name,
         email: member.email,
         createdAt: member.createdAt,
+        teamLead: member.teamLead ? { id: member.teamLead.id, name: member.teamLead.name } : null,
         activeArticle: activeArticle
           ? {
               id: activeArticle.id,

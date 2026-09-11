@@ -907,7 +907,7 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
               </h3>
               <p className="text-xs text-slate-400 font-medium mt-0.5">Ranked by total approved articles</p>
             </div>
-            <Link href="/reports" className="text-xs font-bold text-[#6D8196] hover:underline flex items-center gap-1">
+            <Link href="/team-members" className="text-xs font-bold text-[#6D8196] hover:underline flex items-center gap-1">
               Full Report <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -1264,12 +1264,17 @@ function TeamLeadMissionControl({
 
         {/* Writer Performance Chart (2 cols) */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#6D8196]" />
-              Assigned Writers Velocity
-            </h3>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">Articles approved across your team</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#6D8196]" />
+                Assigned Writers Velocity
+              </h3>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">Articles approved across your team</p>
+            </div>
+            <Link href="/team-members" className="text-xs font-bold text-[#6D8196] hover:underline flex items-center gap-1">
+              Full Report <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
           <div className="h-64 mt-4">

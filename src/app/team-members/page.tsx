@@ -32,6 +32,10 @@ interface TeamMember {
   name: string;
   email: string;
   createdAt: string;
+  teamLead?: {
+    id: number;
+    name: string;
+  } | null;
   activeArticle?: {
     id: number;
     productName: string;
@@ -62,6 +66,11 @@ export default function TeamMembersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<string>("articles_desc");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [teamLeads, setTeamLeads] = useState<Array<{ id: number; name: string }>>([]);
+  const [selectedTlId, setSelectedTlId] = useState<string>("all");
+
+  const isAdminOrSuperAdmin =
+    session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -74,7 +83,13 @@ export default function TeamMembersPage() {
       return;
     }
 
-    fetch(`/api/team-members?userId=${uId}`)
+    // For Admin / Super Admin, fetch all writers across all team leads; for TL, fetch assigned squad
+    const endpoint =
+      uRole === "ADMIN" || uRole === "SUPER_ADMIN"
+        ? "/api/team-members"
+        : `/api/team-members?userId=${uId}`;
+
+    fetch(endpoint)
       .then((r) => r.json())
       .then((data) => {
         if (data.error) {
@@ -85,6 +100,21 @@ export default function TeamMembersPage() {
       })
       .catch(() => setError("Failed to fetch team member statistics"))
       .finally(() => setLoading(false));
+
+    // If Admin/Super Admin, fetch list of team leads for filtering
+    if (uRole === "ADMIN" || uRole === "SUPER_ADMIN") {
+      fetch("/api/users")
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            const tls = data
+              .filter((u: any) => u.role === "TEAM_LEAD")
+              .map((u: any) => ({ id: u.id, name: u.name }));
+            setTeamLeads(tls);
+          }
+        })
+        .catch(() => {});
+    }
   }, [session?.user?.id, session?.user?.role, router]);
 
   const formatWritingTime = (mins: number) => {
@@ -94,29 +124,61 @@ export default function TeamMembersPage() {
     return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ""}` : `${m}m`;
   };
 
+  // List of all discoverable team leads
+  const availableTeamLeads = useMemo(() => {
+    const map = new Map<number, string>();
+    teamLeads.forEach((tl) => map.set(tl.id, tl.name));
+    members.forEach((m) => {
+      if (m.teamLead) {
+        map.set(m.teamLead.id, m.teamLead.name);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [teamLeads, members]);
+
+  // Selected Team Lead name if filtered
+  const selectedTlName = useMemo(() => {
+    if (selectedTlId === "all") return null;
+    const found = availableTeamLeads.find((tl) => String(tl.id) === selectedTlId);
+    return found ? found.name : null;
+  }, [selectedTlId, availableTeamLeads]);
+
+  // Subset of members for aggregate KPI cards (scoped by Team Lead if selected)
+  const membersForMetrics = useMemo(() => {
+    if (selectedTlId === "all") return members;
+    return members.filter((m) => m.teamLead && String(m.teamLead.id) === selectedTlId);
+  }, [members, selectedTlId]);
+
   // Aggregate Metrics for Top Summary Bar
   const aggregateMetrics = useMemo(() => {
-    if (members.length === 0) return { totalArticles: 0, avgSpeed: 0, topWriter: null, activeCount: 0 };
+    if (membersForMetrics.length === 0) return { totalArticles: 0, avgSpeed: 0, topWriter: null, activeCount: 0 };
     
-    const totalArticles = members.reduce((sum, m) => sum + m.stats.totalArticles, 0);
-    const writersWithSpeed = members.filter((m) => m.stats.avgWritingTimeMin > 0);
+    const totalArticles = membersForMetrics.reduce((sum, m) => sum + m.stats.totalArticles, 0);
+    const writersWithSpeed = membersForMetrics.filter((m) => m.stats.avgWritingTimeMin > 0);
     const totalSpeedSum = writersWithSpeed.reduce((sum, m) => sum + m.stats.avgWritingTimeMin, 0);
     const avgSpeed = writersWithSpeed.length > 0 ? Math.round(totalSpeedSum / writersWithSpeed.length) : 0;
     
-    const topWriter = [...members].sort((a, b) => b.stats.totalArticles - a.stats.totalArticles)[0] || null;
-    const activeCount = members.filter((m) => m.activeArticle).length;
+    const topWriter = [...membersForMetrics].sort((a, b) => b.stats.totalArticles - a.stats.totalArticles)[0] || null;
+    const activeCount = membersForMetrics.filter((m) => m.activeArticle).length;
 
     return { totalArticles, avgSpeed, topWriter, activeCount };
-  }, [members]);
+  }, [membersForMetrics]);
 
   // Filter and Sort Team Members
   const filteredAndSortedMembers = useMemo(() => {
     return members
-      .filter(
-        (m) =>
+      .filter((m) => {
+        const matchesSearch =
           m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.email.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+          m.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (m.teamLead?.name && m.teamLead.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        const matchesTl =
+          selectedTlId === "all" ||
+          (m.teamLead && String(m.teamLead.id) === selectedTlId);
+
+        return matchesSearch && matchesTl;
+      })
       .sort((a, b) => {
         if (sortBy === "articles_desc") return b.stats.totalArticles - a.stats.totalArticles;
         if (sortBy === "articles_asc") return a.stats.totalArticles - b.stats.totalArticles;
@@ -129,7 +191,7 @@ export default function TeamMembersPage() {
         if (sortBy === "name_asc") return a.name.localeCompare(b.name);
         return 0;
       });
-  }, [members, searchTerm, sortBy]);
+  }, [members, searchTerm, selectedTlId, sortBy]);
 
   // Get Initials for Avatar
   const getInitials = (name: string) => {
@@ -196,7 +258,11 @@ export default function TeamMembersPage() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Team Members</h1>
               <p className="text-xs text-[#737373] mt-0.5">
-                Analyze productivity metrics, track speed benchmarks, and monitor your writing team.
+                {isAdminOrSuperAdmin
+                  ? selectedTlName
+                    ? `Showing writing squad under Team Lead ${selectedTlName}.`
+                    : "Company-wide writing staff performance, benchmarks, and throughput."
+                  : "Analyze productivity metrics, track speed benchmarks, and monitor your writing team."}
               </p>
             </div>
           </div>
@@ -207,7 +273,10 @@ export default function TeamMembersPage() {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>{aggregateMetrics.activeCount} Currently Drafting</span>
             <span className="text-slate-300">|</span>
-            <span>{members.length} Total Writers</span>
+            <span>
+              {membersForMetrics.length}{" "}
+              {isAdminOrSuperAdmin && selectedTlId === "all" ? "Company Writers" : "Writers"}
+            </span>
           </div>
         </div>
       </div>
@@ -219,10 +288,16 @@ export default function TeamMembersPage() {
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider block">Writing Staff</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-slate-900">{members.length}</span>
+              <span className="text-2xl font-extrabold text-slate-900">{membersForMetrics.length}</span>
               <span className="text-xs font-semibold text-indigo-600">Active</span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Assigned under your lead</p>
+            <p className="text-[11px] text-slate-400 font-medium">
+              {isAdminOrSuperAdmin
+                ? selectedTlName
+                  ? `Squad under ${selectedTlName}`
+                  : "Company-wide writing staff"
+                : "Assigned under your lead"}
+            </p>
           </div>
           <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
             <Users className="w-5 h-5" />
@@ -254,7 +329,11 @@ export default function TeamMembersPage() {
               </span>
               <span className="text-xs font-semibold text-blue-600">Per Article</span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Stopwatch benchmark pace</p>
+            <p className="text-[11px] text-slate-400 font-medium">
+              {isAdminOrSuperAdmin && selectedTlId === "all"
+                ? "Company benchmark pace"
+                : "Stopwatch benchmark pace"}
+            </p>
           </div>
           <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
             <Clock className="w-5 h-5" />
@@ -273,7 +352,11 @@ export default function TeamMembersPage() {
                 {aggregateMetrics.topWriter ? `${aggregateMetrics.topWriter.stats.totalArticles} Arts` : ""}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Highest completed volume</p>
+            <p className="text-[11px] text-slate-400 font-medium">
+              {isAdminOrSuperAdmin && selectedTlId === "all"
+                ? "Company #1 top volume"
+                : "Highest completed volume"}
+            </p>
           </div>
           <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 shrink-0">
             <Award className="w-5 h-5" />
@@ -282,15 +365,19 @@ export default function TeamMembersPage() {
       </div>
 
       {/* ─── SEARCH & FILTER TOOLBAR ─── */}
-      <div className="bg-white rounded-2xl border border-[#CBCBCB]/70 p-3.5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl border border-[#CBCBCB]/70 p-3.5 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-3">
         {/* Search */}
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full lg:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search writers by name or email..."
+            placeholder={
+              isAdminOrSuperAdmin
+                ? "Search writers, team leads, emails..."
+                : "Search writers by name or email..."
+            }
             className="w-full pl-9 pr-8 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition"
           />
           {searchTerm && (
@@ -303,10 +390,34 @@ export default function TeamMembersPage() {
           )}
         </div>
 
-        {/* Sort & View Mode */}
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+        {/* Filters, Sort & View Mode */}
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
+          {/* Team Lead Filter (for Admin / Super Admin) */}
+          {isAdminOrSuperAdmin && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider hidden sm:inline">
+                Team Lead:
+              </span>
+              <CustomSelect
+                value={selectedTlId}
+                onChange={(val) => setSelectedTlId(val)}
+                options={[
+                  { value: "all", label: "All Team Leads" },
+                  ...availableTeamLeads.map((tl) => ({
+                    value: String(tl.id),
+                    label: `TL: ${tl.name}`,
+                  })),
+                ]}
+                className="w-40 sm:w-44"
+                triggerClassName="px-3 py-2 bg-slate-50 border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+                portal={true}
+              />
+            </div>
+          )}
+
+          {/* Sort */}
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider hidden lg:inline">Sort:</span>
+            <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider hidden sm:inline">Sort:</span>
             <CustomSelect
               value={sortBy}
               onChange={(val) => setSortBy(val)}
@@ -316,7 +427,7 @@ export default function TeamMembersPage() {
                 { value: "daily_pace", label: "Highest Daily Velocity" },
                 { value: "name_asc", label: "Name (A-Z)" },
               ]}
-              className="w-48 sm:w-52"
+              className="w-44 sm:w-50"
               triggerClassName="px-3 py-2 bg-slate-50 border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
               portal={true}
             />
@@ -360,14 +471,19 @@ export default function TeamMembersPage() {
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
             {searchTerm
               ? `No writers matching "${searchTerm}". Clear the search query to show all members.`
+              : selectedTlId !== "all"
+              ? "No writers found under the selected team lead."
               : "No writers are currently assigned under your team leadership."}
           </p>
-          {searchTerm && (
+          {(searchTerm || selectedTlId !== "all") && (
             <button
-              onClick={() => setSearchTerm("")}
+              onClick={() => {
+                setSearchTerm("");
+                setSelectedTlId("all");
+              }}
               className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer"
             >
-              Clear Filter
+              Reset Filters
             </button>
           )}
         </div>
@@ -394,7 +510,7 @@ export default function TeamMembersPage() {
                         {getInitials(member.name)}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-base font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
                             {member.name}
                           </h3>
@@ -404,13 +520,21 @@ export default function TeamMembersPage() {
                             </span>
                           )}
                         </div>
-                        <a
-                          href={`mailto:${member.email}`}
-                          className="text-xs text-slate-400 hover:text-slate-600 font-medium truncate flex items-center gap-1 mt-0.5 transition-colors"
-                        >
-                          <Mail className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{member.email}</span>
-                        </a>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <a
+                            href={`mailto:${member.email}`}
+                            className="text-xs text-slate-400 hover:text-slate-600 font-medium truncate flex items-center gap-1 transition-colors"
+                          >
+                            <Mail className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{member.email}</span>
+                          </a>
+                          {member.teamLead && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20 shrink-0">
+                              <ShieldCheck className="w-3 h-3 text-[#6D8196]" />
+                              TL: {member.teamLead.name}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -569,6 +693,11 @@ export default function TeamMembersPage() {
                   <th scope="col" className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     Team Member
                   </th>
+                  {isAdminOrSuperAdmin && (
+                    <th scope="col" className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      Team Lead
+                    </th>
+                  )}
                   <th scope="col" className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     Current Activity
                   </th>
@@ -607,6 +736,19 @@ export default function TeamMembersPage() {
                         </div>
                       </div>
                     </td>
+
+                    {isAdminOrSuperAdmin && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {member.teamLead ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#6D8196]" />
+                            {member.teamLead.name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium italic">Unassigned</span>
+                        )}
+                      </td>
+                    )}
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       {member.activeArticle ? (

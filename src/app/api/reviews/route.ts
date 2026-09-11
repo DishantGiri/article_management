@@ -64,6 +64,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (!article.writerId) {
+      return NextResponse.json(
+        { error: "Cannot review or approve an article with no assigned writer." },
+        { status: 400 }
+      );
+    }
+
     if (article.status === "PENDING") {
       return NextResponse.json(
         { error: "Cannot review an article that has not been started yet." },

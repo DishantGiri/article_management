@@ -26,12 +26,17 @@ export default withAuth(
     const token = req.nextauth.token;
     const { pathname } = req.nextUrl;
 
+    // Never intercept NextAuth internal endpoints or WebSocket upgrades
+    if (pathname.startsWith("/api/auth") || pathname === "/ws") {
+      return NextResponse.next();
+    }
+
     // 1. Redirect logged-in users away from sign-in page to the home page (dashboard)
     if (token && pathname === "/auth/signin") {
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // 2. Handle unauthenticated API requests cleanly (instead of NextAuth redirecting them to signin HTML)
+    // 2. Handle unauthenticated application API requests cleanly (instead of NextAuth redirecting them to signin HTML)
     if (!token && pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -47,7 +52,7 @@ export default withAuth(
         }
         return NextResponse.redirect(new URL("/auth/pending", req.url));
       }
-      return;
+      return NextResponse.next();
     }
 
     // 4. Prevent access to pending page for approved/activated users
@@ -65,13 +70,24 @@ export default withAuth(
         return NextResponse.redirect(new URL("/", req.url));
       }
     }
+
+    return NextResponse.next();
   },
   {
+    pages: {
+      signIn: "/auth/signin",
+    },
     callbacks: {
       authorized: ({ req, token }) => {
         const { pathname } = req.nextUrl;
-        // Let middleware function handle authentication checks on API paths, ws and signin page
-        if (pathname === "/auth/signin" || pathname.startsWith("/api/") || pathname === "/ws") {
+        // Let middleware function handle authentication checks on API paths, ws, signin, and pending page
+        if (
+          pathname === "/auth/signin" ||
+          pathname === "/auth/pending" ||
+          pathname.startsWith("/api/auth") ||
+          pathname.startsWith("/api/") ||
+          pathname === "/ws"
+        ) {
           return true;
         }
         return !!token;
@@ -82,7 +98,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    // Protect all routes except api/auth routes, websocket and static assets
-    "/((?!api/auth|ws|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon-192.png|icon-512.png|loading.svg|404.svg|file.svg|globe.svg|next.svg|vercel.svg|window.svg|mixkit-software-interface-back-2575.wav|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|wav|mp3|mp4|json|js)).*)",
+    // Protect all routes except api/auth routes, websocket, and static assets with extensions
+    "/((?!api/auth|ws|_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.[\\w]+$).*)",
   ],
 };

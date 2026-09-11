@@ -41,38 +41,50 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, email, role, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany } = body;
+    const { name, email, role, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany, commissionToPartyFund } = body;
 
-    if (!name || !email || !role) {
-      return NextResponse.json({ error: "name, email, and role are required" }, { status: 400 });
+    const trimmedName = typeof name === "string" ? name.trim() : "";
+    const trimmedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+    if (!trimmedName || !trimmedEmail || !role) {
+      return NextResponse.json({ error: "Name, email, and role are required" }, { status: 400 });
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      return NextResponse.json({ error: "Invalid email format. Please provide a valid email address." }, { status: 400 });
+    }
+
+    if (!trimmedEmail.endsWith("@fishtailinfosolutions.com")) {
+      return NextResponse.json({ error: "Email must belong to the @fishtailinfosolutions.com corporate domain." }, { status: 400 });
     }
 
     const creatorRole = session.user.role || "";
 
-    // Only SUPER_ADMIN can create ADMIN
-    if (role === "ADMIN" && creatorRole !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Only Super Admins can create Admin users." }, { status: 403 });
-    }
-    
-    // Nobody can create a new SUPER_ADMIN from the UI
-    if (role === "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Cannot create Super Admin users." }, { status: 403 });
+    // Only SUPER_ADMIN can create ADMIN or SUPER_ADMIN users
+    if ((role === "ADMIN" || role === "SUPER_ADMIN") && creatorRole !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: `Only Super Admins can create ${role === "SUPER_ADMIN" ? "Super Admin" : "Admin"} users.` }, { status: 403 });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({ where: { email: trimmedEmail } });
     if (existing) {
       return NextResponse.json({ error: "Email already in use" }, { status: 400 });
     }
 
+    let finalHasLeft = Boolean(hasLeftCompany);
+    let finalApproved = finalHasLeft ? false : (typeof approved === 'boolean' ? approved : true);
+    let finalCommToParty = finalHasLeft ? false : Boolean(commissionToPartyFund);
+
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: trimmedName,
+        email: trimmedEmail,
         role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD",
         allowLinkLogAccess: role === "WRITER" ? !!allowLinkLogAccess : false,
         teamLeadId: role === "WRITER" && teamLeadId ? Number(teamLeadId) : null,
-        approved: typeof approved === 'boolean' ? approved : true,
-        hasLeftCompany: Boolean(hasLeftCompany),
+        approved: finalApproved,
+        hasLeftCompany: finalHasLeft,
+        commissionToPartyFund: finalCommToParty,
         siteAccess: (role === "WRITER" || role === "TEAM_LEAD") && siteIds && Array.isArray(siteIds)
           ? {
               create: siteIds.map((siteId: number) => ({ siteId })),

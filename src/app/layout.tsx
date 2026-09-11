@@ -103,7 +103,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className={`${inter.className} h-full bg-[#FAF9F5] text-[#4A4A4A] dark:bg-[#0f172a] dark:text-[#f1f5f9] antialiased`} suppressHydrationWarning>
-        <Providers>
+        <Providers session={session}>
           <div className="flex h-full" suppressHydrationWarning>
             {showSidebar && <Sidebar />}
             <main className={`flex-1 min-h-screen overflow-y-auto ${showSidebar ? "pt-[57px] lg:pt-0 ml-0 lg:ml-64" : ""}`} suppressHydrationWarning>

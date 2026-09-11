@@ -74,6 +74,7 @@ model User {
   role      Role?
   approved  Boolean  @default(false)
   hasLeftCompany Boolean @default(false)
+  commissionToPartyFund Boolean @default(false)
   image     String?
   allowLinkLogAccess Boolean @default(false)
   createdAt DateTime @default(now())
