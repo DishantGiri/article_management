@@ -1189,9 +1189,26 @@ export default function AddLinkModal({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-1.5">
-                Remarks Template
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                  Remarks Template
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-slate-400">Quick fill:</span>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) setLinkerRemarks(e.target.value);
+                    }}
+                    className="text-[10px] bg-transparent text-blue-600 dark:text-blue-400 font-semibold cursor-pointer border-none outline-none hover:underline"
+                  >
+                    <option value="">Choose preset...</option>
+                    {REMARK_TEMPLATES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <input
                 type="text"
                 value={linkerRemarks}

@@ -2271,13 +2271,51 @@ function WriterActiveFocusWorkspace({
             <p className="text-xs text-slate-600 dark:text-slate-300">
               Reporting issue for link <strong className="text-slate-900 dark:text-white">&quot;{reportingLink.affiliateName}&quot;</strong>:
             </p>
-            <textarea
-              rows={4}
-              value={issueMessage}
-              onChange={(e) => setIssueMessage(e.target.value)}
-              placeholder="Describe the issue (e.g. 404 dead link, wrong redirection)..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-            />
+
+            {reportingLink.linkerRemarks && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                    Before Remarks / Existing Notes
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                    Before Remark
+                  </span>
+                </div>
+                <div className="max-h-40 overflow-y-auto p-3 bg-amber-50/60 dark:bg-amber-950/30 rounded-xl border border-amber-200/70 dark:border-amber-900/50">
+                  <FormattedRemarks remarks={reportingLink.linkerRemarks} date={reportingLink.updatedAt || reportingLink.addedAt} />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Issue Description <span className="text-rose-500">*</span>
+                </label>
+                {reportingLink.linkerRemarks && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIssueMessage((curr: string) =>
+                        curr ? `${curr}\n${reportingLink.linkerRemarks}` : reportingLink.linkerRemarks
+                      );
+                    }}
+                    className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    Copy Before Remark
+                  </button>
+                )}
+              </div>
+              <textarea
+                rows={4}
+                value={issueMessage}
+                onChange={(e) => setIssueMessage(e.target.value)}
+                placeholder="Describe the issue (e.g. 404 dead link, wrong redirection)..."
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
             <div className="flex justify-end gap-2.5">
               <button onClick={() => setReportingLink(null)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition">
                 Cancel
