@@ -1,3 +1,5 @@
+"use client";
+
 import CustomSelect from "@/components/CustomSelect";
 import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -157,7 +159,12 @@ export default function AddLinkModal({
         label: `Direct Buy / Landing: ${siteBaseUrl}/${productSlug}`,
       });
     }
-    if (affiliateEntries[0]?.affiliateLink) {
+    if (countryLinks[0]?.affiliateLink) {
+      opts.push({
+        value: countryLinks[0].affiliateLink,
+        label: `Primary Affiliate URL: ${countryLinks[0].affiliateLink}`,
+      });
+    } else if (affiliateEntries[0]?.affiliateLink) {
       opts.push({
         value: affiliateEntries[0].affiliateLink,
         label: `Primary Affiliate URL: ${affiliateEntries[0].affiliateLink}`,
@@ -176,7 +183,7 @@ export default function AddLinkModal({
       });
     }
     return opts;
-  }, [siteBaseUrl, productSlug, affiliateEntries, selectedProduct]);
+  }, [siteBaseUrl, productSlug, countryLinks, affiliateEntries, selectedProduct]);
 
   // Dropdown options for Affiliate Links
   const affiliateLinkOptions = useMemo(() => {
@@ -268,7 +275,8 @@ export default function AddLinkModal({
           if (preselectedProductId) {
             setSelectedProductId(preselectedProductId);
           } else if (prods.length > 0) {
-            setSelectedProductId(prods[0].id);
+            const firstUnlinked = prods.find((p) => !p.linkLogs || p.linkLogs.length === 0);
+            setSelectedProductId(firstUnlinked ? firstUnlinked.id : prods[0].id);
           }
         })
         .catch((err) => {
@@ -403,13 +411,25 @@ export default function AddLinkModal({
     geos.length > 0 &&
     (useCountrySpecificLinks
       ? countryLinks.length > 0 &&
-        countryLinks.every((c) => !!c.affiliateLink.trim() && isValidUrl(c.affiliateLink) && !c.linkError)
+        countryLinks.every(
+          (c) =>
+            !!c.affiliateName.trim() &&
+            !!c.affiliateLink.trim() &&
+            isValidUrl(c.affiliateLink) &&
+            !c.linkError
+        )
       : affiliateEntries.length > 0 &&
         affiliateEntries.every(
-          (e) => !!e.affiliateName.trim() && !!e.affiliateLink.trim() && isValidUrl(e.affiliateLink) && !e.linkError
+          (e) =>
+            !!e.affiliateName.trim() &&
+            !!e.affiliateLink.trim() &&
+            isValidUrl(e.affiliateLink) &&
+            !e.linkError
         )) &&
     !bridgeLinkError &&
-    !buyLinkError;
+    !buyLinkError &&
+    !(status === "ACCEPTED" && !bridgePageLink?.trim()) &&
+    !(buyLink && !bridgePageLink);
 
   const handleSubmit = async () => {
     if (!selectedProductId || !selectedProduct) {
@@ -547,7 +567,12 @@ export default function AddLinkModal({
                 <span>Add New Link Log</span>
                 {selectedProduct && (
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/15 text-white border border-white/20">
-                    Site: {selectedProduct.site?.name}
+                    Site: {selectedProduct.site?.name || "Unassigned"}
+                  </span>
+                )}
+                {selectedProduct?.name && (
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-white/15 text-white border border-white/20">
+                    {selectedProduct.name}
                   </span>
                 )}
               </h2>
@@ -592,7 +617,7 @@ export default function AddLinkModal({
               value={selectedProductId ? String(selectedProductId) : ""}
               onChange={(val) => setSelectedProductId(val ? Number(val) : null)}
               placeholder="Select Product from Dropdown..."
-              disabled={loadingProducts || !!preselectedProductId}
+              disabled={loadingProducts}
               searchable={true}
               searchPlaceholder="Search products by name or site..."
               options={products.map((p) => {
@@ -1080,7 +1105,7 @@ export default function AddLinkModal({
               <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800">
                 <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  Site: <span className="text-blue-600 dark:text-blue-400">{selectedProduct.site?.name}</span>
+                  Site: <span className="text-blue-600 dark:text-blue-400">{selectedProduct.site?.name || "Unassigned"}</span>
                   <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                     Product ID: #{selectedProduct.id}
                   </span>
@@ -1103,7 +1128,7 @@ export default function AddLinkModal({
                             setBridgeLinkError("");
                           }
                         }}
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
                       >
                         Use Auto Landing
                       </button>
@@ -1144,7 +1169,7 @@ export default function AddLinkModal({
                             setBuyLinkError("");
                           }
                         }}
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
                       >
                         Use Auto Buy
                       </button>
@@ -1229,7 +1254,7 @@ export default function AddLinkModal({
                 {useCountrySpecificLinks
                   ? `${countryLinks.length} country link${countryLinks.length !== 1 ? "s" : ""} configured for 1 product`
                   : `${affiliateEntries.length} link log ${affiliateEntries.length !== 1 ? "entries" : "entry"}`}{" "}
-                ready for {selectedProduct.site?.name}
+                ready for {selectedProduct.site?.name || "site"}
               </span>
             ) : (
               <span>Select a product above</span>

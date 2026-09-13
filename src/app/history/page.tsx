@@ -396,11 +396,16 @@ export default function HistoryPage() {
             startDate={startDate}
             endDate={endDate}
             onChange={(start, end) => {
-              setStartDate(start);
-              setEndDate(end);
+              const today = new Date();
+              const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+              const safeStart = start && start > todayStr ? todayStr : start;
+              const safeEnd = end && end > todayStr ? todayStr : end;
+              setStartDate(safeStart);
+              setEndDate(safeEnd);
               setCurrentPage(1);
             }}
             placeholder="Filter Date Range"
+            disableFutureDates={true}
           />
         </div>
       </div>

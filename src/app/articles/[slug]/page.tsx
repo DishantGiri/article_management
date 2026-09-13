@@ -477,20 +477,31 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
             {/* Edit document link toggle */}
             {isManager && (
-              <button
-                onClick={() => {
-                  setNewLinkValue(article.articleLink || "");
-                  setEditLinkMode(!editLinkMode);
-                }}
-                className="text-[11px] font-bold text-[#6D8196] hover:underline cursor-pointer"
-              >
-                {editLinkMode ? "Cancel Editing" : "Edit Document URL"}
-              </button>
+              article.writer?.id ? (
+                <button
+                  onClick={() => {
+                    setNewLinkValue(article.articleLink || "");
+                    setEditLinkMode(!editLinkMode);
+                  }}
+                  className="text-[11px] font-bold text-[#6D8196] hover:underline cursor-pointer"
+                >
+                  {editLinkMode ? "Cancel Editing" : "Edit Document URL"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  title="Document link cannot be edited for articles that have not been assigned to a writer."
+                  className="text-[11px] font-semibold text-slate-400 cursor-not-allowed opacity-60"
+                >
+                  Edit Document URL
+                </button>
+              )
             )}
           </div>
 
           {/* Edit Document Link Inline Form */}
-          {editLinkMode && (
+          {editLinkMode && article.writer?.id && (
             <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs space-y-3">
               <label className="block text-[11px] font-bold text-slate-600">
                 Override Document Link URL
@@ -512,6 +523,10 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                 <button
                   disabled={updatingLink || !newLinkValue.trim()}
                   onClick={async () => {
+                    if (!article.writer?.id) {
+                      toast.error("Cannot edit document link for an article that has not been assigned to a writer.");
+                      return;
+                    }
                     setUpdatingLink(true);
                     try {
                       const res = await fetch(`/api/articles/${article.id}`, {
@@ -522,7 +537,10 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                           callerId: currentUserId,
                         }),
                       });
-                      if (!res.ok) throw new Error("Failed to update article document link");
+                      if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || "Failed to update article document link");
+                      }
                       toast.success("Document link updated!");
                       setEditLinkMode(false);
                       setArticle((prev) => (prev ? { ...prev, articleLink: newLinkValue } : prev));

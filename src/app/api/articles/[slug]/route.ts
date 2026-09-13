@@ -258,6 +258,13 @@ export async function PATCH(
       }
     }
 
+    if (articleLink !== undefined && !existing.writerId && !writerId) {
+      return NextResponse.json(
+        { error: "Cannot edit document link for an article that has not been assigned to a writer." },
+        { status: 400 }
+      );
+    }
+
     // Calculate writing time if completing
     let writingTimeMin: number | undefined;
     let updateTimeMin: number | undefined;
