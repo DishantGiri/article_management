@@ -278,10 +278,14 @@ function LinksPageContent() {
        l.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
     );
 
-    const matchStatus = !statusFilter || l.status === statusFilter || isExactSearchMatch;
+    const matchStatus = !statusFilter || (
+      statusFilter === "ISSUE"
+        ? (l.status === "ISSUE" || l.status === "NEED_TO_CHECK" || l.status === "ALERT")
+        : l.status === statusFilter
+    );
 
     // Added By filter
-    const matchUser = !userFilter || l.addedBy?.name === userFilter || isExactSearchMatch;
+    const matchUser = !userFilter || l.addedBy?.name === userFilter;
 
     // Date Range filter
     let matchDate = true;
@@ -326,6 +330,12 @@ function LinksPageContent() {
   };
 
   const missingBridgeCount = links.filter(l => !l.bridgePageLink).length;
+  const flaggedLinksCount = links.filter(
+    (l) => l.status === "ISSUE" || l.status === "NEED_TO_CHECK" || l.status === "ALERT"
+  ).length;
+  const pendingRequestsCount = links.filter((l) => l.status === "REQUESTED").length;
+  const acceptedLinksCount = links.filter((l) => l.status === "ACCEPTED").length;
+
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -535,7 +545,7 @@ function LinksPageContent() {
       )}
 
       {/* Alert Banner */}
-      {missingBridgeCount > 0 && (
+      {missingBridgeCount > 0 && (!statusFilter || statusFilter === "REQUESTED") && (
         <div className="mb-6 bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
           <p className="text-sm font-medium text-amber-700">
@@ -544,30 +554,22 @@ function LinksPageContent() {
         </div>
       )}
 
-      {/* Unlinked Products Section */}
-      <PendingLinkLogsSection
-        products={unlinkedProducts}
-        onAddLink={
-          currentUserRole === "LINKER" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN"
-            ? (productId) => {
-                setPreselectedProductId(productId);
-                setIsAddLinkOpen(true);
-              }
-            : undefined
-        }
-      />
-
       {/* Tabs Selector for Links */}
       <div className="flex border-b border-[#CBCBCB]/60 mb-6 gap-2">
         <button
           onClick={() => { setStatusFilter(""); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
             !statusFilter && !showOnlyDeadLinks
               ? "border-[#6D8196] text-[#6D8196] font-bold"
               : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
           }`}
         >
-          All Links
+          <span>All Links</span>
+          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+            !statusFilter && !showOnlyDeadLinks ? "bg-slate-200 text-slate-700" : "bg-slate-100 text-slate-500"
+          }`}>
+            {links.length}
+          </span>
         </button>
         <button
           onClick={() => { setStatusFilter("ISSUE"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
@@ -578,33 +580,62 @@ function LinksPageContent() {
           }`}
         >
           <span>Flagged Links</span>
-          {links.filter(l => l.status === "ISSUE").length > 0 && (
+          {flaggedLinksCount > 0 && (
             <span className="px-1.5 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700 rounded-full">
-              {links.filter(l => l.status === "ISSUE").length}
+              {flaggedLinksCount}
             </span>
           )}
         </button>
         <button
           onClick={() => { setStatusFilter("REQUESTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
             statusFilter === "REQUESTED"
               ? "border-[#6D8196] text-[#6D8196] font-bold"
               : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
           }`}
         >
-          Pending Requests
+          <span>Pending Requests</span>
+          {pendingRequestsCount > 0 && (
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+              statusFilter === "REQUESTED" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"
+            }`}>
+              {pendingRequestsCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => { setStatusFilter("ACCEPTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
             statusFilter === "ACCEPTED"
               ? "border-[#6D8196] text-[#6D8196] font-bold"
               : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
           }`}
         >
-          Accepted Links
+          <span>Accepted Links</span>
+          {acceptedLinksCount > 0 && (
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+              statusFilter === "ACCEPTED" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+            }`}>
+              {acceptedLinksCount}
+            </span>
+          )}
         </button>
       </div>
+
+      {/* Unlinked Products Section (Only on All Links or Pending Requests tabs) */}
+      {(!statusFilter || statusFilter === "REQUESTED") && !showOnlyDeadLinks && (
+        <PendingLinkLogsSection
+          products={unlinkedProducts}
+          onAddLink={
+            currentUserRole === "LINKER" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN"
+              ? (productId) => {
+                  setPreselectedProductId(productId);
+                  setIsAddLinkOpen(true);
+                }
+              : undefined
+          }
+        />
+      )}
 
       {/* Filters Bar */}
       <div className="bg-white p-4 rounded-2xl border border-[#CBCBCB]/60 shadow-xs mb-6">
