@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, PlusSquare, FileText, Link as LinkIcon, CheckSquare, Users, Globe, Tags, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText } from "lucide-react";
+import { LayoutDashboard, Package, FileText, Link as LinkIcon, Users, Globe, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
@@ -402,8 +402,11 @@ export default function Sidebar() {
     router.push(targetUrl);
   };
 
-  const visibleNavItems = currentUser?.role
-    ? NAV_ITEMS.filter((item) => currentUser.role && item.roles.includes(currentUser.role))
+  const userRole = (currentUser?.role || session?.user?.role || "").toUpperCase();
+  const visibleNavItems = userRole
+    ? NAV_ITEMS.filter((item) =>
+        item.roles.some((r) => r.toUpperCase() === userRole)
+      )
     : [];
 
   const activeHref = visibleNavItems.reduce((best, item) => {
@@ -480,13 +483,13 @@ export default function Sidebar() {
 
       {/* Sidebar Drawer */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white flex flex-col border-r border-[#CBCBCB]/50 shadow-xs transition-transform duration-300 ease-in-out lg:z-40 lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 flex flex-col border-r border-[#CBCBCB]/50 dark:border-slate-800 shadow-xs transition-transform duration-300 ease-in-out lg:z-40 lg:translate-x-0 ${
           isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
         }`}
         suppressHydrationWarning
       >
         {/* Logo Header */}
-        <div className="px-6 py-6 border-b border-[#CBCBCB]/40 flex items-center justify-between" suppressHydrationWarning>
+        <div className="px-6 py-6 border-b border-[#CBCBCB]/40 dark:border-slate-800 flex items-center justify-between" suppressHydrationWarning>
           <Link href="/" className="flex items-center gap-3 group cursor-pointer" suppressHydrationWarning>
             <div className="w-9 h-9 rounded-xl overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center shadow-xs border border-slate-200/60 dark:border-slate-700 p-1 shrink-0 group-hover:scale-105 transition-transform" suppressHydrationWarning>
               <Image
@@ -506,7 +509,7 @@ export default function Sidebar() {
           {/* Mobile close button */}
           <button
             onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-[#737373] hover:text-[#4A4A4A] hover:bg-[#FAF9F5] transition-colors cursor-pointer"
+            className="lg:hidden p-1.5 rounded-lg text-[#737373] hover:text-[#4A4A4A] hover:bg-[#FAF9F5] dark:hover:bg-slate-800 transition-colors cursor-pointer"
             aria-label="Close navigation menu"
           >
             <X className="w-5 h-5" />
@@ -518,10 +521,10 @@ export default function Sidebar() {
           {status === "loading" || !isMounted ? (
             <div className="space-y-2 px-6">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-9 bg-[#FAF9F5] rounded-r-lg animate-pulse" />
+                <div key={i} className="h-9 bg-[#FAF9F5] dark:bg-slate-800/60 rounded-r-lg animate-pulse" />
               ))}
             </div>
-          ) : (
+          ) : visibleNavItems.length > 0 ? (
             visibleNavItems.map((item) => {
               const active = isActive(item.href);
               return (
@@ -549,6 +552,10 @@ export default function Sidebar() {
                 </Link>
               );
             })
+          ) : (
+            <div className="px-6 py-4 text-xs text-slate-400 dark:text-slate-500">
+              No navigation items available for this role.
+            </div>
           )}
         </nav>
 

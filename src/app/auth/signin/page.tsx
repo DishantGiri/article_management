@@ -55,8 +55,7 @@ function SignInContent() {
     try {
       const res = await signIn("credentials", { email, callbackUrl, redirect: false });
       if (res?.ok) {
-        router.push(callbackUrl);
-        router.refresh();
+        window.location.href = callbackUrl;
       } else {
         setLoading(false);
       }

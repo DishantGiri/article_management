@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
+import AppShell from "@/components/AppShell";
 import Providers from "@/components/Providers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -25,7 +25,6 @@ export const viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
-  const showSidebar = session && session.user.approved !== false;
 
   return (
     <html lang="en" className={`${inter.variable} font-sans h-full`} suppressHydrationWarning>
@@ -104,12 +103,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className={`${inter.className} h-full bg-[#FAF9F5] text-[#4A4A4A] dark:bg-[#0f172a] dark:text-[#f1f5f9] antialiased`} suppressHydrationWarning>
         <Providers session={session}>
-          <div className="flex h-full" suppressHydrationWarning>
-            {showSidebar && <Sidebar />}
-            <main className={`flex-1 min-h-screen overflow-y-auto ${showSidebar ? "pt-[57px] lg:pt-0 ml-0 lg:ml-64" : ""}`} suppressHydrationWarning>
-              {children}
-            </main>
-          </div>
+          <AppShell initialSession={session}>
+            {children}
+          </AppShell>
         </Providers>
       </body>
     </html>
