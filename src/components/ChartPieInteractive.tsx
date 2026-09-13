@@ -39,14 +39,51 @@ export function ChartPieInteractive({
 }) {
   const id = "pie-interactive"
   
+  // Check if dataset is empty or all zero or placeholder
+  const isZeroOrPlaceholder = React.useMemo(() => {
+    if (!data || data.length === 0) return true
+    const total = data.reduce((acc, item) => acc + (Number(item?.value) || 0), 0)
+    if (total === 0) return true
+    if (data.every((item) => item?.isPlaceholder || item?.name?.startsWith("No "))) return true
+    return false
+  }, [data])
+
   // Create formatted data for Recharts, handling shadcn's 'fill' expectation
   const formattedData = React.useMemo(() => {
+    if (!data || data.length === 0) {
+      const placeholderName = `No ${centerLabel || "Articles"}`
+      return [
+        {
+          name: placeholderName,
+          status: placeholderName,
+          value: 0,
+          chartValue: 1,
+          color: "#e2e8f0",
+          fill: "#e2e8f0",
+          isPlaceholder: true,
+        },
+      ]
+    }
+
+    if (isZeroOrPlaceholder) {
+      return data.map((item) => ({
+        ...item,
+        status: item.name,
+        value: 0,
+        chartValue: 1,
+        fill: item.color || "#e2e8f0",
+        isPlaceholder: true,
+      }))
+    }
+
     return data.map((item, i) => ({
       ...item,
       status: item.name,
+      value: Number(item.value) || 0,
+      chartValue: Number(item.value) || 0,
       fill: item.color || `var(--chart-${(i % 5) + 1})`,
     }))
-  }, [data])
+  }, [data, isZeroOrPlaceholder, centerLabel])
 
   const [activeStatus, setActiveStatus] = React.useState(formattedData[0]?.status || "")
 
@@ -57,25 +94,27 @@ export function ChartPieInteractive({
     }
   }, [formattedData, activeStatus])
 
-  const activeIndex = React.useMemo(
-    () => formattedData.findIndex((item) => item.status === activeStatus),
-    [activeStatus, formattedData]
-  )
+  const activeIndex = React.useMemo(() => {
+    const idx = formattedData.findIndex((item) => item.status === activeStatus)
+    return idx >= 0 ? idx : 0
+  }, [activeStatus, formattedData])
+
   const statuses = React.useMemo(() => formattedData.map((item) => item.status), [formattedData])
 
   // Dynamically generate chartConfig based on data
   const chartConfig = React.useMemo(() => {
     const config: Record<string, any> = {
-      value: { label: "Articles" }
+      chartValue: { label: centerLabel },
+      value: { label: centerLabel },
     }
     formattedData.forEach((item, i) => {
       config[item.status] = {
         label: item.status,
-        color: item.color || `var(--chart-${(i % 5) + 1})`
+        color: item.color || item.fill || `var(--chart-${(i % 5) + 1})`,
       }
     })
     return config satisfies ChartConfig
-  }, [formattedData])
+  }, [formattedData, centerLabel])
 
   const renderPieShape = React.useCallback(
     ({ index, outerRadius = 0, ...props }: PieSectorShapeProps) => {
@@ -161,19 +200,58 @@ export function ChartPieInteractive({
           <PieChart>
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent hideLabel />}
+              content={
+                <ChartTooltipContent
+                  hideLabel
+                  formatter={(value, name, item) => (
+                    <div className="flex w-full items-center justify-between gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <div
+                          className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                          style={{
+                            backgroundColor:
+                              item.payload?.fill ||
+                              item.color ||
+                              item.payload?.color ||
+                              "#e2e8f0",
+                          }}
+                        />
+                        <span className="text-muted-foreground">{name}</span>
+                      </div>
+                      <span className="font-mono font-medium text-foreground tabular-nums">
+                        {isZeroOrPlaceholder
+                          ? "0"
+                          : Number(item.payload?.value ?? value).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                />
+              }
             />
             <Pie
               data={formattedData}
-              dataKey="value"
+              dataKey="chartValue"
               nameKey="status"
               innerRadius={60}
               strokeWidth={5}
               shape={renderPieShape}
+              onClick={(entry: any) => {
+                const statusName = entry?.status || entry?.name || entry?.payload?.status || entry?.payload?.name
+                if (statusName) {
+                  setActiveStatus(statusName)
+                }
+              }}
             >
               <Label
                 content={({ viewBox }) => {
                   if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                    const displayValue = isZeroOrPlaceholder
+                      ? 0
+                      : (formattedData[activeIndex]?.value ?? 0)
+                    const activeItem = formattedData[activeIndex]
+                    const subLabel = isZeroOrPlaceholder
+                      ? (centerLabel || "Articles")
+                      : (activeItem?.status || activeItem?.name || centerLabel || "Articles")
                     return (
                       <text
                         x={viewBox.cx}
@@ -183,17 +261,17 @@ export function ChartPieInteractive({
                       >
                         <tspan
                           x={viewBox.cx}
-                          y={viewBox.cy}
+                          y={(viewBox.cy || 0) - 2}
                           className="fill-foreground text-3xl font-bold"
                         >
-                          {formattedData[activeIndex]?.value.toLocaleString()}
+                          {Number(displayValue).toLocaleString()}
                         </tspan>
                         <tspan
                           x={viewBox.cx}
-                          y={(viewBox.cy || 0) + 24}
-                          className="fill-muted-foreground text-xs font-medium"
+                          y={(viewBox.cy || 0) + 22}
+                          className="fill-muted-foreground text-xs font-semibold"
                         >
-                          {centerLabel}
+                          {subLabel}
                         </tspan>
                       </text>
                     )

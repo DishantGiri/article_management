@@ -45,11 +45,14 @@ export async function GET(req: NextRequest) {
     let dateStart: Date | undefined = undefined;
     let dateEnd: Date | undefined = undefined;
 
+    const now = new Date();
     if (startDateParam) {
       dateStart = new Date(startDateParam.includes("T") ? startDateParam : `${startDateParam}T00:00:00.000Z`);
+      if (dateStart > now) dateStart = now;
     }
     if (endDateParam) {
       dateEnd = new Date(endDateParam.includes("T") ? endDateParam : `${endDateParam}T23:59:59.999Z`);
+      if (dateEnd > now) dateEnd = now;
     }
 
     const getDateFilter = (field: string) => {
@@ -335,15 +338,17 @@ export async function GET(req: NextRequest) {
       writerStatusCounts[a.status] = (writerStatusCounts[a.status] || 0) + 1;
     });
 
+    type StatusDistributionItem = { name: string; value: number; color: string; isPlaceholder?: boolean };
+
     const writerMonthlyTrend = Array.from(writerTrendMap.entries()).map(([month, articles]) => ({ month, articles }));
-    const writerStatusDistribution = [
+    const writerStatusDistribution: StatusDistributionItem[] = [
       { name: "Completed", value: writerStatusCounts["COMPLETED"] || 0, color: "#10b981" },
       { name: "In Progress", value: writerStatusCounts["IN_PROGRESS"] || 0, color: "#3b82f6" },
       { name: "Pending", value: writerStatusCounts["PENDING"] || 0, color: "#f59e0b" },
       { name: "Redo", value: writerStatusCounts["REDO"] || 0, color: "#ef4444" },
     ].filter((s) => s.value > 0);
     if (writerStatusDistribution.length === 0) {
-      writerStatusDistribution.push({ name: "No Articles", value: 1, color: "#e2e8f0" });
+      writerStatusDistribution.push({ name: "No Articles", value: 0, color: "#e2e8f0", isPlaceholder: true });
     }
 
     // Team Lead Graphs Data
@@ -357,13 +362,13 @@ export async function GET(req: NextRequest) {
     const tlMonthlyTrend = Array.from(tlTrendMap.entries()).map(([month, articles]) => ({ month, articles }));
     const tlApproved = reviewedArticlesList.filter((r) => r.approved).length;
     const tlRedo = reviewedArticlesList.filter((r) => !r.approved).length;
-    const tlStatusDistribution = [
+    const tlStatusDistribution: StatusDistributionItem[] = [
       { name: "Approved", value: tlApproved, color: "#10b981" },
       { name: "Redo Requested", value: tlRedo, color: "#ef4444" },
       ...(newArticlesList.length > 0 ? [{ name: "Articles Written", value: newArticlesList.length, color: "#6366f1" }] : []),
     ].filter((s) => s.value > 0);
     if (tlStatusDistribution.length === 0) {
-      tlStatusDistribution.push({ name: "No Reviews", value: 1, color: "#e2e8f0" });
+      tlStatusDistribution.push({ name: "No Reviews", value: 0, color: "#e2e8f0", isPlaceholder: true });
     }
 
     // Linker Graphs Data
@@ -377,14 +382,14 @@ export async function GET(req: NextRequest) {
       linkerStatusCounts[l.status] = (linkerStatusCounts[l.status] || 0) + 1;
     });
     const linkerMonthlyTrend = Array.from(linkerTrendMap.entries()).map(([month, articles]) => ({ month, articles }));
-    const linkerStatusDistribution = [
+    const linkerStatusDistribution: StatusDistributionItem[] = [
       { name: "Accepted", value: linkerStatusCounts["ACCEPTED"] || 0, color: "#10b981" },
       { name: "Requested", value: linkerStatusCounts["REQUESTED"] || 0, color: "#3b82f6" },
       { name: "Issue", value: linkerStatusCounts["ISSUE"] || 0, color: "#ef4444" },
       { name: "Products", value: productsAddedList.length, color: "#6366f1" },
     ].filter((s) => s.value > 0);
     if (linkerStatusDistribution.length === 0) {
-      linkerStatusDistribution.push({ name: "No Links", value: 1, color: "#e2e8f0" });
+      linkerStatusDistribution.push({ name: "No Links", value: 0, color: "#e2e8f0", isPlaceholder: true });
     }
 
     // If caller is Admin/Super Admin, retrieve list of users so they can inspect any member's work report

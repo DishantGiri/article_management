@@ -125,7 +125,18 @@ export default function ReportsPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleGenerate = () => {
-    fetchReport(startDate, endDate, selectedUserId);
+    const todayStr = formatYMD(new Date());
+    let validStart = startDate;
+    let validEnd = endDate;
+    if (validStart && validStart > todayStr) {
+      validStart = todayStr;
+      setStartDate(todayStr);
+    }
+    if (validEnd && validEnd > todayStr) {
+      validEnd = todayStr;
+      setEndDate(todayStr);
+    }
+    fetchReport(validStart, validEnd, selectedUserId);
   };
 
   if (loading || !reportData) {
@@ -417,11 +428,15 @@ export default function ReportsPage() {
               startDate={startDate}
               endDate={endDate}
               onChange={(start, end) => {
-                setStartDate(start);
-                setEndDate(end);
+                const todayStr = formatYMD(new Date());
+                const safeStart = start && start > todayStr ? todayStr : start;
+                const safeEnd = end && end > todayStr ? todayStr : end;
+                setStartDate(safeStart);
+                setEndDate(safeEnd);
                 setPreset("all");
               }}
               placeholder="Select Custom Period"
+              disableFutureDates={true}
             />
           </div>
 

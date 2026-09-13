@@ -155,6 +155,8 @@ export default function UsersPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string }>({});
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -357,6 +359,10 @@ export default function UsersPage() {
       toast.error("Cannot modify Super Admin");
       return;
     }
+    if (u.hasLeftCompany) {
+      toast.error("Cannot approve access for a former employee. Please restore them to active first.");
+      return;
+    }
     const nextApproved = !u.approved;
     try {
       const payload: any = { approved: nextApproved };
@@ -460,6 +466,8 @@ export default function UsersPage() {
       commissionToPartyFund: false,
     });
     setError("");
+    setFieldErrors({});
+    setFormSubmitted(false);
     setShowModal(true);
   };
 
@@ -478,35 +486,63 @@ export default function UsersPage() {
       commissionToPartyFund: hasLeft ? false : Boolean(u.commissionToPartyFund),
     });
     setError("");
+    setFieldErrors({});
+    setFormSubmitted(false);
     setShowModal(true);
   };
 
   const handleSaveUser = async () => {
+    setFormSubmitted(true);
     const trimmedName = form.name.trim();
+    const trimmedEmail = form.email.trim().toLowerCase();
+
+    const errors: { name?: string; email?: string } = {};
+
     if (!trimmedName) {
-      setError("Please enter a user name");
-      return;
+      errors.name = "Please enter a user name";
     }
 
     if (!editingUserId) {
-      const trimmedEmail = form.email.trim().toLowerCase();
       if (!trimmedEmail) {
-        setError("Please enter an email address");
-        return;
+        errors.email = "Please enter an email address";
+      } else {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(trimmedEmail)) {
+          errors.email = "Invalid email format (e.g. name@fishtailinfosolutions.com)";
+        } else if (!trimmedEmail.endsWith("@fishtailinfosolutions.com")) {
+          errors.email = "Email must belong to @fishtailinfosolutions.com corporate domain";
+        } else if (users.some((u) => u.email.toLowerCase() === trimmedEmail)) {
+          errors.email = "A user with this email address already exists";
+        }
       }
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(trimmedEmail)) {
-        setError("Please enter a valid email format (e.g. name@fishtailinfosolutions.com)");
-        return;
-      }
-      if (!trimmedEmail.endsWith("@fishtailinfosolutions.com")) {
-        setError("Email must belong to @fishtailinfosolutions.com corporate domain");
-        return;
-      }
-      if (users.some((u) => u.email.toLowerCase() === trimmedEmail)) {
-        setError("A user with this email address already exists");
-        return;
-      }
+    }
+
+    setFieldErrors(errors);
+
+    if (errors.name && errors.email) {
+      const msg = "Please enter full name and email address";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (errors.name) {
+      setError(errors.name);
+      toast.error(errors.name);
+      return;
+    }
+
+    if (errors.email) {
+      setError(errors.email);
+      toast.error(errors.email);
+      return;
+    }
+
+    if (form.hasLeftCompany && form.approved) {
+      const msg = "A former employee (Has Left Company) cannot have login access approved.";
+      setError(msg);
+      toast.error(msg);
+      return;
     }
 
     setSaving(true);
@@ -1017,7 +1053,14 @@ export default function UsersPage() {
                           </span>
                         )}
                         {/* Approval Status Badge / Toggle */}
-                        {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                        {u.hasLeftCompany ? (
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border shrink-0 bg-slate-100 dark:bg-slate-850 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed"
+                            title="Former employee: Login access revoked"
+                          >
+                            ✕ No Access
+                          </span>
+                        ) : isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
                           <button
                             onClick={() => handleQuickToggleApproval(u)}
                             className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer shrink-0 ${
@@ -1410,7 +1453,14 @@ export default function UsersPage() {
                             </span>
                           ) : null}
 
-                          {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                          {u.hasLeftCompany ? (
+                            <span
+                              className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border bg-slate-100 dark:bg-slate-850 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed"
+                              title="Former employee: Login access revoked"
+                            >
+                              ✕ No Access
+                            </span>
+                          ) : isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
                             <button
                               onClick={() => handleQuickToggleApproval(u)}
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer ${
@@ -1884,13 +1934,34 @@ export default function UsersPage() {
                   <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                     Full Name <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 transition placeholder:text-slate-400"
-                    placeholder="e.g. Sarah Mitchell"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => {
+                        setForm({ ...form, name: e.target.value });
+                        if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                        if (error) setError("");
+                      }}
+                      className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition placeholder:text-slate-400 ${
+                        (formSubmitted || fieldErrors.name) && !form.name.trim()
+                          ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400/30"
+                          : "border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-[#6D8196]/40"
+                      }`}
+                      placeholder="e.g. Sarah Mitchell"
+                    />
+                    {(formSubmitted || fieldErrors.name) && !form.name.trim() && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <AlertCircle className="w-4 h-4 text-rose-500" />
+                      </div>
+                    )}
+                  </div>
+                  {(formSubmitted || fieldErrors.name) && !form.name.trim() && (
+                    <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1 mt-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{fieldErrors.name || "Please enter a user name"}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1903,7 +1974,11 @@ export default function UsersPage() {
                         type="button"
                         onClick={() => {
                           const prefix = form.email.trim().split("@")[0];
-                          if (prefix) setForm({ ...form, email: `${prefix}@fishtailinfosolutions.com` });
+                          if (prefix) {
+                            setForm({ ...form, email: `${prefix}@fishtailinfosolutions.com` });
+                            if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                            if (error) setError("");
+                          }
                         }}
                         className="text-[10px] font-bold text-[#6D8196] hover:text-[#5A6D81] bg-[#6D8196]/10 hover:bg-[#6D8196]/20 px-2 py-0.5 rounded-md transition cursor-pointer"
                         title="Auto-append corporate domain"
@@ -1917,33 +1992,55 @@ export default function UsersPage() {
                       type="email"
                       value={form.email}
                       disabled={!!editingUserId}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      onChange={(e) => {
+                        setForm({ ...form, email: e.target.value });
+                        if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                        if (error) setError("");
+                      }}
                       className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition disabled:opacity-60 pr-9 placeholder:text-slate-400 ${
-                        !editingUserId && form.email.trim()
-                          ? emailValidationError
-                            ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400/30"
-                            : "border-emerald-400 dark:border-emerald-600 focus:ring-2 focus:ring-emerald-400/30"
+                        !editingUserId && (
+                          ((formSubmitted || fieldErrors.email) && !form.email.trim()) ||
+                          fieldErrors.email ||
+                          (form.email.trim() && emailValidationError)
+                        )
+                          ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400/30"
+                          : !editingUserId && form.email.trim() && !emailValidationError
+                          ? "border-emerald-400 dark:border-emerald-600 focus:ring-2 focus:ring-emerald-400/30"
                           : "border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-[#6D8196]/40"
                       }`}
                       placeholder="name@fishtailinfosolutions.com"
                     />
-                    {!editingUserId && form.email.trim() && (
+                    {!editingUserId && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                        {emailValidationError ? (
+                        {((formSubmitted || fieldErrors.email) && !form.email.trim()) ||
+                        fieldErrors.email ||
+                        (form.email.trim() && emailValidationError) ? (
                           <AlertCircle className="w-4 h-4 text-rose-500" />
-                        ) : (
+                        ) : form.email.trim() && !emailValidationError ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </div>
-                  {!editingUserId && form.email.trim() && emailValidationError && (
+                  {!editingUserId && ((formSubmitted || fieldErrors.email) && !form.email.trim()) && (
+                    <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1 mt-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{fieldErrors.email || "Please enter an email address"}</span>
+                    </p>
+                  )}
+                  {!editingUserId && form.email.trim() && fieldErrors.email && (
+                    <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1 mt-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{fieldErrors.email}</span>
+                    </p>
+                  )}
+                  {!editingUserId && form.email.trim() && !fieldErrors.email && emailValidationError && (
                     <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1 mt-1.5 animate-fadeIn">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                       <span>{emailValidationError}</span>
                     </p>
                   )}
-                  {!editingUserId && form.email.trim() && !emailValidationError && (
+                  {!editingUserId && form.email.trim() && !fieldErrors.email && !emailValidationError && (
                     <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-1.5 animate-fadeIn">
                       <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                       <span>Valid corporate email address</span>
@@ -2054,9 +2151,16 @@ export default function UsersPage() {
 
               {/* Toggles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <div className="bg-[#FAF9F5] dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div
+                  className={`p-4 rounded-2xl border transition ${
+                    form.hasLeftCompany
+                      ? "bg-slate-100/70 dark:bg-slate-900/60 border-slate-200/50 dark:border-slate-800/50 opacity-60 cursor-not-allowed"
+                      : "bg-[#FAF9F5] dark:bg-slate-850 border-slate-200 dark:border-slate-800"
+                  }`}
+                >
                   <Toggle
-                    checked={form.approved}
+                    checked={form.hasLeftCompany ? false : form.approved}
+                    disabled={form.hasLeftCompany}
                     onChange={(checked) =>
                       setForm((prev) => ({
                         ...prev,
@@ -2065,7 +2169,11 @@ export default function UsersPage() {
                       }))
                     }
                     label="Approve User Access"
-                    subLabel="Unapproved users cannot log in to the application."
+                    subLabel={
+                      form.hasLeftCompany
+                        ? "Disabled: Former employees cannot log in or have active access."
+                        : "Unapproved users cannot log in to the application."
+                    }
                   />
                 </div>
 
@@ -2079,14 +2187,21 @@ export default function UsersPage() {
                         ...(checked ? { approved: false, commissionToPartyFund: false } : {}),
                       }))
                     }
-                    label="Has Left Company"
-                    subLabel="User has departed. Future commissions route to Party Fund."
+                    label="Has Left Company (Former Employee)"
+                    subLabel="Employee departed. Historical records are preserved, but login is restricted."
                   />
                 </div>
 
-                <div className="bg-[#FAF9F5] dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div
+                  className={`p-4 rounded-2xl border transition ${
+                    form.hasLeftCompany
+                      ? "bg-slate-100/70 dark:bg-slate-900/60 border-slate-200/50 dark:border-slate-800/50 opacity-60 cursor-not-allowed"
+                      : "bg-[#FAF9F5] dark:bg-slate-850 border-slate-200 dark:border-slate-800"
+                  }`}
+                >
                   <Toggle
-                    checked={form.commissionToPartyFund}
+                    checked={form.hasLeftCompany ? false : form.commissionToPartyFund}
+                    disabled={form.hasLeftCompany}
                     onChange={(checked) =>
                       setForm((prev) => ({
                         ...prev,
@@ -2095,7 +2210,11 @@ export default function UsersPage() {
                       }))
                     }
                     label="Commission in Party Fund"
-                    subLabel="Directly diverts all earned commissions to Office Party Fund while user remains active."
+                    subLabel={
+                      form.hasLeftCompany
+                        ? "Disabled: Commissions automatically route to Party Fund for former employees."
+                        : "Directly diverts all earned commissions to Office Party Fund while user remains active."
+                    }
                   />
                 </div>
               </div>
@@ -2124,7 +2243,7 @@ export default function UsersPage() {
                 </button>
                 <button
                   onClick={handleSaveUser}
-                  disabled={saving || !form.name.trim() || (!editingUserId && (!form.email.trim() || !isEmailValid))}
+                  disabled={saving}
                   className="px-6 py-2.5 bg-[#6D8196] hover:bg-[#5A6D81] disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                 >
                   {saving ? "Saving..." : editingUserId ? "Save Profile" : "Add User"}

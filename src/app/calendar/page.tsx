@@ -159,6 +159,23 @@ function CalendarContent() {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
+  const sanitizeDetailText = (text?: string | null) => {
+    if (!text) return null;
+    if (data?.targetUser?.role === "ADMIN" || data?.targetUser?.role === "SUPER_ADMIN") {
+      const roleTitle = data.targetUser.role === "SUPER_ADMIN" ? "Super Admin" : "Admin";
+      let result = text;
+      if (data.targetUser.name) {
+        const escaped = data.targetUser.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        result = result.replace(new RegExp(`Team Lead\\s+${escaped}`, "gi"), `${roleTitle} ${data.targetUser.name}`);
+      }
+      result = result.replace(/\bFlagged for update by Team Lead\b/gi, `Flagged for update by ${roleTitle}`);
+      result = result.replace(/\bUpdate request (approved|rejected) by Team Lead\b/gi, `Update request $1 by ${roleTitle}`);
+      result = result.replace(/\bby Team Lead\b/gi, `by ${roleTitle}`);
+      return result;
+    }
+    return text;
+  };
+
   // Calendar grid padding days (first day of month offset)
   const paddingDays = useMemo(() => {
     if (!data || data.days.length === 0) return [];
@@ -542,7 +559,7 @@ function CalendarContent() {
                             <p className="text-xs text-slate-600 font-medium">{item.subtitle}</p>
                             {item.details && (
                               <p className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100 font-sans">
-                                {item.details}
+                                {sanitizeDetailText(item.details)}
                               </p>
                             )}
 

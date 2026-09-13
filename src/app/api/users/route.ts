@@ -46,8 +46,17 @@ export async function POST(req: NextRequest) {
     const trimmedName = typeof name === "string" ? name.trim() : "";
     const trimmedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!trimmedName || !trimmedEmail || !role) {
-      return NextResponse.json({ error: "Name, email, and role are required" }, { status: 400 });
+    if (!trimmedName && !trimmedEmail) {
+      return NextResponse.json({ error: "Name and email address are required" }, { status: 400 });
+    }
+    if (!trimmedName) {
+      return NextResponse.json({ error: "Full name is required" }, { status: 400 });
+    }
+    if (!trimmedEmail) {
+      return NextResponse.json({ error: "Email address is required" }, { status: 400 });
+    }
+    if (!role) {
+      return NextResponse.json({ error: "Role is required" }, { status: 400 });
     }
 
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -72,6 +81,12 @@ export async function POST(req: NextRequest) {
     }
 
     let finalHasLeft = Boolean(hasLeftCompany);
+    if (finalHasLeft && approved === true) {
+      return NextResponse.json(
+        { error: "A former employee (who has left the company) cannot be granted active login access." },
+        { status: 400 }
+      );
+    }
     let finalApproved = finalHasLeft ? false : (typeof approved === 'boolean' ? approved : true);
     let finalCommToParty = finalHasLeft ? false : Boolean(commissionToPartyFund);
 

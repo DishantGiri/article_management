@@ -360,11 +360,12 @@ export async function PATCH(
         if (writerIdToNotify && writerIdToNotify !== activeUserId) {
           const reviewer = await prisma.user.findUnique({
             where: { id: activeUserId },
-            select: { name: true },
+            select: { name: true, role: true },
           });
-          const reviewerName = reviewer?.name || session.user.name || "Team Lead";
+          const reviewerRole = reviewer?.role === "SUPER_ADMIN" ? "Super Admin" : reviewer?.role === "ADMIN" ? "Admin" : reviewer?.role === "TEAM_LEAD" ? "Team Lead" : (reviewer?.role || session.user.role || "User").replace("_", " ");
+          const reviewerName = reviewer?.name || session.user.name || reviewerRole;
           const feedbackRemark = suggestion || notes || "No specific remark provided. Please review and revise the article.";
-          const notifMessage = `Changes requested on your article for "${updated.product.name}" by Team Lead ${reviewerName}. Remark: ${feedbackRemark}`;
+          const notifMessage = `Changes requested on your article for "${updated.product.name}" by ${reviewerRole} ${reviewerName}. Remark: ${feedbackRemark}`;
 
           const notif = await prisma.notification.create({
             data: {
@@ -388,10 +389,11 @@ export async function PATCH(
         if (writerIdToNotify && writerIdToNotify !== activeUserId) {
           const reviewer = await prisma.user.findUnique({
             where: { id: activeUserId },
-            select: { name: true },
+            select: { name: true, role: true },
           });
-          const reviewerName = reviewer?.name || session.user.name || "Team Lead";
-          const notifMessage = `Your article for "${updated.product.name}" was APPROVED by Team Lead ${reviewerName}.`;
+          const reviewerRole = reviewer?.role === "SUPER_ADMIN" ? "Super Admin" : reviewer?.role === "ADMIN" ? "Admin" : reviewer?.role === "TEAM_LEAD" ? "Team Lead" : (reviewer?.role || session.user.role || "User").replace("_", " ");
+          const reviewerName = reviewer?.name || session.user.name || reviewerRole;
+          const notifMessage = `Your article for "${updated.product.name}" was APPROVED by ${reviewerRole} ${reviewerName}.`;
 
           const notif = await prisma.notification.create({
             data: {
@@ -537,15 +539,16 @@ export async function PATCH(
       }
     }
 
-    // Notify Writer if assigned by Team Lead
+    // Notify Writer if assigned
     if (writerId !== undefined && updated.writerId && existing.writerId !== updated.writerId && updated.writerId !== activeUserId) {
       try {
+        const senderRole = session.user.role === "SUPER_ADMIN" ? "Super Admin" : session.user.role === "ADMIN" ? "Admin" : session.user.role === "TEAM_LEAD" ? "Team Lead" : (session.user.role || "User").replace("_", " ");
         const notif = await prisma.notification.create({
           data: {
             recipientId: updated.writerId,
             senderId: activeUserId,
             type: "ARTICLE_SUGGESTION",
-            message: `Team Lead ${session.user.name || "Team Lead"} assigned you the article for "${updated.product.name}".`,
+            message: `${senderRole} ${session.user.name || senderRole} assigned you the article for "${updated.product.name}".`,
           },
         });
         await sendRealtimeNotification(updated.writerId, notif);
@@ -554,9 +557,10 @@ export async function PATCH(
       }
     }
 
-    // Notify all writers in Team Lead's team when opened to team
+    // Notify all writers in team when opened to team
     if (openToTeam === true) {
       try {
+        const senderRole = session.user.role === "SUPER_ADMIN" ? "Super Admin" : session.user.role === "ADMIN" ? "Admin" : session.user.role === "TEAM_LEAD" ? "Team Lead" : (session.user.role || "User").replace("_", " ");
         const teamWriters = await prisma.user.findMany({
           where: { role: "WRITER", teamLeadId: activeUserId },
           select: { id: true },
@@ -567,7 +571,7 @@ export async function PATCH(
               recipientId: w.id,
               senderId: activeUserId,
               type: "ARTICLE_SUGGESTION",
-              message: `New Article Available: Team Lead ${session.user.name || "Team Lead"} opened the article for "${updated.product.name}" to your team. You can claim and write it now.`,
+              message: `New Article Available: ${senderRole} ${session.user.name || senderRole} opened the article for "${updated.product.name}" to your team. You can claim and write it now.`,
             },
           });
           await sendRealtimeNotification(w.id, notif);
@@ -593,12 +597,13 @@ export async function PATCH(
 
         const targetWriterId = updated.writerId;
         if (targetWriterId) {
+          const senderRole = session.user.role === "SUPER_ADMIN" ? "Super Admin" : session.user.role === "ADMIN" ? "Admin" : session.user.role === "TEAM_LEAD" ? "Team Lead" : (session.user.role || "User").replace("_", " ");
           const notif = await prisma.notification.create({
             data: {
               recipientId: targetWriterId,
               senderId: activeUserId,
               type: "ARTICLE_SUGGESTION",
-              message: `Flag Raised: Team Lead ${session.user.name || "Team Lead"} flagged approved article "${updated.product.name}" for an update. Instructions: ${suggestion || "Revisions required."}`,
+              message: `Flag Raised: ${senderRole} ${session.user.name || senderRole} flagged approved article "${updated.product.name}" for an update. Instructions: ${suggestion || "Revisions required."}`,
             },
           });
           await sendRealtimeNotification(targetWriterId, notif);
@@ -680,8 +685,9 @@ export async function PATCH(
         changeNotes.push(`Feedback: ${suggestion}`);
       }
       if (flagForUpdate) {
+        const actorRole = session.user.role === "SUPER_ADMIN" ? "Super Admin" : session.user.role === "ADMIN" ? "Admin" : session.user.role === "TEAM_LEAD" ? "Team Lead" : (session.user.role || "User").replace("_", " ");
         const assignedWriterName = updated.writer?.name || "writer";
-        changeNotes.push(`Flagged for update by Team Lead ${session.user.name || "Team Lead"} to writer ${assignedWriterName}. Instructions: ${suggestion || "none"}`);
+        changeNotes.push(`Flagged for update by ${actorRole} ${session.user.name || actorRole} to writer ${assignedWriterName}. Instructions: ${suggestion || "none"}`);
       }
 
       if (changeNotes.length > 0 || notes) {

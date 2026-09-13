@@ -256,12 +256,12 @@ export default function TeamMembersPage() {
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Team Members</h1>
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Writer Performance & Team Analytics</h1>
               <p className="text-xs text-[#737373] mt-0.5">
                 {isAdminOrSuperAdmin
                   ? selectedTlName
                     ? `Showing writing squad under Team Lead ${selectedTlName}.`
-                    : "Company-wide writing staff performance, benchmarks, and throughput."
+                    : "Company-wide writing staff performance benchmarks, velocity, and article throughput."
                   : "Analyze productivity metrics, track speed benchmarks, and monitor your writing team."}
               </p>
             </div>

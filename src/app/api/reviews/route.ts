@@ -34,12 +34,14 @@ export async function POST(req: NextRequest) {
     // Get reviewer details
     const reviewer = await prisma.user.findUnique({
       where: { id: reviewedById },
-      select: { name: true },
+      select: { name: true, role: true },
     });
 
     if (!reviewer) {
       return NextResponse.json({ error: "Reviewer not found" }, { status: 404 });
     }
+
+    const reviewerRoleTitle = reviewer.role === "SUPER_ADMIN" ? "Super Admin" : reviewer.role === "ADMIN" ? "Admin" : reviewer.role === "TEAM_LEAD" ? "Team Lead" : (reviewer.role || reviewerRole || "Team Lead").replace("_", " ");
 
     // Validate article exists
     const article = await prisma.article.findUnique({
@@ -138,8 +140,8 @@ export async function POST(req: NextRequest) {
           oldStatus: article.status,
           newStatus: newStatus,
           notes: approved
-            ? `Approved by ${reviewer.name}. Feedback: ${suggestion || "none"}`
-            : `Redo requested by ${reviewer.name}. Feedback: ${suggestion || "none"}`,
+            ? `Approved by ${reviewerRoleTitle} ${reviewer.name}. Feedback: ${suggestion || "none"}`
+            : `Redo requested by ${reviewerRoleTitle} ${reviewer.name}. Feedback: ${suggestion || "none"}`,
         },
       });
     } catch (historyErr) {
@@ -150,8 +152,8 @@ export async function POST(req: NextRequest) {
     if (updatedArticle.writerId) {
       try {
         const notifMessage = approved
-          ? `Your article for "${updatedArticle.product.name}" was APPROVED by Team Lead ${reviewer.name}.`
-          : `Changes requested on your article for "${updatedArticle.product.name}" by Team Lead ${reviewer.name}. Remark: ${suggestion || "No remarks provided"}`;
+          ? `Your article for "${updatedArticle.product.name}" was APPROVED by ${reviewerRoleTitle} ${reviewer.name}.`
+          : `Changes requested on your article for "${updatedArticle.product.name}" by ${reviewerRoleTitle} ${reviewer.name}. Remark: ${suggestion || "No remarks provided"}`;
 
         const notif = await prisma.notification.create({
           data: {

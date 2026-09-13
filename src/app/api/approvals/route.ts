@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const approverName = session.user.name || "Team Lead";
+    const approverRole = userRole === "SUPER_ADMIN" ? "Super Admin" : userRole === "ADMIN" ? "Admin" : "Team Lead";
+    const approverName = session.user.name || approverRole;
 
     // ─── ACTION: REJECT UPDATE REQUEST ─────────────────────────────
     if (action === "REJECT") {
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
           updatedById: approvedById,
           oldStatus: article.status,
           newStatus: article.status,
-          notes: `Update request rejected by ${approverName}. Note: ${reason || "Declined"}`,
+          notes: `Update request rejected by ${approverRole} ${approverName}. Note: ${reason || "Declined"}`,
         },
       });
 
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
             recipientId: article.writer.id,
             senderId: approvedById,
             type: "ARTICLE_SUGGESTION",
-            message: `Your request to update the article for "${article.product.name}" was DECLINED by Team Lead ${approverName}. Reason: ${reason || "No reason provided"}`,
+            message: `Your request to update the article for "${article.product.name}" was DECLINED by ${approverRole} ${approverName}. Reason: ${reason || "No reason provided"}`,
           },
         });
         await sendRealtimeNotification(article.writer.id, notif);
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
         updatedById: approvedById,
         oldStatus: article.status,
         newStatus: "IN_PROGRESS",
-        notes: `Update request approved by ${approverName}. Article unlocked for writer ${article.writer?.name || ""}. Reason: ${reason || "Approved for revisions"}`,
+        notes: `Update request approved by ${approverRole} ${approverName}. Article unlocked for writer ${article.writer?.name || ""}. Reason: ${reason || "Approved for revisions"}`,
       },
     });
 
@@ -131,7 +132,7 @@ export async function POST(req: NextRequest) {
           recipientId: article.writer.id,
           senderId: approvedById,
           type: "APPROVAL_GRANTED",
-          message: `Your request to update the approved article for "${article.product.name}" was APPROVED by Team Lead ${approverName}. The article is now unlocked for you to edit.`,
+          message: `Your request to update the approved article for "${article.product.name}" was APPROVED by ${approverRole} ${approverName}. The article is now unlocked for you to edit.`,
         },
       });
       await sendRealtimeNotification(article.writer.id, notif);

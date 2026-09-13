@@ -135,6 +135,13 @@ export async function PATCH(
       resolvedTeamLeadId = teamLeadId && teamLeadId !== "none" && teamLeadId !== "" ? Number(teamLeadId) : null;
     }
 
+    if (hasLeftCompany === true && approved === true) {
+      return NextResponse.json(
+        { error: "A former employee (who has left the company) cannot be granted active login access." },
+        { status: 400 }
+      );
+    }
+
     // Enforce mutual exclusion: if hasLeftCompany is true, approved must be false (and commissionToPartyFund false)
     // If approved is true, hasLeftCompany must be false
     let finalApproved = typeof approved === 'boolean' ? approved : undefined;

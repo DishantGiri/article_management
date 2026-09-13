@@ -299,8 +299,34 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // Target user role title helper
+    const targetRoleTitle = targetUser.role === "SUPER_ADMIN"
+      ? "Super Admin"
+      : targetUser.role === "ADMIN"
+        ? "Admin"
+        : targetUser.role === "TEAM_LEAD"
+          ? "Team Lead"
+          : (targetUser.role || "User").replace("_", " ");
+
+    const sanitizeActivityDetails = (text?: string | null): string | null => {
+      if (!text) return null;
+      if (targetUser.role === "ADMIN" || targetUser.role === "SUPER_ADMIN") {
+        let result = text;
+        if (targetUser.name) {
+          const escaped = targetUser.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          result = result.replace(new RegExp(`Team Lead\\s+${escaped}`, "gi"), `${targetRoleTitle} ${targetUser.name}`);
+        }
+        result = result.replace(/\bFlagged for update by Team Lead\b/gi, `Flagged for update by ${targetRoleTitle}`);
+        result = result.replace(/\bUpdate request (approved|rejected) by Team Lead\b/gi, `Update request $1 by ${targetRoleTitle}`);
+        result = result.replace(/\bby Team Lead\b/gi, `by ${targetRoleTitle}`);
+        return result;
+      }
+      return text;
+    };
+
     // Process Article History / Revisions
     articleHistories.forEach((hist) => {
+      const rawDetails = hist.notes || (hist.oldStatus && hist.newStatus ? `Status: ${hist.oldStatus} → ${hist.newStatus}` : "Updated article record");
       addActivity(hist.updatedAt, {
         id: `arthist-${hist.id}`,
         time: moment(hist.updatedAt).format("hh:mm A"),
@@ -308,7 +334,7 @@ export async function GET(req: NextRequest) {
         badge: hist.newStatus === "REDO" ? "Revision Required" : "Article Updated",
         title: hist.article.product.name,
         subtitle: `Site: ${hist.article.product.site.name}`,
-        details: hist.notes || (hist.oldStatus && hist.newStatus ? `Status: ${hist.oldStatus} → ${hist.newStatus}` : "Updated article record"),
+        details: sanitizeActivityDetails(rawDetails),
         status: hist.newStatus,
         link: hist.newLink,
       });
@@ -359,6 +385,7 @@ export async function GET(req: NextRequest) {
 
     // Process Reviews Done
     reviewsDone.forEach((rev) => {
+      const rawDetails = rev.suggestion || (rev.approved ? "Article approved by reviewer." : "Redo revision requested.");
       addActivity(rev.reviewedAt, {
         id: `rev-${rev.id}`,
         time: moment(rev.reviewedAt).format("hh:mm A"),
@@ -366,7 +393,7 @@ export async function GET(req: NextRequest) {
         badge: rev.approved ? "Review Approved" : "Changes Requested",
         title: rev.article.product.name,
         subtitle: `Writer: ${rev.article.writer?.name || "Unassigned"} • Site: ${rev.article.product.site.name}`,
-        details: rev.suggestion || (rev.approved ? "Article approved by reviewer." : "Redo revision requested."),
+        details: sanitizeActivityDetails(rawDetails),
         status: rev.approved ? "APPROVED" : "REDO",
       });
     });

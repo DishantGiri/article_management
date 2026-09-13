@@ -10,6 +10,8 @@ interface DateRangePickerProps {
   placeholder?: string;
   className?: string;
   align?: "left" | "right";
+  maxDate?: string; // "YYYY-MM-DD"
+  disableFutureDates?: boolean;
 }
 
 export default function DateRangePicker({
@@ -19,6 +21,8 @@ export default function DateRangePicker({
   placeholder = "Select Date Range",
   className = "",
   align = "left",
+  maxDate,
+  disableFutureDates = false,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => {
@@ -62,11 +66,29 @@ export default function DateRangePicker({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayIndex = new Date(year, month, 1).getDay();
 
+  const formatDateYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const todayDate = new Date();
+  const todayStr = formatDateYMD(todayDate);
+  const effectiveMaxDate = maxDate || (disableFutureDates ? todayStr : undefined);
+
+  const isNextMonthDisabled = Boolean(
+    effectiveMaxDate &&
+      (year > todayDate.getFullYear() ||
+        (year === todayDate.getFullYear() && month >= todayDate.getMonth()))
+  );
+
   const prevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
   };
 
   const nextMonth = () => {
+    if (isNextMonthDisabled) return;
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
@@ -75,13 +97,6 @@ export default function DateRangePicker({
     if (!val) return "";
     const [y, m, d] = val.split("-");
     return `${d}-${m}-${y}`;
-  };
-
-  const formatDateYMD = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
   };
 
   const handleSelectPreset = (preset: "TODAY" | "YESTERDAY" | "LAST_7" | "THIS_MONTH" | "ALL") => {
@@ -113,6 +128,10 @@ export default function DateRangePicker({
     const formattedDay = String(day).padStart(2, "0");
     const clickedDateStr = `${year}-${formattedMonth}-${formattedDay}`;
 
+    if (effectiveMaxDate && clickedDateStr > effectiveMaxDate) {
+      return;
+    }
+
     if (!startDate || (startDate && endDate)) {
       // Start a new selection
       onChange(clickedDateStr, "");
@@ -143,7 +162,9 @@ export default function DateRangePicker({
     if (startDate && !endDate) {
       const formattedMonth = String(month + 1).padStart(2, "0");
       const formattedDay = String(day).padStart(2, "0");
-      setHoveredDate(`${year}-${formattedMonth}-${formattedDay}`);
+      const dateStr = `${year}-${formattedMonth}-${formattedDay}`;
+      if (effectiveMaxDate && dateStr > effectiveMaxDate) return;
+      setHoveredDate(dateStr);
     }
   };
 
@@ -158,6 +179,7 @@ export default function DateRangePicker({
     const formattedDay = String(day).padStart(2, "0");
     const dateStr = `${year}-${formattedMonth}-${formattedDay}`;
 
+    const isFuture = Boolean(effectiveMaxDate && dateStr > effectiveMaxDate);
     const isStart = startDate === dateStr;
     const isEnd = endDate === dateStr;
 
@@ -198,17 +220,20 @@ export default function DateRangePicker({
         } ${
           isEnd ? "rounded-r-full bg-indigo-50/70 dark:bg-indigo-950/40" : ""
         }`}
-        onMouseEnter={() => handleDayMouseEnter(day)}
+        onMouseEnter={() => !isFuture && handleDayMouseEnter(day)}
       >
         <button
           type="button"
-          onClick={() => handleSelectDay(day)}
-          className={`h-7 w-7 rounded-full text-xs font-semibold transition-all flex items-center justify-center cursor-pointer relative z-10 ${
-            isStart || isEnd
-              ? "bg-[#6D8196] text-white shadow-xs font-bold"
+          disabled={isFuture}
+          onClick={() => !isFuture && handleSelectDay(day)}
+          className={`h-7 w-7 rounded-full text-xs font-semibold transition-all flex items-center justify-center relative z-10 ${
+            isFuture
+              ? "text-slate-300 dark:text-slate-600 opacity-40 cursor-not-allowed pointer-events-none"
+              : isStart || isEnd
+              ? "bg-[#6D8196] text-white shadow-xs font-bold cursor-pointer"
               : isToday
-              ? "border border-[#6D8196] text-[#6D8196] dark:text-sky-400 font-bold"
-              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              ? "border border-[#6D8196] text-[#6D8196] dark:text-sky-400 font-bold cursor-pointer"
+              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
           }`}
         >
           {day}
@@ -313,7 +338,12 @@ export default function DateRangePicker({
             <button
               type="button"
               onClick={nextMonth}
-              className="p-1 rounded-lg border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+              disabled={isNextMonthDisabled}
+              className={`p-1 rounded-lg border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 transition ${
+                isNextMonthDisabled
+                  ? "opacity-30 cursor-not-allowed pointer-events-none"
+                  : "hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+              }`}
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
