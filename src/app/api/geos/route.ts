@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
     const trimmed = code.trim().toUpperCase();
 
     const existing = await prisma.geo.findUnique({ where: { code: trimmed } });
-    if (existing) return NextResponse.json(existing);
+    if (existing) {
+      return NextResponse.json({ error: `"${trimmed}" already exists.` }, { status: 409 });
+    }
 
     const created = await prisma.geo.create({ data: { code: trimmed } });
     return NextResponse.json(created, { status: 201 });

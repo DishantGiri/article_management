@@ -56,6 +56,15 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
       setError("Please enter a GEO code.");
       return;
     }
+
+    // Client-side duplicate validation
+    if (geos.some((g) => g.code.toUpperCase() === trimmed)) {
+      const msg = `"${trimmed}" already exists.`;
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     setAdding(true);
     setError("");
     try {
@@ -65,15 +74,19 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
         body: JSON.stringify({ code: trimmed }),
       });
       const data = await res.json();
-      if (!res.ok && res.status !== 200) {
-        setError(data.error || "Failed to add GEO.");
+      if (!res.ok) {
+        const msg = data.error || `Failed to add GEO "${trimmed}".`;
+        setError(msg);
+        toast.error(msg);
         return;
       }
       toast.success(`"${trimmed}" added!`);
       setNewCode("");
       await fetchGeos();
     } catch {
-      setError("Something went wrong.");
+      const msg = "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setAdding(false);
     }
@@ -163,11 +176,18 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
             <input
               type="text"
               value={newCode}
-              onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                setNewCode(e.target.value.toUpperCase());
+                if (error) setError("");
+              }}
               onKeyDown={(e) => e.key === "Enter" && !adding && handleAdd()}
               placeholder="e.g. IN, SG, NZ, LATAM..."
               maxLength={20}
-              className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition font-mono uppercase"
+              className={`flex-1 px-3 py-2 bg-white border rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition font-mono uppercase ${
+                error
+                  ? "border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
+                  : "border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+              }`}
             />
             <button
               onClick={handleAdd}
