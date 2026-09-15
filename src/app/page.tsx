@@ -2395,13 +2395,24 @@ function WriterAvailableAssignments({
   }, [pendingArticles]);
 
   const filteredArticles = useMemo(() => {
-    return pendingArticles.filter((a) => {
+    const list = pendingArticles.filter((a) => {
       const matchSearch =
         !searchQuery.trim() ||
         fuzzyMatchAny([a.product?.name, a.product?.slug, a.product?.site?.name, a.product?.category?.name], searchQuery);
       const matchSite = siteFilter === "ALL" || a.product?.site?.name === siteFilter;
       const matchCategory = categoryFilter === "ALL" || a.product?.category?.name === categoryFilter;
       return matchSearch && matchSite && matchCategory;
+    });
+
+    if (!searchQuery.trim()) return list;
+    const q = searchQuery.trim().toLowerCase();
+    return [...list].sort((a, b) => {
+      const aName = (a.product?.name || "").toLowerCase();
+      const bName = (b.product?.name || "").toLowerCase();
+      const aExact = aName === q ? 3 : aName.startsWith(q) ? 2 : (a.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      const bExact = bName === q ? 3 : bName.startsWith(q) ? 2 : (b.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
+      return 0;
     });
   }, [pendingArticles, searchQuery, siteFilter, categoryFilter]);
 
