@@ -372,12 +372,28 @@ function ArticlesContent() {
         search
       );
 
-    const matchStatus = !statusFilter || a.status === statusFilter;
-    const matchWriter = !writerFilter || a.writer?.name === writerFilter;
-    const matchSite = !siteFilter || a.product.site.name === siteFilter;
+    const matchStatus = !statusFilter || a.status?.toUpperCase() === statusFilter.toUpperCase();
+    const matchWriter = !writerFilter || (Boolean(a.writer?.name) && a.writer.name.toLowerCase() === writerFilter.toLowerCase());
+    const matchSite = !siteFilter || (Boolean(a.product?.site?.name) && a.product.site.name.toLowerCase() === siteFilter.toLowerCase());
 
     return matchSearch && matchStatus && matchWriter && matchSite;
   });
+
+  const activeFiltersCount = [
+    Boolean(search),
+    Boolean(statusFilter),
+    Boolean(writerFilter),
+    Boolean(siteFilter),
+  ].filter(Boolean).length;
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setWriterFilter("");
+    setSiteFilter("");
+    setCurrentPage(1);
+    router.replace("/articles");
+  };
 
   const sortedFiltered = useMemo(() => {
     if (!search || !search.trim()) return filtered;
@@ -824,6 +840,17 @@ function ArticlesContent() {
             ...uniqueSites.map((s) => ({ value: s, label: s })),
           ]}
         />
+
+        {activeFiltersCount > 0 && (
+          <button
+            onClick={handleResetFilters}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/80 rounded-xl transition cursor-pointer border border-rose-200/60 shadow-2xs active:scale-98"
+            title="Clear all active filters"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset ({activeFiltersCount})</span>
+          </button>
+        )}
       </div>
 
       {/* Bulk Actions Bar */}
