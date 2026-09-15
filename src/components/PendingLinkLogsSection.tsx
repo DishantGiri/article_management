@@ -539,7 +539,7 @@ export default function PendingLinkLogsSection({
   const searchFilteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return products;
     return products.filter((p) =>
-      fuzzyMatchAny([p.name, p.site?.name], searchQuery)
+      fuzzyMatchAny([p.name, (p as any).slug], searchQuery)
     );
   }, [products, searchQuery]);
 
@@ -701,7 +701,7 @@ export default function PendingLinkLogsSection({
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search pending product or site..."
+                placeholder="Search pending products by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-8 py-1.5 text-xs bg-white dark:bg-slate-800 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-[#4A4A4A] dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] shadow-2xs transition-all"
