@@ -297,27 +297,24 @@ function ProductsPageContent() {
         search
       );
 
-    const isExactSearchMatch = Boolean(
-      search &&
-      (p.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
-       p.slug?.toLowerCase().trim() === search.toLowerCase().trim() ||
-       p.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
-    );
-
     const matchSite =
       !siteFilter ||
-      isExactSearchMatch ||
       p.site?.id?.toString() === siteFilter ||
       p.siteId?.toString() === siteFilter ||
       (p.site?.name && p.site.name.toLowerCase() === siteFilter.toLowerCase());
 
+    const selectedCategoryObj = categories.find(
+      (c) => String(c.id) === categoryFilter || c.name.toLowerCase() === categoryFilter.toLowerCase()
+    );
+    const selectedCategoryName = selectedCategoryObj ? selectedCategoryObj.name.toLowerCase() : categoryFilter.toLowerCase();
+    const selectedCategoryIdStr = selectedCategoryObj ? String(selectedCategoryObj.id) : categoryFilter;
+
     const matchCategory =
       !categoryFilter ||
-      isExactSearchMatch ||
-      p.category?.id?.toString() === categoryFilter ||
-      p.categoryId?.toString() === categoryFilter ||
-      (p.category?.name && p.category.name.toLowerCase() === categoryFilter.toLowerCase()) ||
-      (p.productCategory && p.productCategory.toLowerCase() === categoryFilter.toLowerCase());
+      p.category?.id?.toString() === selectedCategoryIdStr ||
+      p.categoryId?.toString() === selectedCategoryIdStr ||
+      (p.category?.name && p.category.name.toLowerCase() === selectedCategoryName) ||
+      (p.productCategory && p.productCategory.toLowerCase() === selectedCategoryName);
     
     // Status Filter
     let matchStatus = true;
@@ -326,9 +323,7 @@ function ProductsPageContent() {
     const currentStatus = (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
       ? "PENDING"
       : rawStatus;
-    if (isExactSearchMatch) {
-      matchStatus = true;
-    } else if (statusFilter) {
+    if (statusFilter) {
       matchStatus = currentStatus === statusFilter;
     } else if (currentUserRole === "WRITER") {
       // By default, remove completed & approved products from writer's available queue
@@ -396,26 +391,24 @@ function ProductsPageContent() {
         search
       );
 
-    const isExactSearchMatch = Boolean(
-      search &&
-      (a.product?.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
-       a.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim() ||
-       a.product?.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
-    );
-
     const matchSite =
       !siteFilter ||
-      isExactSearchMatch ||
       a.product?.site?.id?.toString() === siteFilter ||
       (a.product?.site?.name && a.product.site.name.toLowerCase() === siteFilter.toLowerCase());
 
+    const selectedCategoryObj = categories.find(
+      (c) => String(c.id) === categoryFilter || c.name.toLowerCase() === categoryFilter.toLowerCase()
+    );
+    const selectedCategoryName = selectedCategoryObj ? selectedCategoryObj.name.toLowerCase() : categoryFilter.toLowerCase();
+    const selectedCategoryIdStr = selectedCategoryObj ? String(selectedCategoryObj.id) : categoryFilter;
+
     const matchCategory =
       !categoryFilter ||
-      isExactSearchMatch ||
-      a.product?.category?.id?.toString() === categoryFilter ||
-      (a.product?.category?.name && a.product.category.name.toLowerCase() === categoryFilter.toLowerCase());
+      a.product?.category?.id?.toString() === selectedCategoryIdStr ||
+      (a.product?.category?.name && a.product.category.name.toLowerCase() === selectedCategoryName) ||
+      (a.product?.productCategory && a.product.productCategory.toLowerCase() === selectedCategoryName);
 
-    const matchStatus = !statusFilter || a.status === statusFilter || isExactSearchMatch;
+    const matchStatus = !statusFilter || a.status === statusFilter;
 
     return matchSearch && matchSite && matchCategory && matchStatus;
   });

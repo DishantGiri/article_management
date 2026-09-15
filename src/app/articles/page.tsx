@@ -372,16 +372,9 @@ function ArticlesContent() {
         search
       );
 
-    // Exact search match override guarantees that the specific notification item is always displayed
-    const isExactSearchMatch = Boolean(
-      search &&
-      (a.product?.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
-       a.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim())
-    );
-
-    const matchStatus = !statusFilter || a.status === statusFilter || isExactSearchMatch;
-    const matchWriter = !writerFilter || a.writer?.name === writerFilter || isExactSearchMatch;
-    const matchSite = !siteFilter || a.product.site.name === siteFilter || isExactSearchMatch;
+    const matchStatus = !statusFilter || a.status === statusFilter;
+    const matchWriter = !writerFilter || a.writer?.name === writerFilter;
+    const matchSite = !siteFilter || a.product.site.name === siteFilter;
 
     return matchSearch && matchStatus && matchWriter && matchSite;
   });

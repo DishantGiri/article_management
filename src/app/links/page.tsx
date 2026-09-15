@@ -271,13 +271,6 @@ function LinksPageContent() {
         search
       );
 
-    const isExactSearchMatch = Boolean(
-      search &&
-      (l.product?.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
-       l.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim() ||
-       l.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
-    );
-
     const matchStatus = !statusFilter || (
       statusFilter === "ISSUE"
         ? (l.status === "ISSUE" || l.status === "NEED_TO_CHECK" || l.status === "ALERT")
