@@ -14,6 +14,7 @@ import {
   Globe,
   ShieldCheck,
   Plus,
+  Lock,
 } from "lucide-react";
 import {
   LATAM_CODES,
@@ -100,8 +101,6 @@ const isValidUrl = (url: string) => {
 
 export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: EditLinkModalProps) {
   const { data: session } = useSession();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
   const [dbAffiliates, setDbAffiliates] = useState<{ id: number; name: string }[]>([]);
   const [dbGeos, setDbGeos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -131,21 +130,18 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
   const isInitializingRef = useRef(false);
 
-  const selectedProduct = useMemo(
-    () =>
-      products.find((p) => String(p.id) === productId) ||
-      (link?.product
-        ? {
-            id: link.productId,
-            name: link.product.name,
-            site: link.product.site || { name: "Unassigned" },
-            trendLink: link.product.trendLink,
-            previewLink: link.product.previewLink,
-            article: link.product.article,
-          }
-        : null),
-    [products, productId, link]
-  );
+  const selectedProduct = useMemo(() => {
+    if (!link?.product) return null;
+    return {
+      id: link.productId || link.product.id || 0,
+      name: link.product.name,
+      slug: link.product.slug,
+      site: link.product.site || { name: "Unassigned" },
+      trendLink: link.product.trendLink,
+      previewLink: link.product.previewLink,
+      article: link.product.article,
+    };
+  }, [link]);
 
   const allAffiliates = useMemo(() => dbAffiliates.map((a) => a.name), [dbAffiliates]);
   const allGeos = dbGeos;
@@ -368,16 +364,6 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       setError("");
       setBridgePageLinkError("");
       setBuyLinkError("");
-
-      setLoadingProducts(true);
-      fetch("/api/products")
-        .then((r) => r.json())
-        .then((data) => {
-          const fetchedProds = Array.isArray(data) ? data : [];
-          setProducts(fetchedProds);
-        })
-        .catch(() => setError("Failed to load products"))
-        .finally(() => setLoadingProducts(false));
     }
   }, [isOpen, link]);
 
@@ -650,35 +636,37 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
             </div>
           )}
 
-          {/* Section 1: Product Selection (Dropdown) */}
+          {/* Section 1: Associated Product (Locked) */}
           <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 shadow-xs">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                Product <span className="text-rose-500">*</span>
+                Product
               </label>
-              {selectedProduct && (
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  ID: <strong className="text-slate-800 dark:text-slate-200">#{selectedProduct.id}</strong>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700">
+                  <Lock className="w-3 h-3 text-slate-400" />
+                  Locked to Link Log
                 </span>
-              )}
+                {selectedProduct && (
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    ID: <strong className="text-slate-800 dark:text-slate-200">#{selectedProduct.id}</strong>
+                  </span>
+                )}
+              </div>
             </div>
 
-            <CustomSelect
-              value={productId}
-              onChange={(val) => setProductId(val)}
-              placeholder="Select Product from Dropdown..."
-              disabled={loadingProducts}
-              searchable={true}
-              searchPlaceholder="Search products by name or site..."
-              options={products.map((p) => {
-                const isUnlinked = !p.linkLogs || p.linkLogs.length === 0;
-                return {
-                  value: String(p.id),
-                  label: `${p.name} — (Site: ${p.site?.name || "Unassigned"}) ${isUnlinked ? "⚠️ (Needs Link Logs)" : ""}`,
-                };
-              })}
-            />
+            <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-200">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="truncate">{selectedProduct?.name || "Unknown Product"}</span>
+                {selectedProduct?.site?.name && (
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/80 dark:border-slate-700 shrink-0">
+                    Site: {selectedProduct.site.name}
+                  </span>
+                )}
+              </div>
+              <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+            </div>
 
             {/* Product Quick-Info Bar if selected */}
             {selectedProduct && (
