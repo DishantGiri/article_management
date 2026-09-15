@@ -200,35 +200,98 @@ function ArticlesContent() {
     if (selectedArticleIds.length === 0 || bulkApproving) return;
     setBulkApproving(true);
     try {
-      const validArticles = articles.filter(
-        (a) => selectedArticleIds.includes(a.id) && a.writer?.id
-      );
-      if (validArticles.length === 0) {
-        toast.error("Cannot approve articles with no assigned writer.");
-        return;
-      }
-      const promises = validArticles.map((article) =>
-        fetch("/api/reviews", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            articleId: article.id,
-            reviewedById: currentUserId,
-            approved: true,
-            suggestion: "Bulk approved by Team Lead",
-          }),
-        }).then((r) => r.json())
+      const selectedArticles = articles.filter((a) =>
+        selectedArticleIds.includes(a.id)
       );
 
-      await Promise.all(promises);
-      toast.success(`Successfully approved ${selectedArticleIds.length} article(s)!`);
-      setSelectedArticleIds([]);
-      const stored = session?.user?.id || currentUserId;
-      if (stored) {
-        const res = await fetch(`/api/articles?userId=${stored}`);
-        const data = await res.json();
-        if (Array.isArray(data)) setArticles(data);
+      const inProgressArticles = selectedArticles.filter(
+        (a) => a.status === "IN_PROGRESS"
+      );
+      const pendingArticles = selectedArticles.filter(
+        (a) => a.status === "PENDING"
+      );
+      const redoArticles = selectedArticles.filter(
+        (a) => a.status === "REDO"
+      );
+      const unassignedArticles = selectedArticles.filter(
+        (a) => !a.writer?.id
+      );
+      const eligibleArticles = selectedArticles.filter(
+        (a) => a.status === "COMPLETED" && a.writer?.id
+      );
+
+      if (eligibleArticles.length === 0) {
+        if (inProgressArticles.length > 0) {
+          const name = inProgressArticles[0].product?.name || "Article";
+          toast.error(
+            inProgressArticles.length === 1
+              ? `Cannot approve "${name}" while still In Progress. Please wait for the writer to complete and submit it.`
+              : `Cannot approve ${inProgressArticles.length} article(s) while still In Progress. Only Completed articles can be approved.`
+          );
+        } else if (pendingArticles.length > 0) {
+          toast.error("Cannot approve articles that have not been started yet.");
+        } else if (redoArticles.length > 0) {
+          toast.error("Cannot approve articles awaiting revision from the writer.");
+        } else if (unassignedArticles.length > 0) {
+          toast.error("Cannot approve articles with no assigned writer.");
+        } else {
+          toast.error("No articles eligible for approval. Only Completed articles can be approved.");
+        }
+        return;
       }
+
+      // If some were eligible but others were in-progress or ineligible, notify user
+      const skippedCount = selectedArticles.length - eligibleArticles.length;
+      if (skippedCount > 0) {
+        if (inProgressArticles.length > 0) {
+          toast.error(
+            `Skipped ${inProgressArticles.length} In-Progress article(s). Only Completed articles can be approved.`
+          );
+        } else {
+          toast.error(`Skipped ${skippedCount} ineligible article(s). Only Completed articles can be approved.`);
+        }
+      }
+
+      const results = await Promise.all(
+        eligibleArticles.map(async (article) => {
+          try {
+            const res = await fetch("/api/reviews", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                articleId: article.id,
+                reviewedById: currentUserId,
+                approved: true,
+                suggestion: "Bulk approved by Team Lead",
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              return { success: false, id: article.id, error: data.error || "Failed to approve article" };
+            }
+            return { success: true, id: article.id };
+          } catch (err: any) {
+            return { success: false, id: article.id, error: err.message || "Network error" };
+          }
+        })
+      );
+
+      const approvedCount = results.filter((r) => r.success).length;
+      const failed = results.filter((r) => !r.success);
+
+      if (approvedCount > 0) {
+        toast.success(`Successfully approved ${approvedCount} article(s)!`);
+      }
+
+      if (failed.length > 0) {
+        toast.error(failed[0].error);
+      }
+
+      // Remove successfully approved article IDs from selection
+      const approvedIds = results.filter((r) => r.success).map((r) => r.id);
+      setSelectedArticleIds((prev) => prev.filter((id) => !approvedIds.includes(id)));
+
+      await fetchArticlesList();
     } catch (err: any) {
       toast.error(err.message || "Failed to bulk approve articles");
     } finally {
@@ -810,16 +873,20 @@ function ArticlesContent() {
                         type="checkbox"
                         checked={
                           paginated.length > 0 &&
-                          paginated.filter((a: any) => a.status !== "APPROVED" && a.writer?.id).length > 0 &&
+                          paginated.filter((a: any) => a.status === "COMPLETED" && a.writer?.id).length > 0 &&
                           paginated
-                            .filter((a: any) => a.status !== "APPROVED" && a.writer?.id)
+                            .filter((a: any) => a.status === "COMPLETED" && a.writer?.id)
                             .every((a: any) => selectedArticleIds.includes(a.id))
                         }
                         onChange={(e) => {
                           if (e.target.checked) {
                             const eligibleIds = paginated
-                              .filter((a: any) => a.status !== "APPROVED" && a.writer?.id)
+                              .filter((a: any) => a.status === "COMPLETED" && a.writer?.id)
                               .map((a: any) => a.id);
+                            if (eligibleIds.length === 0) {
+                              toast.error("No completed articles ready for approval on this page.");
+                              return;
+                            }
                             setSelectedArticleIds((prev) => Array.from(new Set([...prev, ...eligibleIds])));
                           } else {
                             const pageIds = paginated.map((a: any) => a.id);
@@ -827,7 +894,7 @@ function ArticlesContent() {
                           }
                         }}
                         className="w-4 h-4 rounded border-slate-300 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
-                        title="Select all unapproved articles with assigned writers on current page"
+                        title="Select all completed articles ready for approval on current page"
                       />
                     </th>
                   )}
@@ -870,7 +937,7 @@ function ArticlesContent() {
                     >
                       {isManager && (
                         <td className="px-3 py-3.5 text-center">
-                          {a.status !== "APPROVED" && a.writer?.id ? (
+                          {a.status === "COMPLETED" && a.writer?.id ? (
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -880,11 +947,24 @@ function ArticlesContent() {
                                 );
                               }}
                               className="w-4 h-4 rounded border-slate-300 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
+                              title="Select article to approve"
                             />
                           ) : a.status === "APPROVED" ? (
                             <span className="text-emerald-600 font-bold text-xs" title="Already Approved">✓</span>
+                          ) : a.status === "IN_PROGRESS" ? (
+                            <span
+                              className="text-slate-300 text-xs font-bold select-none cursor-not-allowed"
+                              title="In Progress — writer is actively drafting. Cannot approve until completed."
+                            >
+                              -
+                            </span>
                           ) : (
-                            <span className="text-slate-300 text-xs" title="Unassigned — cannot approve">-</span>
+                            <span
+                              className="text-slate-300 text-xs select-none cursor-not-allowed"
+                              title={!a.writer?.id ? "Unassigned — cannot approve" : "Cannot approve in current status"}
+                            >
+                              -
+                            </span>
                           )}
                         </td>
                       )}

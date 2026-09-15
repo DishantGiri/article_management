@@ -175,7 +175,7 @@ export default function AddProductModal({
   // Batch Fill Helpers
   const [batchCategory, setBatchCategory] = useState("");
   const [batchAffiliate, setBatchAffiliate] = useState("");
-  const [batchTrendLevel, setBatchTrendLevel] = useState("HIGH");
+  const [batchTrendLevel, setBatchTrendLevel] = useState("");
   const [showSitesDrawer, setShowSitesDrawer] = useState(false);
 
   // Silently parses text into spreadsheet rows without showing a toast.
@@ -295,6 +295,16 @@ export default function AddProductModal({
   };
 
   const applyBatchToAll = () => {
+    if (!batchCategory && !batchAffiliate && !batchTrendLevel) {
+      toast.error("Please select at least one field (Category, Affiliate Network, or Trend Level) to apply to all rows.");
+      return;
+    }
+
+    if (spreadsheetRows.length === 0) {
+      toast.error("No spreadsheet rows to apply values to.");
+      return;
+    }
+
     setSpreadsheetRows((prev) =>
       prev.map((row) => ({
         ...row,
@@ -404,7 +414,7 @@ export default function AddProductModal({
       ]);
       setBatchCategory("");
       setBatchAffiliate("");
-      setBatchTrendLevel("HIGH");
+      setBatchTrendLevel("");
       setShowSitesDrawer(false);
       setForm({
         categoryIds: [],
@@ -1024,6 +1034,7 @@ export default function AddProductModal({
                           <CustomSelect
                             value={batchTrendLevel}
                             onChange={(val) => setBatchTrendLevel(val)}
+                            placeholder="Select trend level..."
                             className="w-full"
                             triggerClassName="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
                             options={[
