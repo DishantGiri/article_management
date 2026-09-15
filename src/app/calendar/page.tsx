@@ -38,6 +38,7 @@ interface ActivityItem {
   status?: string | null;
   link?: string | null;
   durationMin?: number | null;
+  rawTimestamp?: string;
 }
 
 interface CalendarDay {
@@ -103,7 +104,7 @@ function CalendarContent() {
   const [error, setError] = useState("");
 
   const [selectedMonth, setSelectedMonth] = useState(
-    searchParams.get("month") || moment().format("YYYY-MM")
+    searchParams.get("month") || moment().utcOffset("+05:45").format("YYYY-MM")
   );
   const [selectedUserId, setSelectedUserId] = useState<number | null>(
     searchParams.get("userId") ? parseInt(searchParams.get("userId")!) : null
@@ -149,7 +150,7 @@ function CalendarContent() {
   };
 
   const handleTodayMonth = () => {
-    setSelectedMonth(moment().format("YYYY-MM"));
+    setSelectedMonth(moment().utcOffset("+05:45").format("YYYY-MM"));
   };
 
   const formatWritingTime = (mins: number) => {
@@ -521,9 +522,14 @@ function CalendarContent() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Work Activity Timeline ({inspectingDay.activities.length})
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Work Activity Timeline ({inspectingDay.activities.length})
+                    </p>
+                    <span className="text-[10px] font-bold text-[#6D8196] bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60">
+                      NPT (UTC+5:45)
+                    </span>
+                  </div>
 
                   <div className="space-y-2.5">
                     {inspectingDay.activities.map((item) => {
@@ -549,7 +555,10 @@ function CalendarContent() {
                               </div>
                             </div>
 
-                            <span className="text-[11px] font-mono font-semibold text-slate-400 whitespace-nowrap">
+                            <span
+                              className="text-[11px] font-mono font-semibold text-slate-400 whitespace-nowrap"
+                              title="Nepal Time (NPT)"
+                            >
                               {item.time}
                             </span>
                           </div>

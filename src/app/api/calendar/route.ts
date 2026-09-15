@@ -4,6 +4,26 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import moment from "moment";
 
+const NPT_OFFSET = "+05:45";
+
+/**
+ * Returns a moment instance converted to Nepal Time (NPT, UTC+5:45)
+ */
+function toNpt(date?: Date | string | number | moment.Moment) {
+  if (!date) return moment().utcOffset(NPT_OFFSET);
+  return moment(date).utcOffset(NPT_OFFSET);
+}
+
+/**
+ * Parse a YYYY-MM month string in NPT context
+ */
+function parseNptMonth(monthStr?: string | null) {
+  if (monthStr && moment(monthStr, "YYYY-MM", true).isValid()) {
+    return moment(monthStr, "YYYY-MM").utcOffset(NPT_OFFSET, true);
+  }
+  return toNpt().startOf("month");
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -110,10 +130,9 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // Determine target month boundaries
-    const currentMoment = monthParam && moment(monthParam, "YYYY-MM", true).isValid()
-      ? moment(monthParam, "YYYY-MM")
-      : moment();
+    // Determine target month boundaries in NPT (Nepal Time, UTC+5:45)
+    const nowNpt = toNpt();
+    const currentMoment = parseNptMonth(monthParam);
 
     const startOfMonth = currentMoment.clone().startOf("month").toDate();
     const endOfMonth = currentMoment.clone().endOf("month").toDate();
@@ -239,7 +258,7 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    // Group activities by date string "YYYY-MM-DD"
+    // Group activities by date string "YYYY-MM-DD" in NPT
     interface ActivityItem {
       id: string;
       time: string;
@@ -251,12 +270,13 @@ export async function GET(req: NextRequest) {
       status?: string | null;
       link?: string | null;
       durationMin?: number | null;
+      rawTimestamp?: string;
     }
 
     const dailyActivities: Record<string, ActivityItem[]> = {};
 
     const addActivity = (dateObj: Date, item: ActivityItem) => {
-      const dateKey = moment(dateObj).format("YYYY-MM-DD");
+      const dateKey = toNpt(dateObj).format("YYYY-MM-DD");
       if (!dailyActivities[dateKey]) {
         dailyActivities[dateKey] = [];
       }
@@ -268,7 +288,7 @@ export async function GET(req: NextRequest) {
       if (!art.completedAt) return;
       addActivity(art.completedAt, {
         id: `completed-${art.id}`,
-        time: moment(art.completedAt).format("hh:mm A"),
+        time: toNpt(art.completedAt).format("hh:mm A"),
         category: "ARTICLE",
         badge: "Article Completed",
         title: art.product.name,
@@ -277,24 +297,26 @@ export async function GET(req: NextRequest) {
         status: art.status,
         link: art.articleLink,
         durationMin: art.writingTimeMin,
+        rawTimestamp: art.completedAt.toISOString(),
       });
     });
 
-    // Process Started Articles (only if distinct from completed timestamp on the same day)
+    // Process Started Articles (only if distinct from completed timestamp on the same day in NPT)
     articlesStarted.forEach((art) => {
       if (!art.startedAt) return;
-      const startedDay = moment(art.startedAt).format("YYYY-MM-DD");
-      const completedDay = art.completedAt ? moment(art.completedAt).format("YYYY-MM-DD") : null;
+      const startedDay = toNpt(art.startedAt).format("YYYY-MM-DD");
+      const completedDay = art.completedAt ? toNpt(art.completedAt).format("YYYY-MM-DD") : null;
       if (startedDay !== completedDay || !art.completedAt) {
         addActivity(art.startedAt, {
           id: `started-${art.id}`,
-          time: moment(art.startedAt).format("hh:mm A"),
+          time: toNpt(art.startedAt).format("hh:mm A"),
           category: "ARTICLE",
           badge: "Article Started",
           title: art.product.name,
           subtitle: `Site: ${art.product.site.name} • ${art.product.category.name}`,
           details: `Writing timer initiated. Current status: ${art.status}.`,
           status: art.status,
+          rawTimestamp: art.startedAt.toISOString(),
         });
       }
     });
@@ -329,7 +351,7 @@ export async function GET(req: NextRequest) {
       const rawDetails = hist.notes || (hist.oldStatus && hist.newStatus ? `Status: ${hist.oldStatus} → ${hist.newStatus}` : "Updated article record");
       addActivity(hist.updatedAt, {
         id: `arthist-${hist.id}`,
-        time: moment(hist.updatedAt).format("hh:mm A"),
+        time: toNpt(hist.updatedAt).format("hh:mm A"),
         category: "ARTICLE",
         badge: hist.newStatus === "REDO" ? "Revision Required" : "Article Updated",
         title: hist.article.product.name,
@@ -337,6 +359,7 @@ export async function GET(req: NextRequest) {
         details: sanitizeActivityDetails(rawDetails),
         status: hist.newStatus,
         link: hist.newLink,
+        rawTimestamp: hist.updatedAt.toISOString(),
       });
     });
 
@@ -344,7 +367,7 @@ export async function GET(req: NextRequest) {
     linksAdded.forEach((link) => {
       addActivity(link.addedAt, {
         id: `linkadd-${link.id}`,
-        time: moment(link.addedAt).format("hh:mm A"),
+        time: toNpt(link.addedAt).format("hh:mm A"),
         category: "LINK",
         badge: "Link Added",
         title: `${link.affiliateName} Link`,
@@ -352,6 +375,7 @@ export async function GET(req: NextRequest) {
         details: link.linkerRemarks || `Affiliate link recorded for ${link.product.name}`,
         status: link.status,
         link: link.affiliateLink || link.buyLink,
+        rawTimestamp: link.addedAt.toISOString(),
       });
     });
 
@@ -359,7 +383,7 @@ export async function GET(req: NextRequest) {
     linkHistories.forEach((hist) => {
       addActivity(hist.updatedAt, {
         id: `linkhist-${hist.id}`,
-        time: moment(hist.updatedAt).format("hh:mm A"),
+        time: toNpt(hist.updatedAt).format("hh:mm A"),
         category: "LINK",
         badge: "Link Modified",
         title: `${hist.linkLog.affiliateName} Link Update`,
@@ -367,6 +391,7 @@ export async function GET(req: NextRequest) {
         details: hist.newRemarks || (hist.oldStatus && hist.newStatus ? `Status: ${hist.oldStatus} → ${hist.newStatus}` : "Modified link log details"),
         status: hist.newStatus,
         link: hist.newAffiliateLink || hist.newBuyLink,
+        rawTimestamp: hist.updatedAt.toISOString(),
       });
     });
 
@@ -374,12 +399,13 @@ export async function GET(req: NextRequest) {
     productsAdded.forEach((prod) => {
       addActivity(prod.addedAt, {
         id: `prodadd-${prod.id}`,
-        time: moment(prod.addedAt).format("hh:mm A"),
+        time: toNpt(prod.addedAt).format("hh:mm A"),
         category: "PRODUCT",
         badge: "Product Created",
         title: prod.name,
         subtitle: `Site: ${prod.site.name} • Category: ${prod.category.name}`,
         details: prod.remarks || `New product created and assigned for article generation.`,
+        rawTimestamp: prod.addedAt.toISOString(),
       });
     });
 
@@ -388,19 +414,20 @@ export async function GET(req: NextRequest) {
       const rawDetails = rev.suggestion || (rev.approved ? "Article approved by reviewer." : "Redo revision requested.");
       addActivity(rev.reviewedAt, {
         id: `rev-${rev.id}`,
-        time: moment(rev.reviewedAt).format("hh:mm A"),
+        time: toNpt(rev.reviewedAt).format("hh:mm A"),
         category: "REVIEW",
         badge: rev.approved ? "Review Approved" : "Changes Requested",
         title: rev.article.product.name,
         subtitle: `Writer: ${rev.article.writer?.name || "Unassigned"} • Site: ${rev.article.product.site.name}`,
         details: sanitizeActivityDetails(rawDetails),
         status: rev.approved ? "APPROVED" : "REDO",
+        rawTimestamp: rev.reviewedAt.toISOString(),
       });
     });
 
     // Construct response calendar days
     const totalDaysInMonth = currentMoment.daysInMonth();
-    const todayStr = moment().format("YYYY-MM-DD");
+    const todayStr = nowNpt.format("YYYY-MM-DD");
 
     let totalWorkingDays = 0;
     let totalNonWorkingDays = 0;
@@ -412,11 +439,18 @@ export async function GET(req: NextRequest) {
     for (let dayNum = 1; dayNum <= totalDaysInMonth; dayNum++) {
       const dayMoment = currentMoment.clone().date(dayNum);
       const dateKey = dayMoment.format("YYYY-MM-DD");
-      const isPastOrToday = dayMoment.isSameOrBefore(moment(), "day");
+      const isPastOrToday = dayMoment.isSameOrBefore(nowNpt, "day");
       const isToday = dateKey === todayStr;
       const dayOfWeek = dayMoment.day(); // 0 = Sunday, 6 = Saturday
 
       const items = dailyActivities[dateKey] || [];
+      // Sort items within each day chronologically descending (newest activity at the top)
+      items.sort((a, b) => {
+        if (a.rawTimestamp && b.rawTimestamp) {
+          return new Date(b.rawTimestamp).getTime() - new Date(a.rawTimestamp).getTime();
+        }
+        return 0;
+      });
       const hasWork = items.length > 0;
 
       if (isPastOrToday) {
@@ -432,8 +466,8 @@ export async function GET(req: NextRequest) {
         dayNumber: dayNum,
         dayOfWeek,
         isToday,
-        isPast: dayMoment.isBefore(moment(), "day"),
-        isFuture: dayMoment.isAfter(moment(), "day"),
+        isPast: dayMoment.isBefore(nowNpt, "day"),
+        isFuture: dayMoment.isAfter(nowNpt, "day"),
         isWorkingDay: hasWork,
         activityCount: items.length,
         activities: items,
