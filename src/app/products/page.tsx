@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -420,10 +420,36 @@ function ProductsPageContent() {
     return matchSearch && matchSite && matchCategory && matchStatus;
   });
 
-  const activeTotalCount = activeTab === "products" ? filtered.length : filteredMyArticles.length;
+  const sortedFiltered = useMemo(() => {
+    if (!search || !search.trim()) return filtered;
+    const q = search.trim().toLowerCase();
+    return [...filtered].sort((a, b) => {
+      const aName = (a.name || "").toLowerCase();
+      const bName = (b.name || "").toLowerCase();
+      const aExact = aName === q ? 3 : aName.startsWith(q) ? 2 : (a.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      const bExact = bName === q ? 3 : bName.startsWith(q) ? 2 : (b.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
+      return 0;
+    });
+  }, [filtered, search]);
+
+  const sortedFilteredMyArticles = useMemo(() => {
+    if (!search || !search.trim()) return filteredMyArticles;
+    const q = search.trim().toLowerCase();
+    return [...filteredMyArticles].sort((a, b) => {
+      const aName = (a.product?.name || "").toLowerCase();
+      const bName = (b.product?.name || "").toLowerCase();
+      const aExact = aName === q ? 3 : aName.startsWith(q) ? 2 : (a.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      const bExact = bName === q ? 3 : bName.startsWith(q) ? 2 : (b.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
+      return 0;
+    });
+  }, [filteredMyArticles, search]);
+
+  const activeTotalCount = activeTab === "products" ? sortedFiltered.length : sortedFilteredMyArticles.length;
   const totalPages = Math.ceil(activeTotalCount / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const paginatedMyArticles = filteredMyArticles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginated = sortedFiltered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedMyArticles = sortedFilteredMyArticles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;

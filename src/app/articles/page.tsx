@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag, Calendar } from "lucide-react";
@@ -386,8 +386,21 @@ function ArticlesContent() {
     return matchSearch && matchStatus && matchWriter && matchSite;
   });
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const sortedFiltered = useMemo(() => {
+    if (!search || !search.trim()) return filtered;
+    const q = search.trim().toLowerCase();
+    return [...filtered].sort((a, b) => {
+      const aName = (a.product?.name || "").toLowerCase();
+      const bName = (b.product?.name || "").toLowerCase();
+      const aExact = aName === q ? 3 : aName.startsWith(q) ? 2 : (a.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      const bExact = bName === q ? 3 : bName.startsWith(q) ? 2 : (b.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
+      return 0;
+    });
+  }, [filtered, search]);
+
+  const totalPages = Math.ceil(sortedFiltered.length / itemsPerPage);
+  const paginated = sortedFiltered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;

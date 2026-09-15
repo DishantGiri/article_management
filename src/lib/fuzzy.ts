@@ -2,11 +2,17 @@
  * High-performance Fuzzy Search Utility for Product & Entity Search Boxes
  *
  * Supports:
- * 1. Exact substring matching (case-insensitive)
- * 2. Word boundary & prefix matching (e.g. "whey" in "Alpha Whey Protein")
- * 3. Multi-token out-of-order matching (e.g. "protein alpha" matches "Alpha Whey Protein")
- * 4. Subsequence / acronym matching (e.g. "awp" matches "Alpha Whey Protein")
- * 5. Typo tolerance via Levenshtein edit distance (e.g. "protien" -> "protein", "crreatine" -> "creatine")
+ * 1. Exact match (100)
+ * 2. Prefix match (95)
+ * 3. Word-level prefix match (e.g. "whey" matches "Alpha Whey Protein") (85-90)
+ * 4. Multi-token out-of-order matching (e.g. "protein alpha" matches "Alpha Whey Protein") (80)
+ * 5. Acronym / initials matching for multi-word targets (e.g. "awp" matches "Alpha Whey Protein") (70-75)
+ * 6. Substring & typo tolerance ONLY for longer queries (5+ chars) (65-75)
+ *
+ * Short Query Rule (1-4 chars):
+ * Queries with 1-4 characters require exact match, whole-string prefix, or word-boundary prefix.
+ * Arbitrary middle-of-word substrings and typo-edit distances are disabled to prevent
+ * massive false positive explosions (e.g. "hi" matching "v", "health", "Shiridhar", "Dolphin").
  */
 
 /**
@@ -39,22 +45,6 @@ function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
- * Checks if query characters appear in target in sequential order.
- */
-function isSubsequence(target: string, query: string): boolean {
-  if (!query) return true;
-  if (query.length > target.length) return false;
-
-  let qIdx = 0;
-  for (let tIdx = 0; tIdx < target.length && qIdx < query.length; tIdx++) {
-    if (target[tIdx] === query[qIdx]) {
-      qIdx++;
-    }
-  }
-  return qIdx === query.length;
-}
-
-/**
  * Cleans and normalizes text for robust comparisons.
  */
 function normalize(text: string): string {
@@ -62,7 +52,10 @@ function normalize(text: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // remove accents
-    .replace(/[_\-\\/.,+&]/g, " ") // replace delimiters with spaces
+    .replace(/([a-z])([A-Z])/g, "$1 $2") // split camelCase e.g. UltraHi -> Ultra Hi
+    .replace(/([a-zA-Z])(\d)/g, "$1 $2") // split letter-number e.g. Whey1 -> Whey 1
+    .replace(/(\d)([a-zA-Z])/g, "$1 $2")
+    .replace(/[_\-\\/.,+&()|[\]{}:;!?'"`~*^%$#@]/g, " ") // replace delimiters with spaces
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -86,59 +79,76 @@ export function fuzzyScore(rawTarget: string | null | undefined, rawQuery: strin
   // 2. Exact prefix
   if (target.startsWith(query)) return 95;
 
-  // 3. Exact substring match
-  if (target.includes(query)) return 90;
-
-  // 4. Multi-token match (all words in query must match a word or prefix in target)
   const queryTokens = query.split(" ").filter(Boolean);
   const targetTokens = target.split(" ").filter(Boolean);
 
+  if (queryTokens.length === 0) return 100;
+
+  const isShortQuery = query.length <= 4;
+
+  // 3. Multi-token query (e.g. "whey pro" or "alpha whey")
   if (queryTokens.length > 1) {
     const allTokensMatch = queryTokens.every((qTok) =>
-      targetTokens.some(
-        (tTok) =>
-          tTok.includes(qTok) ||
-          (qTok.length >= 3 && levenshteinDistance(tTok, qTok) <= (qTok.length > 5 ? 2 : 1))
-      )
+      targetTokens.some((tTok) => {
+        if (qTok.length <= 4) {
+          return tTok.startsWith(qTok);
+        } else {
+          return (
+            tTok.includes(qTok) ||
+            (Math.abs(tTok.length - qTok.length) <= 1 && levenshteinDistance(tTok, qTok) <= 1)
+          );
+        }
+      })
     );
     if (allTokensMatch) return 85;
+    return 0;
   }
 
-  // 5. Individual word match or word-prefix match
+  const qTok = queryTokens[0];
+
+  // 4. Word-prefix match (any word in target starts with the query token)
+  // e.g. "hi" in "Alpha High" or "Hi-Tech", "whey" in "Alpha Whey Protein"
+  const hasWordPrefix = targetTokens.some((tTok) => tTok.startsWith(qTok));
+  if (hasWordPrefix) {
+    // If one of the words is exactly the query token, score higher
+    if (targetTokens.some((tTok) => tTok === qTok)) {
+      return 90;
+    }
+    return 85;
+  }
+
+  // 5. Acronym / Initials match for multi-word targets (e.g. "awp" in "Alpha Whey Protein")
+  if (targetTokens.length >= 2 && qTok.length >= 2 && qTok.length <= targetTokens.length) {
+    const initials = targetTokens.map((t) => t[0]).join("");
+    if (initials === qTok) {
+      return 75;
+    }
+    if (initials.startsWith(qTok)) {
+      return 70;
+    }
+  }
+
+  // FOR SHORT QUERIES (1-4 chars): STOP HERE!
+  // Do NOT allow middle-of-word substrings (e.g. "hi" in "Shiridhar" or "Dolphin")
+  // Do NOT allow typo edit distance (e.g. "hi" matching "ti", "fi", "he")
+  if (isShortQuery) {
+    return 0;
+  }
+
+  // 6. Substring match for longer queries (5+ characters)
+  // e.g. query "protein" inside "UltraProteinPlus"
+  if (target.includes(qTok)) return 75;
+
+  // 7. Typo-tolerant match for longer single-word queries (5+ characters)
+  // e.g. query "protien" (7 chars) for "protein" (dist 1)
+  const maxAllowedDistance = qTok.length <= 6 ? 1 : 2;
   for (const tTok of targetTokens) {
-    if (tTok.startsWith(query)) return 80;
-    if (tTok.includes(query)) return 75;
-  }
-
-  // 6. Typo-tolerant match for single-word queries
-  if (queryTokens.length === 1) {
-    const qTok = queryTokens[0];
-    const maxAllowedDistance = qTok.length <= 3 ? 1 : qTok.length <= 6 ? 2 : 3;
-
-    for (const tTok of targetTokens) {
-      // Direct word edit distance
+    if (Math.abs(tTok.length - qTok.length) <= maxAllowedDistance) {
       const dist = levenshteinDistance(tTok, qTok);
       if (dist <= maxAllowedDistance) {
         return 70 - dist * 5;
       }
-
-      // Check prefix edit distance (e.g. target="protein", query="protin" or "proten")
-      if (tTok.length > qTok.length) {
-        const prefix = tTok.slice(0, qTok.length);
-        if (levenshteinDistance(prefix, qTok) <= 1) {
-          return 65;
-        }
-      }
     }
-  }
-
-  // 7. Subsequence / Acronym match (e.g. "awp" in "alpha whey protein")
-  if (query.length >= 2 && isSubsequence(target.replace(/\s+/g, ""), query.replace(/\s+/g, ""))) {
-    const initials = targetTokens.map((t) => t[0]).join("");
-    if (initials.includes(query.replace(/\s+/g, ""))) {
-      return 60;
-    }
-    return 50;
   }
 
   return 0;
@@ -162,22 +172,35 @@ export function fuzzyMatchAny(
 ): boolean {
   if (!query || !query.trim()) return true;
 
-  // Fast path: direct includes check on any field
   const qLower = query.toLowerCase().trim();
+  const isShort = qLower.length <= 4;
+
+  if (isShort) {
+    // For short queries (1-4 characters):
+    // Require word-prefix, exact match, or initials match via fuzzyScore
+    for (const field of fields) {
+      if (field && fuzzyScore(field, query) >= minScore) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // For longer queries (5+ characters):
+  // Fast path: direct includes check
   for (const field of fields) {
     if (field && field.toLowerCase().includes(qLower)) {
       return true;
     }
   }
 
-  // Fuzzy score check on each field
   for (const field of fields) {
     if (field && fuzzyScore(field, query) >= minScore) {
       return true;
     }
   }
 
-  // Also check combined fields string (e.g. "Alpha Whey Protein Ecomm")
+  // Combined text check for multi-word queries across fields (e.g. "Alpha NutraVital")
   const combined = fields.filter(Boolean).join(" ");
   return fuzzyScore(combined, query) >= minScore;
 }
@@ -206,10 +229,12 @@ export function fuzzyFilter<T>(
       }
     }
 
-    // Check combined text
-    const combined = fields.filter(Boolean).join(" ");
-    const combinedScore = fuzzyScore(combined, query);
-    if (combinedScore > bestScore) bestScore = combinedScore;
+    // Check combined text only for longer queries (5+ chars)
+    if (query.trim().length >= 5) {
+      const combined = fields.filter(Boolean).join(" ");
+      const combinedScore = fuzzyScore(combined, query);
+      if (combinedScore > bestScore) bestScore = combinedScore;
+    }
 
     if (bestScore >= minScore) {
       scored.push({ item, score: bestScore });
