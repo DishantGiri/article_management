@@ -526,28 +526,44 @@ export default function PendingLinkLogsSection({
   const [isGrouped, setIsGrouped] = useState<boolean>(true);
   const [displayLimit, setDisplayLimit] = useState<number>(12);
 
-  // Extract unique site names with counts
+  // Extract all unique site names across all products so site pills remain consistent
+  const allUniqueSites = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      set.add(p.site?.name || "Unassigned");
+    });
+    return Array.from(set).sort();
+  }, [products]);
+
+  // Products matching search query (before site filtering)
+  const searchFilteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products;
+    return products.filter((p) =>
+      fuzzyMatchAny([p.name, p.site?.name], searchQuery)
+    );
+  }, [products, searchQuery]);
+
+  // Extract site counts dynamically based on search-filtered products
   const siteCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    products.forEach((p) => {
+    allUniqueSites.forEach((site) => {
+      counts[site] = 0;
+    });
+    searchFilteredProducts.forEach((p) => {
       const siteName = p.site?.name || "Unassigned";
       counts[siteName] = (counts[siteName] || 0) + 1;
     });
     return counts;
-  }, [products]);
+  }, [allUniqueSites, searchFilteredProducts]);
 
-  const uniqueSites = useMemo(() => Object.keys(siteCounts).sort(), [siteCounts]);
+  const uniqueSites = allUniqueSites;
 
-  // Filter individual product records
+  // Filter individual product records (search query + selected site)
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      const matchesSearch =
-        !searchQuery.trim() ||
-        fuzzyMatchAny([p.name, p.site?.name], searchQuery);
-      const matchesSite = selectedSite === "ALL" || (p.site?.name || "Unassigned") === selectedSite;
-      return matchesSearch && matchesSite;
+    return searchFilteredProducts.filter((p) => {
+      return selectedSite === "ALL" || (p.site?.name || "Unassigned") === selectedSite;
     });
-  }, [products, searchQuery, selectedSite]);
+  }, [searchFilteredProducts, selectedSite]);
 
   // Group filtered products by product name
   const groupedProducts = useMemo(() => {
@@ -590,7 +606,7 @@ export default function PendingLinkLogsSection({
               <span className="px-2.5 py-0.5 text-xs font-extrabold bg-[#FFFFE3] dark:bg-amber-950/60 text-[#4A4A4A] dark:text-amber-300 border border-[#CBCBCB] dark:border-amber-800/60 rounded-full">
                 {isGrouped
                   ? `${groupedProducts.length} ${groupedProducts.length === 1 ? "Product" : "Products"} (${filteredProducts.length} Links)`
-                  : `${products.length} ${products.length === 1 ? "Product" : "Products"}`}
+                  : `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`}
               </span>
             </div>
             <p className="text-xs text-[#737373] dark:text-slate-400 font-medium mt-0.5">{subtitle}</p>
@@ -710,7 +726,7 @@ export default function PendingLinkLogsSection({
                     : "bg-white dark:bg-slate-800 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 text-[#4A4A4A] dark:text-slate-200 border border-[#CBCBCB] dark:border-slate-700"
                 }`}
               >
-                All ({products.length})
+                All ({searchFilteredProducts.length})
               </button>
               {uniqueSites.map((site) => (
                 <button
@@ -730,7 +746,7 @@ export default function PendingLinkLogsSection({
                         : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300"
                     }`}
                   >
-                    {siteCounts[site]}
+                    {siteCounts[site] || 0}
                   </span>
                 </button>
               ))}
