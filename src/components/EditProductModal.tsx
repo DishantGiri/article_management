@@ -143,6 +143,11 @@ export default function EditProductModal({
       return;
     }
 
+    if (name.trim().length < 2) {
+      setError("Product name must be at least 2 characters.");
+      return;
+    }
+
     if (trendLinkError || previewLinkError) {
       setError("Please fix the validation errors before submitting.");
       return;
@@ -262,8 +267,17 @@ export default function EditProductModal({
                       }
                     }}
                     placeholder="Product Name"
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 transition-all shadow-2xs ${
+                      name.trim().length > 0 && name.trim().length < 2
+                        ? "border-rose-400 focus:border-rose-500"
+                        : "border-slate-200 focus:border-[#6D8196]"
+                    }`}
                   />
+                  {name.trim().length > 0 && name.trim().length < 2 && (
+                    <p className="text-xs font-semibold text-rose-500">
+                      Product name must be at least 2 characters.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">

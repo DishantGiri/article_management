@@ -182,6 +182,10 @@ export default function AddProductPage() {
       setError("Product name is required.");
       return;
     }
+    if (form.name.trim().length < 2) {
+      setError("Product name must be at least 2 characters.");
+      return;
+    }
     if (Object.keys(fieldErrors).length > 0) {
       setError("Please fix the link validation errors before submitting.");
       return;
@@ -428,8 +432,17 @@ export default function AddProductPage() {
                   value={form.name}
                   onChange={(e) => update("name", e.target.value)}
                   placeholder="e.g. Alpha Whey Protein"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition"
+                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${
+                    form.name.trim().length > 0 && form.name.trim().length < 2
+                      ? "border-rose-400 focus:ring-2 focus:ring-rose-300"
+                      : "border-gray-300 focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+                  }`}
                 />
+                {form.name.trim().length > 0 && form.name.trim().length < 2 && (
+                  <p className="text-xs font-semibold text-rose-500 mt-1">
+                    Product name must be at least 2 characters.
+                  </p>
+                )}
               </div>
 
               {/* Product Slug (Auto-generated & Editable) */}
@@ -552,7 +565,7 @@ export default function AddProductPage() {
                 </button>
                 <button
                   id="btn-submit-product"
-                  disabled={!form.name.trim() || submitting}
+                  disabled={!form.name.trim() || form.name.trim().length < 2 || submitting}
                   onClick={handleSubmit}
                   className="flex-1 py-3 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
                 >

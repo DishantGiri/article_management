@@ -503,6 +503,12 @@ export default function AddProductModal({
           toast.error(msg);
           return;
         }
+        if (r.name.trim().length < 2) {
+          const msg = `Row #${rowNum} ("${r.name.trim()}"): Product name must be at least 2 characters.`;
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
         if (!r.category.trim()) {
           const msg = `Row #${rowNum} ("${r.name}"): Category is compulsory.`;
           setError(msg);
@@ -587,6 +593,11 @@ export default function AddProductModal({
     if (!form.name.trim()) {
       setError("Product Name is compulsory.");
       toast.error("Product Name is compulsory.");
+      return;
+    }
+    if (form.name.trim().length < 2) {
+      setError("Product name must be at least 2 characters.");
+      toast.error("Product name must be at least 2 characters.");
       return;
     }
     if (!form.category.trim()) {
@@ -1132,8 +1143,17 @@ export default function AddProductModal({
                                   value={row.name}
                                   onChange={(e) => updateSpreadsheetRow(idx, "name", e.target.value)}
                                   placeholder={`Product name *`}
-                                  className="w-full px-2 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238] rounded-lg focus:outline-none"
+                                  className={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg focus:outline-none transition-colors ${
+                                    row.name.trim().length > 0 && row.name.trim().length < 2
+                                      ? "border border-rose-400 bg-rose-50/40 text-rose-900 focus:border-rose-500 focus:bg-rose-50/60 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-200"
+                                      : "text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
+                                  }`}
                                 />
+                                {row.name.trim().length > 0 && row.name.trim().length < 2 && (
+                                  <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5">
+                                    Min 2 characters
+                                  </p>
+                                )}
                               </td>
                               <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
                                 <input
@@ -1448,8 +1468,17 @@ export default function AddProductModal({
                         value={form.name}
                         onChange={(e) => update("name", e.target.value)}
                         placeholder="e.g. Alpha Whey Protein"
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all shadow-xs"
+                        className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${
+                          form.name.trim().length > 0 && form.name.trim().length < 2
+                            ? "border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30"
+                            : "border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                        }`}
                       />
+                      {form.name.trim().length > 0 && form.name.trim().length < 2 && (
+                        <p className="text-xs font-semibold text-rose-500">
+                          Product name must be at least 2 characters.
+                        </p>
+                      )}
                     </div>
 
                     {/* Product Slug (Auto-generated & Editable) */}
@@ -1647,7 +1676,7 @@ export default function AddProductModal({
                     </button>
                     <button
                       type="button"
-                      disabled={!form.name.trim() || submitting}
+                      disabled={!form.name.trim() || form.name.trim().length < 2 || submitting}
                       onClick={handleSubmit}
                       className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg shadow-blue-600/20 disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center gap-2"
                     >

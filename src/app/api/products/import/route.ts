@@ -47,6 +47,10 @@ export async function POST(req: NextRequest) {
         errors.push(`Row ${rowNum}: Name, Site Name, and Product Type Name are required.`);
         continue;
       }
+      if (name.length < 2) {
+        errors.push(`Row ${rowNum}: Product name must be at least 2 characters.`);
+        continue;
+      }
 
       try {
         // Find or create Category (Product Type)

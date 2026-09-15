@@ -58,6 +58,15 @@ export async function PATCH(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    if (name !== undefined) {
+      if (!name || typeof name !== "string" || name.trim().length < 2) {
+        return NextResponse.json(
+          { error: "Product name must be at least 2 characters." },
+          { status: 400 }
+        );
+      }
+    }
+
     if (name && name.trim().toLowerCase() !== existing.name.trim().toLowerCase()) {
       const trimmedName = name.trim();
       const conflictProducts = await prisma.product.findMany({

@@ -97,6 +97,9 @@ export async function POST(req: NextRequest) {
       if (!p.name || !p.name.trim()) {
         return NextResponse.json({ error: `Product #${i + 1}: Product Name is required.` }, { status: 400 });
       }
+      if (p.name.trim().length < 2) {
+        return NextResponse.json({ error: `Product #${i + 1} ("${p.name.trim()}"): Product name must be at least 2 characters.` }, { status: 400 });
+      }
       if (!p.productCategory || !p.productCategory.trim()) {
         return NextResponse.json({ error: `Product "${p.name}": Category is required.` }, { status: 400 });
       }
@@ -267,7 +270,7 @@ export async function POST(req: NextRequest) {
             bridgePageLink: null,
             buyLink: buyUrl,
             status: "REQUESTED",
-            linkerRemarks: p.remarks || null,
+            linkerRemarks: null,
           },
         });
       }

@@ -1191,8 +1191,7 @@ function ProductsPageContent() {
           (l: any) => l.linkerRemarks && l.linkerRemarks.trim().length > 0
         );
         const hasLinkRemarks = linkLogsWithRemarks.length > 0;
-        const hasProductRemarks = Boolean(reportingProduct.remarks && reportingProduct.remarks.trim().length > 0);
-        const hasAnyBeforeRemark = hasLinkRemarks || hasProductRemarks;
+        const hasAnyBeforeRemark = hasLinkRemarks;
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
@@ -1275,13 +1274,13 @@ function ProductsPageContent() {
                 )}
               </div>
 
-              {/* Before Remarks / Existing Link Remarks */}
+              {/* Before Remarks */}
               {hasAnyBeforeRemark ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                       <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-                      Before Remarks / Existing Notes
+                      Before Remarks
                     </label>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
                       Before Remark
@@ -1289,30 +1288,20 @@ function ProductsPageContent() {
                   </div>
 
                   <div className="max-h-52 overflow-y-auto space-y-2.5 p-3 bg-amber-50/50 rounded-xl border border-amber-200/80 shadow-2xs">
-                    {hasLinkRemarks &&
-                      linkLogsWithRemarks.map((l: any, idx: number) => (
-                        <div key={l.id || idx} className="space-y-1">
-                          {linkLogsWithRemarks.length > 1 && (
-                            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
-                              <span className="px-1.5 py-0.5 rounded bg-white border border-slate-200 font-bold text-slate-700">
-                                {l.affiliateName || "Link"}
-                              </span>
-                              <span>•</span>
-                              <span className="uppercase text-[9px] font-bold text-slate-500">Status: {l.status}</span>
-                            </div>
-                          )}
-                          <FormattedRemarks remarks={l.linkerRemarks} date={l.updatedAt || l.addedAt} />
-                        </div>
-                      ))}
-
-                    {hasProductRemarks && (
-                      <div className={hasLinkRemarks ? "pt-2 border-t border-amber-200/60" : ""}>
-                        <span className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
-                          Product Initial Remark:
-                        </span>
-                        <FormattedRemarks remarks={reportingProduct.remarks} date={reportingProduct.addedAt} />
+                    {linkLogsWithRemarks.map((l: any, idx: number) => (
+                      <div key={l.id || idx} className="space-y-1">
+                        {linkLogsWithRemarks.length > 1 && (
+                          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
+                            <span className="px-1.5 py-0.5 rounded bg-white border border-slate-200 font-bold text-slate-700">
+                              {l.affiliateName || "Link"}
+                            </span>
+                            <span>•</span>
+                            <span className="uppercase text-[9px] font-bold text-slate-500">Status: {l.status}</span>
+                          </div>
+                        )}
+                        <FormattedRemarks remarks={l.linkerRemarks} date={l.updatedAt || l.addedAt} />
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               ) : (

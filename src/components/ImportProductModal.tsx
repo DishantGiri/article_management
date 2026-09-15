@@ -95,6 +95,12 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
       return;
     }
 
+    const shortNames = parsedData.filter((r) => !r.name || r.name.trim().length < 2);
+    if (shortNames.length > 0) {
+      toast.error(`Found ${shortNames.length} product(s) with names shorter than 2 characters. Minimum 2 characters required.`);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/products/import", {
