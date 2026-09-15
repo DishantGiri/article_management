@@ -373,8 +373,8 @@ function ArticlesContent() {
       );
 
     const matchStatus = !statusFilter || a.status?.toUpperCase() === statusFilter.toUpperCase();
-    const matchWriter = !writerFilter || (Boolean(a.writer?.name) && a.writer.name.toLowerCase() === writerFilter.toLowerCase());
-    const matchSite = !siteFilter || (Boolean(a.product?.site?.name) && a.product.site.name.toLowerCase() === siteFilter.toLowerCase());
+    const matchWriter = !writerFilter || (a.writer?.name ? a.writer.name.toLowerCase() === writerFilter.toLowerCase() : false);
+    const matchSite = !siteFilter || (a.product?.site?.name ? a.product.site.name.toLowerCase() === siteFilter.toLowerCase() : false);
 
     return matchSearch && matchStatus && matchWriter && matchSite;
   });
