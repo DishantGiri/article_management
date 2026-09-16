@@ -33,7 +33,6 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
-import CustomSelect from "@/components/CustomSelect";
 import { formatRemarkDate } from "@/components/FormattedRemarks";
 
 interface Article {
@@ -145,25 +144,53 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
       return;
     }
 
-    fetch(`/api/articles/${id}?userId=${uId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) {
-          setError(data.error);
-          setArticle(null);
-        } else {
-          setArticle(data);
-        }
-      })
-      .catch(() => setError("Failed to fetch article details"))
-      .finally(() => setLoading(false));
-  }, [id, router, session?.user?.id]);
+      fetch(`/api/articles/${id}?userId=${uId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.error) {
+            setError(data.error);
+            setArticle(null);
+          } else {
+            setArticle(data);
+            if (data.priority) {
+              setRedoPriority(data.priority);
+            }
+          }
+        })
+        .catch(() => setError("Failed to fetch article details"))
+        .finally(() => setLoading(false));
+    }, [id, router, session?.user?.id]);
 
   useEffect(() => {
     if (article?.articleLink) {
       setNewLinkValue(article.articleLink);
     }
   }, [article?.articleLink]);
+
+  useEffect(() => {
+    if (article?.priority) {
+      setRedoPriority(article.priority);
+    }
+  }, [article?.priority]);
+
+  const handleSetRedoPriority = async (newPriority: "LOW" | "MEDIUM" | "HIGH") => {
+    setRedoPriority(newPriority);
+    try {
+      const res = await fetch(`/api/articles/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priority: newPriority, callerId: currentUserId }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to update priority");
+      }
+      setArticle((prev) => (prev ? { ...prev, priority: newPriority } : prev));
+      toast.success(`Priority updated to ${newPriority === "HIGH" ? "High" : newPriority === "MEDIUM" ? "Medium" : "Low"}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update priority");
+    }
+  };
 
   const handleReviewSubmit = async (approved: boolean) => {
     if (!article) return;
@@ -200,7 +227,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
           reviewedById: currentUserId,
           suggestion: remark.trim(),
           approved,
-          ...(!approved ? { priority: redoPriority } : {}),
+          priority: redoPriority,
         }),
       });
       const data = await res.json();
@@ -218,6 +245,9 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
       const freshData = await refreshRes.json();
       if (!refreshRes.ok) throw new Error(freshData.error);
       setArticle(freshData);
+      if (freshData.priority) {
+        setRedoPriority(freshData.priority);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to submit review");
       toast.error(err.message || "Failed to submit review");
@@ -320,42 +350,6 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Priority Picker for Managers */}
-          {isManager ? (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Priority:</span>
-              <CustomSelect
-                value={article.priority || "MEDIUM"}
-                onChange={async (newPriority) => {
-                  try {
-                    const res = await fetch(`/api/articles/${id}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ priority: newPriority, callerId: currentUserId }),
-                    });
-                    if (!res.ok) throw new Error("Failed to update priority");
-                    setArticle((prev) => (prev ? { ...prev, priority: newPriority as any } : prev));
-                    toast.success("Priority updated");
-                  } catch (err: any) {
-                    toast.error(err.message || "Failed to update priority");
-                  }
-                }}
-                options={[
-                  { value: "HIGH", label: "High Priority" },
-                  { value: "MEDIUM", label: "Medium Priority" },
-                  { value: "LOW", label: "Low Priority" },
-                ]}
-                className="w-40"
-                triggerClassName="px-3 py-1.5 bg-white border border-[#CBCBCB] hover:border-[#6D8196] rounded-xl text-xs font-bold text-slate-800 shadow-2xs"
-                portal={true}
-              />
-            </div>
-          ) : (
-            <span className="px-3 py-1.5 rounded-xl text-xs font-bold border bg-white shadow-2xs">
-              {article.priority || "MEDIUM"} Priority
-            </span>
-          )}
-
           {/* Status Badge */}
           <span
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs border ${article.status === "IN_PROGRESS"
@@ -711,13 +705,13 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                         <button
                           key={p}
                           type="button"
-                          onClick={() => setRedoPriority(p)}
+                          onClick={() => handleSetRedoPriority(p)}
                           className={`flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${redoPriority === p
                               ? p === "HIGH"
-                                ? "bg-rose-500 text-white border-rose-600 shadow-2xs"
+                                ? "bg-rose-500 text-white border-rose-600 shadow-2xs font-extrabold"
                                 : p === "MEDIUM"
-                                  ? "bg-amber-500 text-white border-amber-600 shadow-2xs"
-                                  : "bg-[#6D8196] text-white border-[#5A6D81] shadow-2xs"
+                                  ? "bg-amber-500 text-white border-amber-600 shadow-2xs font-extrabold"
+                                  : "bg-[#6D8196] text-white border-[#5A6D81] shadow-2xs font-extrabold"
                               : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
                             }`}
                         >
@@ -751,7 +745,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
               {/* STATE 2: REDO IN PROGRESS - LOCKED UNTIL WRITER RESUBMITS */}
               {article.status === "REDO" && (
                 <div className="space-y-4">
-                  <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-2xl space-y-2.5">
+                  <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-2xl space-y-3">
                     <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-xs">
                       <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0" />
                       <span>Revision Requested - Waiting for Writer Resubmission</span>
@@ -766,6 +760,32 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                         &quot;{latestReview.suggestion}&quot;
                       </div>
                     )}
+
+                    {/* Set Priority for Writer Revisions (Live control during active REDO) */}
+                    <div className="pt-2.5 border-t border-rose-200/80 dark:border-rose-800/60">
+                      <label className="block text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider mb-2">
+                        Set Priority for Writer Revisions
+                      </label>
+                      <div className="flex gap-2">
+                        {(["LOW", "MEDIUM", "HIGH"] as const).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => handleSetRedoPriority(p)}
+                            className={`flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${redoPriority === p
+                                ? p === "HIGH"
+                                  ? "bg-rose-500 text-white border-rose-600 shadow-2xs font-extrabold"
+                                  : p === "MEDIUM"
+                                    ? "bg-amber-500 text-white border-amber-600 shadow-2xs font-extrabold"
+                                    : "bg-[#6D8196] text-white border-[#5A6D81] shadow-2xs font-extrabold"
+                                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
+                              }`}
+                          >
+                            {p === "HIGH" ? "🔴 High" : p === "MEDIUM" ? "🟡 Medium" : "⚪ Low"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center justify-center gap-2">
