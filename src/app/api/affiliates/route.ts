@@ -76,12 +76,15 @@ export async function POST(req: NextRequest) {
 
     const trimmedName = name.trim();
 
-    const existing = await prisma.affiliateName.findUnique({
+    const existing = await prisma.affiliateName.findFirst({
       where: { name: trimmedName },
     });
 
     if (existing) {
-      return NextResponse.json(existing);
+      return NextResponse.json(
+        { error: `Affiliate "${existing.name}" already exists` },
+        { status: 400 }
+      );
     }
 
     const created = await prisma.affiliateName.create({

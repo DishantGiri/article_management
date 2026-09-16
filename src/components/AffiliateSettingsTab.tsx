@@ -67,24 +67,34 @@ export default function AffiliateSettingsTab() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) {
+    const trimmed = newName.trim();
+    if (!trimmed) {
       toast.error("Affiliate Name is required.");
       return;
     }
+
+    const existing = affiliates.find(
+      (a) => a.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (existing) {
+      toast.error(`Affiliate "${existing.name}" already exists`);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/affiliates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: newName.trim(),
+          name: trimmed,
           callerId: session?.user?.id,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create affiliate");
 
-      toast.success(`Affiliate "${newName.trim()}" saved!`);
+      toast.success(`Affiliate "${trimmed}" saved!`);
       setNewName("");
       setShowAddForm(false);
       await fetchAffiliates();
@@ -101,17 +111,34 @@ export default function AffiliateSettingsTab() {
   };
 
   const handleUpdate = async (id: number) => {
-    if (!editName.trim()) {
+    const trimmed = editName.trim();
+    if (!trimmed) {
       toast.error("Affiliate Name is required.");
       return;
     }
+
+    const currentItem = affiliates.find((a) => a.id === id);
+    if (currentItem && currentItem.name.trim() === trimmed) {
+      toast.error(`Affiliate "${currentItem.name}" has no changes made.`);
+      setEditingId(null);
+      return;
+    }
+
+    const existing = affiliates.find(
+      (a) => a.id !== id && a.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (existing) {
+      toast.error(`Affiliate "${existing.name}" already exists`);
+      return;
+    }
+
     setUpdatingId(id);
     try {
       const res = await fetch(`/api/affiliates/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: editName.trim(),
+          name: trimmed,
           callerId: session?.user?.id,
         }),
       });

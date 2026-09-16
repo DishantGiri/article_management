@@ -31,10 +31,44 @@ export async function PATCH(
     const body = await req.json();
     const { name } = body;
 
+    const trimmedName = name !== undefined ? name.trim() : "";
+    if (!trimmedName) {
+      return NextResponse.json({ error: "Affiliate name is required" }, { status: 400 });
+    }
+
+    const currentItem = await prisma.affiliateName.findUnique({
+      where: { id },
+    });
+
+    if (!currentItem) {
+      return NextResponse.json({ error: "Affiliate not found" }, { status: 404 });
+    }
+
+    if (currentItem.name.trim() === trimmedName) {
+      return NextResponse.json(
+        { error: `Affiliate "${currentItem.name}" has no changes made.` },
+        { status: 400 }
+      );
+    }
+
+    const existing = await prisma.affiliateName.findFirst({
+      where: {
+        name: trimmedName,
+        id: { not: id },
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: `Affiliate "${existing.name}" already exists` },
+        { status: 400 }
+      );
+    }
+
     const updated = await prisma.affiliateName.update({
       where: { id },
       data: {
-        ...(name !== undefined ? { name: name.trim() } : {}),
+        name: trimmedName,
       },
     });
 
