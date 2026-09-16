@@ -55,7 +55,7 @@ export function getGeoDisplayName(code: string): string {
   const name = COUNTRY_NAMES[upper];
   if (!name) return code;
   if (name.toUpperCase() === upper) return name;
-  return `${code} — ${name}`;
+  return `${code} - ${name}`;
 }
 
 export function getCountryFlag(countryCode: string): string {

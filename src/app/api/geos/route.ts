@@ -13,7 +13,7 @@ export async function GET() {
   }
 }
 
-// POST /api/geos — create a new GEO (Superadmin, Admin, Linker)
+// POST /api/geos - create a new GEO (Superadmin, Admin, Linker)
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

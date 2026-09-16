@@ -79,12 +79,12 @@ const LINK_STATUSES = [
 ];
 
 const REMARK_TEMPLATES = [
-  { value: "Standard affiliate setup — links verified active", label: "Standard affiliate setup — links verified active" },
+  { value: "Standard affiliate setup - links verified active", label: "Standard affiliate setup - links verified active" },
   { value: "Bridge page live & redirecting to buy page", label: "Bridge page live & redirecting to buy page" },
   { value: "Direct purchase link configured for site", label: "Direct purchase link configured for site" },
-  { value: "Under review — waiting for affiliate network approval", label: "Under review — waiting for affiliate approval" },
+  { value: "Under review - waiting for affiliate network approval", label: "Under review - waiting for affiliate approval" },
   { value: "Presell page active with multi-geo routing", label: "Presell page active with multi-geo routing" },
-  { value: "Need to check in future — potential link/stock change", label: "Need to check in future — potential link change" },
+  { value: "Need to check in future - potential link/stock change", label: "Need to check in future - potential link change" },
   { value: "No remarks / clean configuration", label: "No remarks / clean configuration" },
 ];
 
@@ -110,7 +110,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   const [bridgePageLink, setBridgePageLink] = useState("");
   const [buyLink, setBuyLink] = useState("");
   const [status, setStatus] = useState("REQUESTED");
-  const [linkerRemarks, setLinkerRemarks] = useState("Standard affiliate setup — links verified active");
+  const [linkerRemarks, setLinkerRemarks] = useState("Standard affiliate setup - links verified active");
   const [geos, setGeos] = useState<string[]>([]);
 
   // Country-specific links state
@@ -323,7 +323,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
         .filter((line) => !line.trim().startsWith("[Flagged by"))
         .join("\n")
         .trim();
-      setLinkerRemarks(cleanRemarks || "Standard affiliate setup — links verified active");
+      setLinkerRemarks(cleanRemarks || "Standard affiliate setup - links verified active");
 
       const existingGeos = (link.geos || []).map((g) => g.geo);
       setGeos(existingGeos);
@@ -546,13 +546,13 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
         countryLinks: useCountrySpecificLinks ? countryLinks : undefined,
         geos: useCountrySpecificLinks
           ? countryLinks.map((c) => ({
-              geo: c.geo,
-              affiliateLink: c.affiliateLink.trim(),
-            }))
+            geo: c.geo,
+            affiliateLink: c.affiliateLink.trim(),
+          }))
           : geos.map((g) => ({
-              geo: g,
-              affiliateLink: primaryAffLink,
-            })),
+            geo: g,
+            affiliateLink: primaryAffLink,
+          })),
         status,
         linkerRemarks: linkerRemarks ? linkerRemarks.trim() : null,
       };
@@ -1317,8 +1317,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               {submitting
                 ? "Saving..."
                 : useCountrySpecificLinks
-                ? `Save Product (${countryLinks.length} Country Links)`
-                : `Save Changes`}
+                  ? `Save Product (${countryLinks.length} Country Links)`
+                  : `Save Changes`}
             </button>
           </div>
         </div>

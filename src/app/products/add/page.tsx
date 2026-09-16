@@ -43,13 +43,12 @@ function StepIndicator({ step }: { step: number }) {
           <div key={idx} className="flex items-center flex-1 last:flex-none">
             <div className="flex flex-col items-center gap-1">
               <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-                  done
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${done
                     ? "bg-emerald-500 text-white"
                     : active
-                    ? "bg-violet-600 text-white ring-4 ring-violet-200"
-                    : "bg-gray-100 text-gray-400 border border-gray-200"
-                }`}
+                      ? "bg-violet-600 text-white ring-4 ring-violet-200"
+                      : "bg-gray-100 text-gray-400 border border-gray-200"
+                  }`}
               >
                 {done ? (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,18 +59,16 @@ function StepIndicator({ step }: { step: number }) {
                 )}
               </div>
               <span
-                className={`text-xs font-medium whitespace-nowrap ${
-                  active ? "text-violet-600" : done ? "text-emerald-600" : "text-gray-400"
-                }`}
+                className={`text-xs font-medium whitespace-nowrap ${active ? "text-violet-600" : done ? "text-emerald-600" : "text-gray-400"
+                  }`}
               >
                 {label}
               </span>
             </div>
             {i < steps.length - 1 && (
               <div
-                className={`h-0.5 flex-1 mx-2 mb-4 rounded transition-all duration-500 ${
-                  done ? "bg-emerald-400" : "bg-gray-200"
-                }`}
+                className={`h-0.5 flex-1 mx-2 mb-4 rounded transition-all duration-500 ${done ? "bg-emerald-400" : "bg-gray-200"
+                  }`}
               />
             )}
           </div>
@@ -319,11 +316,10 @@ export default function AddProductPage() {
                         update("siteId", "");
                         setSites([]);
                       }}
-                      className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
-                        form.categoryId === String(cat.id)
+                      className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${form.categoryId === String(cat.id)
                           ? "border-violet-500 bg-violet-50"
                           : "border-gray-200 hover:border-violet-300 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       <div className="font-semibold text-gray-800 text-sm truncate">{cat.name}</div>
                       {form.categoryId === String(cat.id) && (
@@ -374,15 +370,13 @@ export default function AddProductPage() {
                       key={site.id}
                       id={`btn-site-${site.id}`}
                       onClick={() => update("siteId", String(site.id))}
-                      className={`w-full px-4 py-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all duration-150 ${
-                        form.siteId === String(site.id)
+                      className={`w-full px-4 py-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all duration-150 ${form.siteId === String(site.id)
                           ? "border-violet-500 bg-violet-50"
                           : "border-gray-200 hover:border-violet-300"
-                      }`}
+                        }`}
                     >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-                        form.siteId === String(site.id) ? "bg-violet-500 text-white" : "bg-gray-100 text-gray-600"
-                      }`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${form.siteId === String(site.id) ? "bg-violet-500 text-white" : "bg-gray-100 text-gray-600"
+                        }`}>
                         {site.name.charAt(0).toUpperCase()}
                       </div>
                       <span className="font-medium text-gray-800">{site.name}</span>
@@ -432,11 +426,10 @@ export default function AddProductPage() {
                   value={form.name}
                   onChange={(e) => update("name", e.target.value)}
                   placeholder="e.g. Alpha Whey Protein"
-                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${
-                    form.name.trim().length > 0 && form.name.trim().length < 2
+                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${form.name.trim().length > 0 && form.name.trim().length < 2
                       ? "border-rose-400 focus:ring-2 focus:ring-rose-300"
                       : "border-gray-300 focus:ring-2 focus:ring-violet-400 focus:border-transparent"
-                  }`}
+                    }`}
                 />
                 {form.name.trim().length > 0 && form.name.trim().length < 2 && (
                   <p className="text-xs font-semibold text-rose-500 mt-1">
@@ -489,11 +482,10 @@ export default function AddProductPage() {
                   value={form.trendLink}
                   onChange={(e) => update("trendLink", e.target.value)}
                   placeholder="https://trends.google.com/..."
-                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${
-                    fieldErrors.trendLink
+                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${fieldErrors.trendLink
                       ? "border-rose-400 focus:ring-2 focus:ring-rose-400"
                       : "border-gray-300 focus:ring-2 focus:ring-violet-400 focus:border-transparent"
-                  }`}
+                    }`}
                 />
                 {fieldErrors.trendLink && (
                   <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.trendLink}</p>
@@ -510,11 +502,10 @@ export default function AddProductPage() {
                     value={form.previewLink}
                     onChange={(e) => update("previewLink", e.target.value)}
                     placeholder="https://..."
-                    className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${
-                      fieldErrors.previewLink
+                    className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${fieldErrors.previewLink
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-400"
                         : "border-gray-300 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
-                    }`}
+                      }`}
                   />
                   {fieldErrors.previewLink && (
                     <p className="text-[11px] font-semibold text-rose-500 mt-1">{fieldErrors.previewLink}</p>
@@ -552,7 +543,7 @@ export default function AddProductPage() {
               {/* Summary chip */}
               <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1 border border-slate-100">
                 <span>Product Type: <strong className="text-[#6D8196]">{getCategoryName()}</strong></span>
-                <span>Site: <strong>{sites.find((s) => String(s.id) === form.siteId)?.name ?? "—"}</strong></span>
+                <span>Site: <strong>{sites.find((s) => String(s.id) === form.siteId)?.name ?? "-"}</strong></span>
               </div>
 
               <div className="flex gap-3 mt-2">

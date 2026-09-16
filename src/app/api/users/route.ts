@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/users — list all users with their accesses
+// GET /api/users - list all users with their accesses
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -32,7 +32,7 @@ export async function GET() {
   return NextResponse.json(users);
 }
 
-// POST /api/users — create a new user and optionally setup site access
+// POST /api/users - create a new user and optionally setup site access
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -104,8 +104,8 @@ export async function POST(req: NextRequest) {
         commissionToPartyFund: finalCommToParty,
         siteAccess: (role === "WRITER" || role === "TEAM_LEAD") && siteIds && Array.isArray(siteIds)
           ? {
-              create: siteIds.map((siteId: number) => ({ siteId })),
-            }
+            create: siteIds.map((siteId: number) => ({ siteId })),
+          }
           : undefined,
       },
       include: {

@@ -80,7 +80,7 @@ export async function GET(
   return NextResponse.json(article);
 }
 
-// PATCH /api/articles/[slug] — update status, writer, article link, priority, special approval request
+// PATCH /api/articles/[slug] - update status, writer, article link, priority, special approval request
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -415,7 +415,7 @@ export async function PATCH(
           data: updated,
         }),
       }).catch((e) => console.error("WS Notification failed", e));
-    } catch (e) {}
+    } catch (e) { }
 
     // If status is changed to REDO or APPROVED by TL/Admin, record an ArticleReview entry
     if (status === "REDO" || (status === "APPROVED" && ["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole))) {

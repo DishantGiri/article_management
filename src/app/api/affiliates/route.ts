@@ -21,7 +21,7 @@ const DEFAULT_AFFILIATES = [
   "Traffic Light",
 ];
 
-// GET /api/affiliates — retrieve all affiliates (and seed defaults if missing)
+// GET /api/affiliates - retrieve all affiliates (and seed defaults if missing)
 export async function GET() {
   try {
     let affiliates = await prisma.affiliateName.findMany({
@@ -48,7 +48,7 @@ export async function GET() {
   }
 }
 
-// POST /api/affiliates — add new affiliate name
+// POST /api/affiliates - add new affiliate name
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -113,4 +113,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-         

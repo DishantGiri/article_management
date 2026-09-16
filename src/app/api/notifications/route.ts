@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/notifications — get notifications for the authenticated session user
+// GET /api/notifications - get notifications for the authenticated session user
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
 
   const notifications = await prisma.notification.findMany({
-    where: { 
+    where: {
       recipientId: authenticatedUserId,
       createdAt: { gte: oneMonthAgo }
     },
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(notifications);
 }
 
-// PATCH /api/notifications — mark read for the authenticated user
+// PATCH /api/notifications - mark read for the authenticated user
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {

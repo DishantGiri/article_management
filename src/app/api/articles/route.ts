@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/articles — list articles
+// GET /api/articles - list articles
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {

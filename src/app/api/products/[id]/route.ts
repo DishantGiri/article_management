@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/products/[id] — retrieve product details
+// GET /api/products/[id] - retrieve product details
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -30,7 +30,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/products/[id] — update product details
+// PATCH /api/products/[id] - update product details
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -110,10 +110,10 @@ export async function PATCH(
         ...(name !== undefined ? { name } : {}),
         ...(slug !== undefined
           ? {
-              slug: slug
-                ? slug.trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "")
-                : null,
-            }
+            slug: slug
+              ? slug.trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "")
+              : null,
+          }
           : {}),
         ...(siteId !== undefined ? { siteId: Number(siteId) } : {}),
         ...(categoryId !== undefined ? { categoryId: Number(categoryId) } : {}),
@@ -137,7 +137,7 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/products/[id] — delete a product (and cascade-deleted related articles and links)
+// DELETE /api/products/[id] - delete a product (and cascade-deleted related articles and links)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

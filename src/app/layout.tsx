@@ -9,7 +9,7 @@ import { authOptions } from "@/lib/auth";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "ArticleMgmt — Workflow System",
+  title: "ArticleMgmt - Workflow System",
   description: "Product & article workflow management for Linkers, Writers, and Team Leads.",
   manifest: "/manifest.json",
   appleWebApp: {

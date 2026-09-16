@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-// PATCH /api/commissions/[id] — Toggle payment status or update notes
+// PATCH /api/commissions/[id] - Toggle payment status or update notes
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -80,7 +80,7 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/commissions/[id] — Delete a recorded sale entry
+// DELETE /api/commissions/[id] - Delete a recorded sale entry
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

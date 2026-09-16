@@ -15,7 +15,7 @@ function isValidUrl(url?: string | null): boolean {
   }
 }
 
-// POST /api/products  — create a new product
+// POST /api/products  - create a new product
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -313,7 +313,7 @@ export async function POST(req: NextRequest) {
       const suffix = count > 3 ? ` and ${count - 3} more` : "";
       const message =
         count === 1
-          ? `New product "${productNames[0]}" has been added — check your product list.`
+          ? `New product "${productNames[0]}" has been added - check your product list.`
           : `${count} new products added: ${nameList}${suffix}. Check your product list.`;
 
       const notif = await prisma.notification.create({
@@ -334,7 +334,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET /api/products?siteId=1  — list products (optionally filtered by site, role site-access rules enforced)
+// GET /api/products?siteId=1  - list products (optionally filtered by site, role site-access rules enforced)
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -367,12 +367,12 @@ export async function GET(req: NextRequest) {
       ...(allowedSiteIds !== undefined ? { siteId: { in: allowedSiteIds } } : {}),
       ...(excludeCompletedForWriter
         ? {
-            OR: [
-              { article: null },
-              { article: { status: { in: ["PENDING", "IN_PROGRESS", "REDO"] } } },
-              { article: { writerId: null } },
-            ],
-          }
+          OR: [
+            { article: null },
+            { article: { status: { in: ["PENDING", "IN_PROGRESS", "REDO"] } } },
+            { article: { writerId: null } },
+          ],
+        }
         : {}),
     },
     include: {

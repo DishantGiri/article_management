@@ -117,6 +117,15 @@ const ARTICLE_STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   REDO: { bg: "bg-rose-100 dark:bg-rose-950/60", text: "text-rose-800 dark:text-rose-300" },
 };
 
+const ensureExternalUrl = (url: string | null | undefined) => {
+  if (!url) return "#";
+  const trimmed = url.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+};
+
 export default function AssignmentDetailsModal({
   product,
   currentUserRole,
@@ -127,6 +136,8 @@ export default function AssignmentDetailsModal({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [activeLogIndex, setActiveLogIndex] = useState<number>(0);
   const [startingWriting, setStartingWriting] = useState<boolean>(false);
+
+  const isWriter = currentUserRole?.toUpperCase() === "WRITER";
 
   const linkLogs = product.linkLogs || [];
   const hasLinkLogs = linkLogs.length > 0;
@@ -148,7 +159,13 @@ export default function AssignmentDetailsModal({
       `Site: ${product.site?.name || ""}`,
       log.bridgePageLink ? `Bridge Page: ${log.bridgePageLink}` : null,
       log.buyLink ? `Buy Link: ${log.buyLink}` : null,
-      log.affiliateLink ? `Affiliate Link: ${log.affiliateLink}` : null,
+      isWriter
+        ? product.previewLink
+          ? `Preview Link: ${product.previewLink}`
+          : null
+        : log.affiliateLink
+          ? `Affiliate Link: ${log.affiliateLink}`
+          : null,
       log.geos && log.geos.length > 0
         ? `Target Geos: ${log.geos.map((g) => g.geo).join(", ")}`
         : null,
@@ -256,12 +273,12 @@ export default function AssignmentDetailsModal({
 
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
                     <LayoutGrid className="w-3.5 h-3.5 text-[#6D8196]" />
-                    <span>Type: {product.category?.name || "—"}</span>
+                    <span>Type: {product.category?.name || "-"}</span>
                   </span>
 
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
                     <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
-                    <span>Category: {product.productCategory || "—"}</span>
+                    <span>Category: {product.productCategory || "-"}</span>
                   </span>
 
                   {product.trendLevel && (
@@ -278,7 +295,7 @@ export default function AssignmentDetailsModal({
                 <div className="flex flex-wrap items-center gap-2">
                   {product.trendLink && (
                     <a
-                      href={product.trendLink}
+                      href={ensureExternalUrl(product.trendLink)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-2xs transition"
@@ -291,7 +308,7 @@ export default function AssignmentDetailsModal({
 
                   {product.previewLink && (
                     <a
-                      href={product.previewLink}
+                      href={ensureExternalUrl(product.previewLink)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-semibold border border-indigo-200/80 dark:border-indigo-800/50 shadow-2xs transition"
@@ -339,9 +356,8 @@ export default function AssignmentDetailsModal({
                         {product.article.writer?.name || "Unassigned Writer"}
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
-                          ARTICLE_STATUS_STYLES[product.article.status]?.bg || "bg-slate-100"
-                        } ${ARTICLE_STATUS_STYLES[product.article.status]?.text || "text-slate-700"}`}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${ARTICLE_STATUS_STYLES[product.article.status]?.bg || "bg-slate-100"
+                          } ${ARTICLE_STATUS_STYLES[product.article.status]?.text || "text-slate-700"}`}
                       >
                         {product.article.status}
                       </span>
@@ -422,17 +438,15 @@ export default function AssignmentDetailsModal({
                     <button
                       key={log.id}
                       onClick={() => setActiveLogIndex(idx)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap border ${
-                        isActive
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap border ${isActive
                           ? "bg-[#6D8196] text-white border-[#6D8196] shadow-xs"
                           : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       <span>{log.affiliateName || `Network #${log.id}`}</span>
                       <span
-                        className={`text-[9px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                          isActive ? "bg-white/20 text-white" : `${statusStyle.bg} ${statusStyle.text}`
-                        }`}
+                        className={`text-[9px] px-1.5 py-0.2 rounded-full font-extrabold ${isActive ? "bg-white/20 text-white" : `${statusStyle.bg} ${statusStyle.text}`
+                          }`}
                       >
                         {log.status}
                       </span>
@@ -444,14 +458,80 @@ export default function AssignmentDetailsModal({
 
             {/* Main Link Log Display (Full-Width Adaptive Card) */}
             {!hasLinkLogs ? (
-              <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                <Link2 className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  No affiliate links or bridge pages configured for this product yet.
-                </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Linkers will configure routing URLs and target country geos shortly.
-                </p>
+              <div className="space-y-3">
+                {isWriter && (
+                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                          PREVIEW LINK
+                        </span>
+                      </div>
+
+                      {product.previewLink && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() =>
+                              handleCopy(
+                                product.previewLink!,
+                                `preview-main`,
+                                "Preview Link"
+                              )
+                            }
+                            className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                            title="Copy Preview Link"
+                          >
+                            {copiedKey === `preview-main` ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                <span className="text-emerald-600">Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3 text-slate-400" />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+
+                          <a
+                            href={ensureExternalUrl(product.previewLink)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
+                            title="Open Preview Link in New Tab"
+                          >
+                            <ExternalLink className="w-3 h-3 text-slate-400" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {product.previewLink ? (
+                      <a
+                        href={ensureExternalUrl(product.previewLink)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
+                      >
+                        {product.previewLink}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">No preview link configured</span>
+                    )}
+                  </div>
+                )}
+
+                <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                  <Link2 className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    No affiliate links or bridge pages configured for this product yet.
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Linkers will configure routing URLs and target country geos shortly.
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="p-5 bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4 shadow-2xs">
@@ -462,11 +542,9 @@ export default function AssignmentDetailsModal({
                       {currentLog.affiliateName || "Standard Affiliate"}
                     </span>
                     <span
-                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                        LINK_STATUS_STYLES[currentLog.status]?.bg || "bg-blue-50"
-                      } ${LINK_STATUS_STYLES[currentLog.status]?.text || "text-blue-700"} ${
-                        LINK_STATUS_STYLES[currentLog.status]?.border || "border-blue-200"
-                      }`}
+                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${LINK_STATUS_STYLES[currentLog.status]?.bg || "bg-blue-50"
+                        } ${LINK_STATUS_STYLES[currentLog.status]?.text || "text-blue-700"} ${LINK_STATUS_STYLES[currentLog.status]?.border || "border-blue-200"
+                        }`}
                     >
                       {currentLog.status}
                     </span>
@@ -606,9 +684,70 @@ export default function AssignmentDetailsModal({
                     )}
                   </div>
 
-                  {/* Affiliate Link */}
-                  {/* Affiliate Destination Link(s) */}
-                  {currentLog.geos && currentLog.geos.some((g) => g.affiliateLink && g.affiliateLink !== currentLog.affiliateLink) ? (
+                  {/* For Writers: Show PREVIEW LINK instead of internal Affiliate tracking links */}
+                  {isWriter ? (
+                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Globe className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                            PREVIEW LINK
+                          </span>
+                        </div>
+
+                        {product.previewLink && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() =>
+                                handleCopy(
+                                  product.previewLink!,
+                                  `preview-${currentLog.id}`,
+                                  "Preview Link"
+                                )
+                              }
+                              className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                              title="Copy Preview Link"
+                            >
+                              {copiedKey === `preview-${currentLog.id}` ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span className="text-emerald-600">Copied!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3 text-slate-400" />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+
+                            <a
+                              href={ensureExternalUrl(product.previewLink)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
+                              title="Open Preview Link in New Tab"
+                            >
+                              <ExternalLink className="w-3 h-3 text-slate-400" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {product.previewLink ? (
+                        <a
+                          href={ensureExternalUrl(product.previewLink)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
+                        >
+                          {product.previewLink}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">No preview link configured</span>
+                      )}
+                    </div>
+                  ) : currentLog.geos && currentLog.geos.some((g) => g.affiliateLink && g.affiliateLink !== currentLog.affiliateLink) ? (
                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs space-y-2">
                       <div className="flex items-center gap-1.5 mb-1">
                         <Link2 className="w-3.5 h-3.5 text-[#6D8196] shrink-0" />
@@ -627,7 +766,7 @@ export default function AssignmentDetailsModal({
                                 {g.geo}
                               </span>
                               <a
-                                href={g.affiliateLink || currentLog.affiliateLink}
+                                href={ensureExternalUrl(g.affiliateLink || currentLog.affiliateLink)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline truncate block"
@@ -660,7 +799,7 @@ export default function AssignmentDetailsModal({
                                 )}
                               </button>
                               <a
-                                href={g.affiliateLink || currentLog.affiliateLink}
+                                href={ensureExternalUrl(g.affiliateLink || currentLog.affiliateLink)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-1 px-1.5 rounded bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600"
@@ -709,7 +848,7 @@ export default function AssignmentDetailsModal({
                           </button>
 
                           <a
-                            href={currentLog.affiliateLink}
+                            href={ensureExternalUrl(currentLog.affiliateLink)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
@@ -721,7 +860,7 @@ export default function AssignmentDetailsModal({
                       </div>
 
                       <a
-                        href={currentLog.affiliateLink}
+                        href={ensureExternalUrl(currentLog.affiliateLink)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
@@ -762,7 +901,7 @@ export default function AssignmentDetailsModal({
                           <div
                             key={g.geo}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs hover:border-[#6D8196] transition-colors"
-                            title={`${g.geo} — ${countryName}`}
+                            title={`${g.geo} - ${countryName}`}
                           >
                             <span className="text-sm leading-none">{flag}</span>
                             <span className="uppercase">{g.geo}</span>

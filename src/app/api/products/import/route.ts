@@ -4,7 +4,7 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// POST /api/products/import — Import products from parsed CSV
+// POST /api/products/import - Import products from parsed CSV
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

@@ -55,7 +55,7 @@ function parseLineDate(text: string, defaultDate?: string | Date | null): { clea
 
   // Check for: • Sep 1, 2026 or - Sep 1, 2026 at end
   if (!foundDate) {
-    const suffixRegex = /(?:•|—|-)\s*(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}(?:.*))$/i;
+    const suffixRegex = /(?:•|-|-)\s*(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}(?:.*))$/i;
     const suffixMatch = cleanText.match(suffixRegex);
     if (suffixMatch) {
       foundDate = formatRemarkDate(suffixMatch[1]);

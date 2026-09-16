@@ -689,11 +689,10 @@ export default function UsersPage() {
             <button
               key={p}
               onClick={() => setCurrentPage(p)}
-              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                currentPage === p
+              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${currentPage === p
                   ? "bg-[#6D8196] text-white border border-[#6D8196] shadow-xs"
                   : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-              }`}
+                }`}
             >
               {p}
             </button>
@@ -747,11 +746,10 @@ export default function UsersPage() {
           <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-2xs">
             <button
               onClick={() => setViewMode("CARD")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                viewMode === "CARD"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${viewMode === "CARD"
                   ? "bg-[#6D8196] text-white shadow-xs"
                   : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              }`}
+                }`}
               title="Card View (Default)"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -759,11 +757,10 @@ export default function UsersPage() {
             </button>
             <button
               onClick={() => setViewMode("TABLE")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                viewMode === "TABLE"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${viewMode === "TABLE"
                   ? "bg-[#6D8196] text-white shadow-xs"
                   : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              }`}
+                }`}
               title="Table View"
             >
               <TableIcon className="w-3.5 h-3.5" />
@@ -1063,22 +1060,20 @@ export default function UsersPage() {
                         ) : isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
                           <button
                             onClick={() => handleQuickToggleApproval(u)}
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer shrink-0 ${
-                              u.approved
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer shrink-0 ${u.approved
                                 ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100"
                                 : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60 hover:bg-amber-100"
-                            }`}
+                              }`}
                             title="Click to toggle approval status"
                           >
                             {u.approved ? "✓ Approved" : "⏳ Pending"}
                           </button>
                         ) : (
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border shrink-0 ${
-                              u.approved
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border shrink-0 ${u.approved
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : "bg-amber-50 text-amber-700 border-amber-200"
-                            }`}
+                              }`}
                           >
                             {u.approved ? "Approved" : "Pending"}
                           </span>
@@ -1235,11 +1230,10 @@ export default function UsersPage() {
                       {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) && (
                         <button
                           onClick={() => handleQuickToggleLeftCompany(u)}
-                          className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs ${
-                            u.hasLeftCompany
+                          className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs ${u.hasLeftCompany
                               ? "bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100"
                               : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-rose-300 hover:text-rose-600"
-                          }`}
+                            }`}
                           title={
                             u.hasLeftCompany
                               ? "Writer marked as departed (Commissions divert to Party Fund). Click to reactivate."
@@ -1398,7 +1392,7 @@ export default function UsersPage() {
                             Lead ({u.teamMembers?.length || 0} writers)
                           </span>
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span className="text-slate-400">-</span>
                         )}
                       </td>
 
@@ -1408,11 +1402,10 @@ export default function UsersPage() {
                           {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
                             <button
                               onClick={() => handleQuickToggleLeftCompany(u)}
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer flex items-center gap-1 ${
-                                u.hasLeftCompany
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer flex items-center gap-1 ${u.hasLeftCompany
                                   ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 hover:bg-rose-100"
                                   : "bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-rose-300 hover:text-rose-600"
-                              }`}
+                                }`}
                               title={
                                 u.hasLeftCompany
                                   ? "Marked as Left Company (Commissions divert to Party Fund). Click to reactivate."
@@ -1432,11 +1425,10 @@ export default function UsersPage() {
                           {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
                             <button
                               onClick={() => handleQuickTogglePartyFund(u)}
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer flex items-center gap-1 ${
-                                u.commissionToPartyFund
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer flex items-center gap-1 ${u.commissionToPartyFund
                                   ? "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 hover:bg-purple-100"
                                   : "bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-purple-300 hover:text-purple-600"
-                              }`}
+                                }`}
                               title={
                                 u.commissionToPartyFund
                                   ? "Commissions route directly to Party Fund. Click to restore personal payout."
@@ -1463,22 +1455,20 @@ export default function UsersPage() {
                           ) : isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
                             <button
                               onClick={() => handleQuickToggleApproval(u)}
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer ${
-                                u.approved
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer ${u.approved
                                   ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                                   : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                              }`}
+                                }`}
                               title="Click to toggle approval status"
                             >
                               {u.approved ? "✓ Approved" : "⏳ Pending"}
                             </button>
                           ) : (
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                                u.approved
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${u.approved
                                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                   : "bg-amber-50 text-amber-700 border-amber-200"
-                              }`}
+                                }`}
                             >
                               {u.approved ? "Approved" : "Pending"}
                             </span>
@@ -1683,11 +1673,10 @@ export default function UsersPage() {
                       key={site.id}
                       type="button"
                       onClick={() => handleToggleSiteSelection(site.id)}
-                      className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                        isSelected
+                      className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${isSelected
                           ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-200 shadow-2xs"
                           : "bg-[#FAF9F5] dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300"
-                      }`}
+                        }`}
                     >
                       <div className="min-w-0 pr-2">
                         <span className="font-bold text-xs block truncate">{site.name}</span>
@@ -1696,11 +1685,10 @@ export default function UsersPage() {
                         </span>
                       </div>
                       <div
-                        className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${
-                          isSelected
+                        className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isSelected
                             ? "bg-blue-600 text-white"
                             : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                        }`}
+                          }`}
                       >
                         {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                       </div>
@@ -1803,19 +1791,19 @@ export default function UsersPage() {
                     },
                     ...(isSuperAdmin
                       ? [
-                          {
-                            role: "ADMIN",
-                            label: "Admin",
-                            desc: "Full administrative capabilities across users, articles, and logs",
-                            color: "text-blue-600",
-                          },
-                          {
-                            role: "SUPER_ADMIN",
-                            label: "Super Admin",
-                            desc: "Complete platform command, full authority to manage all roles and super admins",
-                            color: "text-purple-600",
-                          },
-                        ]
+                        {
+                          role: "ADMIN",
+                          label: "Admin",
+                          desc: "Full administrative capabilities across users, articles, and logs",
+                          color: "text-blue-600",
+                        },
+                        {
+                          role: "SUPER_ADMIN",
+                          label: "Super Admin",
+                          desc: "Complete platform command, full authority to manage all roles and super admins",
+                          color: "text-purple-600",
+                        },
+                      ]
                       : []),
                   ].map((r) => {
                     const isSelected = selectedNewRole === r.role;
@@ -1824,11 +1812,10 @@ export default function UsersPage() {
                         key={r.role}
                         type="button"
                         onClick={() => setSelectedNewRole(r.role)}
-                        className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                          isSelected
+                        className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${isSelected
                             ? "bg-purple-50/70 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-2xs"
                             : "bg-[#FAF9F5] dark:bg-slate-850 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                        }`}
+                          }`}
                       >
                         <div className="min-w-0 pr-2">
                           <div className="flex items-center gap-1.5">
@@ -1842,11 +1829,10 @@ export default function UsersPage() {
                           <p className="text-[11px] text-slate-400 mt-0.5">{r.desc}</p>
                         </div>
                         <div
-                          className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                            isSelected
+                          className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${isSelected
                               ? "bg-purple-600 text-white"
                               : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                          }`}
+                            }`}
                         >
                           {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </div>
@@ -1943,11 +1929,10 @@ export default function UsersPage() {
                         if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
                         if (error) setError("");
                       }}
-                      className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition placeholder:text-slate-400 ${
-                        (formSubmitted || fieldErrors.name) && !form.name.trim()
+                      className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition placeholder:text-slate-400 ${(formSubmitted || fieldErrors.name) && !form.name.trim()
                           ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400/30"
                           : "border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-[#6D8196]/40"
-                      }`}
+                        }`}
                       placeholder="e.g. Sarah Mitchell"
                     />
                     {(formSubmitted || fieldErrors.name) && !form.name.trim() && (
@@ -1997,24 +1982,23 @@ export default function UsersPage() {
                         if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
                         if (error) setError("");
                       }}
-                      className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition disabled:opacity-60 pr-9 placeholder:text-slate-400 ${
-                        !editingUserId && (
+                      className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition disabled:opacity-60 pr-9 placeholder:text-slate-400 ${!editingUserId && (
                           ((formSubmitted || fieldErrors.email) && !form.email.trim()) ||
                           fieldErrors.email ||
                           (form.email.trim() && emailValidationError)
                         )
                           ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400/30"
                           : !editingUserId && form.email.trim() && !emailValidationError
-                          ? "border-emerald-400 dark:border-emerald-600 focus:ring-2 focus:ring-emerald-400/30"
-                          : "border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-[#6D8196]/40"
-                      }`}
+                            ? "border-emerald-400 dark:border-emerald-600 focus:ring-2 focus:ring-emerald-400/30"
+                            : "border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-[#6D8196]/40"
+                        }`}
                       placeholder="name@fishtailinfosolutions.com"
                     />
                     {!editingUserId && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                         {((formSubmitted || fieldErrors.email) && !form.email.trim()) ||
-                        fieldErrors.email ||
-                        (form.email.trim() && emailValidationError) ? (
+                          fieldErrors.email ||
+                          (form.email.trim() && emailValidationError) ? (
                           <AlertCircle className="w-4 h-4 text-rose-500" />
                         ) : form.email.trim() && !emailValidationError ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -2070,9 +2054,9 @@ export default function UsersPage() {
                       { value: "TEAM_LEAD", label: "Team Lead" },
                       ...(isSuperAdmin
                         ? [
-                            { value: "ADMIN", label: "Admin" },
-                            { value: "SUPER_ADMIN", label: "Super Admin" },
-                          ]
+                          { value: "ADMIN", label: "Admin" },
+                          { value: "SUPER_ADMIN", label: "Super Admin" },
+                        ]
                         : []),
                     ]}
                     className="w-full"
@@ -2152,11 +2136,10 @@ export default function UsersPage() {
               {/* Toggles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div
-                  className={`p-4 rounded-2xl border transition ${
-                    form.hasLeftCompany
+                  className={`p-4 rounded-2xl border transition ${form.hasLeftCompany
                       ? "bg-slate-100/70 dark:bg-slate-900/60 border-slate-200/50 dark:border-slate-800/50 opacity-60 cursor-not-allowed"
                       : "bg-[#FAF9F5] dark:bg-slate-850 border-slate-200 dark:border-slate-800"
-                  }`}
+                    }`}
                 >
                   <Toggle
                     checked={form.hasLeftCompany ? false : form.approved}
@@ -2193,11 +2176,10 @@ export default function UsersPage() {
                 </div>
 
                 <div
-                  className={`p-4 rounded-2xl border transition ${
-                    form.hasLeftCompany
+                  className={`p-4 rounded-2xl border transition ${form.hasLeftCompany
                       ? "bg-slate-100/70 dark:bg-slate-900/60 border-slate-200/50 dark:border-slate-800/50 opacity-60 cursor-not-allowed"
                       : "bg-[#FAF9F5] dark:bg-slate-850 border-slate-200 dark:border-slate-800"
-                  }`}
+                    }`}
                 >
                   <Toggle
                     checked={form.hasLeftCompany ? false : form.commissionToPartyFund}

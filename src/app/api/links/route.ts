@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   if (dbUser?.role === "WRITER" && !dbUser.allowLinkLogAccess) {
     return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
   }
-  
+
   // Team lead restrictions
   if (dbUser?.role === "TEAM_LEAD") {
     const accesses = await prisma.siteAccess.findMany({
@@ -47,12 +47,12 @@ export async function GET(req: NextRequest) {
       geos: true,
       addedBy: { select: { name: true } },
       updatedBy: { select: { name: true } },
-      product: { 
-        select: { 
-          name: true, 
+      product: {
+        select: {
+          name: true,
           site: { select: { name: true } },
-          article: { select: { articleLink: true } } 
-        } 
+          article: { select: { articleLink: true } }
+        }
       },
     },
     orderBy: { addedAt: "desc" },
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(links);
 }
 
-// POST /api/links — create a new link log entry
+// POST /api/links - create a new link log entry
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

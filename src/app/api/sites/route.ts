@@ -29,9 +29,9 @@ export async function GET(req: NextRequest) {
         ...(categoryId ? { categories: { some: { id: parseInt(categoryId) } } } : {}),
         ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
       },
-      select: { 
-        id: true, 
-        name: true, 
+      select: {
+        id: true,
+        name: true,
         url: true,
         categories: {
           select: { id: true, name: true }
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/sites — create a new site (Admin / Super Admin / Linker)
+// POST /api/sites - create a new site (Admin / Super Admin / Linker)
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -90,13 +90,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, url, categoryIds } = body;
 
-    if (!name) {
+    const trimmedName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
+
+    if (!trimmedName) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmedName)) {
+      return NextResponse.json(
+        { error: "Special characters are not allowed. Only letters, numbers, and spaces are permitted for site names." },
+        { status: 400 }
+      );
     }
 
     const site = await prisma.site.create({
       data: {
-        name,
+        name: trimmedName,
         url,
         categories: {
           connect: Array.isArray(categoryIds) ? categoryIds.map((id: number) => ({ id })) : []

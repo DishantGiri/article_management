@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { DEFAULT_COMMISSION_TIERS } from "../route";
 
-// POST /api/commission-settings/reset — Reset all commission settings to defaults (Super Admin only)
+// POST /api/commission-settings/reset - Reset all commission settings to defaults (Super Admin only)
 export async function POST() {
   try {
     const session = await getServerSession(authOptions);

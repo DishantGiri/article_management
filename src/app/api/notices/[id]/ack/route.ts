@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// POST /api/notices/[id]/ack — record user acknowledgment ("I have read the message")
+// POST /api/notices/[id]/ack - record user acknowledgment ("I have read the message")
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -20,7 +20,7 @@ function normalizeTargetRoles(input: any): string {
   return "ALL";
 }
 
-// GET /api/notices — retrieve notices with category filter, role filter & read state
+// GET /api/notices - retrieve notices with category filter, role filter & read state
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/notices — create a new notice (Admin / Super Admin only)
+// POST /api/notices - create a new notice (Admin / Super Admin only)
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

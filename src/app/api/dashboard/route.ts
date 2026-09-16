@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/dashboard — role-aware stats
+// GET /api/dashboard - role-aware stats
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -97,26 +97,31 @@ export async function GET(req: NextRequest) {
       // WRITER & TEAM_LEAD: Pending articles on their assigned sites
       role === "WRITER" || role === "TEAM_LEAD"
         ? prisma.article.findMany({
-            where: {
-              status: "PENDING",
-              ...(role === "WRITER" ? { product: { siteId: { in: allowedSiteIds } } } : {}),
-            },
-            include: {
-              product: {
-                include: { 
-                  site: { select: { id: true, name: true } }, 
-                  category: { select: { id: true, name: true } },
-                  linkLogs: { include: { geos: true } }
-                },
+          where: {
+            status: "PENDING",
+            ...(role === "WRITER" ? { product: { siteId: { in: allowedSiteIds } } } : {}),
+          },
+          include: {
+            product: {
+              include: {
+                site: { select: { id: true, name: true } },
+                category: { select: { id: true, name: true } },
+                linkLogs: { include: { geos: true } }
               },
             },
-            take: 50,
-          })
+          },
+          take: 50,
+        })
         : Promise.resolve([]),
 
       // ANY ROLE: User's own In-Progress articles
       prisma.article.findMany({
         where: { writerId: userId, status: { in: ["IN_PROGRESS", "REDO"] } },
+        orderBy: [
+          { startedAt: "desc" },
+          { updatedAt: "desc" },
+          { id: "desc" },
+        ],
         include: {
           reviews: {
             orderBy: { reviewedAt: 'desc' },
@@ -124,8 +129,8 @@ export async function GET(req: NextRequest) {
             include: { reviewedBy: { select: { name: true } } }
           },
           product: {
-            include: { 
-              site: { select: { id: true, name: true } }, 
+            include: {
+              site: { select: { id: true, name: true } },
               category: { select: { id: true, name: true } },
               linkLogs: { include: { geos: true } }
             },
@@ -156,25 +161,25 @@ export async function GET(req: NextRequest) {
       // LINKER: Products added by this linker
       role === "LINKER"
         ? prisma.product.findMany({
-            where: { addedById: userId },
-            include: {
-              site: { select: { id: true, name: true } },
-              category: { select: { id: true, name: true } },
-              article: { select: { status: true } },
-            },
-            take: 5,
-          })
+          where: { addedById: userId },
+          include: {
+            site: { select: { id: true, name: true } },
+            category: { select: { id: true, name: true } },
+            article: { select: { status: true } },
+          },
+          take: 5,
+        })
         : Promise.resolve([]),
 
       // LINKER: Links added by this linker
       role === "LINKER"
         ? prisma.linkLog.findMany({
-            where: { addedById: userId },
-            include: {
-              product: { select: { name: true } },
-            },
-            take: 5,
-          })
+          where: { addedById: userId },
+          include: {
+            product: { select: { name: true } },
+          },
+          take: 5,
+        })
         : Promise.resolve([]),
 
       // Defined affiliate names
@@ -196,10 +201,10 @@ export async function GET(req: NextRequest) {
       // Flagged links for linker warnings
       role === "LINKER"
         ? prisma.linkLog.findMany({
-            where: { status: "ISSUE" },
-            select: { id: true, affiliateName: true, product: { select: { name: true, site: { select: { name: true } } } } },
-            take: 10,
-          })
+          where: { status: "ISSUE" },
+          select: { id: true, affiliateName: true, product: { select: { name: true, site: { select: { name: true } } } } },
+          take: 10,
+        })
         : Promise.resolve([]),
     ]);
 
@@ -381,7 +386,7 @@ export async function GET(req: NextRequest) {
           }),
           prisma.linkLog.count({ where: { status: "ISSUE" } }),
           prisma.article.findMany({ where: { status: { in: ["COMPLETED", "APPROVED"] }, writingTimeMin: { not: null } }, select: { writingTimeMin: true } }),
-          prisma.user.findMany({ 
+          prisma.user.findMany({
             where: { role: "WRITER" },
             include: { _count: { select: { articles: { where: { status: { in: ["COMPLETED", "APPROVED"] } } } } } }
           }),
@@ -390,15 +395,15 @@ export async function GET(req: NextRequest) {
           prisma.linkLog.findMany({ take: 20, orderBy: { addedAt: 'desc' }, include: { product: { select: { name: true } }, addedBy: { select: { name: true } } } })
         ]);
 
-        const avgWritingTime = completedArticlesList.length > 0 
-          ? (completedArticlesList.reduce((acc, a) => acc + (a.writingTimeMin || 0), 0) / completedArticlesList.length) / 60 
+        const avgWritingTime = completedArticlesList.length > 0
+          ? (completedArticlesList.reduce((acc, a) => acc + (a.writingTimeMin || 0), 0) / completedArticlesList.length) / 60
           : 0;
 
         // --- Monthly Data (Mocked from actual DB if possible, but for now we aggregate the last 6 months from recent) ---
         // To do a real aggregation we fetch everything, but for a lightweight approach let's just group the recent ones
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const monthlyDataMap: Record<string, { name: string, articles: number, products: number }> = {};
-        
+
         // Initialize last 6 months
         for (let i = 5; i >= 0; i--) {
           const d = new Date();
@@ -406,12 +411,12 @@ export async function GET(req: NextRequest) {
           const key = monthNames[d.getMonth()];
           monthlyDataMap[key] = { name: key, articles: 0, products: 0 };
         }
-        
+
         allProductsRecent.forEach(p => {
           const m = monthNames[p.addedAt.getMonth()];
           if (monthlyDataMap[m]) monthlyDataMap[m].products += 1;
         });
-        
+
         allArticlesRecent.forEach(a => {
           const m = monthNames[a.updatedAt.getMonth()];
           if (monthlyDataMap[m]) monthlyDataMap[m].articles += 1;
@@ -449,7 +454,7 @@ export async function GET(req: NextRequest) {
             date: l.addedAt
           }))
         ];
-        
+
         activityMap.sort((a, b) => b.date.getTime() - a.date.getTime());
         const recentActivity = activityMap.slice(0, 10);
 

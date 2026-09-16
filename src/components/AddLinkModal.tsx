@@ -53,12 +53,12 @@ const LINK_STATUSES = [
 ];
 
 const REMARK_TEMPLATES = [
-  { value: "Standard affiliate setup — links verified active", label: "Standard affiliate setup — links verified active" },
+  { value: "Standard affiliate setup - links verified active", label: "Standard affiliate setup - links verified active" },
   { value: "Bridge page live & redirecting to buy page", label: "Bridge page live & redirecting to buy page" },
   { value: "Direct purchase link configured for site", label: "Direct purchase link configured for site" },
-  { value: "Under review — waiting for affiliate network approval", label: "Under review — waiting for affiliate approval" },
+  { value: "Under review - waiting for affiliate network approval", label: "Under review - waiting for affiliate approval" },
   { value: "Presell page active with multi-geo routing", label: "Presell page active with multi-geo routing" },
-  { value: "Need to check in future — potential link/stock change", label: "Need to check in future — potential link change" },
+  { value: "Need to check in future - potential link/stock change", label: "Need to check in future - potential link change" },
   { value: "No remarks / clean configuration", label: "No remarks / clean configuration" },
 ];
 
@@ -91,7 +91,7 @@ export default function AddLinkModal({
   >([{ affiliateName: "", affiliateLink: "" }]);
   const [geos, setGeos] = useState<string[]>([]);
   const [status, setStatus] = useState("REQUESTED");
-  const [linkerRemarks, setLinkerRemarks] = useState("Standard affiliate setup — links verified active");
+  const [linkerRemarks, setLinkerRemarks] = useState("Standard affiliate setup - links verified active");
 
   // Country-specific links state
   const [useCountrySpecificLinks, setUseCountrySpecificLinks] = useState(true);
@@ -254,7 +254,7 @@ export default function AddLinkModal({
       setLoadingProducts(true);
       setError("");
       setStatus("REQUESTED");
-      setLinkerRemarks("Standard affiliate setup — links verified active");
+      setLinkerRemarks("Standard affiliate setup - links verified active");
       setBridgePageLink("");
       setBuyLink("");
       setAffiliateEntries([{ affiliateName: "", affiliateLink: "" }]);
@@ -411,21 +411,21 @@ export default function AddLinkModal({
     geos.length > 0 &&
     (useCountrySpecificLinks
       ? countryLinks.length > 0 &&
-        countryLinks.every(
-          (c) =>
-            !!c.affiliateName.trim() &&
-            !!c.affiliateLink.trim() &&
-            isValidUrl(c.affiliateLink) &&
-            !c.linkError
-        )
+      countryLinks.every(
+        (c) =>
+          !!c.affiliateName.trim() &&
+          !!c.affiliateLink.trim() &&
+          isValidUrl(c.affiliateLink) &&
+          !c.linkError
+      )
       : affiliateEntries.length > 0 &&
-        affiliateEntries.every(
-          (e) =>
-            !!e.affiliateName.trim() &&
-            !!e.affiliateLink.trim() &&
-            isValidUrl(e.affiliateLink) &&
-            !e.linkError
-        )) &&
+      affiliateEntries.every(
+        (e) =>
+          !!e.affiliateName.trim() &&
+          !!e.affiliateLink.trim() &&
+          isValidUrl(e.affiliateLink) &&
+          !e.linkError
+      )) &&
     !bridgeLinkError &&
     !buyLinkError &&
     !(status === "ACCEPTED" && !bridgePageLink?.trim()) &&
@@ -444,15 +444,15 @@ export default function AddLinkModal({
 
     const entriesToCreate = useCountrySpecificLinks
       ? countryLinks.map((c) => ({
-          affiliateName: c.affiliateName.trim() || defaultAffiliateName || allAffiliates[0] || "Standard",
-          affiliateLink: c.affiliateLink.trim(),
-          geos: [c.geo],
-        }))
+        affiliateName: c.affiliateName.trim() || defaultAffiliateName || allAffiliates[0] || "Standard",
+        affiliateLink: c.affiliateLink.trim(),
+        geos: [c.geo],
+      }))
       : affiliateEntries.map((a) => ({
-          affiliateName: a.affiliateName.trim(),
-          affiliateLink: a.affiliateLink.trim(),
-          geos: geos,
-        }));
+        affiliateName: a.affiliateName.trim(),
+        affiliateLink: a.affiliateLink.trim(),
+        geos: geos,
+      }));
 
     if (entriesToCreate.length === 0) {
       setError("Please configure at least one country link.");
@@ -516,10 +516,10 @@ export default function AddLinkModal({
           affiliateEntries: useCountrySpecificLinks
             ? undefined
             : affiliateEntries.map((a) => ({
-                affiliateName: a.affiliateName.trim(),
-                affiliateLink: a.affiliateLink.trim(),
-                geos,
-              })),
+              affiliateName: a.affiliateName.trim(),
+              affiliateLink: a.affiliateLink.trim(),
+              geos,
+            })),
           affiliateName: useCountrySpecificLinks
             ? countryLinks[0]?.affiliateName.trim() || defaultAffiliateName || allAffiliates[0] || "Standard"
             : affiliateEntries[0]?.affiliateName.trim() || "",
@@ -624,7 +624,7 @@ export default function AddLinkModal({
                 const isUnlinked = !p.linkLogs || p.linkLogs.length === 0;
                 return {
                   value: String(p.id),
-                  label: `${p.name} — (Site: ${p.site?.name || "Unassigned"}) ${isUnlinked ? "⚠️ (Needs Link Logs)" : ""}`,
+                  label: `${p.name} - (Site: ${p.site?.name || "Unassigned"}) ${isUnlinked ? "⚠️ (Needs Link Logs)" : ""}`,
                 };
               })}
             />
@@ -1278,9 +1278,8 @@ export default function AddLinkModal({
               {submitting
                 ? "Saving..."
                 : useCountrySpecificLinks
-                ? `Save Product (${countryLinks.length} Country Links)`
-                : `Add ${affiliateEntries.length} Link Log${
-                    affiliateEntries.length !== 1 ? "s" : ""
+                  ? `Save Product (${countryLinks.length} Country Links)`
+                  : `Add ${affiliateEntries.length} Link Log${affiliateEntries.length !== 1 ? "s" : ""
                   }`}
             </button>
           </div>

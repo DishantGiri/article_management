@@ -4,7 +4,7 @@ import { sendRealtimeNotification, broadcastRealtimeNotification } from "@/lib/n
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// PATCH /api/links/[id] — update link details / status
+// PATCH /api/links/[id] - update link details / status
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -129,13 +129,13 @@ export async function PATCH(
         ...(affiliateLink !== undefined ? { affiliateLink } : {}),
         ...(geosToSet !== null
           ? {
-              geos: {
-                create: geosToSet.map((item) => ({
-                  geo: item.geo,
-                  affiliateLink: item.affiliateLink || affiliateLink || existing.affiliateLink,
-                })),
-              },
-            }
+            geos: {
+              create: geosToSet.map((item) => ({
+                geo: item.geo,
+                affiliateLink: item.affiliateLink || affiliateLink || existing.affiliateLink,
+              })),
+            },
+          }
           : {}),
       },
       include: { geos: true },
@@ -155,9 +155,8 @@ export async function PATCH(
 
         const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const currentRemarks = updated.linkerRemarks || "";
-        const formattedRemark = `[Flagged by ${callerLabel} • ${dateStr}]: ${issueMessage}${
-          currentRemarks ? ` \n${currentRemarks}` : ""
-        }`;
+        const formattedRemark = `[Flagged by ${callerLabel} • ${dateStr}]: ${issueMessage}${currentRemarks ? ` \n${currentRemarks}` : ""
+          }`;
 
         // Set status to ISSUE and append remarks
         await prisma.linkLog.update({
@@ -314,7 +313,7 @@ export async function PATCH(
 // Support both PUT and PATCH methods
 export const PUT = PATCH;
 
-// DELETE /api/links/[id] — delete link log
+// DELETE /api/links/[id] - delete link log
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -373,15 +372,15 @@ export async function GET(
 
   const link = await prisma.linkLog.findUnique({
     where: { id: parseInt(id) },
-    include: { 
-      geos: true, 
-      addedBy: { select: { name: true } }, 
-      product: { 
-        select: { 
-          name: true, 
-          site: { select: { name: true } } 
-        } 
-      } 
+    include: {
+      geos: true,
+      addedBy: { select: { name: true } },
+      product: {
+        select: {
+          name: true,
+          site: { select: { name: true } }
+        }
+      }
     },
   });
   if (!link) return NextResponse.json({ error: "Not found" }, { status: 404 });

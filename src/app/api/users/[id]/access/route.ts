@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// POST /api/users/[id]/access — assign site access to a writer
+// POST /api/users/[id]/access - assign site access to a writer
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -48,7 +48,7 @@ export async function POST(
   }
 }
 
-// DELETE /api/users/[id]/access — revoke site access from a writer
+// DELETE /api/users/[id]/access - revoke site access from a writer
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

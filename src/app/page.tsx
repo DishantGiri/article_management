@@ -44,6 +44,7 @@ import {
   Eye,
   EyeOff,
   Info,
+  RotateCcw,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
@@ -393,7 +394,7 @@ export default function DashboardPage() {
             {getGreeting()}, {session?.user?.name || "Team Member"}
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            {currentUserRole === "SUPER_ADMIN" && "Platform Command Hub — Full visibility across all sites, writers, and networks."}
+            {currentUserRole === "SUPER_ADMIN" && "Platform Command Hub - Full visibility across all sites, writers, and networks."}
             {currentUserRole === "ADMIN" && "System Administration & Operations Control Center."}
             {currentUserRole === "TEAM_LEAD" && "Editorial Review Queue & Team Velocity Dispatch."}
             {currentUserRole === "LINKER" && "Affiliate Gateway & Link Log Operations."}
@@ -526,11 +527,10 @@ export default function DashboardPage() {
                         <div
                           key={n.id}
                           onClick={() => handleNotificationClick(n)}
-                          className={`p-3 rounded-xl border text-xs flex flex-col gap-1.5 transition-all block cursor-pointer ${
-                            !n.isRead
+                          className={`p-3 rounded-xl border text-xs flex flex-col gap-1.5 transition-all block cursor-pointer ${!n.isRead
                               ? "bg-[#FAF9F5] hover:bg-white border-[#6D8196]/40 font-semibold shadow-2xs"
                               : "bg-white hover:bg-[#FAF9F5] border-[#CBCBCB]/50 text-slate-600"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <p className={`leading-snug ${!n.isRead ? "text-slate-900 font-bold" : "text-slate-600"}`}>
@@ -577,21 +577,19 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setTlTab("check")}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
-                  tlTab === "check"
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${tlTab === "check"
                     ? "bg-[#6D8196] text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
+                  }`}
               >
                 <ClipboardList className="w-4 h-4" />
                 <span>Check Article</span>
                 {(data?.teamLead?.reviewQueue?.length ?? 0) > 0 && (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                      tlTab === "check"
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${tlTab === "check"
                         ? "bg-white text-[#6D8196]"
                         : "bg-amber-100 text-amber-800"
-                    }`}
+                      }`}
                   >
                     {data?.teamLead?.reviewQueue?.length}
                   </span>
@@ -600,11 +598,10 @@ export default function DashboardPage() {
 
               <button
                 onClick={() => setTlTab("write")}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
-                  tlTab === "write"
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${tlTab === "write"
                     ? "bg-[#6D8196] text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
+                  }`}
               >
                 <FileText className="w-4 h-4" />
                 <span>Write Article</span>
@@ -615,11 +612,10 @@ export default function DashboardPage() {
                   </span>
                 ) : (data?.writerPendingArticles?.length ?? 0) > 0 ? (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      tlTab === "write"
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tlTab === "write"
                         ? "bg-white text-[#6D8196]"
                         : "bg-slate-100 text-slate-600"
-                    }`}
+                      }`}
                   >
                     {data?.writerPendingArticles?.length} pool
                   </span>
@@ -992,7 +988,7 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
                     </div>
                     <div className="flex-1 flex justify-between gap-2">
                       <p className="text-slate-700 leading-snug font-medium">
-                        <strong className="text-slate-900 font-bold">{act.user}</strong> — {act.type.replace("_", " ")} on{" "}
+                        <strong className="text-slate-900 font-bold">{act.user}</strong> - {act.type.replace("_", " ")} on{" "}
                         <span className="font-semibold text-slate-800">{act.item}</span>
                       </p>
                       <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{timeLabel}</span>
@@ -1466,7 +1462,45 @@ function WriterFocusStudio({
   onStartWriting: (articleId: number) => void;
   onRefresh: () => void;
 }) {
-  const activeArticle = data.writerInProgressArticles?.[0];
+  const inProgressList = data.writerInProgressArticles || [];
+  const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null);
+
+  // Read articleId from URL query parameters if present (e.g. redirected after Start Revision on /articles)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const artIdParam = params.get("articleId");
+      if (artIdParam) {
+        const parsed = parseInt(artIdParam, 10);
+        if (!isNaN(parsed)) {
+          setSelectedArticleId(parsed);
+        }
+      }
+    }
+  }, []);
+
+  // Determine active article deterministically:
+  // 1. If selectedArticleId matches an article in inProgressList, use it.
+  // 2. Otherwise prioritize:
+  //    a) Article with status REDO that is actively started (startedAt != null)
+  //    b) Article with status IN_PROGRESS that is actively started (startedAt != null)
+  //    c) Article with status REDO (revision pending start)
+  //    d) First available in-progress article
+  const activeArticle = useMemo(() => {
+    if (inProgressList.length === 0) return null;
+    if (selectedArticleId) {
+      const found = inProgressList.find((a: any) => a.id === selectedArticleId);
+      if (found) return found;
+    }
+    const activeRevision = inProgressList.find((a: any) => a.status === "REDO" && !!a.startedAt);
+    if (activeRevision) return activeRevision;
+    const activeWriting = inProgressList.find((a: any) => a.status === "IN_PROGRESS" && !!a.startedAt);
+    if (activeWriting) return activeWriting;
+    const pendingRevision = inProgressList.find((a: any) => a.status === "REDO");
+    if (pendingRevision) return pendingRevision;
+    return inProgressList[0];
+  }, [inProgressList, selectedArticleId]);
+
   const stats = data.writerStats || {
     approvedCount: 0,
     inReviewCount: 0,
@@ -1476,6 +1510,7 @@ function WriterFocusStudio({
     avgWritingTimeMin: null,
   };
   const availableCount = data.writerPendingArticles?.length || 0;
+  const redoArticlesList = inProgressList.filter((a: any) => a.status === "REDO");
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-fadeIn">
@@ -1550,31 +1585,110 @@ function WriterFocusStudio({
 
       {/* Redo Warning Alert (if any article has been sent back for revisions) */}
       {stats.redoCount > 0 && (
-        <div className="p-4 bg-rose-50/90 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between shadow-2xs gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-4 h-4" />
+        <div className="p-4 bg-rose-50/90 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded-2xl flex flex-col gap-3 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-extrabold text-rose-900 dark:text-rose-200">
+                  Action Required: {stats.redoCount} article{stats.redoCount === 1 ? "" : "s"} need{stats.redoCount === 1 ? "s" : ""} revision
+                </p>
+                <p className="text-[11px] text-rose-700 dark:text-rose-300">
+                  Please review Team Lead notes and update the requested changes.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-extrabold text-rose-900 dark:text-rose-200">
-                Action Required: {stats.redoCount} article{stats.redoCount === 1 ? "" : "s"} need{stats.redoCount === 1 ? "s" : ""} revision
-              </p>
-              <p className="text-[11px] text-rose-700 dark:text-rose-300">
-                Please review Team Lead notes and update the requested changes.
-              </p>
-            </div>
+            {activeArticle?.status === "REDO" && (
+              <span className="self-start sm:self-auto px-3 py-1 bg-rose-600 text-white rounded-xl text-xs font-bold shrink-0">
+                Active in Workspace Below
+              </span>
+            )}
           </div>
-          {activeArticle?.status === "REDO" && (
-            <span className="self-start sm:self-auto px-3 py-1 bg-rose-600 text-white rounded-xl text-xs font-bold shrink-0">
-              Active in Workspace Below
-            </span>
+
+          {/* Direct selection pills when multiple articles need revision */}
+          {redoArticlesList.length > 1 && (
+            <div className="pt-2 border-t border-rose-200/70 dark:border-rose-900/50 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-rose-900 dark:text-rose-200">
+                Select Revision Assignment:
+              </span>
+              {redoArticlesList.map((art: any) => {
+                const isSelected = activeArticle?.id === art.id;
+                return (
+                  <button
+                    key={art.id}
+                    type="button"
+                    onClick={() => setSelectedArticleId(art.id)}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? "bg-rose-600 text-white shadow-xs"
+                        : "bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 hover:bg-rose-100/60"
+                    }`}
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>{art.product?.name}</span>
+                    <span className="text-[10px] opacity-75 font-mono">#{art.id}</span>
+                    {art.startedAt && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title="Revision Started" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           )}
+        </div>
+      )}
+
+      {/* Multiple Active Assignments Switcher (when writer has multiple active or revision tasks) */}
+      {inProgressList.length > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
+              Active Assignments ({inProgressList.length}):
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {inProgressList.map((art: any) => {
+              const isSelected = activeArticle?.id === art.id;
+              const isRedo = art.status === "REDO";
+              return (
+                <button
+                  key={art.id}
+                  type="button"
+                  onClick={() => setSelectedArticleId(art.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    isSelected
+                      ? isRedo
+                        ? "bg-rose-600 text-white shadow-xs"
+                        : "bg-[#6D8196] text-white shadow-xs"
+                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100/70 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${isRedo ? "bg-rose-400" : "bg-emerald-400"} animate-pulse`} />
+                  <span>{art.product?.name}</span>
+                  <span className="text-[10px] opacity-75 font-mono">#{art.id}</span>
+                  {isRedo ? (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isSelected ? "bg-rose-700 text-white" : "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300"}`}>
+                      {art.startedAt ? "Revising" : "Revision"}
+                    </span>
+                  ) : (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isSelected ? "bg-[#5A6D81] text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
+                      Writing
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {activeArticle ? (
         // STATE 1: ACTIVE ASSIGNMENT FOCUS WORKSTATION
         <WriterActiveFocusWorkspace
+          key={activeArticle.id}
           article={activeArticle}
           completedArticles={data.writerCompletedArticles || []}
           currentUserId={currentUserId}
@@ -1620,11 +1734,16 @@ function WriterActiveFocusWorkspace({
   const [submittingReport, setSubmittingReport] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Synchronize internal form and operation states cleanly on article change
   useEffect(() => {
-    if (article.articleLink) {
-      setArticleLink(article.articleLink);
-    }
-  }, [article.articleLink]);
+    setArticleLink(article.articleLink || "");
+    setArticleLinkError("");
+    setWriterNotes("");
+    setStartingRevision(false);
+    setSubmitting(false);
+    setShowApprovalModal(false);
+    setApprovalReason("");
+  }, [article.id, article.articleLink]);
 
   const handleCopyLink = (url: string, id: string, label: string) => {
     if (!url) return;
@@ -1637,6 +1756,7 @@ function WriterActiveFocusWorkspace({
   };
 
   const handleStartRevision = async () => {
+    if (startingRevision) return;
     setStartingRevision(true);
     try {
       const res = await fetch(`/api/articles/${article.id}`, {
@@ -1644,11 +1764,17 @@ function WriterActiveFocusWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ redoStarted: true, callerId: currentUserId }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to start revision");
+      }
       toast.success("Revision started! You can now edit and resubmit.");
+      setStartingRevision(false);
       setTimeout(() => onSuccess(), 600);
     } catch (e: any) {
       toast.error(e.message || "Failed to start revision");
+      setStartingRevision(false);
+    } finally {
       setStartingRevision(false);
     }
   };
@@ -1677,12 +1803,18 @@ function WriterActiveFocusWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "COMPLETED", articleLink, callerId: currentUserId, notes: writerNotes }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to submit");
+      }
       toast.success("Article submitted successfully!");
       setWriterNotes("");
+      setSubmitting(false);
       setTimeout(() => onSuccess(), 800);
     } catch (e: any) {
       toast.error(e.message || "Failed to submit");
+      setSubmitting(false);
+    } finally {
       setSubmitting(false);
     }
   };
@@ -1700,12 +1832,18 @@ function WriterActiveFocusWorkspace({
           callerId: currentUserId,
         }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to request approval");
+      }
       setShowApprovalModal(false);
       toast.success("Approval requested!");
+      setSubmitting(false);
       setTimeout(() => onSuccess(), 800);
     } catch (e: any) {
       toast.error(e.message || "Failed to request approval");
+      setSubmitting(false);
+    } finally {
       setSubmitting(false);
     }
   };
@@ -1721,7 +1859,7 @@ function WriterActiveFocusWorkspace({
           </span>
           <div>
             <span className="text-xs font-black text-emerald-950 dark:text-emerald-200">
-              Active Focus Mode — Currently Writing
+              Active Focus Mode - Currently Writing
             </span>
             <span className="text-[11px] text-emerald-700/80 dark:text-emerald-400 ml-2 hidden sm:inline font-medium">
               Complete and submit this article to unlock subsequent assignments.
@@ -1780,6 +1918,7 @@ function WriterActiveFocusWorkspace({
             <div className="flex flex-col items-center gap-3 py-8 border border-dashed border-rose-200 dark:border-rose-900/60 rounded-2xl bg-rose-50/40 dark:bg-rose-950/30 text-center">
               <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Ready to start revision?</p>
               <button
+                type="button"
                 onClick={handleStartRevision}
                 disabled={startingRevision}
                 className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl disabled:opacity-50 transition flex items-center gap-2 shadow-xs cursor-pointer"
@@ -1832,11 +1971,10 @@ function WriterActiveFocusWorkspace({
 
                   {/* Trend Velocity if present */}
                   {article.product.trendLevel && (
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border ${
-                      article.product.trendLevel === "HIGH"
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border ${article.product.trendLevel === "HIGH"
                         ? "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/60 dark:border-slate-700"
-                    }`}>
+                      }`}>
                       <TrendingUp className="w-3 h-3" />
                       {article.product.trendLevel} Velocity
                     </span>
@@ -1948,13 +2086,12 @@ function WriterActiveFocusWorkspace({
                         <div className="flex items-center gap-2">
                           {/* Status Pill */}
                           <span
-                            className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                              log.status === "ISSUE"
+                            className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${log.status === "ISSUE"
                                 ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
                                 : log.status === "APPROVED"
-                                ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                                : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/60"
-                            }`}
+                                  ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                  : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/60"
+                              }`}
                           >
                             {log.status === "ISSUE" ? "Issue Reported" : log.status === "APPROVED" ? "Verified Active" : "Requested"}
                           </span>
@@ -2003,11 +2140,10 @@ function WriterActiveFocusWorkspace({
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   onClick={() => handleCopyLink(log.buyLink, `buy-${log.id}`, "Buy link")}
-                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                    copiedId === `buy-${log.id}`
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${copiedId === `buy-${log.id}`
                                       ? "bg-emerald-600 text-white shadow-xs"
                                       : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
-                                  }`}
+                                    }`}
                                   title="Copy Buy Link"
                                 >
                                   {copiedId === `buy-${log.id}` ? (
@@ -2062,11 +2198,10 @@ function WriterActiveFocusWorkspace({
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   onClick={() => handleCopyLink(log.bridgePageLink, `bridge-${log.id}`, "Bridge link")}
-                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                    copiedId === `bridge-${log.id}`
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${copiedId === `bridge-${log.id}`
                                       ? "bg-emerald-600 text-white shadow-xs"
                                       : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
-                                  }`}
+                                    }`}
                                   title="Copy Bridge Link"
                                 >
                                   {copiedId === `bridge-${log.id}` ? (
@@ -2154,9 +2289,8 @@ function WriterActiveFocusWorkspace({
                   }
                 }}
                 placeholder="https://docs.google.com/..."
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-slate-900 dark:text-slate-100 focus:outline-none transition bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-900 ${
-                  articleLinkError ? "border-rose-400 focus:ring-1 focus:ring-rose-400" : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-[#6D8196]"
-                } ${!revisionStarted ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-slate-900 dark:text-slate-100 focus:outline-none transition bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-900 ${articleLinkError ? "border-rose-400 focus:ring-1 focus:ring-rose-400" : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-[#6D8196]"
+                  } ${!revisionStarted ? "opacity-50 cursor-not-allowed" : ""}`}
               />
               {articleLinkError && <p className="text-[10px] font-bold text-rose-500 mt-1">{articleLinkError}</p>}
             </div>
@@ -2171,9 +2305,8 @@ function WriterActiveFocusWorkspace({
                 onChange={(e) => setWriterNotes(e.target.value)}
                 placeholder="Mention any key updates or considerations for the team lead..."
                 rows={3}
-                className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#6D8196] resize-none ${
-                  !revisionStarted ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#6D8196] resize-none ${!revisionStarted ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
               />
             </div>
 
@@ -2785,10 +2918,10 @@ function RecentCompletionsTable({ completedArticles }: { completedArticles: any[
                       <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                         {a.completedAt
                           ? new Date(a.completedAt).toLocaleDateString([], {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
                           : "--"}
                       </span>
                     </td>

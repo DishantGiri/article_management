@@ -460,11 +460,10 @@ export default function UserCommissionsPage() {
               <button
                 key={tab.key}
                 onClick={() => setRoleFilter(tab.key)}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer text-[11px] whitespace-nowrap ${
-                  roleFilter === tab.key
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer text-[11px] whitespace-nowrap ${roleFilter === tab.key
                     ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                     : "text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A]"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -552,20 +551,20 @@ export default function UserCommissionsPage() {
               startDate ||
               endDate ||
               search) && (
-              <button
-                onClick={() => {
-                  setRoleFilter("ALL");
-                  setStatusFilter("ALL");
-                  setSiteFilter("ALL");
-                  setStartDate("");
-                  setEndDate("");
-                  setSearch("");
-                }}
-                className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-              >
-                Clear All
-              </button>
-            )}
+                <button
+                  onClick={() => {
+                    setRoleFilter("ALL");
+                    setStatusFilter("ALL");
+                    setSiteFilter("ALL");
+                    setStartDate("");
+                    setEndDate("");
+                    setSearch("");
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                >
+                  Clear All
+                </button>
+              )}
           </div>
         </div>
       </div>
@@ -637,9 +636,8 @@ export default function UserCommissionsPage() {
                       {/* Role Pill */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                            roleStyles[user.role] || roleStyles.WRITER
-                          }`}
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${roleStyles[user.role] || roleStyles.WRITER
+                            }`}
                         >
                           {user.role}
                         </span>
@@ -707,11 +705,10 @@ export default function UserCommissionsPage() {
                       {/* Pending Balance */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <span
-                          className={`font-black text-xs ${
-                            user.pendingAmount > 0
+                          className={`font-black text-xs ${user.pendingAmount > 0
                               ? "text-amber-600 dark:text-amber-400"
                               : "text-slate-400"
-                          }`}
+                            }`}
                         >
                           Rs. {user.pendingAmount.toFixed(2)}
                         </span>
@@ -762,7 +759,7 @@ export default function UserCommissionsPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-[#4A4A4A] dark:text-white">
-                    {statementUser.name} — Earnings Statement
+                    {statementUser.name} - Earnings Statement
                   </h3>
                   <p className="text-xs text-[#737373] dark:text-slate-400 mt-0.5">
                     {statementUser.role} • {statementUser.email}
@@ -820,11 +817,10 @@ export default function UserCommissionsPage() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span
-                            className={`px-2 py-0.2 rounded-full text-[9px] font-black ${
-                              sale.saleType === "FIRST_SALE"
+                            className={`px-2 py-0.2 rounded-full text-[9px] font-black ${sale.saleType === "FIRST_SALE"
                                 ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
                                 : "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
-                            }`}
+                              }`}
                           >
                             {sale.saleType === "FIRST_SALE" ? "1st" : "Re"}
                           </span>
@@ -850,11 +846,10 @@ export default function UserCommissionsPage() {
 
                         <button
                           onClick={() => handleToggleSingleSale(sale.saleId, sale.paymentStatus)}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer ${
-                            sale.paymentStatus === "PAID"
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer ${sale.paymentStatus === "PAID"
                               ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-700 dark:text-emerald-300"
                               : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-700 dark:text-amber-300"
-                          }`}
+                            }`}
                           title="Click to toggle status"
                         >
                           {sale.paymentStatus === "PAID" ? "✓ Paid" : "⏳ Pending"}
@@ -903,8 +898,8 @@ export default function UserCommissionsPage() {
         message={
           payoutTargetUser
             ? `Are you sure you want to mark all pending commissions (Rs. ${payoutTargetUser.pendingAmount.toFixed(
-                2
-              )}) as PAID for ${payoutTargetUser.name}? This will record the payout as settled.`
+              2
+            )}) as PAID for ${payoutTargetUser.name}? This will record the payout as settled.`
             : ""
         }
         confirmLabel="Confirm Payout"

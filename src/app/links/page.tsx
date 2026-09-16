@@ -364,7 +364,7 @@ function LinksPageContent() {
           Showing {sortedFiltered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, sortedFiltered.length)} of {sortedFiltered.length}
         </p>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <button 
+          <button
             onClick={() => setCurrentPage(1)}
             disabled={currentPage === 1}
             className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
@@ -372,7 +372,7 @@ function LinksPageContent() {
           >
             First
           </button>
-          <button 
+          <button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
             className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
@@ -395,11 +395,10 @@ function LinksPageContent() {
             <button
               key={p}
               onClick={() => setCurrentPage(p)}
-              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                currentPage === p 
-                  ? "bg-[#6D8196] text-white border border-[#6D8196] shadow-xs" 
+              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${currentPage === p
+                  ? "bg-[#6D8196] text-white border border-[#6D8196] shadow-xs"
                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-              }`}
+                }`}
             >
               {p}
             </button>
@@ -415,7 +414,7 @@ function LinksPageContent() {
             </button>
           )}
 
-          <button 
+          <button
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages || totalPages === 0}
             className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
@@ -423,7 +422,7 @@ function LinksPageContent() {
           >
             &gt;
           </button>
-          <button 
+          <button
             onClick={() => setCurrentPage(totalPages)}
             disabled={currentPage === totalPages || totalPages === 0}
             className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
@@ -461,7 +460,7 @@ function LinksPageContent() {
                 <Tag className="w-4 h-4 text-[#6D8196]" />
                 Affiliates
               </button>
-              <button 
+              <button
                 onClick={() => setIsAddLinkOpen(true)}
                 className="px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white rounded-lg text-sm font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer"
               >
@@ -470,7 +469,7 @@ function LinksPageContent() {
               </button>
             </>
           )}
-          <button 
+          <button
             onClick={handleExportCSV}
             className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
             <Download className="w-4 h-4 text-slate-500" />
@@ -482,17 +481,16 @@ function LinksPageContent() {
       {/* Metric Cards Row */}
       {stats && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "LINKER") && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div 
+          <div
             onClick={() => {
               setStatusFilter("");
               setShowOnlyDeadLinks(false);
               setCurrentPage(1);
             }}
-            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${
-              !statusFilter && !showOnlyDeadLinks 
-                ? "border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50/5" 
+            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${!statusFilter && !showOnlyDeadLinks
+                ? "border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50/5"
                 : "border-slate-200/60 hover:border-indigo-300"
-            }`}
+              }`}
           >
             <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 mb-2">
               <Network className="w-4 h-4" />
@@ -503,17 +501,16 @@ function LinksPageContent() {
             </div>
           </div>
 
-          <div 
+          <div
             onClick={() => {
               setStatusFilter("");
               setShowOnlyDeadLinks(true);
               setCurrentPage(1);
             }}
-            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 relative cursor-pointer transition-all border ${
-              showOnlyDeadLinks 
-                ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/5" 
+            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 relative cursor-pointer transition-all border ${showOnlyDeadLinks
+                ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/5"
                 : "border-slate-200/60 hover:border-rose-300"
-            }`}
+              }`}
           >
             <div className="flex items-center justify-between mb-2">
               <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
@@ -527,17 +524,16 @@ function LinksPageContent() {
             </div>
           </div>
 
-          <div 
+          <div
             onClick={() => {
               setStatusFilter("ISSUE");
               setShowOnlyDeadLinks(false);
               setCurrentPage(1);
             }}
-            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${
-              statusFilter === "ISSUE" && !showOnlyDeadLinks 
-                ? "border-amber-500 ring-1 ring-amber-500 bg-amber-50/5" 
+            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${statusFilter === "ISSUE" && !showOnlyDeadLinks
+                ? "border-amber-500 ring-1 ring-amber-500 bg-amber-50/5"
                 : "border-slate-200/60 hover:border-amber-300"
-            }`}
+              }`}
           >
             <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 mb-2">
               <AlertTriangle className="w-4 h-4" />
@@ -564,26 +560,23 @@ function LinksPageContent() {
       <div className="flex border-b border-[#CBCBCB]/60 mb-6 gap-2">
         <button
           onClick={() => { setStatusFilter(""); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
-            !statusFilter && !showOnlyDeadLinks
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${!statusFilter && !showOnlyDeadLinks
               ? "border-[#6D8196] text-[#6D8196] font-bold"
               : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
-          }`}
+            }`}
         >
           <span>All Links</span>
-          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-            !statusFilter && !showOnlyDeadLinks ? "bg-slate-200 text-slate-700" : "bg-slate-100 text-slate-500"
-          }`}>
+          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${!statusFilter && !showOnlyDeadLinks ? "bg-slate-200 text-slate-700" : "bg-slate-100 text-slate-500"
+            }`}>
             {links.length}
           </span>
         </button>
         <button
           onClick={() => { setStatusFilter("ISSUE"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
-            statusFilter === "ISSUE"
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === "ISSUE"
               ? "border-rose-500 text-rose-600 font-bold"
               : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
-          }`}
+            }`}
         >
           <span>Flagged Links</span>
           {flaggedLinksCount > 0 && (
@@ -594,34 +587,30 @@ function LinksPageContent() {
         </button>
         <button
           onClick={() => { setStatusFilter("REQUESTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
-            statusFilter === "REQUESTED"
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === "REQUESTED"
               ? "border-[#6D8196] text-[#6D8196] font-bold"
               : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
-          }`}
+            }`}
         >
           <span>Pending Requests</span>
           {pendingRequestsCount > 0 && (
-            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-              statusFilter === "REQUESTED" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"
-            }`}>
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${statusFilter === "REQUESTED" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"
+              }`}>
               {pendingRequestsCount}
             </span>
           )}
         </button>
         <button
           onClick={() => { setStatusFilter("ACCEPTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
-            statusFilter === "ACCEPTED"
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === "ACCEPTED"
               ? "border-[#6D8196] text-[#6D8196] font-bold"
               : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
-          }`}
+            }`}
         >
           <span>Accepted Links</span>
           {acceptedLinksCount > 0 && (
-            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-              statusFilter === "ACCEPTED" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
-            }`}>
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${statusFilter === "ACCEPTED" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+              }`}>
               {acceptedLinksCount}
             </span>
           )}
@@ -635,9 +624,9 @@ function LinksPageContent() {
           onAddLink={
             currentUserRole === "LINKER" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN"
               ? (productId) => {
-                  setPreselectedProductId(productId);
-                  setIsAddLinkOpen(true);
-                }
+                setPreselectedProductId(productId);
+                setIsAddLinkOpen(true);
+              }
               : undefined
           }
         />
@@ -762,16 +751,15 @@ function LinksPageContent() {
                   const isNotificationMatch = Boolean(
                     search &&
                     (l.product?.name?.toLowerCase().trim() === search.toLowerCase().trim() ||
-                     l.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim() ||
-                     l.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
+                      l.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim() ||
+                      l.affiliateName?.toLowerCase().trim() === search.toLowerCase().trim())
                   );
-                  
+
                   return (
                     <tr
                       key={l.id}
-                      className={`hover:bg-slate-50/50 transition-colors group ${
-                        isNotificationMatch ? "bg-amber-50/30 ring-1 ring-amber-400/40" : ""
-                      }`}
+                      className={`hover:bg-slate-50/50 transition-colors group ${isNotificationMatch ? "bg-amber-50/30 ring-1 ring-amber-400/40" : ""
+                        }`}
                     >
                       <td className="px-3 py-3.5 max-w-[240px]">
                         <div className="flex items-center gap-1.5">
@@ -786,7 +774,7 @@ function LinksPageContent() {
                       {/* Fix 2: Site Name column */}
                       <td className="px-3 py-3.5">
                         <span className="text-[11px] font-bold text-[#3D4F61] bg-[#6D8196]/15 border border-[#6D8196]/30 px-2 py-0.5 rounded-full">
-                          {l.product.site?.name || "—"}
+                          {l.product.site?.name || "-"}
                         </span>
                       </td>
                       <td className="px-3 py-3.5">
@@ -956,7 +944,7 @@ function LinksPageContent() {
                         </span>
                       </td>
                       <td className="px-3 py-3.5">
-                        <span className="text-[13px] font-medium text-slate-600">{l.addedBy?.name || "—"}</span>
+                        <span className="text-[13px] font-medium text-slate-600">{l.addedBy?.name || "-"}</span>
                       </td>
                       <td className="px-3 py-3.5">
                         {l.updatedBy?.name ? (
@@ -964,7 +952,7 @@ function LinksPageContent() {
                             {l.updatedBy.name}
                           </span>
                         ) : (
-                          <span className="text-[12px] text-slate-400 italic">—</span>
+                          <span className="text-[12px] text-slate-400 italic">-</span>
                         )}
                       </td>
                       <td className="px-3 py-3.5">
@@ -988,7 +976,7 @@ function LinksPageContent() {
                             View
                           </button>
                         ) : (
-                          <span className="text-[12px] font-semibold text-slate-300">—</span>
+                          <span className="text-[12px] font-semibold text-slate-300">-</span>
                         )}
                       </td>
                       <td className="px-3 py-3.5 text-center">
@@ -1041,15 +1029,15 @@ function LinksPageContent() {
         onClose={() => setIsAffiliateModalOpen(false)}
       />
 
-      <AddLinkModal 
-        isOpen={isAddLinkOpen} 
+      <AddLinkModal
+        isOpen={isAddLinkOpen}
         onClose={() => {
           setIsAddLinkOpen(false);
           setPreselectedProductId(null);
           if (urlProductId) {
             router.replace("/links");
           }
-        }} 
+        }}
         onSuccess={() => {
           setIsAddLinkOpen(false);
           setPreselectedProductId(null);
@@ -1057,7 +1045,7 @@ function LinksPageContent() {
             router.replace("/links");
           }
           refreshLinksData(false);
-        }} 
+        }}
         preselectedProductId={preselectedProductId}
       />
 
@@ -1106,10 +1094,10 @@ function LinksPageContent() {
               </button>
             </div>
             <div className="p-6 max-h-[60vh] overflow-y-auto">
-              <FormattedRemarks 
-                remarks={viewingRemarks.remarks} 
+              <FormattedRemarks
+                remarks={viewingRemarks.remarks}
                 date={viewingRemarks.date}
-                textClass="text-xs font-semibold" 
+                textClass="text-xs font-semibold"
               />
             </div>
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">

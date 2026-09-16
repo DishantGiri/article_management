@@ -311,7 +311,7 @@ function CalendarContent() {
             <p className="text-[11px] font-medium text-slate-400">Logged or modified</p>
           </div>
 
-          {/* Card 5: Writing Time — Hidden from writers */}
+          {/* Card 5: Writing Time - Hidden from writers */}
           {!isWriter && (
             <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-sm transition space-y-1 col-span-2 sm:col-span-1">
               <div className="flex items-center justify-between text-xs font-bold text-slate-500">
@@ -399,18 +399,16 @@ function CalendarContent() {
               <div
                 key={day.date}
                 onClick={() => setInspectingDay(day)}
-                className={`min-h-[105px] sm:min-h-[120px] p-2 sm:p-2.5 transition-all duration-150 relative flex flex-col justify-between cursor-pointer group ${
-                  day.isToday ? "bg-indigo-50/30" : "bg-white hover:bg-slate-50/80"
-                }`}
+                className={`min-h-[105px] sm:min-h-[120px] p-2 sm:p-2.5 transition-all duration-150 relative flex flex-col justify-between cursor-pointer group ${day.isToday ? "bg-indigo-50/30" : "bg-white hover:bg-slate-50/80"
+                  }`}
               >
                 {/* Day Header Row */}
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-xs font-bold rounded-lg px-2 py-0.5 transition ${
-                      day.isToday
+                    className={`text-xs font-bold rounded-lg px-2 py-0.5 transition ${day.isToday
                         ? "bg-[#6D8196] text-white shadow-xs"
                         : "text-slate-700 group-hover:text-slate-900"
-                    }`}
+                      }`}
                   >
                     {day.dayNumber}
                   </span>
@@ -561,11 +559,11 @@ function CalendarContent() {
                             >
                               {item.rawTimestamp
                                 ? new Date(item.rawTimestamp).toLocaleTimeString("en-US", {
-                                    timeZone: "Asia/Kathmandu",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })
+                                  timeZone: "Asia/Kathmandu",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: true,
+                                })
                                 : item.time}
                             </span>
                           </div>

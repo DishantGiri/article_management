@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// PATCH /api/affiliates/:id — update affiliate name
+// PATCH /api/affiliates/:id - update affiliate name
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

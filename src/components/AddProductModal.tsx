@@ -104,13 +104,12 @@ function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | 
           <div key={idx} className="flex items-center flex-1 last:flex-none">
             <div className="flex flex-col items-center gap-1">
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                  done
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${done
                     ? "bg-blue-600 text-white"
                     : active
-                    ? "bg-blue-600 text-white ring-4 ring-blue-500/20 shadow-xs"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
-                }`}
+                      ? "bg-blue-600 text-white ring-4 ring-blue-500/20 shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                  }`}
               >
                 {done ? (
                   <Check className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -119,18 +118,16 @@ function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | 
                 )}
               </div>
               <span
-                className={`text-[10px] font-bold tracking-tight whitespace-nowrap ${
-                  active ? "text-blue-600 dark:text-blue-400" : done ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500"
-                }`}
+                className={`text-[10px] font-bold tracking-tight whitespace-nowrap ${active ? "text-blue-600 dark:text-blue-400" : done ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500"
+                  }`}
               >
                 {label}
               </span>
             </div>
             {i < steps.length - 1 && (
               <div
-                className={`h-0.5 flex-1 mx-2 mb-4 rounded transition-all duration-500 ${
-                  done ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-800"
-                }`}
+                className={`h-0.5 flex-1 mx-2 mb-4 rounded transition-all duration-500 ${done ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-800"
+                  }`}
               />
             )}
           </div>
@@ -214,7 +211,7 @@ export default function AddProductModal({
     setSpreadsheetRows(newRows);
   };
 
-  // Full parse with success toast — only called on explicit paste/clipboard actions.
+  // Full parse with success toast - only called on explicit paste/clipboard actions.
   const parseTextToRows = (text: string) => {
     setBulkPasteText(text);
     const lines = text
@@ -658,7 +655,7 @@ export default function AddProductModal({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: customAffiliate.trim() }),
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       const res = await fetch("/api/products", {
@@ -716,11 +713,10 @@ export default function AddProductModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/60 dark:bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className={`bg-white dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 transition-all duration-300 ${
-        entryMode === "bulk" && step === 2
+      <div className={`bg-white dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 transition-all duration-300 ${entryMode === "bulk" && step === 2
           ? "w-[98vw] max-w-[1550px] h-[95vh] max-h-[96vh]"
           : "w-[96vw] max-w-4xl max-h-[92vh]"
-      }`}>
+        }`}>
         {/* Modal Header */}
         <div className="px-5 sm:px-6 py-3.5 bg-slate-50 dark:bg-[#0f172a] border-b border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -869,17 +865,15 @@ export default function AddProductModal({
                                   : [...prev.categoryIds, c.id],
                               }));
                             }}
-                            className={`p-3.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                              selected
+                            className={`p-3.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${selected
                                 ? "bg-blue-50 dark:bg-blue-600/20 border-blue-500 text-blue-950 dark:text-white font-bold shadow-sm ring-1 ring-blue-500/40"
                                 : "bg-slate-50 dark:bg-[#131d31] border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-medium hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/50"
-                            }`}
+                              }`}
                           >
                             <span className="text-xs truncate">{c.name}</span>
                             <div
-                              className={`w-4 h-4 rounded-md flex items-center justify-center border transition ${
-                                selected ? "bg-blue-600 border-blue-500 text-white" : "border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0b1120]"
-                              }`}
+                              className={`w-4 h-4 rounded-md flex items-center justify-center border transition ${selected ? "bg-blue-600 border-blue-500 text-white" : "border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0b1120]"
+                                }`}
                             >
                               {selected && <Check className="w-3 h-3 stroke-[3]" />}
                             </div>
@@ -1100,11 +1094,10 @@ export default function AddProductModal({
                                   isExcluded ? prev.filter((id) => id !== site.id) : [...prev, site.id]
                                 );
                               }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${
-                                isExcluded
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${isExcluded
                                   ? "bg-slate-200/70 dark:bg-slate-900/60 text-slate-400 dark:text-slate-500 border-slate-300 dark:border-slate-800 line-through opacity-60"
                                   : "bg-white dark:bg-[#0b1120] text-slate-800 dark:text-slate-200 border-blue-500/50 font-bold shadow-xs"
-                              }`}
+                                }`}
                             >
                               <span>{site.name}</span>
                               {isExcluded ? <Plus className="w-3 h-3 text-slate-400 dark:text-slate-500" /> : <Check className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
@@ -1157,11 +1150,10 @@ export default function AddProductModal({
                                   value={row.name}
                                   onChange={(e) => updateSpreadsheetRow(idx, "name", e.target.value)}
                                   placeholder={`Product name *`}
-                                  className={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg focus:outline-none transition-colors ${
-                                    row.name.trim().length > 0 && row.name.trim().length < 2
+                                  className={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg focus:outline-none transition-colors ${row.name.trim().length > 0 && row.name.trim().length < 2
                                       ? "border border-rose-400 bg-rose-50/40 text-rose-900 focus:border-rose-500 focus:bg-rose-50/60 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-200"
                                       : "text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
-                                  }`}
+                                    }`}
                                 />
                                 {row.name.trim().length > 0 && row.name.trim().length < 2 && (
                                   <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5">
@@ -1393,11 +1385,10 @@ export default function AddProductModal({
                         return (
                           <div
                             key={site.id}
-                            className={`w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all ${
-                              isExcluded
+                            className={`w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all ${isExcluded
                                 ? "bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60"
                                 : "bg-white dark:bg-[#131d31] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 shadow-2xs"
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <span className="text-xs font-bold truncate">{site.name}</span>
@@ -1423,11 +1414,10 @@ export default function AddProductModal({
                                   isExcluded ? prev.filter((id) => id !== site.id) : [...prev, site.id]
                                 );
                               }}
-                              className={`p-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                                isExcluded
+                              className={`p-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 shrink-0 ${isExcluded
                                   ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-600/10"
                                   : "text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                              }`}
+                                }`}
                               title={isExcluded ? "Re-include this site" : "Remove/Deselect this site"}
                             >
                               {isExcluded ? (
@@ -1482,11 +1472,10 @@ export default function AddProductModal({
                         value={form.name}
                         onChange={(e) => update("name", e.target.value)}
                         placeholder="e.g. Alpha Whey Protein"
-                        className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${
-                          form.name.trim().length > 0 && form.name.trim().length < 2
+                        className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${form.name.trim().length > 0 && form.name.trim().length < 2
                             ? "border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30"
                             : "border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-                        }`}
+                          }`}
                       />
                       {form.name.trim().length > 0 && form.name.trim().length < 2 && (
                         <p className="text-xs font-semibold text-rose-500">
@@ -1637,11 +1626,10 @@ export default function AddProductModal({
                         value={form.trendLink}
                         onChange={(e) => update("trendLink", e.target.value)}
                         placeholder="https://... (optional)"
-                        className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${
-                          fieldErrors.trendLink
+                        className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${fieldErrors.trendLink
                             ? "border-rose-500/60 focus:ring-1 focus:ring-rose-500"
                             : "border-slate-200 dark:border-slate-800 focus:border-blue-500"
-                        }`}
+                          }`}
                       />
                       {fieldErrors.trendLink && (
                         <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{fieldErrors.trendLink}</p>
@@ -1662,11 +1650,10 @@ export default function AddProductModal({
                         value={form.previewLink}
                         onChange={(e) => update("previewLink", e.target.value)}
                         placeholder="https://..."
-                        className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${
-                          fieldErrors.previewLink
+                        className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${fieldErrors.previewLink
                             ? "border-rose-500/60 focus:ring-1 focus:ring-rose-500"
                             : "border-slate-200 dark:border-slate-800 focus:border-blue-500"
-                        }`}
+                          }`}
                       />
                       {fieldErrors.previewLink && (
                         <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{fieldErrors.previewLink}</p>

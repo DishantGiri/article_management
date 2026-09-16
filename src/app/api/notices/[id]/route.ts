@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NoticeCategory } from "@/generated/prisma/client";
 
-// GET /api/notices/[id] — retrieve notice detail
+// GET /api/notices/[id] - retrieve notice detail
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -59,7 +59,7 @@ export async function GET(
   }
 }
 
-// PUT /api/notices/[id] — edit notice (Admin / Super Admin only)
+// PUT /api/notices/[id] - edit notice (Admin / Super Admin only)
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -125,7 +125,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/notices/[id] — delete notice (Admin / Super Admin only)
+// DELETE /api/notices/[id] - delete notice (Admin / Super Admin only)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

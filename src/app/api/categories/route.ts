@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/categories — fetch all global categories
+// GET /api/categories - fetch all global categories
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({
@@ -24,7 +24,7 @@ export async function GET() {
   }
 }
 
-// POST /api/categories — create a new global category (Admin / Super Admin only)
+// POST /api/categories - create a new global category (Admin / Super Admin only)
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -38,13 +38,21 @@ export async function POST(req: Request) {
     }
 
     const { name } = await req.json();
+    const cleanName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
 
-    if (!name) {
+    if (!cleanName) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    if (!/^[a-zA-Z0-9 ]+$/.test(cleanName)) {
+      return NextResponse.json(
+        { error: "Special characters are not allowed. Only letters, numbers, and spaces are permitted for product type names." },
+        { status: 400 }
+      );
+    }
+
     const category = await prisma.category.create({
-      data: { name },
+      data: { name: cleanName },
     });
 
     return NextResponse.json(category);

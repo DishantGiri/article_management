@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isUserTargeted } from "@/lib/noticeUtils";
 
-// GET /api/notices/pending — retrieve unacknowledged notices for the session user matching their role
+// GET /api/notices/pending - retrieve unacknowledged notices for the session user matching their role
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

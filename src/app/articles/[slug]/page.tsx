@@ -358,40 +358,38 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
           {/* Status Badge */}
           <span
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs border ${
-              article.status === "IN_PROGRESS"
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs border ${article.status === "IN_PROGRESS"
                 ? "bg-blue-50 text-blue-700 border-blue-200"
                 : article.status === "REDO"
-                ? "bg-rose-50 text-rose-700 border-rose-200 animate-pulse"
-                : article.status === "APPROVED"
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : article.status === "COMPLETED"
-                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                : "bg-amber-50 text-amber-700 border-amber-200"
-            }`}
+                  ? "bg-rose-50 text-rose-700 border-rose-200 animate-pulse"
+                  : article.status === "APPROVED"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : article.status === "COMPLETED"
+                      ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200"
+              }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${
-                article.status === "IN_PROGRESS"
+              className={`w-2 h-2 rounded-full ${article.status === "IN_PROGRESS"
                   ? "bg-blue-500 animate-pulse"
                   : article.status === "REDO"
-                  ? "bg-rose-500 animate-ping"
-                  : article.status === "APPROVED"
-                  ? "bg-emerald-500"
-                  : article.status === "COMPLETED"
-                  ? "bg-indigo-500"
-                  : "bg-amber-500"
-              }`}
+                    ? "bg-rose-500 animate-ping"
+                    : article.status === "APPROVED"
+                      ? "bg-emerald-500"
+                      : article.status === "COMPLETED"
+                        ? "bg-indigo-500"
+                        : "bg-amber-500"
+                }`}
             />
             {article.status === "IN_PROGRESS"
               ? "In Progress"
               : article.status === "REDO"
-              ? "Needs Changes / Redo"
-              : article.status === "COMPLETED"
-              ? "Completed (Awaiting Review)"
-              : article.status === "APPROVED"
-              ? "Approved"
-              : "Pending Writer"}
+                ? "Needs Changes / Redo"
+                : article.status === "COMPLETED"
+                  ? "Completed (Awaiting Review)"
+                  : article.status === "APPROVED"
+                    ? "Approved"
+                    : "Pending Writer"}
           </span>
         </div>
       </div>
@@ -714,15 +712,14 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                           key={p}
                           type="button"
                           onClick={() => setRedoPriority(p)}
-                          className={`flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                            redoPriority === p
+                          className={`flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${redoPriority === p
                               ? p === "HIGH"
                                 ? "bg-rose-500 text-white border-rose-600 shadow-2xs"
                                 : p === "MEDIUM"
-                                ? "bg-amber-500 text-white border-amber-600 shadow-2xs"
-                                : "bg-[#6D8196] text-white border-[#5A6D81] shadow-2xs"
+                                  ? "bg-amber-500 text-white border-amber-600 shadow-2xs"
+                                  : "bg-[#6D8196] text-white border-[#5A6D81] shadow-2xs"
                               : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-                          }`}
+                            }`}
                         >
                           {p === "HIGH" ? "🔴 High" : p === "MEDIUM" ? "🟡 Medium" : "⚪ Low"}
                         </button>
@@ -751,13 +748,13 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                 </div>
               )}
 
-              {/* STATE 2: REDO IN PROGRESS — LOCKED UNTIL WRITER RESUBMITS */}
+              {/* STATE 2: REDO IN PROGRESS - LOCKED UNTIL WRITER RESUBMITS */}
               {article.status === "REDO" && (
                 <div className="space-y-4">
                   <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-2xl space-y-2.5">
                     <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-xs">
                       <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0" />
-                      <span>Revision Requested — Waiting for Writer Resubmission</span>
+                      <span>Revision Requested - Waiting for Writer Resubmission</span>
                     </div>
                     <p className="text-xs text-rose-900 dark:text-rose-200 leading-relaxed font-medium">
                       You have sent revision instructions to <strong className="text-rose-950 dark:text-rose-100">{article.writer?.name || "the assigned writer"}</strong>.
@@ -1123,7 +1120,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
         {/* RIGHT COLUMN: TIMELINE & AUDIT TRAIL (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Timing Metrics Card — Hidden from writers */}
+          {/* Timing Metrics Card - Hidden from writers */}
           {isManager && (
             <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -1135,14 +1132,14 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Started At</p>
                   <p className="text-xs font-bold text-slate-700">
-                    {article.startedAt ? new Date(article.startedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "—"}
+                    {article.startedAt ? new Date(article.startedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "-"}
                   </p>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Completed At</p>
                   <p className="text-xs font-bold text-slate-700">
-                    {article.completedAt ? new Date(article.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "—"}
+                    {article.completedAt ? new Date(article.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "-"}
                   </p>
                 </div>
 
@@ -1153,7 +1150,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                       ? article.writingTimeMin >= 60
                         ? `${Math.floor(article.writingTimeMin / 60)}h ${article.writingTimeMin % 60}m`
                         : `${article.writingTimeMin}m`
-                      : "—"}
+                      : "-"}
                   </p>
                 </div>
 
@@ -1164,7 +1161,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                       ? article.updateTimeMin >= 60
                         ? `${Math.floor(article.updateTimeMin / 60)}h ${article.updateTimeMin % 60}m`
                         : `${article.updateTimeMin}m`
-                      : "—"}
+                      : "-"}
                   </p>
                 </div>
               </div>
@@ -1185,11 +1182,10 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">{r.reviewedBy.name}</span>
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          r.approved
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${r.approved
                             ? "bg-emerald-100 text-emerald-800"
                             : "bg-rose-100 text-rose-800"
-                        }`}
+                          }`}
                       >
                         {r.approved ? "APPROVED" : "NEEDS CHANGES"}
                       </span>

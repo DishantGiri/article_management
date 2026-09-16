@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/product-categories — fetch all product categories
+// GET /api/product-categories - fetch all product categories
 export async function GET() {
   try {
     const categories = await prisma.productCategory.findMany({
@@ -17,7 +17,7 @@ export async function GET() {
   }
 }
 
-// POST /api/product-categories — create a new product category (Superadmin, Admin, Linker)
+// POST /api/product-categories - create a new product category (Superadmin, Admin, Linker)
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);

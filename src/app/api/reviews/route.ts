@@ -4,7 +4,7 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-// POST /api/reviews — Team Lead submits a review remark (Approve or Redo)
+// POST /api/reviews - Team Lead submits a review remark (Approve or Redo)
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     const newStatus = approved ? "APPROVED" : "REDO";
 
     // 3. Update the Article status
-    // On REDO: null out startedAt so timer does NOT auto-start — writer must click "Start Revision"
+    // On REDO: null out startedAt so timer does NOT auto-start - writer must click "Start Revision"
     const updatedArticle = await prisma.article.update({
       where: { id: Number(articleId) },
       data: {
@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
           data: updatedArticle,
         }),
       }).catch((e) => console.error("WS Notification failed", e));
-    } catch (e) {}
+    } catch (e) { }
 
     return NextResponse.json({ success: true, review, article: updatedArticle });
   } catch (err) {

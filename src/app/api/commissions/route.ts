@@ -13,7 +13,7 @@ export function resolveCategoryKey(catName?: string | null): "NUTRA" | "ECOM" {
   return "NUTRA";
 }
 
-// GET /api/commissions — list products by site with commission tracking & settings
+// GET /api/commissions - list products by site with commission tracking & settings
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -347,7 +347,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/commissions — Record a new 1st sale or resale for a product
+// POST /api/commissions - Record a new 1st sale or resale for a product
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -436,7 +436,7 @@ export async function POST(req: NextRequest) {
     let tlAmount = baseTlAmount;
 
     if (writer?.teamLeadId) {
-      // Writer has a separate assigned Team Lead — credit TL commission to them
+      // Writer has a separate assigned Team Lead - credit TL commission to them
       const tl = await prisma.user.findUnique({
         where: { id: writer.teamLeadId },
         select: { id: true, name: true, commissionToPartyFund: true },

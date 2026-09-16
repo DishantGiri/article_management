@@ -30,14 +30,14 @@ interface HistoryRecord {
   id: string;
   type: "ARTICLE" | "LINK";
   actionType:
-    | "TL_SUGGESTION"
-    | "ARTICLE_APPROVAL"
-    | "ARTICLE_COMPLETED"
-    | "REVISION_SUBMITTED"
-    | "WRITING_STARTED"
-    | "LINK_UPDATED"
-    | "ARTICLE_UPDATE"
-    | "LINK_LOG";
+  | "TL_SUGGESTION"
+  | "ARTICLE_APPROVAL"
+  | "ARTICLE_COMPLETED"
+  | "REVISION_SUBMITTED"
+  | "WRITING_STARTED"
+  | "LINK_UPDATED"
+  | "ARTICLE_UPDATE"
+  | "LINK_LOG";
   actionLabel: string;
   updatedById: number;
   productName: string;
@@ -212,11 +212,10 @@ export default function HistoryPage() {
             <button
               key={p}
               onClick={() => setCurrentPage(p)}
-              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition cursor-pointer ${
-                currentPage === p
+              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition cursor-pointer ${currentPage === p
                   ? "bg-[#6D8196] text-white shadow-2xs"
                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-              }`}
+                }`}
             >
               {p}
             </button>
@@ -272,11 +271,10 @@ export default function HistoryPage() {
               setTypeFilter("");
               setCurrentPage(1);
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-              !actionFilter && !typeFilter
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${!actionFilter && !typeFilter
                 ? "bg-[#6D8196] text-white shadow-2xs"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-            }`}
+              }`}
           >
             All Activity
           </button>
@@ -287,19 +285,17 @@ export default function HistoryPage() {
               setTypeFilter("");
               setCurrentPage(1);
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              actionFilter === "TL_SUGGESTION"
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${actionFilter === "TL_SUGGESTION"
                 ? "bg-rose-600 text-white shadow-2xs"
                 : "text-slate-600 hover:text-rose-700 hover:bg-rose-50"
-            }`}
+              }`}
           >
             <AlertTriangle className="w-3.5 h-3.5" />
             <span>TL Suggestions & Redos</span>
             {history.filter((h) => h.actionType === "TL_SUGGESTION").length > 0 && (
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
-                  actionFilter === "TL_SUGGESTION" ? "bg-white text-rose-700" : "bg-rose-100 text-rose-700"
-                }`}
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${actionFilter === "TL_SUGGESTION" ? "bg-white text-rose-700" : "bg-rose-100 text-rose-700"
+                  }`}
               >
                 {history.filter((h) => h.actionType === "TL_SUGGESTION").length}
               </span>
@@ -312,11 +308,10 @@ export default function HistoryPage() {
               setTypeFilter("");
               setCurrentPage(1);
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              actionFilter === "ARTICLE_APPROVAL"
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${actionFilter === "ARTICLE_APPROVAL"
                 ? "bg-emerald-600 text-white shadow-2xs"
                 : "text-slate-600 hover:text-emerald-700 hover:bg-emerald-50"
-            }`}
+              }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Approvals</span>
@@ -328,11 +323,10 @@ export default function HistoryPage() {
               setTypeFilter("");
               setCurrentPage(1);
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              actionFilter === "ARTICLE_SUBMISSION"
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${actionFilter === "ARTICLE_SUBMISSION"
                 ? "bg-indigo-600 text-white shadow-2xs"
                 : "text-slate-600 hover:text-indigo-700 hover:bg-indigo-50"
-            }`}
+              }`}
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Submissions</span>
@@ -344,11 +338,10 @@ export default function HistoryPage() {
               setTypeFilter("");
               setCurrentPage(1);
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              actionFilter === "LINK_LOG"
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${actionFilter === "LINK_LOG"
                 ? "bg-blue-600 text-white shadow-2xs"
                 : "text-slate-600 hover:text-blue-700 hover:bg-blue-50"
-            }`}
+              }`}
           >
             <Link2 className="w-3.5 h-3.5" />
             <span>Link Logs</span>
@@ -455,9 +448,8 @@ export default function HistoryPage() {
                   return (
                     <tr
                       key={record.id}
-                      className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors group ${
-                        isRedoSuggestion ? "bg-rose-50/20 dark:bg-rose-950/20" : isApproval ? "bg-emerald-50/15 dark:bg-emerald-950/20" : ""
-                      }`}
+                      className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors group ${isRedoSuggestion ? "bg-rose-50/20 dark:bg-rose-950/20" : isApproval ? "bg-emerald-50/15 dark:bg-emerald-950/20" : ""
+                        }`}
                     >
                       {/* 1. Type / Action Badge */}
                       <td className="px-4 py-4 align-top">
@@ -552,13 +544,12 @@ export default function HistoryPage() {
                       <td className="px-4 py-4 align-top">
                         <div className="flex items-center gap-2">
                           <div
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs ${
-                              isRedoSuggestion
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs ${isRedoSuggestion
                                 ? "bg-rose-100 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300"
                                 : isApproval
-                                ? "bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300"
-                                : "bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
-                            }`}
+                                  ? "bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300"
+                                  : "bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                              }`}
                           >
                             {getInitials(record.updatedBy?.name)}
                           </div>
@@ -594,7 +585,7 @@ export default function HistoryPage() {
                             Needs Revision
                           </span>
                         ) : record.type === "LINK" ? (
-                          <span className="text-[11px] text-slate-400 italic">—</span>
+                          <span className="text-[11px] text-slate-400 italic">-</span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
                             Pending Approval

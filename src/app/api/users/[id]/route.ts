@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/users/[id] — get user profile details
+// GET /api/users/[id] - get user profile details
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -54,7 +54,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/users/[id] — update user details, role, and site access
+// PATCH /api/users/[id] - update user details, role, and site access
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -228,7 +228,7 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/users/[id] — delete a user
+// DELETE /api/users/[id] - delete a user
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -250,7 +250,7 @@ export async function DELETE(
       where: { id: parseInt(id) },
       select: { role: true },
     });
-    
+
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-// POST /api/commissions/users/payout — Batch mark all pending sales as PAID for a user
+// POST /api/commissions/users/payout - Batch mark all pending sales as PAID for a user
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

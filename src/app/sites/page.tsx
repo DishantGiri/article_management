@@ -170,6 +170,16 @@ export default function SitesPage() {
       setError("Please fix the URL validation error before saving.");
       return;
     }
+    const trimmedName = form.name.trim();
+    if (!trimmedName) {
+      setError("Site name is required.");
+      return;
+    }
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmedName)) {
+      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for site names.");
+      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "site-char-error" });
+      return;
+    }
     if (form.url && !isValidUrl(form.url)) {
       setError("Please enter a valid URL (must start with http:// or https://)");
       return;
@@ -260,7 +270,7 @@ export default function SitesPage() {
           <p className="text-[#737373] text-sm mt-0.5 font-medium">
             {isAdmin
               ? "Manage websites, domains, product categories, and assignments"
-              : "Websites assigned to you — click any site to view all its articles and posting dates"}
+              : "Websites assigned to you - click any site to view all its articles and posting dates"}
           </p>
         </div>
         {isAdmin && (
@@ -455,7 +465,13 @@ export default function SitesPage() {
                   <input
                     type="text"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/[^a-zA-Z0-9 ]/.test(val)) {
+                        toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "site-char-error" });
+                      }
+                      setForm({ ...form, name: val.replace(/[^a-zA-Z0-9 ]/g, "") });
+                    }}
                     className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] shadow-2xs transition-all"
                     placeholder="e.g. Health Daily"
                   />
@@ -479,11 +495,10 @@ export default function SitesPage() {
                         setUrlError("");
                       }
                     }}
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
-                      urlError
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${urlError
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
                         : "border-[#CBCBCB] focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
-                    }`}
+                      }`}
                     placeholder="https://example.com"
                   />
                   {urlError && <p className="text-xs font-semibold text-rose-500">{urlError}</p>}

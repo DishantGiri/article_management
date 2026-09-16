@@ -366,10 +366,10 @@ export default function CommissionsPage() {
               updatedSales.length === 0
                 ? "NO_SALES"
                 : newPending === 0
-                ? "PAID"
-                : newPaid === 0
-                ? "PENDING"
-                : "PARTIAL";
+                  ? "PAID"
+                  : newPaid === 0
+                    ? "PENDING"
+                    : "PARTIAL";
 
             return {
               ...p,
@@ -403,10 +403,10 @@ export default function CommissionsPage() {
           updatedSales.length === 0
             ? "NO_SALES"
             : newPending === 0
-            ? "PAID"
-            : newPaid === 0
-            ? "PENDING"
-            : "PARTIAL";
+              ? "PAID"
+              : newPaid === 0
+                ? "PENDING"
+                : "PARTIAL";
 
         setHistoryProduct({
           ...historyProduct,
@@ -689,11 +689,10 @@ export default function CommissionsPage() {
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold shrink-0">
               <button
                 onClick={() => handleTabChange("LIST")}
-                className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
-                  activeViewTab === "LIST"
+                className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${activeViewTab === "LIST"
                     ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
+                  }`}
               >
                 <ReceiptText className="w-3.5 h-3.5 text-[#6D8196]" />
                 <span>Commission List</span>
@@ -701,11 +700,10 @@ export default function CommissionsPage() {
 
               <button
                 onClick={() => handleTabChange("PRODUCTS")}
-                className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
-                  activeViewTab === "PRODUCTS"
+                className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${activeViewTab === "PRODUCTS"
                     ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
+                  }`}
               >
                 <Package className="w-3.5 h-3.5" />
                 <span>By Products</span>
@@ -768,20 +766,18 @@ export default function CommissionsPage() {
             {/* "All Sites" Tab */}
             <button
               onClick={() => setActiveSiteTab("ALL")}
-              className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-                activeSiteTab === "ALL"
+              className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeSiteTab === "ALL"
                   ? "bg-[#6D8196] text-white shadow-xs"
                   : "bg-[#FAF9F5] dark:bg-slate-800/80 text-[#737373] dark:text-slate-300 hover:text-[#4A4A4A] dark:hover:text-white border border-[#CBCBCB]/60 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
-              }`}
+                }`}
             >
               <Layers className="w-3.5 h-3.5" />
               <span>All Sites</span>
               <span
-                className={`text-[10px] px-2 py-0.2 rounded-full font-extrabold ${
-                  activeSiteTab === "ALL"
+                className={`text-[10px] px-2 py-0.2 rounded-full font-extrabold ${activeSiteTab === "ALL"
                     ? "bg-white/20 text-white"
                     : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                }`}
+                  }`}
               >
                 {metrics.totalSales}
               </span>
@@ -794,19 +790,17 @@ export default function CommissionsPage() {
                 <button
                   key={site.id}
                   onClick={() => setActiveSiteTab(String(site.id))}
-                  className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-                    isActive
+                  className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${isActive
                       ? "bg-[#6D8196] text-white shadow-xs"
                       : "bg-[#FAF9F5] dark:bg-slate-800/80 text-[#737373] dark:text-slate-300 hover:text-[#4A4A4A] dark:hover:text-white border border-[#CBCBCB]/60 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  }`}
+                    }`}
                 >
                   <span>{site.name}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                      isActive
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${isActive
                         ? "bg-white/20 text-white"
                         : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                    }`}
+                      }`}
                   >
                     {site._count?.commissionSales || 0}
                   </span>
@@ -846,13 +840,12 @@ export default function CommissionsPage() {
         </div>
 
         {/* CARD 2: Paid Commission */}
-        <div 
+        <div
           onClick={() => setStatusFilter(statusFilter === "PAID" ? "ALL" : "PAID")}
-          className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between relative overflow-hidden group transition cursor-pointer ${
-            statusFilter === "PAID"
+          className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between relative overflow-hidden group transition cursor-pointer ${statusFilter === "PAID"
               ? "border-emerald-500 ring-2 ring-emerald-500/20"
               : "border-emerald-200/70 dark:border-emerald-900/60 hover:border-emerald-400"
-          }`}
+            }`}
           title="Click to filter by Paid status"
         >
           <div className="flex items-center justify-between">
@@ -871,8 +864,8 @@ export default function CommissionsPage() {
             <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-emerald-100 dark:border-emerald-950">
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Settled Payouts</span>
               <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200">
-                {activeSummary.totalCommission > 0 
-                  ? `${Math.round((activeSummary.totalPaid / activeSummary.totalCommission) * 100)}% Paid` 
+                {activeSummary.totalCommission > 0
+                  ? `${Math.round((activeSummary.totalPaid / activeSummary.totalCommission) * 100)}% Paid`
                   : "Settled"}
               </span>
             </div>
@@ -880,13 +873,12 @@ export default function CommissionsPage() {
         </div>
 
         {/* CARD 3: Unpaid (Pending) Commission */}
-        <div 
+        <div
           onClick={() => setStatusFilter(statusFilter === "PENDING" ? "ALL" : "PENDING")}
-          className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between relative overflow-hidden group transition cursor-pointer ${
-            statusFilter === "PENDING"
+          className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between relative overflow-hidden group transition cursor-pointer ${statusFilter === "PENDING"
               ? "border-amber-500 ring-2 ring-amber-500/20"
               : "border-amber-200/70 dark:border-amber-900/60 hover:border-amber-400"
-          }`}
+            }`}
           title="Click to filter by Unpaid / Pending status"
         >
           <div className="flex items-center justify-between">
@@ -905,8 +897,8 @@ export default function CommissionsPage() {
             <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-amber-100 dark:border-amber-950">
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Awaiting Settlement</span>
               <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200">
-                {activeSummary.totalCommission > 0 
-                  ? `${Math.round((activeSummary.totalPending / activeSummary.totalCommission) * 100)}% Unpaid` 
+                {activeSummary.totalCommission > 0
+                  ? `${Math.round((activeSummary.totalPending / activeSummary.totalCommission) * 100)}% Unpaid`
                   : "Unpaid"}
               </span>
             </div>
@@ -1022,11 +1014,10 @@ export default function CommissionsPage() {
                 <button
                   key={t.key}
                   onClick={() => setSaleTypeFilter(t.key)}
-                  className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${
-                    saleTypeFilter === t.key
+                  className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${saleTypeFilter === t.key
                       ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                       : "text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A]"
-                  }`}
+                    }`}
                 >
                   {t.label}
                 </button>
@@ -1044,11 +1035,10 @@ export default function CommissionsPage() {
               <button
                 key={st.key}
                 onClick={() => setStatusFilter(st.key)}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${
-                  statusFilter === st.key
+                className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${statusFilter === st.key
                     ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                     : "text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A]"
-                }`}
+                  }`}
               >
                 {st.label}
               </button>
@@ -1065,11 +1055,10 @@ export default function CommissionsPage() {
               <button
                 key={item.key}
                 onClick={() => setAssignmentFilter(item.key)}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${
-                  assignmentFilter === item.key
+                className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${assignmentFilter === item.key
                     ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                     : "text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A]"
-                }`}
+                  }`}
               >
                 {item.label}
               </button>
@@ -1082,11 +1071,10 @@ export default function CommissionsPage() {
               <button
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${
-                  categoryFilter === cat
+                className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${categoryFilter === cat
                     ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                     : "text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A]"
-                }`}
+                  }`}
               >
                 {cat === "ALL" ? "All Types" : cat}
               </button>
@@ -1136,22 +1124,22 @@ export default function CommissionsPage() {
             assignmentFilter !== "ALL" ||
             categoryFilter !== "ALL" ||
             saleTypeFilter !== "ALL") && (
-            <button
-              onClick={() => {
-                setSearch("");
-                setStartDate("");
-                setEndDate("");
-                setStatusFilter("ALL");
-                setAssignmentFilter("ALL");
-                setCategoryFilter("ALL");
-                setSaleTypeFilter("ALL");
-              }}
-              className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer flex items-center gap-1"
-            >
-              <X className="w-3.5 h-3.5" />
-              <span>Reset</span>
-            </button>
-          )}
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setStartDate("");
+                  setEndDate("");
+                  setStatusFilter("ALL");
+                  setAssignmentFilter("ALL");
+                  setCategoryFilter("ALL");
+                  setSaleTypeFilter("ALL");
+                }}
+                className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer flex items-center gap-1"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
         </div>
       </div>
 
@@ -1253,11 +1241,10 @@ export default function CommissionsPage() {
                                 {sale.siteName}
                               </span>
                               <span
-                                className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                                  isNutra
+                                className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${isNutra
                                     ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
                                     : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40"
-                                }`}
+                                  }`}
                               >
                                 {sale.categoryName}
                               </span>
@@ -1291,7 +1278,7 @@ export default function CommissionsPage() {
                               {sale.writerLeftCompany ? (
                                 <span
                                   className="ml-auto inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
-                                  title={`Writer left company — Rs. ${(sale.writerTransferredToParty || 0).toFixed(0)} commission transferred to Party Fund`}
+                                  title={`Writer left company - Rs. ${(sale.writerTransferredToParty || 0).toFixed(0)} commission transferred to Party Fund`}
                                 >
                                   Left → Party
                                 </span>
@@ -1343,11 +1330,10 @@ export default function CommissionsPage() {
                         {/* Party Fund */}
                         <td className="py-3.5 px-3 text-center whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-black border shadow-2xs ${
-                              sale.writerLeftCompany
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-black border shadow-2xs ${sale.writerLeftCompany
                                 ? "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700"
                                 : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40"
-                            }`}
+                              }`}
                             title={
                               sale.writerLeftCompany
                                 ? `Includes +Rs. ${(sale.writerTransferredToParty || 0).toFixed(0)} from departed writer`
@@ -1381,11 +1367,10 @@ export default function CommissionsPage() {
                           <button
                             onClick={() => handleTogglePaymentStatus(sale.id, sale.paymentStatus)}
                             disabled={updatingSaleId === sale.id}
-                            className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition cursor-pointer shadow-2xs ${
-                              sale.paymentStatus === "PAID"
+                            className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition cursor-pointer shadow-2xs ${sale.paymentStatus === "PAID"
                                 ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 text-emerald-700 dark:text-emerald-300 hover:bg-amber-50 hover:text-amber-700"
                                 : "bg-amber-50 dark:bg-amber-950/60 border-amber-300 text-amber-700 dark:text-amber-300 hover:bg-emerald-50 hover:text-emerald-700"
-                            }`}
+                              }`}
                             title="Click to toggle Paid / Pending"
                           >
                             {sale.paymentStatus === "PAID" ? "✓ Paid" : "⏳ Pending"}
@@ -1488,11 +1473,10 @@ export default function CommissionsPage() {
                                 {prod.siteName}
                               </span>
                               <span
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 ${
-                                  isNutra
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 ${isNutra
                                     ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
                                     : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40"
-                                }`}
+                                  }`}
                               >
                                 {isNutra ? (
                                   <Pill className="w-2.5 h-2.5 text-emerald-500" />
@@ -1538,11 +1522,10 @@ export default function CommissionsPage() {
                         <td className="py-3.5 px-3 text-center whitespace-nowrap">
                           <div className="inline-flex items-center gap-1">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
-                                prod.firstSalesCount > 0
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-black ${prod.firstSalesCount > 0
                                   ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
                                   : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                              }`}
+                                }`}
                             >
                               {prod.firstSalesCount}
                             </span>
@@ -1560,11 +1543,10 @@ export default function CommissionsPage() {
                         <td className="py-3.5 px-3 text-center whitespace-nowrap">
                           <div className="inline-flex items-center gap-1">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
-                                prod.resalesCount > 0
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-black ${prod.resalesCount > 0
                                   ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
                                   : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                              }`}
+                                }`}
                             >
                               {prod.resalesCount}
                             </span>
@@ -1620,20 +1602,18 @@ export default function CommissionsPage() {
                             <div className="space-y-0.5 mt-1">
                               <div className="flex items-center justify-end gap-1.5">
                                 <span
-                                  className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                                    prod.paidCommissionAmount > 0
+                                  className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold ${prod.paidCommissionAmount > 0
                                       ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/40"
                                       : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                                  }`}
+                                    }`}
                                 >
                                   Paid: Rs. {prod.paidCommissionAmount.toFixed(2)}
                                 </span>
                                 <span
-                                  className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                                    prod.pendingCommissionAmount > 0
+                                  className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold ${prod.pendingCommissionAmount > 0
                                       ? "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/40"
                                       : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                                  }`}
+                                    }`}
                                 >
                                   Unpaid: Rs. {prod.pendingCommissionAmount.toFixed(2)}
                                 </span>
@@ -1739,11 +1719,10 @@ export default function CommissionsPage() {
                   <button
                     type="button"
                     onClick={() => setModalSaleType("FIRST_SALE")}
-                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
-                      modalSaleType === "FIRST_SALE"
+                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${modalSaleType === "FIRST_SALE"
                         ? "bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-700 dark:text-blue-300 shadow-2xs"
                         : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     <span className="w-2 h-2 rounded-full bg-blue-500" />
                     <span>1st Sale</span>
@@ -1752,11 +1731,10 @@ export default function CommissionsPage() {
                   <button
                     type="button"
                     onClick={() => setModalSaleType("RESALE")}
-                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
-                      modalSaleType === "RESALE"
+                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${modalSaleType === "RESALE"
                         ? "bg-purple-50 dark:bg-purple-950/60 border-purple-500 text-purple-700 dark:text-purple-300 shadow-2xs"
                         : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     <span className="w-2 h-2 rounded-full bg-purple-500" />
                     <span>Resale</span>
@@ -1781,11 +1759,10 @@ export default function CommissionsPage() {
 
                   {/* Writer departure toggle */}
                   <div
-                    className={`p-2.5 rounded-xl border space-y-1.5 transition-all ${
-                      modalWriterLeftCompany
+                    className={`p-2.5 rounded-xl border space-y-1.5 transition-all ${modalWriterLeftCompany
                         ? "bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60"
                         : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -1880,22 +1857,20 @@ export default function CommissionsPage() {
                   <button
                     type="button"
                     onClick={() => setModalPaymentStatus("PENDING")}
-                    className={`flex-1 py-1.5 px-3 rounded-xl font-bold border transition cursor-pointer ${
-                      modalPaymentStatus === "PENDING"
+                    className={`flex-1 py-1.5 px-3 rounded-xl font-bold border transition cursor-pointer ${modalPaymentStatus === "PENDING"
                         ? "bg-amber-50 dark:bg-amber-950/60 border-amber-400 text-amber-700 dark:text-amber-300 shadow-2xs"
                         : "border-slate-200 dark:border-slate-800 text-slate-500"
-                    }`}
+                      }`}
                   >
                     Pending
                   </button>
                   <button
                     type="button"
                     onClick={() => setModalPaymentStatus("PAID")}
-                    className={`flex-1 py-1.5 px-3 rounded-xl font-bold border transition cursor-pointer ${
-                      modalPaymentStatus === "PAID"
+                    className={`flex-1 py-1.5 px-3 rounded-xl font-bold border transition cursor-pointer ${modalPaymentStatus === "PAID"
                         ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-400 text-emerald-700 dark:text-emerald-300 shadow-2xs"
                         : "border-slate-200 dark:border-slate-800 text-slate-500"
-                    }`}
+                      }`}
                   >
                     Paid
                   </button>
@@ -1949,11 +1924,10 @@ export default function CommissionsPage() {
                     Sale #{detailsSale.id} Details
                   </h3>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                      detailsSale.saleType === "FIRST_SALE"
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${detailsSale.saleType === "FIRST_SALE"
                         ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
                         : "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
-                    }`}
+                      }`}
                   >
                     {detailsSale.saleType === "FIRST_SALE" ? "1st Sale" : "Resale"}
                   </span>
@@ -1988,11 +1962,10 @@ export default function CommissionsPage() {
                   onClick={() =>
                     handleTogglePaymentStatus(detailsSale.id, detailsSale.paymentStatus)
                   }
-                  className={`mt-1 px-3 py-1 rounded-xl text-xs font-black border transition cursor-pointer ${
-                    detailsSale.paymentStatus === "PAID"
+                  className={`mt-1 px-3 py-1 rounded-xl text-xs font-black border transition cursor-pointer ${detailsSale.paymentStatus === "PAID"
                       ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 text-emerald-700 dark:text-emerald-300"
                       : "bg-amber-50 dark:bg-amber-950/60 border-amber-300 text-amber-700 dark:text-amber-300"
-                  }`}
+                    }`}
                 >
                   {detailsSale.paymentStatus === "PAID" ? "✓ Paid" : "⏳ Pending"}
                 </button>
@@ -2153,11 +2126,10 @@ export default function CommissionsPage() {
                   >
                     <div className="flex items-center gap-3">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                          sale.saleType === "FIRST_SALE"
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-black ${sale.saleType === "FIRST_SALE"
                             ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
                             : "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
-                        }`}
+                          }`}
                       >
                         {sale.saleType === "FIRST_SALE" ? "1st Sale" : "Resale"}
                       </span>
@@ -2180,11 +2152,10 @@ export default function CommissionsPage() {
                       <button
                         onClick={() => handleTogglePaymentStatus(sale.id, sale.paymentStatus)}
                         disabled={updatingSaleId === sale.id}
-                        className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition cursor-pointer ${
-                          sale.paymentStatus === "PAID"
+                        className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition cursor-pointer ${sale.paymentStatus === "PAID"
                             ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-700 dark:text-emerald-300 hover:bg-amber-50 hover:text-amber-700"
                             : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-700 dark:text-amber-300 hover:bg-emerald-50 hover:text-emerald-700"
-                        }`}
+                          }`}
                         title="Click to toggle Paid/Pending"
                       >
                         {sale.paymentStatus === "PAID" ? "✓ Paid" : "⏳ Pending"}

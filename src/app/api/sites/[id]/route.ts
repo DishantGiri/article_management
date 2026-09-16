@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { slugifySite } from "@/lib/siteUtils";
 
-// GET /api/sites/[id] — retrieve site details and all articles by ID or slug
+// GET /api/sites/[id] - retrieve site details and all articles by ID or slug
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -120,12 +120,12 @@ export async function GET(
       status: art.status,
       writer: art.writer
         ? {
-            id: art.writer.id,
-            name: art.writer.name,
-            email: art.writer.email,
-            role: art.writer.role,
-            image: art.writer.image,
-          }
+          id: art.writer.id,
+          name: art.writer.name,
+          email: art.writer.email,
+          role: art.writer.role,
+          image: art.writer.image,
+        }
         : null,
       dateOfPosting: art.completedAt || art.productCreatedAt || null,
       startedAt: art.startedAt,
@@ -165,7 +165,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/sites/[id] — update site (Admin / Super Admin / Linker)
+// PATCH /api/sites/[id] - update site (Admin / Super Admin / Linker)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -199,7 +199,20 @@ export async function PATCH(
       return NextResponse.json({ error: "Site not found" }, { status: 404 });
     }
 
-    const trimmedName = name !== undefined ? name.trim() : currentSite.name;
+    if (name !== undefined) {
+      const checkName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
+      if (!checkName) {
+        return NextResponse.json({ error: "Site name is required" }, { status: 400 });
+      }
+      if (!/^[a-zA-Z0-9 ]+$/.test(checkName)) {
+        return NextResponse.json(
+          { error: "Special characters are not allowed. Only letters, numbers, and spaces are permitted for site names." },
+          { status: 400 }
+        );
+      }
+    }
+
+    const trimmedName = name !== undefined ? (typeof name === "string" ? name.trim().replace(/\s+/g, " ") : currentSite.name) : currentSite.name;
     const trimmedUrl = url !== undefined ? (url ? url.trim() : null) : currentSite.url;
     const currentCatIds = currentSite.categories.map((c) => c.id).sort((a, b) => a - b);
     const newCatIds = Array.isArray(categoryIds)
@@ -234,7 +247,7 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/sites/[id] — delete site (Admin / Super Admin / Linker)
+// DELETE /api/sites/[id] - delete site (Admin / Super Admin / Linker)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

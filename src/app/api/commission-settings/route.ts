@@ -85,7 +85,7 @@ async function ensureDefaultTiers(userId?: number | null) {
   }
 }
 
-// GET /api/commission-settings — Retrieve all commission settings (Super Admin only)
+// GET /api/commission-settings - Retrieve all commission settings (Super Admin only)
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -120,7 +120,7 @@ export async function GET() {
   }
 }
 
-// PUT /api/commission-settings — Update commission settings (Super Admin only)
+// PUT /api/commission-settings - Update commission settings (Super Admin only)
 export async function PUT(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

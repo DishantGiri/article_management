@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// PUT /api/product-categories/[id] — update product category (Superadmin, Admin, Linker)
+// PUT /api/product-categories/[id] - update product category (Superadmin, Admin, Linker)
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
@@ -54,7 +54,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 }
 
-// DELETE /api/product-categories/[id] — delete product category (Superadmin, Admin, Linker)
+// DELETE /api/product-categories/[id] - delete product category (Superadmin, Admin, Linker)
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);

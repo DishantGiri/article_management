@@ -171,12 +171,12 @@ export default function ReportsPage() {
       startDate && endDate
         ? `${startDate} to ${endDate}`
         : startDate
-        ? `From ${startDate}`
-        : endDate
-        ? `Until ${endDate}`
-        : "All Time";
+          ? `From ${startDate}`
+          : endDate
+            ? `Until ${endDate}`
+            : "All Time";
 
-    let text = `Work Report — ${targetUser?.name || "User"} (${(targetRole || "USER").replace("_", " ")})\nPeriod: ${periodLabel}\n\n`;
+    let text = `Work Report - ${targetUser?.name || "User"} (${(targetRole || "USER").replace("_", " ")})\nPeriod: ${periodLabel}\n\n`;
 
     if (isWriter || (isAdminTarget && reports.writer?.newArticles.length > 0)) {
       text += `📝 NEW ARTICLES (${reports.writer.newArticles.length}):\n`;
@@ -184,9 +184,8 @@ export default function ReportsPage() {
         text += `  (No new articles)\n`;
       } else {
         reports.writer.newArticles.forEach((a: any) => {
-          text += `  - ${a.productName} (${a.siteName}): ${a.articleLink || "No Link Yet"}${
-            caller.role !== "WRITER" && a.writingTimeMin ? ` [${a.writingTimeMin} mins]` : ""
-          }\n`;
+          text += `  - ${a.productName} (${a.siteName}): ${a.articleLink || "No Link Yet"}${caller.role !== "WRITER" && a.writingTimeMin ? ` [${a.writingTimeMin} mins]` : ""
+            }\n`;
         });
       }
 
@@ -195,7 +194,7 @@ export default function ReportsPage() {
         text += `  (No updates)\n`;
       } else {
         reports.writer.updates.forEach((u: any) => {
-          text += `  - ${u.productName} (${u.siteName}): ${u.articleLink || "No Link"} — ${u.notes}\n`;
+          text += `  - ${u.productName} (${u.siteName}): ${u.articleLink || "No Link"} - ${u.notes}\n`;
         });
       }
 
@@ -204,7 +203,7 @@ export default function ReportsPage() {
         text += `  (No fixes)\n`;
       } else {
         reports.writer.fixes.forEach((f: any) => {
-          text += `  - ${f.productName} (${f.siteName}): ${f.articleLink || "No Link"} — ${f.notes}\n`;
+          text += `  - ${f.productName} (${f.siteName}): ${f.articleLink || "No Link"} - ${f.notes}\n`;
         });
       }
     }
@@ -224,7 +223,7 @@ export default function ReportsPage() {
         text += `  (No reviews conducted)\n`;
       } else {
         reports.teamLead.reviews.forEach((r: any) => {
-          text += `  - [${r.verdict}] ${r.productName} (${r.writerName}): ${r.articleLink || "No Link"} — Remarks: ${r.suggestion}\n`;
+          text += `  - [${r.verdict}] ${r.productName} (${r.writerName}): ${r.articleLink || "No Link"} - Remarks: ${r.suggestion}\n`;
         });
       }
     }
@@ -244,7 +243,7 @@ export default function ReportsPage() {
         text += `  (No links configured)\n`;
       } else {
         reports.linker.linksAdded.forEach((l: any) => {
-          text += `  - ${l.productName} (${l.siteName}): Bridge: ${l.bridgePageLink || "—"} | Buy: ${l.buyLink || "—"} | Affiliate: ${l.affiliateName} [${l.status}]\n`;
+          text += `  - ${l.productName} (${l.siteName}): Bridge: ${l.bridgePageLink || "-"} | Buy: ${l.buyLink || "-"} | Affiliate: ${l.affiliateName} [${l.status}]\n`;
         });
       }
 
@@ -385,11 +384,10 @@ export default function ReportsPage() {
               <button
                 key={p.id}
                 onClick={() => applyPreset(p.id as any)}
-                className={`flex-1 sm:flex-initial text-center justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  preset === p.id
+                className={`flex-1 sm:flex-initial text-center justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${preset === p.id
                     ? "bg-[#6D8196] text-white shadow-2xs"
                     : "bg-[#FAF9F5] text-[#737373] hover:text-[#4A4A4A] border border-[#CBCBCB]/60 hover:bg-slate-100"
-                }`}
+                  }`}
               >
                 {p.label}
               </button>
@@ -546,11 +544,10 @@ export default function ReportsPage() {
                           {item.siteName}
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            item.status === "COMPLETED" || item.status === "APPROVED"
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === "COMPLETED" || item.status === "APPROVED"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                          }`}
+                            }`}
                         >
                           {item.status}
                         </span>
@@ -840,11 +837,10 @@ export default function ReportsPage() {
                         </span>
                         <span className="text-xs text-[#737373]">Writer: <strong className="text-[#4A4A4A]">{item.writerName}</strong></span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            item.approved
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.approved
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : "bg-rose-50 text-rose-700 border border-rose-200"
-                          }`}
+                            }`}
                         >
                           {item.verdict}
                         </span>
@@ -1013,11 +1009,10 @@ export default function ReportsPage() {
                           {item.affiliateName}
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            item.status === "ACCEPTED"
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === "ACCEPTED"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : "bg-blue-50 text-blue-700 border border-blue-200"
-                          }`}
+                            }`}
                         >
                           {item.status}
                         </span>

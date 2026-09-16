@@ -239,13 +239,13 @@ function ProductsPageContent() {
               return prev.map((p) =>
                 p.id === updated.productId
                   ? {
-                      ...p,
-                      article: {
-                        id: updated.id,
-                        status: updated.status,
-                        writer: updated.writer,
-                      },
-                    }
+                    ...p,
+                    article: {
+                      id: updated.id,
+                      status: updated.status,
+                      writer: updated.writer,
+                    },
+                  }
                   : p
               );
             });
@@ -253,20 +253,20 @@ function ProductsPageContent() {
             setSelectedProduct((prev) =>
               prev && prev.id === updated.productId
                 ? {
-                    ...prev,
-                    article: {
-                      id: updated.id,
-                      status: updated.status,
-                      writer: updated.writer,
-                    },
-                  }
+                  ...prev,
+                  article: {
+                    id: updated.id,
+                    status: updated.status,
+                    writer: updated.writer,
+                  },
+                }
                 : prev
             );
           }
-        } catch (e) {}
+        } catch (e) { }
       };
-      ws.onerror = () => {};
-    } catch (e) {}
+      ws.onerror = () => { };
+    } catch (e) { }
 
     return () => {
       ws?.close();
@@ -315,7 +315,7 @@ function ProductsPageContent() {
       p.categoryId?.toString() === selectedCategoryIdStr ||
       (p.category?.name && p.category.name.toLowerCase() === selectedCategoryName) ||
       (p.productCategory && p.productCategory.toLowerCase() === selectedCategoryName);
-    
+
     // Status Filter
     let matchStatus = true;
     const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
@@ -463,7 +463,7 @@ function ProductsPageContent() {
           Showing {activeTotalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, activeTotalCount)} of {activeTotalCount}
         </p>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <button 
+          <button
             onClick={() => setCurrentPage(1)}
             disabled={currentPage === 1}
             className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
@@ -471,7 +471,7 @@ function ProductsPageContent() {
           >
             First
           </button>
-          <button 
+          <button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
             className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
@@ -494,11 +494,10 @@ function ProductsPageContent() {
             <button
               key={p}
               onClick={() => setCurrentPage(p)}
-              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                currentPage === p 
-                  ? "bg-[#6D8196] text-white border border-[#6D8196] shadow-xs" 
+              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${currentPage === p
+                  ? "bg-[#6D8196] text-white border border-[#6D8196] shadow-xs"
                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-              }`}
+                }`}
             >
               {p}
             </button>
@@ -514,7 +513,7 @@ function ProductsPageContent() {
             </button>
           )}
 
-          <button 
+          <button
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages || totalPages === 0}
             className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
@@ -522,7 +521,7 @@ function ProductsPageContent() {
           >
             &gt;
           </button>
-          <button 
+          <button
             onClick={() => setCurrentPage(totalPages)}
             disabled={currentPage === totalPages || totalPages === 0}
             className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
@@ -561,7 +560,7 @@ function ProductsPageContent() {
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
-            <button 
+            <button
               onClick={() => setIsAddModalOpen(true)}
               className="px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white rounded-lg text-sm font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer">
               <Plus className="w-4 h-4" />
@@ -569,14 +568,14 @@ function ProductsPageContent() {
             </button>
           )}
           {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
-            <button 
+            <button
               onClick={() => setIsImportModalOpen(true)}
               className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
               <Upload className="w-4 h-4 text-slate-500" />
               Import
             </button>
           )}
-          <button 
+          <button
             onClick={handleExportCSV}
             className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
             <Download className="w-4 h-4 text-slate-500" />
@@ -635,11 +634,10 @@ function ProductsPageContent() {
               setActiveTab("products");
               setCurrentPage(1);
             }}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === "products"
+            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === "products"
                 ? "border-[#6D8196] text-[#6D8196]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
+              }`}
           >
             <Package className="w-4 h-4" />
             <span>Available Products</span>
@@ -654,11 +652,10 @@ function ProductsPageContent() {
               setActiveTab("my-articles");
               setCurrentPage(1);
             }}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === "my-articles"
+            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === "my-articles"
                 ? "border-indigo-600 text-indigo-600 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
+              }`}
           >
             <FileText className="w-4 h-4" />
             <span>My Articles</span>
@@ -824,7 +821,7 @@ function ProductsPageContent() {
                     const status = (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
                       ? "PENDING"
                       : rawStatus;
-                    
+
                     return (
                       <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-3 py-3.5">
@@ -837,10 +834,10 @@ function ProductsPageContent() {
                         </td>
                         <td className="px-3 py-3.5">
                           {p.site?.url ? (
-                            <a 
-                              href={p.site.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
+                            <a
+                              href={p.site.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="text-[13px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] hover:underline inline-flex items-center gap-1"
                             >
                               <span>{p.site.name}</span>
@@ -866,13 +863,12 @@ function ProductsPageContent() {
                           </span>
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                            p.trendLevel === "HIGH" 
-                              ? "bg-rose-50 text-rose-600 border border-rose-100" 
-                              : p.trendLevel === "MODERATE" 
-                              ? "bg-amber-50 text-amber-600 border border-amber-100" 
-                              : "bg-slate-50 text-slate-600 border border-slate-100"
-                          }`}>
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${p.trendLevel === "HIGH"
+                              ? "bg-rose-50 text-rose-600 border border-rose-100"
+                              : p.trendLevel === "MODERATE"
+                                ? "bg-amber-50 text-amber-600 border border-amber-100"
+                                : "bg-slate-50 text-slate-600 border border-slate-100"
+                            }`}>
                             {p.trendLevel === "HIGH" && <Flame className="w-3 h-3 text-rose-500" />}
                             {p.trendLevel === "MODERATE" && <TrendingUp className="w-3 h-3 text-amber-500" />}
                             {p.trendLevel === "HIGH" ? "High" : p.trendLevel === "MODERATE" ? "Moderate" : "Low"}
@@ -898,7 +894,7 @@ function ProductsPageContent() {
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
-                            {/* Review — for Admin/Team Lead, link to article; for others, show product modal */}
+                            {/* Review - for Admin/Team Lead, link to article; for others, show product modal */}
                             {p.article && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") ? (
                               <Link
                                 href={`/articles/${p.article.id}`}
@@ -942,11 +938,10 @@ function ProductsPageContent() {
                                     toast.error(err.message || "Failed to start writing");
                                   }
                                 }}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${
-                                  status === "PENDING"
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${status === "PENDING"
                                     ? "bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-2xs active:scale-98"
                                     : "bg-slate-100 text-slate-500 border border-slate-200/80 cursor-not-allowed"
-                                }`}
+                                  }`}
                                 title={
                                   status !== "PENDING"
                                     ? p.article?.writer?.name
@@ -989,16 +984,15 @@ function ProductsPageContent() {
                                     hasIssue
                                       ? `Link issue flagged: ${firstRemark || "Click to view/update"}`
                                       : hasRemarks
-                                      ? `Existing remark: ${firstRemark}`
-                                      : "Report Link Issue"
+                                        ? `Existing remark: ${firstRemark}`
+                                        : "Report Link Issue"
                                   }
-                                  className={`inline-flex items-center justify-center p-1.5 rounded-md border transition-all cursor-pointer shadow-2xs ${
-                                    hasIssue
+                                  className={`inline-flex items-center justify-center p-1.5 rounded-md border transition-all cursor-pointer shadow-2xs ${hasIssue
                                       ? "bg-rose-600 text-white border-rose-700 animate-pulse hover:bg-rose-700"
                                       : hasRemarks
-                                      ? "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100 hover:border-amber-400"
-                                      : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:border-rose-300 hover:text-rose-700"
-                                  }`}
+                                        ? "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100 hover:border-amber-400"
+                                        : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:border-rose-300 hover:text-rose-700"
+                                    }`}
                                 >
                                   <AlertTriangle className="w-3.5 h-3.5" />
                                 </button>
@@ -1164,9 +1158,9 @@ function ProductsPageContent() {
         )}
       </div>
 
-      <AddProductModal 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
+      <AddProductModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => {
           setIsAddModalOpen(false);
           refreshProductsData(false);
@@ -1279,13 +1273,12 @@ function ProductsPageContent() {
                             )}
                           </div>
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                              l.status === "ISSUE"
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${l.status === "ISSUE"
                                 ? "bg-rose-100 text-rose-700 border border-rose-200"
                                 : l.status === "ACCEPTED"
-                                ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                : "bg-blue-50 text-blue-700 border border-blue-200"
-                            }`}
+                                  ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                  : "bg-blue-50 text-blue-700 border border-blue-200"
+                              }`}
                           >
                             {l.status}
                           </span>

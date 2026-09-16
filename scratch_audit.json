@@ -635,7 +635,7 @@
         }
       ],
       "id": 1130709,
-      "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+      "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q - attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
       "module_name": "postcss",
       "vulnerable_versions": "<=8.5.22",
       "patched_versions": ">=8.5.23",
@@ -1054,7 +1054,7 @@
         }
       ],
       "id": 1138115,
-      "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+      "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) - CVE-2026-59870 fix not backported",
       "module_name": "js-yaml",
       "vulnerable_versions": ">=4.0.0 <4.3.1",
       "patched_versions": ">=4.3.1",

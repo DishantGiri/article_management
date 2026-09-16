@@ -5,7 +5,7 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-// POST /api/approvals — Team Lead approves/rejects edit request on an approved article
+// POST /api/approvals - Team Lead approves/rejects edit request on an approved article
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
           createdAt: new Date().toISOString(),
           data: updated,
         }),
-      }).catch(() => {});
+      }).catch(() => { });
     } catch {
       // Ignore broadcast errors
     }
