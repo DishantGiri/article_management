@@ -185,6 +185,53 @@ export async function PATCH(
       );
     }
 
+    // Check for starting revision: writer cannot start multiple revisions or start revision while an article is in progress
+    if (redoStarted && existing.status === "REDO" && !existing.startedAt) {
+      if (!["WRITER", "TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
+        return NextResponse.json(
+          { error: "You do not have permission to write or revise articles." },
+          { status: 403 }
+        );
+      }
+
+      const activeWriterId = existing.writerId || (writerId ? parseInt(writerId) : activeUserId);
+      if (activeWriterId) {
+        // Check if writer already has another revision in progress (startedAt is set and not completed)
+        const activeRevision = await prisma.article.findFirst({
+          where: {
+            writerId: activeWriterId,
+            status: "REDO",
+            startedAt: { not: null },
+            id: { not: id },
+          },
+          include: { product: { select: { name: true } } },
+        });
+        if (activeRevision) {
+          return NextResponse.json(
+            { error: `You already have an active revision in progress for "${activeRevision.product?.name || "another article"}". Complete it before starting another revision.` },
+            { status: 400 }
+          );
+        }
+
+        // Check if writer already has an article in progress
+        const activeWriting = await prisma.article.findFirst({
+          where: {
+            writerId: activeWriterId,
+            status: "IN_PROGRESS",
+            id: { not: id },
+          },
+          include: { product: { select: { name: true } } },
+        });
+        if (activeWriting) {
+          return NextResponse.json(
+            { error: `You already have an article In Progress for "${activeWriting.product?.name || "another article"}". Complete it before starting a revision.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+
     if ((status === "APPROVED" || status === "REDO") && existing.status === "PENDING") {
       return NextResponse.json(
         { error: "Cannot review an article that is still pending and has not been written yet." },
@@ -263,6 +310,24 @@ export async function PATCH(
           { status: 400 }
         );
       }
+
+      // Check writer doesn't have an active revision in progress
+      const activeRevision = await prisma.article.findFirst({
+        where: {
+          writerId: parseInt(writerId),
+          status: "REDO",
+          startedAt: { not: null },
+          id: { not: id },
+        },
+        include: { product: { select: { name: true } } },
+      });
+      if (activeRevision) {
+        return NextResponse.json(
+          { error: `You already have an active revision in progress for "${activeRevision.product?.name || "another article"}". Complete it before starting a new article.` },
+          { status: 400 }
+        );
+      }
+
 
       // Check if this product or another product with the same name was already started or completed on the SAME site
       const currentProductName = existing.product?.name?.trim();

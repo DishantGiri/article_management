@@ -5,7 +5,7 @@
 import { useEffect, useState, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag, Calendar } from "lucide-react";
+import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag, Calendar, Lock } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
@@ -18,6 +18,7 @@ interface Article {
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO";
   priority: "LOW" | "MEDIUM" | "HIGH";
   updatedAt: string;
+  startedAt?: string | null;
   articleLink?: string;
   specialApprovalRequested?: boolean;
   specialApprovalRequestReason?: string | null;
@@ -304,6 +305,16 @@ function ArticlesContent() {
     if (startingRevisionId) return;
     const callerId = session?.user?.id || currentUserId;
     if (!callerId) return;
+
+    if (hasActiveRevision) {
+      toast.error(`Please complete your active revision for "${activeRevisionArticle?.product?.name || "another article"}" before starting another.`);
+      return;
+    }
+    if (hasActiveWriting) {
+      toast.error(`Please complete your in-progress article for "${activeWritingArticle?.product?.name || "another article"}" before starting a revision.`);
+      return;
+    }
+
     setStartingRevisionId(articleId);
     try {
       const res = await fetch(`/api/articles/${articleId}`, {
@@ -329,7 +340,7 @@ function ArticlesContent() {
     const stored = session.user.id;
     const uRole = session.user.role || "WRITER";
     setCurrentUserRole(uRole);
-    setCurrentUserId(stored);
+    setCurrentUserId(Number(stored));
 
     if (uRole === "TEAM_LEAD") {
       fetch(`/api/team-members?userId=${stored}`)
@@ -593,8 +604,26 @@ function ArticlesContent() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
+  const isMyArticle = (art: Article | any) => {
+    if (!art.writer) return false;
+    if (currentUserId && Number(art.writer.id) === Number(currentUserId)) return true;
+    if (session?.user?.name && art.writer.name === session.user.name) return true;
+    return false;
+  };
+
+  const activeRevisionArticle = useMemo(() => {
+    return articles.find((art) => isMyArticle(art) && art.status === "REDO" && !!art.startedAt);
+  }, [articles, currentUserId, session?.user?.name]);
+
+  const activeWritingArticle = useMemo(() => {
+    return articles.find((art) => isMyArticle(art) && art.status === "IN_PROGRESS" && !!art.startedAt);
+  }, [articles, currentUserId, session?.user?.name]);
+
+  const hasActiveRevision = !!activeRevisionArticle;
+  const hasActiveWriting = !!activeWritingArticle;
+
   const hasActiveAssignment = articles.some(
-    (art) => art.writer?.id === currentUserId && (art.status === "IN_PROGRESS" || art.status === "REDO")
+    (art) => isMyArticle(art) && (art.status === "IN_PROGRESS" || art.status === "REDO")
   );
 
   if (!mounted || sessionStatus === "loading") {
@@ -1072,7 +1101,7 @@ function ArticlesContent() {
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {/* If current user is the assigned writer of this article */}
-                            {a.writer?.id === currentUserId && (
+                            {isMyArticle(a) && (
                               <>
                                 {status === "IN_PROGRESS" && (
                                   <button
@@ -1089,15 +1118,31 @@ function ArticlesContent() {
                                 {status === "REDO" && (
                                   <>
                                     {!a.startedAt ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleStartRevision(a.id)}
-                                        disabled={startingRevisionId === a.id}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
-                                      >
-                                        <PlayCircle className="w-3.5 h-3.5" />
-                                        {startingRevisionId === a.id ? "Starting..." : "Start Revision"}
-                                      </button>
+                                      hasActiveRevision || hasActiveWriting ? (
+                                        <button
+                                          type="button"
+                                          disabled
+                                          title={
+                                            hasActiveRevision
+                                              ? `Complete your active revision for "${activeRevisionArticle?.product?.name || "another article"}" before starting another.`
+                                              : `Complete your in-progress article for "${activeWritingArticle?.product?.name || "another article"}" before starting a revision.`
+                                          }
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[11px] font-bold whitespace-nowrap cursor-not-allowed shadow-none"
+                                        >
+                                          <Lock className="w-3.5 h-3.5" />
+                                          Start Revision
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleStartRevision(a.id)}
+                                          disabled={startingRevisionId === a.id}
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
+                                        >
+                                          <PlayCircle className="w-3.5 h-3.5" />
+                                          {startingRevisionId === a.id ? "Starting..." : "Start Revision"}
+                                        </button>
+                                      )
                                     ) : (
                                       <button
                                         onClick={() => {
