@@ -599,7 +599,7 @@ export async function GET(req: NextRequest) {
           redoCount: writerRedoCount,
           completedToday: writerCompletedToday,
           totalCompleted: writerTotalCompleted,
-          avgWritingTimeMin: writerTimeAgg._avg.writingTimeMin
+          avgWritingTimeMin: role !== "WRITER" && writerTimeAgg._avg.writingTimeMin
             ? Math.round(writerTimeAgg._avg.writingTimeMin)
             : null,
         };
