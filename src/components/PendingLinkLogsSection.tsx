@@ -537,10 +537,18 @@ export default function PendingLinkLogsSection({
 
   // Products matching search query (before site filtering)
   const searchFilteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return products;
-    return products.filter((p) =>
-      fuzzyMatchAny([p.name, (p as any).slug], searchQuery)
-    );
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return products;
+    return products
+      .filter((p) => fuzzyMatchAny([p.name], q))
+      .sort((a, b) => {
+        const aName = (a.name || "").toLowerCase().trim();
+        const bName = (b.name || "").toLowerCase().trim();
+        const aExact = aName === q ? 3 : aName.startsWith(q) ? 2 : 0;
+        const bExact = bName === q ? 3 : bName.startsWith(q) ? 2 : 0;
+        if (aExact !== bExact) return bExact - aExact;
+        return 0;
+      });
   }, [products, searchQuery]);
 
   // Extract site counts dynamically based on search-filtered products

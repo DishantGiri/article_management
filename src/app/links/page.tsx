@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check } from "lucide-react";
 import { toast } from "react-hot-toast";
 import AddLinkModal from "@/components/AddLinkModal";
@@ -135,7 +135,7 @@ function LinksPageContent() {
 
   const handleExportCSV = () => {
     const headers = ["ID", "Product", "Site", "Article Link", "Bridge Page", "Affiliate Name", "Affiliate Link", "Geos", "Status", "Added By", "Date", "Remarks"];
-    const rows = filtered.map((l) => [
+    const rows = sortedFiltered.map((l) => [
       l.id.toString(),
       l.product.name,
       l.product.site?.name || "",
@@ -329,8 +329,21 @@ function LinksPageContent() {
   const pendingRequestsCount = links.filter((l) => l.status === "REQUESTED").length;
   const acceptedLinksCount = links.filter((l) => l.status === "ACCEPTED").length;
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const sortedFiltered = useMemo(() => {
+    if (!search || !search.trim()) return filtered;
+    const q = search.trim().toLowerCase();
+    return [...filtered].sort((a, b) => {
+      const aName = (a.product?.name || "").toLowerCase().trim();
+      const bName = (b.product?.name || "").toLowerCase().trim();
+      const aExact = aName === q ? 4 : aName.startsWith(q) ? 3 : aName.includes(q) ? 2 : (a.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      const bExact = bName === q ? 4 : bName.startsWith(q) ? 3 : bName.includes(q) ? 2 : (b.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
+      return 0;
+    });
+  }, [filtered, search]);
+
+  const totalPages = Math.ceil(sortedFiltered.length / itemsPerPage);
+  const paginated = sortedFiltered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -348,7 +361,7 @@ function LinksPageContent() {
     return (
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 py-3 px-2 border-t border-slate-100">
         <p className="text-xs font-semibold text-slate-400">
-          Showing {filtered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length}
+          Showing {sortedFiltered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, sortedFiltered.length)} of {sortedFiltered.length}
         </p>
         <div className="flex items-center gap-1.5 flex-wrap">
           <button 
@@ -718,7 +731,7 @@ function LinksPageContent() {
               size="md"
             />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : sortedFiltered.length === 0 ? (
           <div className="p-16 text-center">
             <p className="text-slate-500 font-medium">No links found</p>
           </div>
