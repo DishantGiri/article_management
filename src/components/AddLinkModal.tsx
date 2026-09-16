@@ -113,6 +113,66 @@ export default function AddLinkModal({
     [products, selectedProductId]
   );
 
+  // Find all instances of this product across all sites (matching exact product name)
+  const matchingProductsForName = useMemo(() => {
+    if (!selectedProduct?.name) return [];
+    const currentName = selectedProduct.name.trim().toLowerCase();
+    return products.filter((p) => p.name?.trim().toLowerCase() === currentName);
+  }, [products, selectedProduct]);
+
+  // Sites where this product actually exists
+  // "is that product on that site then only display that site"
+  const availableSitesForProduct = useMemo(() => {
+    return matchingProductsForName
+      .filter((p) => p.site && p.site.id)
+      .map((p) => {
+        const hasLogs = Boolean(p.linkLogs && p.linkLogs.length > 0);
+        const linkCount = p.linkLogs?.length || 0;
+        const isSelected = p.id === selectedProductId;
+        return {
+          productId: p.id,
+          siteId: p.site.id,
+          siteName: p.site.name || `Site #${p.site.id}`,
+          siteUrl: p.site.url,
+          hasLogs,
+          linkCount,
+          isSelected,
+          product: p,
+        };
+      });
+  }, [matchingProductsForName, selectedProductId]);
+
+  // Group all products by distinct product name for clean dropdown display
+  const productOptions = useMemo(() => {
+    const grouped = new Map<string, Product[]>();
+    for (const p of products) {
+      const key = (p.name || "").trim().toLowerCase();
+      if (!key) continue;
+      const list = grouped.get(key) || [];
+      list.push(p);
+      grouped.set(key, list);
+    }
+
+    return Array.from(grouped.entries()).map(([key, group]) => {
+      const primary = group[0];
+      const siteNames = Array.from(new Set(group.map((p) => p.site?.name).filter(Boolean)));
+      const unlinkedCount = group.filter((p) => !p.linkLogs || p.linkLogs.length === 0).length;
+      const hasUnlinked = unlinkedCount > 0;
+
+      const sitesLabel = siteNames.length > 0 ? `(${siteNames.join(", ")})` : "";
+      const statusLabel = hasUnlinked
+        ? `⚠️ (${unlinkedCount}/${group.length} site${group.length > 1 ? "s" : ""} need links)`
+        : "✓ (All sites linked)";
+
+      return {
+        value: key,
+        productName: primary.name,
+        group,
+        label: `${primary.name} — ${group.length} ${group.length === 1 ? "Site" : "Sites"} ${sitesLabel} ${statusLabel}`,
+      };
+    });
+  }, [products]);
+
   const allAffiliates = useMemo(() => dbAffiliates.map((a) => a.name), [dbAffiliates]);
   const allGeos = dbGeos;
 
@@ -292,9 +352,11 @@ export default function AddLinkModal({
     if (!selectedProduct) return;
     const slug = selectedProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     const base = selectedProduct.site?.url ? selectedProduct.site.url.replace(/\/+$/, "") : "";
-    const autoBridge = selectedProduct.article?.articleLink || (base ? `${base}/${slug}` : "");
-    const autoBuy = base ? `${base}/${slug}` : "";
-    const autoAffLink = selectedProduct.trendLink || selectedProduct.previewLink || (base ? `${base}/aff/${slug}` : "");
+    const existingLog = selectedProduct.linkLogs && selectedProduct.linkLogs.length > 0 ? selectedProduct.linkLogs[0] : null;
+
+    const autoBridge = existingLog?.bridgePageLink || selectedProduct.article?.articleLink || (base ? `${base}/${slug}` : "");
+    const autoBuy = existingLog?.buyLink || (base ? `${base}/${slug}` : "");
+    const autoAffLink = existingLog?.affiliateLink || selectedProduct.trendLink || selectedProduct.previewLink || (base ? `${base}/aff/${slug}` : "");
 
     setBridgePageLink(autoBridge);
     setBuyLink(autoBuy);
@@ -563,10 +625,11 @@ export default function AddLinkModal({
               <Link2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+              <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2 flex-wrap">
                 <span>Add New Link Log</span>
                 {selectedProduct && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/15 text-white border border-white/20">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/15 text-white border border-white/20 flex items-center gap-1">
+                    <Globe className="w-3 h-3 text-white/80" />
                     Site: {selectedProduct.site?.name || "Unassigned"}
                   </span>
                 )}
@@ -574,6 +637,27 @@ export default function AddLinkModal({
                   <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-white/15 text-white border border-white/20">
                     {selectedProduct.name}
                   </span>
+                )}
+                {availableSitesForProduct.length > 1 && (
+                  <div className="flex items-center gap-1 ml-1 flex-wrap">
+                    <span className="text-[11px] text-white/70 font-normal">Switch:</span>
+                    {availableSitesForProduct.map((s) => (
+                      <button
+                        key={s.productId}
+                        type="button"
+                        onClick={() => setSelectedProductId(s.productId)}
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition cursor-pointer border ${
+                          s.isSelected
+                            ? "bg-white text-slate-800 border-white shadow-xs"
+                            : "bg-white/15 hover:bg-white/25 text-white border-white/20"
+                        }`}
+                        title={`Switch to ${s.siteName} for ${selectedProduct?.name}`}
+                      >
+                        {s.siteName}
+                        {s.hasLogs ? " ✓" : " ⚠️"}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </h2>
               <p className="text-xs text-white/80 font-normal">
@@ -599,35 +683,113 @@ export default function AddLinkModal({
             </div>
           )}
 
-          {/* Section 1: Product Selection (Dropdown) */}
-          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 shadow-xs">
-            <div className="flex items-center justify-between">
+          {/* Section 1: Product Selection & Site Switcher */}
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-xs">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 Product <span className="text-rose-500">*</span>
               </label>
               {selectedProduct && (
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  ID: <strong className="text-slate-800 dark:text-slate-200">#{selectedProduct.id}</strong>
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    ID on <strong className="text-slate-800 dark:text-slate-200">{selectedProduct.site?.name || "Site"}</strong>: <strong className="text-slate-800 dark:text-slate-200">#{selectedProduct.id}</strong>
+                  </span>
+                </div>
               )}
             </div>
 
             <CustomSelect
-              value={selectedProductId ? String(selectedProductId) : ""}
-              onChange={(val) => setSelectedProductId(val ? Number(val) : null)}
+              value={selectedProduct?.name?.trim().toLowerCase() || (selectedProductId ? String(selectedProductId) : "")}
+              onChange={(val) => {
+                const matchOpt = productOptions.find((o) => o.value === val);
+                if (matchOpt && matchOpt.group.length > 0) {
+                  // Prefer instance matching currently selected site if available, else first unlinked, else first
+                  const sameSite = selectedProduct
+                    ? matchOpt.group.find((p) => p.site?.id === selectedProduct.site?.id)
+                    : null;
+                  const firstUnlinked = matchOpt.group.find((p) => !p.linkLogs || p.linkLogs.length === 0);
+                  const target = sameSite || firstUnlinked || matchOpt.group[0];
+                  setSelectedProductId(target.id);
+                } else {
+                  const directNum = Number(val);
+                  if (!isNaN(directNum)) setSelectedProductId(directNum);
+                }
+              }}
               placeholder="Select Product from Dropdown..."
               disabled={loadingProducts}
               searchable={true}
               searchPlaceholder="Search products by name or site..."
-              options={products.map((p) => {
-                const isUnlinked = !p.linkLogs || p.linkLogs.length === 0;
-                return {
-                  value: String(p.id),
-                  label: `${p.name} - (Site: ${p.site?.name || "Unassigned"}) ${isUnlinked ? "⚠️ (Needs Link Logs)" : ""}`,
-                };
-              })}
+              options={productOptions.map((o) => ({
+                value: o.value,
+                label: o.label,
+              }))}
             />
+
+            {/* Dynamic Site List for Selected Product ("Only display site if product exists on that site") */}
+            {selectedProduct && availableSitesForProduct.length > 0 && (
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      Sites for &ldquo;{selectedProduct.name}&rdquo;
+                    </label>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      {availableSitesForProduct.length} {availableSitesForProduct.length === 1 ? "Site" : "Sites"} Available
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Click a site to switch and configure links for this product
+                  </span>
+                </div>
+
+                {/* Site Badges / Buttons (Only displaying sites where this product exists) */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {availableSitesForProduct.map((siteItem) => {
+                    const isCurrent = siteItem.isSelected;
+                    return (
+                      <button
+                        key={siteItem.productId}
+                        type="button"
+                        onClick={() => setSelectedProductId(siteItem.productId)}
+                        className={`group px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
+                          isCurrent
+                            ? "bg-[#6D8196] text-white border-[#6D8196] shadow-sm ring-2 ring-[#6D8196]/25 font-bold"
+                            : "bg-white dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 shadow-2xs"
+                        }`}
+                        title={`Switch to ${siteItem.siteName} for product "${selectedProduct.name}"`}
+                      >
+                        <Globe className={`w-3.5 h-3.5 ${isCurrent ? "text-white" : "text-blue-500 dark:text-blue-400"}`} />
+                        <span>{siteItem.siteName}</span>
+                        {siteItem.hasLogs ? (
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                              isCurrent
+                                ? "bg-white/20 text-white"
+                                : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                            }`}
+                          >
+                            ✓ {siteItem.linkCount} Link{siteItem.linkCount > 1 ? "s" : ""}
+                          </span>
+                        ) : (
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                              isCurrent
+                                ? "bg-amber-400/25 text-amber-100 border border-white/20"
+                                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                            }`}
+                          >
+                            ⚠️ Needs Links
+                          </span>
+                        )}
+                        {isCurrent && <Check className="w-3.5 h-3.5 text-white ml-0.5" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Product Quick-Info Bar if selected */}
             {selectedProduct && (
