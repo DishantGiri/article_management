@@ -74,7 +74,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const trimmedName = name.trim();
+    const trimmedName = name.trim().replace(/\s+/g, " ");
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmedName)) {
+      return NextResponse.json(
+        { error: "Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names." },
+        { status: 400 }
+      );
+    }
+
+    if (trimmedName.length < 2 || trimmedName.length > 50) {
+      return NextResponse.json(
+        { error: "Affiliate name must be between 2 and 50 characters." },
+        { status: 400 }
+      );
+    }
 
     const existing = await prisma.affiliateName.findFirst({
       where: { name: trimmedName },

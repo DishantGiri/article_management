@@ -57,6 +57,20 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
       return;
     }
 
+    if (!/^[A-Z0-9]+$/.test(trimmed)) {
+      const msg = "Special characters are not allowed. Only letters and numbers are permitted for GEO codes.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (trimmed.length < 2 || trimmed.length > 10) {
+      const msg = "GEO code must be between 2 and 10 characters.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     // Client-side duplicate validation
     if (geos.some((g) => g.code.toUpperCase() === trimmed)) {
       const msg = `"${trimmed}" already exists.`;
@@ -177,12 +191,17 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
               type="text"
               value={newCode}
               onChange={(e) => {
-                setNewCode(e.target.value.toUpperCase());
-                if (error) setError("");
+                const raw = e.target.value.toUpperCase();
+                if (/[^A-Z0-9]/.test(raw)) {
+                  setError("Special characters are not allowed. Only letters and numbers are permitted.");
+                } else if (error) {
+                  setError("");
+                }
+                setNewCode(raw.replace(/[^A-Z0-9]/g, ""));
               }}
               onKeyDown={(e) => e.key === "Enter" && !adding && handleAdd()}
               placeholder="e.g. IN, SG, NZ, LATAM..."
-              maxLength={20}
+              maxLength={10}
               className={`flex-1 px-3 py-2 bg-white border rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition font-mono uppercase ${
                 error
                   ? "border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-100"

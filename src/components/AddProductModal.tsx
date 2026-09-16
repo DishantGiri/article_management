@@ -605,11 +605,23 @@ export default function AddProductModal({
       toast.error("Category is compulsory.");
       return;
     }
-    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim() : form.affiliateName.trim();
+    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim().replace(/\s+/g, " ") : form.affiliateName.trim();
     if (!finalAffiliate) {
       setError("Affiliate Network is compulsory.");
       toast.error("Affiliate Network is compulsory.");
       return;
+    }
+    if (showCustomAffiliate) {
+      if (!/^[a-zA-Z0-9 ]+$/.test(finalAffiliate)) {
+        setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names.");
+        toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names.");
+        return;
+      }
+      if (finalAffiliate.length < 2 || finalAffiliate.length > 50) {
+        setError("Affiliate name must be between 2 and 50 characters.");
+        toast.error("Affiliate name must be between 2 and 50 characters.");
+        return;
+      }
     }
     if (!form.trendLevel || !form.trendLevel.trim()) {
       setError("Trend Level is compulsory.");
@@ -1568,7 +1580,14 @@ export default function AddProductModal({
                           <input
                             type="text"
                             value={customAffiliate}
-                            onChange={(e) => setCustomAffiliate(e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (/[^a-zA-Z0-9 ]/.test(val)) {
+                                toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "affiliate-char-error" });
+                              }
+                              setCustomAffiliate(val.replace(/[^a-zA-Z0-9 ]/g, ""));
+                            }}
+                            maxLength={50}
                             placeholder="Enter affiliate name..."
                             className="flex-1 px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                           />

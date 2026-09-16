@@ -67,9 +67,19 @@ export default function AffiliateSettingsTab() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = newName.trim();
+    const trimmed = newName.trim().replace(/\s+/g, " ");
     if (!trimmed) {
       toast.error("Affiliate Name is required.");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
+      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names.");
+      return;
+    }
+
+    if (trimmed.length < 2 || trimmed.length > 50) {
+      toast.error("Affiliate name must be between 2 and 50 characters.");
       return;
     }
 
@@ -111,9 +121,19 @@ export default function AffiliateSettingsTab() {
   };
 
   const handleUpdate = async (id: number) => {
-    const trimmed = editName.trim();
+    const trimmed = editName.trim().replace(/\s+/g, " ");
     if (!trimmed) {
       toast.error("Affiliate Name is required.");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
+      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names.");
+      return;
+    }
+
+    if (trimmed.length < 2 || trimmed.length > 50) {
+      toast.error("Affiliate name must be between 2 and 50 characters.");
       return;
     }
 
@@ -240,7 +260,14 @@ export default function AffiliateSettingsTab() {
               <input
                 type="text"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/[^a-zA-Z0-9 ]/.test(val)) {
+                    toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "affiliate-char-error" });
+                  }
+                  setNewName(val.replace(/[^a-zA-Z0-9 ]/g, ""));
+                }}
+                maxLength={50}
                 placeholder="e.g. BuyGoods"
                 className="flex-1 px-3.5 py-2 bg-white border border-[#CBCBCB] rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6D8196]"
               />
@@ -305,7 +332,14 @@ export default function AffiliateSettingsTab() {
                             <input
                               type="text"
                               value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (/[^a-zA-Z0-9 ]/.test(val)) {
+                                  toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "affiliate-char-error" });
+                                }
+                                setEditName(val.replace(/[^a-zA-Z0-9 ]/g, ""));
+                              }}
+                              maxLength={50}
                               className="w-full px-3 py-1.5 bg-white border border-indigo-300 rounded-lg text-xs font-bold text-slate-900"
                             />
                           </td>

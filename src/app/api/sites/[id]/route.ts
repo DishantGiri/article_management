@@ -165,7 +165,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/sites/[id] — update site (Admin / Super Admin only)
+// PATCH /api/sites/[id] — update site (Admin / Super Admin / Linker)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -177,20 +177,53 @@ export async function PATCH(
     }
 
     const role = session.user.role;
-    if (role !== "SUPER_ADMIN" && role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden: Site modification is restricted to Admin role" }, { status: 403 });
+    if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "LINKER") {
+      return NextResponse.json({ error: "Forbidden: Site modification is restricted to Admin and Linker roles" }, { status: 403 });
     }
 
-    const { id } = await params;
+    const { id: idStr } = await params;
+    const siteId = parseInt(idStr);
+    if (isNaN(siteId)) {
+      return NextResponse.json({ error: "Invalid site ID" }, { status: 400 });
+    }
+
     const body = await req.json();
     const { name, url, categoryIds } = body;
 
+    const currentSite = await prisma.site.findUnique({
+      where: { id: siteId },
+      include: { categories: { select: { id: true } } },
+    });
+
+    if (!currentSite) {
+      return NextResponse.json({ error: "Site not found" }, { status: 404 });
+    }
+
+    const trimmedName = name !== undefined ? name.trim() : currentSite.name;
+    const trimmedUrl = url !== undefined ? (url ? url.trim() : null) : currentSite.url;
+    const currentCatIds = currentSite.categories.map((c) => c.id).sort((a, b) => a - b);
+    const newCatIds = Array.isArray(categoryIds)
+      ? [...categoryIds].sort((a: number, b: number) => a - b)
+      : currentCatIds;
+
+    const nameSame = trimmedName === currentSite.name;
+    const urlSame = (trimmedUrl || null) === (currentSite.url || null);
+    const categoriesSame =
+      currentCatIds.length === newCatIds.length &&
+      currentCatIds.every((cid, idx) => cid === newCatIds[idx]);
+
+    if (nameSame && urlSame && categoriesSame) {
+      return NextResponse.json({ error: "No changes made." }, { status: 400 });
+    }
+
     const updated = await prisma.site.update({
-      where: { id: parseInt(id) },
+      where: { id: siteId },
       data: {
-        ...(name ? { name } : {}),
-        ...(url !== undefined ? { url } : {}),
-        ...(Array.isArray(categoryIds) ? { categories: { set: categoryIds.map((cid: number) => ({ id: cid })) } } : {})
+        ...(name ? { name: trimmedName } : {}),
+        ...(url !== undefined ? { url: trimmedUrl } : {}),
+        ...(Array.isArray(categoryIds)
+          ? { categories: { set: categoryIds.map((cid: number) => ({ id: cid })) } }
+          : {}),
       },
     });
 
@@ -201,7 +234,7 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/sites/[id] — delete site (Admin / Super Admin only)
+// DELETE /api/sites/[id] — delete site (Admin / Super Admin / Linker)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -213,8 +246,8 @@ export async function DELETE(
     }
 
     const role = session.user.role;
-    if (role !== "SUPER_ADMIN" && role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden: Site deletion is restricted to Admin role" }, { status: 403 });
+    if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "LINKER") {
+      return NextResponse.json({ error: "Forbidden: Site deletion is restricted to Admin and Linker roles" }, { status: 403 });
     }
 
     const { id } = await params;

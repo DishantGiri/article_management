@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
 import {
   Package,
@@ -163,10 +164,24 @@ export default function EditProductModal({
       return;
     }
 
+    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim().replace(/\s+/g, " ") : affiliateName;
+    if (showCustomAffiliate) {
+      if (!finalAffiliate) {
+        setError("Affiliate Network is compulsory.");
+        return;
+      }
+      if (!/^[a-zA-Z0-9 ]+$/.test(finalAffiliate)) {
+        setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names.");
+        return;
+      }
+      if (finalAffiliate.length < 2 || finalAffiliate.length > 50) {
+        setError("Affiliate name must be between 2 and 50 characters.");
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError("");
-
-    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim() : affiliateName;
 
     try {
       if (showCustomAffiliate && customAffiliate.trim()) {
@@ -342,7 +357,14 @@ export default function EditProductModal({
                       <input
                         type="text"
                         value={customAffiliate}
-                        onChange={(e) => setCustomAffiliate(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/[^a-zA-Z0-9 ]/.test(val)) {
+                            toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "affiliate-char-error" });
+                          }
+                          setCustomAffiliate(val.replace(/[^a-zA-Z0-9 ]/g, ""));
+                        }}
+                        maxLength={50}
                         placeholder="Enter affiliate name..."
                         className="flex-1 px-3.5 py-2.5 bg-white border border-[#6D8196] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
                       />

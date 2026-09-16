@@ -31,9 +31,23 @@ export async function PATCH(
     const body = await req.json();
     const { name } = body;
 
-    const trimmedName = name !== undefined ? name.trim() : "";
+    const trimmedName = name !== undefined ? name.trim().replace(/\s+/g, " ") : "";
     if (!trimmedName) {
       return NextResponse.json({ error: "Affiliate name is required" }, { status: 400 });
+    }
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmedName)) {
+      return NextResponse.json(
+        { error: "Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names." },
+        { status: 400 }
+      );
+    }
+
+    if (trimmedName.length < 2 || trimmedName.length > 50) {
+      return NextResponse.json(
+        { error: "Affiliate name must be between 2 and 50 characters." },
+        { status: 400 }
+      );
     }
 
     const currentItem = await prisma.affiliateName.findUnique({

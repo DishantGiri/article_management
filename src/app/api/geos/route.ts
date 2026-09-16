@@ -35,6 +35,20 @@ export async function POST(req: NextRequest) {
     }
     const trimmed = code.trim().toUpperCase();
 
+    if (!/^[A-Z0-9]+$/.test(trimmed)) {
+      return NextResponse.json(
+        { error: "Special characters are not allowed. Only letters and numbers are permitted for GEO codes." },
+        { status: 400 }
+      );
+    }
+
+    if (trimmed.length < 2 || trimmed.length > 10) {
+      return NextResponse.json(
+        { error: "GEO code must be between 2 and 10 characters." },
+        { status: 400 }
+      );
+    }
+
     const existing = await prisma.geo.findUnique({ where: { code: trimmed } });
     if (existing) {
       return NextResponse.json({ error: `"${trimmed}" already exists.` }, { status: 409 });

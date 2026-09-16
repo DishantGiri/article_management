@@ -46,7 +46,10 @@ interface SiteData {
 
 export default function SitesPage() {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "ADMIN";
+  const isAdmin =
+    session?.user?.role === "SUPER_ADMIN" ||
+    session?.user?.role === "ADMIN" ||
+    session?.user?.role === "LINKER";
 
   const [sites, setSites] = useState<SiteData[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
@@ -171,6 +174,27 @@ export default function SitesPage() {
       setError("Please enter a valid URL (must start with http:// or https://)");
       return;
     }
+
+    if (editingSiteId) {
+      const currentSite = sites.find((s) => s.id === editingSiteId);
+      if (currentSite) {
+        const nameSame = form.name.trim() === (currentSite.name || "").trim();
+        const urlSame = (form.url || "").trim() === (currentSite.url || "").trim();
+
+        const currentCatIds = (currentSite.categories || []).map((c) => c.id).sort((a, b) => a - b);
+        const formCatIds = [...form.categoryIds].sort((a, b) => a - b);
+        const categoriesSame =
+          currentCatIds.length === formCatIds.length &&
+          currentCatIds.every((id, idx) => id === formCatIds[idx]);
+
+        if (nameSame && urlSame && categoriesSame) {
+          toast.error("No changes made.");
+          setShowModal(false);
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     setError("");
     setSuccess("");
@@ -184,7 +208,14 @@ export default function SitesPage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (data.error === "No changes made.") {
+          toast.error("No changes made.");
+          setShowModal(false);
+          return;
+        }
+        throw new Error(data.error);
+      }
 
       fetchSites(false);
       toast.success(editingSiteId ? "Site updated successfully!" : "Site created successfully!");

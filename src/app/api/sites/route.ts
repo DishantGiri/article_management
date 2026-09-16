@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/sites — create a new site (Admin / Super Admin only)
+// POST /api/sites — create a new site (Admin / Super Admin / Linker)
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
     }
 
     const role = session.user.role;
-    if (role !== "SUPER_ADMIN" && role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden: Site creation is restricted to Admin role" }, { status: 403 });
+    if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "LINKER") {
+      return NextResponse.json({ error: "Forbidden: Site creation is restricted to Admin and Linker roles" }, { status: 403 });
     }
 
     const body = await req.json();
