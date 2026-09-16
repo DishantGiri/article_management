@@ -459,7 +459,7 @@ export default function AssignmentDetailsModal({
             {/* Main Link Log Display (Full-Width Adaptive Card) */}
             {!hasLinkLogs ? (
               <div className="space-y-3">
-                {isWriter && (
+                {product.previewLink && (
                   <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <div className="flex items-center gap-1.5">
@@ -469,57 +469,51 @@ export default function AssignmentDetailsModal({
                         </span>
                       </div>
 
-                      {product.previewLink && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() =>
-                              handleCopy(
-                                product.previewLink!,
-                                `preview-main`,
-                                "Preview Link"
-                              )
-                            }
-                            className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
-                            title="Copy Preview Link"
-                          >
-                            {copiedKey === `preview-main` ? (
-                              <>
-                                <Check className="w-3 h-3 text-emerald-600" />
-                                <span className="text-emerald-600">Copied!</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3 h-3 text-slate-400" />
-                                <span>Copy</span>
-                              </>
-                            )}
-                          </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() =>
+                            handleCopy(
+                              product.previewLink!,
+                              `preview-main`,
+                              "Preview Link"
+                            )
+                          }
+                          className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                          title="Copy Preview Link"
+                        >
+                          {copiedKey === `preview-main` ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span className="text-emerald-600">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3 text-slate-400" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
 
-                          <a
-                            href={ensureExternalUrl(product.previewLink)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
-                            title="Open Preview Link in New Tab"
-                          >
-                            <ExternalLink className="w-3 h-3 text-slate-400" />
-                          </a>
-                        </div>
-                      )}
+                        <a
+                          href={ensureExternalUrl(product.previewLink)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
+                          title="Open Preview Link in New Tab"
+                        >
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
+                        </a>
+                      </div>
                     </div>
 
-                    {product.previewLink ? (
-                      <a
-                        href={ensureExternalUrl(product.previewLink)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
-                      >
-                        {product.previewLink}
-                      </a>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">No preview link configured</span>
-                    )}
+                    <a
+                      href={ensureExternalUrl(product.previewLink)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
+                    >
+                      {product.previewLink}
+                    </a>
                   </div>
                 )}
 
@@ -555,22 +549,22 @@ export default function AssignmentDetailsModal({
                   </span>
                 </div>
 
-                {/* URLs Section (Bridge Page, Buy Link, Affiliate Link) */}
-                <div className="space-y-2.5">
-                  {/* Bridge Page Link (Highest priority for writers!) */}
-                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
-                          Bridge Page URL
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          (Used in Article Buttons)
-                        </span>
-                      </div>
+                {/* Destination Routing Cards Grid */}
+                <div className="grid grid-cols-1 gap-3">
+                  {/* Bridge Page Link */}
+                  {currentLog.bridgePageLink && (
+                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Globe className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                            Bridge Page URL
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            (Used in Article Buttons)
+                          </span>
+                        </div>
 
-                      {currentLog.bridgePageLink && (
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() =>
@@ -606,10 +600,8 @@ export default function AssignmentDetailsModal({
                             <ExternalLink className="w-3 h-3 text-slate-400" />
                           </a>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {currentLog.bridgePageLink ? (
                       <a
                         href={currentLog.bridgePageLink}
                         target="_blank"
@@ -618,31 +610,27 @@ export default function AssignmentDetailsModal({
                       >
                         {currentLog.bridgePageLink}
                       </a>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">
-                        Not configured (Bridge page required before Acceptance)
-                      </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
-                  {/* Buy Link */}
-                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <ShoppingCart className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                          Direct Buy Link
-                        </span>
-                      </div>
+                  {/* Buy Now Link */}
+                  {currentLog.buyLink && (
+                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <ShoppingCart className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                            Buy Now Link
+                          </span>
+                        </div>
 
-                      {currentLog.buyLink && (
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() =>
-                              handleCopy(currentLog.buyLink!, `buy-${currentLog.id}`, "Buy Link")
+                              handleCopy(currentLog.buyLink!, `buy-${currentLog.id}`, "Buy Now Link")
                             }
                             className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
-                            title="Copy Buy Link"
+                            title="Copy Buy Now Link"
                           >
                             {copiedKey === `buy-${currentLog.id}` ? (
                               <>
@@ -658,34 +646,30 @@ export default function AssignmentDetailsModal({
                           </button>
 
                           <a
-                            href={currentLog.buyLink}
+                            href={ensureExternalUrl(currentLog.buyLink)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
-                            title="Open Buy Link in New Tab"
+                            title="Open Buy Now Link in New Tab"
                           >
                             <ExternalLink className="w-3 h-3 text-slate-400" />
                           </a>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {currentLog.buyLink ? (
                       <a
-                        href={currentLog.buyLink}
+                        href={ensureExternalUrl(currentLog.buyLink)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 hover:underline break-all block"
                       >
                         {currentLog.buyLink}
                       </a>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">No direct buy link</span>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
-                  {/* For Writers: Show PREVIEW LINK instead of internal Affiliate tracking links */}
-                  {isWriter ? (
+                  {/* Dedicated Preview Link (displayed if present on product) */}
+                  {product.previewLink && (
                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-1.5">
@@ -695,146 +679,19 @@ export default function AssignmentDetailsModal({
                           </span>
                         </div>
 
-                        {product.previewLink && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() =>
-                                handleCopy(
-                                  product.previewLink!,
-                                  `preview-${currentLog.id}`,
-                                  "Preview Link"
-                                )
-                              }
-                              className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
-                              title="Copy Preview Link"
-                            >
-                              {copiedKey === `preview-${currentLog.id}` ? (
-                                <>
-                                  <Check className="w-3 h-3 text-emerald-600" />
-                                  <span className="text-emerald-600">Copied!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3 h-3 text-slate-400" />
-                                  <span>Copy</span>
-                                </>
-                              )}
-                            </button>
-
-                            <a
-                              href={ensureExternalUrl(product.previewLink)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
-                              title="Open Preview Link in New Tab"
-                            >
-                              <ExternalLink className="w-3 h-3 text-slate-400" />
-                            </a>
-                          </div>
-                        )}
-                      </div>
-
-                      {product.previewLink ? (
-                        <a
-                          href={ensureExternalUrl(product.previewLink)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
-                        >
-                          {product.previewLink}
-                        </a>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">No preview link configured</span>
-                      )}
-                    </div>
-                  ) : currentLog.geos && currentLog.geos.some((g) => g.affiliateLink && g.affiliateLink !== currentLog.affiliateLink) ? (
-                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs space-y-2">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Link2 className="w-3.5 h-3.5 text-[#6D8196] shrink-0" />
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                          Country-Specific Affiliate Links ({currentLog.geos.length})
-                        </span>
-                      </div>
-                      <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                        {currentLog.geos.map((g) => (
-                          <div
-                            key={g.geo}
-                            className="flex items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-800/80 rounded-lg border border-slate-200/60 dark:border-slate-700/60 text-xs"
-                          >
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 font-extrabold text-[10px] uppercase border border-slate-200 dark:border-slate-600 shrink-0">
-                                {g.geo}
-                              </span>
-                              <a
-                                href={ensureExternalUrl(g.affiliateLink || currentLog.affiliateLink)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline truncate block"
-                              >
-                                {g.affiliateLink || currentLog.affiliateLink}
-                              </a>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                onClick={() =>
-                                  handleCopy(
-                                    g.affiliateLink || currentLog.affiliateLink!,
-                                    `geo-aff-${currentLog.id}-${g.geo}`,
-                                    `${g.geo} Affiliate Link`
-                                  )
-                                }
-                                className="p-1 px-2 rounded bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold flex items-center gap-1 border border-slate-200 dark:border-slate-600 cursor-pointer"
-                                title={`Copy ${g.geo} link`}
-                              >
-                                {copiedKey === `geo-aff-${currentLog.id}-${g.geo}` ? (
-                                  <>
-                                    <Check className="w-3 h-3 text-emerald-600" />
-                                    <span className="text-emerald-600">Copied</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="w-3 h-3 text-slate-400" />
-                                    <span>Copy</span>
-                                  </>
-                                )}
-                              </button>
-                              <a
-                                href={ensureExternalUrl(g.affiliateLink || currentLog.affiliateLink)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1 px-1.5 rounded bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600"
-                                title="Open Link"
-                              >
-                                <ExternalLink className="w-3 h-3 text-slate-400" />
-                              </a>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : currentLog.affiliateLink ? (
-                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <Link2 className="w-3.5 h-3.5 text-[#6D8196] shrink-0" />
-                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                            Affiliate Destination Link
-                          </span>
-                        </div>
-
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() =>
                               handleCopy(
-                                currentLog.affiliateLink,
-                                `aff-${currentLog.id}`,
-                                "Affiliate Link"
+                                product.previewLink!,
+                                `preview-${currentLog.id}`,
+                                "Preview Link"
                               )
                             }
                             className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
-                            title="Copy Affiliate Link"
+                            title="Copy Preview Link"
                           >
-                            {copiedKey === `aff-${currentLog.id}` ? (
+                            {copiedKey === `preview-${currentLog.id}` ? (
                               <>
                                 <Check className="w-3 h-3 text-emerald-600" />
                                 <span className="text-emerald-600">Copied!</span>
@@ -848,11 +705,11 @@ export default function AssignmentDetailsModal({
                           </button>
 
                           <a
-                            href={ensureExternalUrl(currentLog.affiliateLink)}
+                            href={ensureExternalUrl(product.previewLink)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
-                            title="Open Destination Link in New Tab"
+                            title="Open Preview Link in New Tab"
                           >
                             <ExternalLink className="w-3 h-3 text-slate-400" />
                           </a>
@@ -860,15 +717,148 @@ export default function AssignmentDetailsModal({
                       </div>
 
                       <a
-                        href={ensureExternalUrl(currentLog.affiliateLink)}
+                        href={ensureExternalUrl(product.previewLink)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
                       >
-                        {currentLog.affiliateLink}
+                        {product.previewLink}
                       </a>
                     </div>
-                  ) : null}
+                  )}
+
+                  {/* Affiliate Destination Link (displayed for Team Lead, Admins, Linkers; writers only receive dedicated preview link) */}
+                  {!isWriter && (
+                    currentLog.geos && currentLog.geos.some((g) => g.affiliateLink && g.affiliateLink !== currentLog.affiliateLink) ? (
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs space-y-2">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Link2 className="w-3.5 h-3.5 text-[#6D8196] shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                            Country-Specific Affiliate Links ({currentLog.geos.length})
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                          {currentLog.geos.map((g) => (
+                            <div
+                              key={g.geo}
+                              className="flex items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-800/80 rounded-lg border border-slate-200/60 dark:border-slate-700/60 text-xs"
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 font-extrabold text-[10px] uppercase border border-slate-200 dark:border-slate-600 shrink-0">
+                                  {g.geo}
+                                </span>
+                                <a
+                                  href={ensureExternalUrl(g.affiliateLink || currentLog.affiliateLink)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline truncate block"
+                                >
+                                  {g.affiliateLink || currentLog.affiliateLink}
+                                </a>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() =>
+                                    handleCopy(
+                                      g.affiliateLink || currentLog.affiliateLink!,
+                                      `geo-aff-${currentLog.id}-${g.geo}`,
+                                      `${g.geo} Affiliate Link`
+                                    )
+                                  }
+                                  className="p-1 px-2 rounded bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold flex items-center gap-1 border border-slate-200 dark:border-slate-600 cursor-pointer"
+                                  title={`Copy ${g.geo} link`}
+                                >
+                                  {copiedKey === `geo-aff-${currentLog.id}-${g.geo}` ? (
+                                    <>
+                                      <Check className="w-3 h-3 text-emerald-600" />
+                                      <span className="text-emerald-600">Copied</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3 text-slate-400" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                                <a
+                                  href={ensureExternalUrl(g.affiliateLink || currentLog.affiliateLink)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 px-1.5 rounded bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600"
+                                  title="Open Link"
+                                >
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : currentLog.affiliateLink ? (
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <Link2 className="w-3.5 h-3.5 text-[#6D8196] shrink-0" />
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                              Affiliate Destination Link
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() =>
+                                handleCopy(
+                                  currentLog.affiliateLink,
+                                  `aff-${currentLog.id}`,
+                                  "Affiliate Link"
+                                )
+                              }
+                              className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                              title="Copy Affiliate Link"
+                            >
+                              {copiedKey === `aff-${currentLog.id}` ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span className="text-emerald-600">Copied!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3 text-slate-400" />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+
+                            <a
+                              href={ensureExternalUrl(currentLog.affiliateLink)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
+                              title="Open Destination Link in New Tab"
+                            >
+                              <ExternalLink className="w-3 h-3 text-slate-400" />
+                            </a>
+                          </div>
+                        </div>
+
+                        <a
+                          href={ensureExternalUrl(currentLog.affiliateLink)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
+                        >
+                          {currentLog.affiliateLink}
+                        </a>
+                      </div>
+                    ) : null
+                  )}
+
+                  {/* Fallback if no routing URLs exist */}
+                  {!currentLog.bridgePageLink && !currentLog.buyLink && !product.previewLink && !currentLog.affiliateLink && (!currentLog.geos || currentLog.geos.length === 0) && (
+                    <div className="p-4 text-center text-xs text-slate-400 italic bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                      No routing URLs, buy now links, or preview links configured for this network yet.
+                    </div>
+                  )}
                 </div>
 
                 {/* Remarks */}

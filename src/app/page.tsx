@@ -2159,13 +2159,13 @@ function WriterActiveFocusWorkspace({
 
                       {/* Links Section */}
                       <div className="space-y-3">
-                        {/* Buy Link */}
+                        {/* Buy Now Link */}
                         {log.buyLink && (
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between text-[11px]">
                               <span className="font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wide">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                Buy Link
+                                Buy Now Link
                               </span>
                               <span className="text-[10px] text-slate-400">Primary CTA / Purchase URL</span>
                             </div>
@@ -2184,12 +2184,12 @@ function WriterActiveFocusWorkspace({
                               </a>
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
-                                  onClick={() => handleCopyLink(log.buyLink, `buy-${log.id}`, "Buy link")}
+                                  onClick={() => handleCopyLink(log.buyLink, `buy-${log.id}`, "Buy now link")}
                                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${copiedId === `buy-${log.id}`
                                       ? "bg-emerald-600 text-white shadow-xs"
                                       : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
                                     }`}
-                                  title="Copy Buy Link"
+                                  title="Copy Buy Now Link"
                                 >
                                   {copiedId === `buy-${log.id}` ? (
                                     <>
@@ -2275,8 +2275,66 @@ function WriterActiveFocusWorkspace({
                           </div>
                         )}
 
-                        {/* Fallback if neither bridge nor buy is entered yet */}
-                        {!log.buyLink && !log.bridgePageLink && (
+                        {/* Affiliate Link */}
+                        {log.affiliateLink && (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wide">
+                                <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                                Affiliate Link
+                              </span>
+                              <span className="text-[10px] text-slate-400">Tracking Destination URL</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700/80 rounded-xl p-1.5 pl-3 transition-all hover:border-slate-300 dark:hover:border-slate-600 focus-within:border-indigo-500">
+                              <span className="text-[10px] font-black font-mono text-slate-400 uppercase select-none">
+                                URL:
+                              </span>
+                              <a
+                                href={log.affiliateLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 text-xs font-mono text-indigo-600 dark:text-indigo-400 hover:underline truncate"
+                                title={log.affiliateLink}
+                              >
+                                {log.affiliateLink}
+                              </a>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleCopyLink(log.affiliateLink, `aff-${log.id}`, "Affiliate link")}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${copiedId === `aff-${log.id}`
+                                      ? "bg-emerald-600 text-white shadow-xs"
+                                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                                    }`}
+                                  title="Copy Affiliate Link"
+                                >
+                                  {copiedId === `aff-${log.id}` ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                                <a
+                                  href={log.affiliateLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                  title="Open in new tab"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Fallback if no specific links are entered yet */}
+                        {!log.buyLink && !log.bridgePageLink && !log.affiliateLink && (
                           <p className="text-xs text-slate-400 italic">No specific URLs entered yet for this network.</p>
                         )}
                       </div>
@@ -2837,16 +2895,28 @@ function WriterAvailableAssignments({
                             Status: {log.status} • Geos: {log.geos?.map((g: any) => g.geo).join(", ") || "Global"}
                           </span>
                         </div>
-                        {log.buyLink && (
-                          <a
-                            href={log.buyLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline shrink-0"
-                          >
-                            Buy Link ↗
-                          </a>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {log.buyLink && (
+                            <a
+                              href={log.buyLink.startsWith("http") ? log.buyLink : `https://${log.buyLink}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                            >
+                              Buy Now ↗
+                            </a>
+                          )}
+                          {log.affiliateLink && (
+                            <a
+                              href={log.affiliateLink.startsWith("http") ? log.affiliateLink : `https://${log.affiliateLink}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                            >
+                              Affiliate Link ↗
+                            </a>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

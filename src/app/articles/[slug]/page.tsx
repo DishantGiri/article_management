@@ -912,12 +912,51 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
             </div>
           )}
 
-          {/* ─── AFFILIATE LINKS & GEOS SECTION ─── */}
+          {/* ─── AFFILIATE & TRACKING LINKS SECTION ─── */}
           <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <LinkIcon className="w-4 h-4 text-[#6D8196]" />
-              Affiliate Links & GEO Networks ({product.linkLogs?.length || 0})
+              Tracked Links & GEO Networks ({product.linkLogs?.length || 0})
             </h3>
+
+            {/* Dedicated Product Preview Link if present */}
+            {product.previewLink && (
+              <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-200/60 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Globe className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+                  <span className="text-[10px] font-extrabold text-indigo-700 uppercase flex-shrink-0">Preview Link:</span>
+                  <a
+                    href={ensureExternalUrl(product.previewLink)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 hover:underline truncate font-mono text-[11px]"
+                  >
+                    {product.previewLink}
+                  </a>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(product.previewLink || "");
+                      toast.success("Preview link copied!");
+                    }}
+                    className="p-1 rounded hover:bg-indigo-100 text-indigo-600 cursor-pointer"
+                    title="Copy Preview Link"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                  <a
+                    href={ensureExternalUrl(product.previewLink)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1 rounded hover:bg-indigo-100 text-indigo-600"
+                    title="Open Preview Link"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            )}
 
             {product.linkLogs?.length > 0 ? (
               <div className="space-y-3">
@@ -957,22 +996,22 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
                       {log.buyLink && (
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">Buy Link:</span>
+                          <span className="text-[10px] font-bold text-emerald-700 uppercase flex-shrink-0">Buy Now Link:</span>
                           <a
                             href={ensureExternalUrl(log.buyLink)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-600 hover:underline truncate flex-1 font-mono text-[11px]"
+                            className="text-emerald-600 hover:underline truncate flex-1 font-mono text-[11px]"
                           >
                             {log.buyLink}
                           </a>
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(log.buyLink);
-                              toast.success("Buy link copied!");
+                              toast.success("Buy now link copied!");
                             }}
                             className="p-1 rounded hover:bg-slate-200 text-slate-500"
-                            title="Copy Buy Link"
+                            title="Copy Buy Now Link"
                           >
                             <Copy className="w-3.5 h-3.5" />
                           </button>
@@ -981,7 +1020,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
                       {log.affiliateLink && (
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">Affiliate:</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">Affiliate Link:</span>
                           <a
                             href={ensureExternalUrl(log.affiliateLink)}
                             target="_blank"
