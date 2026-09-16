@@ -1103,17 +1103,15 @@ function ArticlesContent() {
                             {/* If current user is the assigned writer of this article */}
                             {isMyArticle(a) && (
                               <>
+                                {/* While IN_PROGRESS: do not show Update option. Instead provide direct Continue link to workspace */}
                                 {status === "IN_PROGRESS" && (
-                                  <button
-                                    onClick={() => {
-                                      setUpdatingArticle(a);
-                                      setUpdateLink(a.articleLink || "");
-                                    }}
+                                  <Link
+                                    href={`/?articleId=${a.id}`}
                                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#6D8196]/30 bg-[#6D8196]/15 text-[#3D4F61] hover:bg-[#6D8196]/25 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
                                   >
-                                    <FileText className="w-3.5 h-3.5" />
-                                    Update
-                                  </button>
+                                    <PlayCircle className="w-3.5 h-3.5" />
+                                    Continue
+                                  </Link>
                                 )}
                                 {status === "REDO" && (
                                   <>
@@ -1158,8 +1156,23 @@ function ArticlesContent() {
                                   </>
                                 )}
 
-                                {/* Approved / Completed article edit request flow for assigned writer */}
-                                {(status === "APPROVED" || status === "COMPLETED") && (
+                                {/* After COMPLETED: show the Update option so writer can update the completed article link */}
+                                {status === "COMPLETED" && (
+                                  <button
+                                    onClick={() => {
+                                      setUpdatingArticle(a);
+                                      setUpdateLink(a.articleLink || "");
+                                      setUpdateReason("");
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" />
+                                    Update
+                                  </button>
+                                )}
+
+                                {/* Approved article edit request flow for assigned writer */}
+                                {status === "APPROVED" && (
                                   <>
                                     {a.specialApprovalRequested ? (
                                       <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
@@ -1268,14 +1281,20 @@ function ArticlesContent() {
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
                                 >
                                   <FileText className="w-3.5 h-3.5" />
-                                  Review
+                                  Details
                                 </Link>
                               </>
                             )}
 
-                            {/* Locked indicator for Writers when not their article */}
+                            {/* Writer who isn't the assigned writer but article is completed/approved */}
                             {currentUserRole === "WRITER" && a.writer?.id !== currentUserId && (status === "IN_PROGRESS" || status === "REDO" || status === "COMPLETED" || status === "APPROVED") && (
-                              <span className="text-[11px] font-medium text-slate-400">Locked</span>
+                              <Link
+                                href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                Details
+                              </Link>
                             )}
                           </div>
                         </td>
@@ -1301,8 +1320,8 @@ function ArticlesContent() {
                     Needs Changes
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
-                    In Progress
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                    Completed
                   </span>
                 )}
                 {(updatingArticle as any).priority === "HIGH" && (
@@ -1328,7 +1347,7 @@ function ArticlesContent() {
                 />
               </div>
 
-              {currentUserRole === "WRITER" && updatingArticle.status !== "REDO" && (
+              {currentUserRole === "WRITER" && updatingArticle.status !== "REDO" && updatingArticle.status !== "COMPLETED" && (
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
                     Reason for Update <span className="text-rose-500">* (Admin / Super Admin Approval Required)</span>
@@ -1351,10 +1370,10 @@ function ArticlesContent() {
                   Cancel
                 </button>
                 <button
-                  disabled={submittingUpdate || !updateLink.trim() || (currentUserRole === "WRITER" && updatingArticle.status !== "REDO" && !updateReason.trim())}
+                  disabled={submittingUpdate || !updateLink.trim() || (currentUserRole === "WRITER" && updatingArticle.status !== "REDO" && updatingArticle.status !== "COMPLETED" && !updateReason.trim())}
                   onClick={async () => {
                     if (!updateLink.trim() || !currentUserId) return;
-                    const isWriterRequestingUpdate = currentUserRole === "WRITER" && updatingArticle.status !== "REDO";
+                    const isWriterRequestingUpdate = currentUserRole === "WRITER" && updatingArticle.status !== "REDO" && updatingArticle.status !== "COMPLETED";
                     if (isWriterRequestingUpdate && !updateReason.trim()) {
                       toast.error("Please provide a reason for the update.");
                       return;
@@ -1400,7 +1419,7 @@ function ArticlesContent() {
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {submittingUpdate ? "Submitting..." : (currentUserRole === "WRITER" && updatingArticle.status !== "REDO") ? "Request Approval" : "Submit Update"}
+                  {submittingUpdate ? "Submitting..." : (currentUserRole === "WRITER" && updatingArticle.status !== "REDO" && updatingArticle.status !== "COMPLETED") ? "Request Approval" : "Submit Update"}
                 </button>
               </div>
             </div>

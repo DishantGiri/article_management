@@ -159,7 +159,7 @@ export async function PATCH(
     }
 
     // Prevent team lead from modifying an article that is assigned to a writer outside their team
-    if (activeUserRole === "TEAM_LEAD" && existing.writerId && existing.writerId !== activeUserId && existing.status !== "PENDING") {
+    if (!flagForUpdate && activeUserRole === "TEAM_LEAD" && existing.writerId && existing.writerId !== activeUserId && existing.status !== "PENDING") {
       const writer = await prisma.user.findUnique({
         where: { id: existing.writerId },
         select: { teamLeadId: true },
@@ -174,8 +174,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Only Team Leads and Admins can approve or request changes for articles." }, { status: 403 });
     }
 
-    if (flagForUpdate && !["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
-      return NextResponse.json({ error: "Only Team Leads and Admins can flag approved articles for update." }, { status: 403 });
+    if (flagForUpdate) {
+      if (!["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
+        return NextResponse.json({ error: "Only Team Leads and Admins can flag approved articles for update." }, { status: 403 });
+      }
+      if (existing.status !== "APPROVED") {
+        return NextResponse.json({ error: "Only approved articles can be flagged for update." }, { status: 400 });
+      }
     }
 
     if ((status === "APPROVED" || status === "REDO") && existing.status === "REDO" && !redoStarted) {
@@ -262,8 +267,8 @@ export async function PATCH(
       }
     }
 
-    // Business rules for starting an article
-    if (status === "IN_PROGRESS" && writerId) {
+    // Business rules for starting an article (when a writer picks up a pending article)
+    if (status === "IN_PROGRESS" && writerId && !flagForUpdate) {
       if (!["WRITER", "TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
         return NextResponse.json(
           { error: "You do not have permission to write articles." },
