@@ -1,7 +1,7 @@
 "use client";
 
 import CustomSelect from "@/components/CustomSelect";
-import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck } from "lucide-react";
+import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
@@ -45,29 +45,22 @@ interface AddLinkModalProps {
 const LINK_STATUSES = [
   { value: "REQUESTED", label: "Requested" },
   { value: "ACCEPTED", label: "Accepted" },
-  { value: "CANCELED", label: "Canceled" },
-  { value: "ISSUE", label: "Issue" },
-  { value: "NEED_TO_CHECK", label: "Need to check in future" },
-  { value: "PRESELL_PAGE", label: "Presell page" },
-  { value: "REDIRECTED", label: "Redirected" },
+  { value: "NOT_ACCEPTED", label: "Not Accepted" },
 ];
 
 const REMARK_TEMPLATES = [
-  { value: "Standard affiliate setup - links verified active", label: "Standard affiliate setup - links verified active" },
-  { value: "Bridge page live & redirecting to buy page", label: "Bridge page live & redirecting to buy page" },
-  { value: "Direct purchase link configured for site", label: "Direct purchase link configured for site" },
-  { value: "Under review - waiting for affiliate network approval", label: "Under review - waiting for affiliate approval" },
-  { value: "Presell page active with multi-geo routing", label: "Presell page active with multi-geo routing" },
-  { value: "Need to check in future - potential link/stock change", label: "Need to check in future - potential link change" },
-  { value: "No remarks / clean configuration", label: "No remarks / clean configuration" },
+  { label: "Standard affiliate setup - links verified active", value: "Standard affiliate setup - links verified active" },
+  { label: "Direct merchant link - awaiting dedicated manager approval", value: "Direct merchant link - awaiting dedicated manager approval" },
+  { label: "High-converting regional campaign tracking configured", value: "High-converting regional campaign tracking configured" },
+  { label: "Seasonal promo links applied across tier-1 targets", value: "Seasonal promo links applied across tier-1 targets" },
+  { label: "Placeholder logs initialized - awaiting final parameters", value: "Placeholder logs initialized - awaiting final parameters" },
 ];
 
-const isValidUrl = (url: string) => {
-  if (!url) return true;
+const isValidUrl = (url?: string | null): boolean => {
+  if (!url || typeof url !== "string") return false;
   try {
-    if (!/^https?:\/\//i.test(url)) return false;
-    new URL(url);
-    return true;
+    const parsed = new URL(url.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
     return false;
   }
@@ -84,6 +77,7 @@ export default function AddLinkModal({
   const [loadingProducts, setLoadingProducts] = useState(false);
 
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [isSitesExpanded, setIsSitesExpanded] = useState(false);
   const [bridgePageLink, setBridgePageLink] = useState("");
   const [buyLink, setBuyLink] = useState("");
   const [affiliateEntries, setAffiliateEntries] = useState<
@@ -120,27 +114,48 @@ export default function AddLinkModal({
     return products.filter((p) => p.name?.trim().toLowerCase() === currentName);
   }, [products, selectedProduct]);
 
-  // Sites where this product actually exists
+  // Sites where this product actually exists (strictly deduplicated by siteId)
   // "is that product on that site then only display that site"
   const availableSitesForProduct = useMemo(() => {
-    return matchingProductsForName
-      .filter((p) => p.site && p.site.id)
-      .map((p) => {
-        const hasLogs = Boolean(p.linkLogs && p.linkLogs.length > 0);
-        const linkCount = p.linkLogs?.length || 0;
-        const isSelected = p.id === selectedProductId;
-        return {
-          productId: p.id,
-          siteId: p.site.id,
-          siteName: p.site.name || `Site #${p.site.id}`,
-          siteUrl: p.site.url,
-          hasLogs,
-          linkCount,
-          isSelected,
-          product: p,
-        };
-      });
-  }, [matchingProductsForName, selectedProductId]);
+    if (!matchingProductsForName.length) return [];
+
+    const siteMap = new Map<number, typeof matchingProductsForName[0]>();
+    for (const p of matchingProductsForName) {
+      if (!p.site || !p.site.id) continue;
+      const existing = siteMap.get(p.site.id);
+      if (!existing) {
+        siteMap.set(p.site.id, p);
+      } else {
+        // Prioritize the currently selected product instance
+        if (p.id === selectedProductId) {
+          siteMap.set(p.site.id, p);
+        } else if (existing.id !== selectedProductId) {
+          // Otherwise prioritize the instance that has link logs
+          const existingHasLogs = Boolean(existing.linkLogs && existing.linkLogs.length > 0);
+          const pHasLogs = Boolean(p.linkLogs && p.linkLogs.length > 0);
+          if (!existingHasLogs && pHasLogs) {
+            siteMap.set(p.site.id, p);
+          }
+        }
+      }
+    }
+
+    return Array.from(siteMap.values()).map((p) => {
+      const hasLogs = Boolean(p.linkLogs && p.linkLogs.length > 0);
+      const linkCount = p.linkLogs?.length || 0;
+      const isSelected = p.site.id === selectedProduct?.site?.id;
+      return {
+        productId: p.id,
+        siteId: p.site.id,
+        siteName: p.site.name || `Site #${p.site.id}`,
+        siteUrl: p.site.url,
+        hasLogs,
+        linkCount,
+        isSelected,
+        product: p,
+      };
+    });
+  }, [matchingProductsForName, selectedProduct, selectedProductId]);
 
   // Group all products by distinct product name for clean dropdown display
   const productOptions = useMemo(() => {
@@ -311,6 +326,7 @@ export default function AddLinkModal({
 
   useEffect(() => {
     if (isOpen) {
+      setIsSitesExpanded(false);
       setLoadingProducts(true);
       setError("");
       setStatus("REQUESTED");
@@ -599,13 +615,34 @@ export default function AddLinkModal({
         throw new Error(errData.error || "Failed to add link");
       }
 
+      // Update local products state immediately so active site marks as configured
+      setProducts((prev) =>
+        prev.map((p) => {
+          if (p.id === selectedProductId) {
+            return {
+              ...p,
+              linkLogs: [...(p.linkLogs || []), { id: Date.now(), bridgePageLink, buyLink }],
+            };
+          }
+          return p;
+        })
+      );
+
+      // Refresh products list from server in background
+      fetch("/api/products")
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setProducts(data);
+        })
+        .catch(() => {});
+
       toast.success(
         useCountrySpecificLinks
-          ? `Successfully added product link with ${countryLinks.length} country link(s)!`
-          : `Successfully added ${affiliateEntries.length} link log entry(ies)!`
+          ? `Successfully saved links for ${selectedProduct?.site?.name || "site"} with ${countryLinks.length} country link(s)! Switch sites above to continue adding links.`
+          : `Successfully saved ${affiliateEntries.length} link log(s) for ${selectedProduct?.site?.name || "site"}! Switch sites above to continue adding links.`
       );
       if (onSuccess) onSuccess();
-      onClose();
+      // Keep modal open so linker can switch to other sites for this product!
     } catch (e: any) {
       setError(e.message || "Something went wrong");
     } finally {
@@ -616,8 +653,8 @@ export default function AddLinkModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-[96vw] max-w-6xl flex flex-col max-h-[94vh] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-1 sm:p-2.5 animate-fadeIn">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-[98vw] max-w-[98vw] flex flex-col h-[96vh] max-h-[96vh] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200">
         {/* Header */}
         <div className="px-6 py-4 bg-[#4A4A4A] dark:bg-slate-800 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -643,7 +680,7 @@ export default function AddLinkModal({
                     <span className="text-[11px] text-white/70 font-normal">Switch:</span>
                     {availableSitesForProduct.map((s) => (
                       <button
-                        key={s.productId}
+                        key={s.siteId}
                         type="button"
                         onClick={() => setSelectedProductId(s.productId)}
                         className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition cursor-pointer border ${
@@ -683,111 +720,155 @@ export default function AddLinkModal({
             </div>
           )}
 
-          {/* Section 1: Product Selection & Site Switcher */}
+          {/* Section 1: Product (Locked) & Collapsible Site Switcher */}
           <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-xs">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 Product <span className="text-rose-500">*</span>
               </label>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+                <Lock className="w-3 h-3 text-amber-500" />
+                Product Name Locked
+              </span>
+            </div>
+
+            {/* Locked Product Display Card */}
+            <div className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl flex items-center justify-between shadow-2xs">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-blue-100/70 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold shrink-0">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                      {selectedProduct?.name || "Loading..."}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-200/80 dark:bg-slate-700/80 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      <Lock className="w-2.5 h-2.5 text-slate-500" />
+                      Locked
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
+                    Product name cannot be changed. You can only switch sites for this product below.
+                  </span>
+                </div>
+              </div>
+
               {selectedProduct && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    ID on <strong className="text-slate-800 dark:text-slate-200">{selectedProduct.site?.name || "Site"}</strong>: <strong className="text-slate-800 dark:text-slate-200">#{selectedProduct.id}</strong>
+                <div className="text-right shrink-0 pl-3">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">ID on {selectedProduct.site?.name || "Site"}</span>
+                  <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">
+                    #{selectedProduct.id}
                   </span>
                 </div>
               )}
             </div>
 
-            <CustomSelect
-              value={selectedProduct?.name?.trim().toLowerCase() || (selectedProductId ? String(selectedProductId) : "")}
-              onChange={(val) => {
-                const matchOpt = productOptions.find((o) => o.value === val);
-                if (matchOpt && matchOpt.group.length > 0) {
-                  // Prefer instance matching currently selected site if available, else first unlinked, else first
-                  const sameSite = selectedProduct
-                    ? matchOpt.group.find((p) => p.site?.id === selectedProduct.site?.id)
-                    : null;
-                  const firstUnlinked = matchOpt.group.find((p) => !p.linkLogs || p.linkLogs.length === 0);
-                  const target = sameSite || firstUnlinked || matchOpt.group[0];
-                  setSelectedProductId(target.id);
-                } else {
-                  const directNum = Number(val);
-                  if (!isNaN(directNum)) setSelectedProductId(directNum);
-                }
-              }}
-              placeholder="Select Product from Dropdown..."
-              disabled={loadingProducts}
-              searchable={true}
-              searchPlaceholder="Search products by name or site..."
-              options={productOptions.map((o) => ({
-                value: o.value,
-                label: o.label,
-              }))}
-            />
-
-            {/* Dynamic Site List for Selected Product ("Only display site if product exists on that site") */}
+            {/* Collapsible Site List for this Product (Collapsed by Default) */}
             {selectedProduct && availableSitesForProduct.length > 0 && (
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      Sites for &ldquo;{selectedProduct.name}&rdquo;
-                    </label>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                      {availableSitesForProduct.length} {availableSitesForProduct.length === 1 ? "Site" : "Sites"} Available
+                {/* Collapsed Bar: Shows Active Site and Toggle Button */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 flex-wrap gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Assigned Site:
                     </span>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#6D8196] text-white shadow-2xs">
+                      {selectedProduct.site?.name || "None"}
+                    </span>
+                    {selectedProduct.linkLogs && selectedProduct.linkLogs.length > 0 ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                        ✓ Configured ({selectedProduct.linkLogs.length} Link{selectedProduct.linkLogs.length > 1 ? "s" : ""})
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                        ⚠️ Needs Links
+                      </span>
+                    )}
                   </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Click a site to switch and configure links for this product
-                  </span>
+
+                  {availableSitesForProduct.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSitesExpanded(!isSitesExpanded)}
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    >
+                      <span>{isSitesExpanded ? "Hide Sites List" : `Change Site (${availableSitesForProduct.length} Available)`}</span>
+                      {isSitesExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
                 </div>
 
-                {/* Site Badges / Buttons (Only displaying sites where this product exists) */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {availableSitesForProduct.map((siteItem) => {
-                    const isCurrent = siteItem.isSelected;
-                    return (
+                {/* Expanded Site List: Only shown when toggled open */}
+                {isSitesExpanded && availableSitesForProduct.length > 1 && (
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2.5 shadow-xs animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                          Available Sites for &ldquo;{selectedProduct.name}&rdquo;
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          {availableSitesForProduct.length} Sites
+                        </span>
+                      </div>
                       <button
-                        key={siteItem.productId}
                         type="button"
-                        onClick={() => setSelectedProductId(siteItem.productId)}
-                        className={`group px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
-                          isCurrent
-                            ? "bg-[#6D8196] text-white border-[#6D8196] shadow-sm ring-2 ring-[#6D8196]/25 font-bold"
-                            : "bg-white dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 shadow-2xs"
-                        }`}
-                        title={`Switch to ${siteItem.siteName} for product "${selectedProduct.name}"`}
+                        onClick={() => setIsSitesExpanded(false)}
+                        className="text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer flex items-center gap-0.5"
                       >
-                        <Globe className={`w-3.5 h-3.5 ${isCurrent ? "text-white" : "text-blue-500 dark:text-blue-400"}`} />
-                        <span>{siteItem.siteName}</span>
-                        {siteItem.hasLogs ? (
-                          <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                              isCurrent
-                                ? "bg-white/20 text-white"
-                                : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                            }`}
-                          >
-                            ✓ {siteItem.linkCount} Link{siteItem.linkCount > 1 ? "s" : ""}
-                          </span>
-                        ) : (
-                          <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                              isCurrent
-                                ? "bg-amber-400/25 text-amber-100 border border-white/20"
-                                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
-                            }`}
-                          >
-                            ⚠️ Needs Links
-                          </span>
-                        )}
-                        {isCurrent && <Check className="w-3.5 h-3.5 text-white ml-0.5" />}
+                        <span>Collapse</span>
+                        <ChevronUp className="w-3 h-3" />
                       </button>
-                    );
-                  })}
-                </div>
+                    </div>
+
+                    {/* Site Badges / Buttons (Strictly deduplicated & only for this product) */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {availableSitesForProduct.map((siteItem) => {
+                        const isCurrent = siteItem.isSelected;
+                        return (
+                          <button
+                            key={siteItem.siteId}
+                            type="button"
+                            onClick={() => setSelectedProductId(siteItem.productId)}
+                            className={`group px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
+                              isCurrent
+                                ? "bg-[#6D8196] text-white border-[#6D8196] shadow-sm ring-2 ring-[#6D8196]/25 font-bold"
+                                : "bg-white dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 shadow-2xs"
+                            }`}
+                            title={`Switch to ${siteItem.siteName} for product "${selectedProduct.name}"`}
+                          >
+                            <Globe className={`w-3.5 h-3.5 ${isCurrent ? "text-white" : "text-blue-500 dark:text-blue-400"}`} />
+                            <span>{siteItem.siteName}</span>
+                            {siteItem.hasLogs ? (
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                  isCurrent
+                                    ? "bg-white/20 text-white"
+                                    : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                                }`}
+                              >
+                                ✓ {siteItem.linkCount} Link{siteItem.linkCount > 1 ? "s" : ""}
+                              </span>
+                            ) : (
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                  isCurrent
+                                    ? "bg-amber-400/25 text-amber-100 border border-white/20"
+                                    : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                                }`}
+                              >
+                                ⚠️ Needs Links
+                              </span>
+                            )}
+                            {isCurrent && <Check className="w-3.5 h-3.5 text-white ml-0.5" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1414,9 +1495,9 @@ export default function AddLinkModal({
               <span className="text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 {useCountrySpecificLinks
-                  ? `${countryLinks.length} country link${countryLinks.length !== 1 ? "s" : ""} configured for 1 product`
-                  : `${affiliateEntries.length} link log ${affiliateEntries.length !== 1 ? "entries" : "entry"}`}{" "}
-                ready for {selectedProduct.site?.name || "site"}
+                  ? `${countryLinks.length} country link${countryLinks.length !== 1 ? "s" : ""} ready to save for`
+                  : `${affiliateEntries.length} link log ${affiliateEntries.length !== 1 ? "entries" : "entry"} ready to save for`}{" "}
+                <strong className="underline decoration-blue-500 font-extrabold">{selectedProduct.site?.name || "Active Site"}</strong>
               </span>
             ) : (
               <span>Select a product above</span>
@@ -1429,7 +1510,7 @@ export default function AddLinkModal({
               type="button"
               className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-white dark:hover:bg-slate-800 transition text-xs cursor-pointer shadow-xs"
             >
-              Cancel
+              Done / Close
             </button>
             <button
               onClick={handleSubmit}
@@ -1440,9 +1521,8 @@ export default function AddLinkModal({
               {submitting
                 ? "Saving..."
                 : useCountrySpecificLinks
-                  ? `Save Product (${countryLinks.length} Country Links)`
-                  : `Add ${affiliateEntries.length} Link Log${affiliateEntries.length !== 1 ? "s" : ""
-                  }`}
+                  ? `Save for ${selectedProduct?.site?.name || "Active Site"} (${countryLinks.length} Country Links)`
+                  : `Save for ${selectedProduct?.site?.name || "Active Site"} (${affiliateEntries.length} Links)`}
             </button>
           </div>
         </div>
