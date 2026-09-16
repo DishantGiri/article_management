@@ -504,7 +504,9 @@ export default function AddProductModal({
           return;
         }
         if (r.name.trim().length < 2) {
-          const msg = `Row #${rowNum} ("${r.name.trim()}"): Product name must be at least 2 characters.`;
+          const msg = validRows.length === 1
+            ? "Product name must be at least 2 characters."
+            : `Row #${rowNum} ("${r.name.trim()}"): Product name must be at least 2 characters.`;
           setError(msg);
           toast.error(msg);
           return;
@@ -1695,7 +1697,7 @@ export default function AddProductModal({
                     </button>
                     <button
                       type="button"
-                      disabled={!form.name.trim() || form.name.trim().length < 2 || submitting}
+                      disabled={submitting}
                       onClick={handleSubmit}
                       className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg shadow-blue-600/20 disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center gap-2"
                     >

@@ -565,7 +565,7 @@ export default function AddProductPage() {
                 </button>
                 <button
                   id="btn-submit-product"
-                  disabled={!form.name.trim() || form.name.trim().length < 2 || submitting}
+                  disabled={submitting}
                   onClick={handleSubmit}
                   className="flex-1 py-3 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
                 >
