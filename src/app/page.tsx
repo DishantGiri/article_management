@@ -1690,6 +1690,7 @@ function WriterFocusStudio({
         <WriterActiveFocusWorkspace
           key={activeArticle.id}
           article={activeArticle}
+          inProgressList={inProgressList}
           completedArticles={data.writerCompletedArticles || []}
           currentUserId={currentUserId}
           onSuccess={onRefresh}
@@ -1710,11 +1711,13 @@ function WriterFocusStudio({
 
 function WriterActiveFocusWorkspace({
   article,
+  inProgressList = [],
   completedArticles,
   currentUserId,
   onSuccess,
 }: {
   article: any;
+  inProgressList?: any[];
   completedArticles: any[];
   currentUserId: number | null;
   onSuccess: () => void;
@@ -1728,6 +1731,14 @@ function WriterActiveFocusWorkspace({
 
   const [startingRevision, setStartingRevision] = useState(false);
   const revisionStarted = article.status !== "REDO" || !!article.startedAt;
+
+  const activeRevisionConflict = inProgressList.find(
+    (a: any) => a.id !== article.id && a.status === "REDO" && !!a.startedAt
+  );
+  const activeWritingConflict = inProgressList.find(
+    (a: any) => a.id !== article.id && a.status === "IN_PROGRESS" && !!a.startedAt
+  );
+  const hasStartConflict = !!(activeRevisionConflict || activeWritingConflict);
 
   const [reportingLink, setReportingLink] = useState<any>(null);
   const [issueMessage, setIssueMessage] = useState("");
@@ -1757,6 +1768,14 @@ function WriterActiveFocusWorkspace({
 
   const handleStartRevision = async () => {
     if (startingRevision) return;
+    if (activeRevisionConflict) {
+      toast.error(`Please complete your active revision for "${activeRevisionConflict.product?.name || "another article"}" before starting another.`);
+      return;
+    }
+    if (activeWritingConflict) {
+      toast.error(`Please complete your in-progress article for "${activeWritingConflict.product?.name || "another article"}" before starting a revision.`);
+      return;
+    }
     setStartingRevision(true);
     try {
       const res = await fetch(`/api/articles/${article.id}`, {
@@ -1916,16 +1935,42 @@ function WriterActiveFocusWorkspace({
           {/* Start Revision CTA Button */}
           {article.status === "REDO" && !article.startedAt && (
             <div className="flex flex-col items-center gap-3 py-8 border border-dashed border-rose-200 dark:border-rose-900/60 rounded-2xl bg-rose-50/40 dark:bg-rose-950/30 text-center">
-              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Ready to start revision?</p>
-              <button
-                type="button"
-                onClick={handleStartRevision}
-                disabled={startingRevision}
-                className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl disabled:opacity-50 transition flex items-center gap-2 shadow-xs cursor-pointer"
-              >
-                <PlayCircle className="w-4 h-4" />
-                {startingRevision ? "Starting..." : "Start Revision"}
-              </button>
+              {hasStartConflict ? (
+                <>
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Revision Locked</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md">
+                    You already have an active {activeRevisionConflict ? "revision" : "article"} in progress for{" "}
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      &quot;{activeRevisionConflict?.product?.name || activeWritingConflict?.product?.name}&quot;
+                    </span>
+                    . You must complete it before starting this revision.
+                  </p>
+                  <button
+                    type="button"
+                    disabled
+                    className="px-6 py-2.5 bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold text-xs rounded-xl cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Lock className="w-4 h-4" />
+                    Start Revision (Locked)
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Ready to start revision?</p>
+                  <button
+                    type="button"
+                    onClick={handleStartRevision}
+                    disabled={startingRevision}
+                    className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl disabled:opacity-50 transition flex items-center gap-2 shadow-xs cursor-pointer"
+                  >
+                    <PlayCircle className="w-4 h-4" />
+                    {startingRevision ? "Starting..." : "Start Revision"}
+                  </button>
+                </>
+              )}
             </div>
           )}
 
