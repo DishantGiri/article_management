@@ -54,7 +54,14 @@ export default function ProductCategoriesPage() {
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!categoryName.trim()) return;
+    const trimmed = categoryName.trim().replace(/\s+/g, " ");
+    if (!trimmed) return;
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
+      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for category names.");
+      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "prod-cat-char-error" });
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -82,9 +89,17 @@ export default function ProductCategoriesPage() {
 
   const handleUpdateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCategory || !categoryName.trim()) return;
+    if (!selectedCategory) return;
+    const trimmed = categoryName.trim().replace(/\s+/g, " ");
+    if (!trimmed) return;
 
-    if (selectedCategory.name.trim() === categoryName.trim()) {
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
+      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for category names.");
+      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "prod-cat-char-error" });
+      return;
+    }
+
+    if (selectedCategory.name.trim() === trimmed) {
       toast.error("No changes made.");
       setIsEditModalOpen(false);
       setSelectedCategory(null);
@@ -280,7 +295,13 @@ export default function ProductCategoriesPage() {
                   type="text"
                   required
                   value={categoryName}
-                  onChange={(e) => setCategoryName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/[^a-zA-Z0-9 ]/.test(val)) {
+                      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "prod-cat-char-error" });
+                    }
+                    setCategoryName(val.replace(/[^a-zA-Z0-9 ]/g, ""));
+                  }}
                   placeholder="e.g. Weight Loss, Skincare, Supplements, Fitness"
                   className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
                   autoFocus
@@ -337,7 +358,13 @@ export default function ProductCategoriesPage() {
                   type="text"
                   required
                   value={categoryName}
-                  onChange={(e) => setCategoryName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/[^a-zA-Z0-9 ]/.test(val)) {
+                      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "prod-cat-char-error" });
+                    }
+                    setCategoryName(val.replace(/[^a-zA-Z0-9 ]/g, ""));
+                  }}
                   className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
                 />
               </div>

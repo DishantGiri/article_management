@@ -343,14 +343,22 @@ export default function AddProductModal({
 
   const handleInlineAddCat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCatName.trim()) return;
+    const trimmed = newCatName.trim().replace(/\s+/g, " ");
+    if (!trimmed) return;
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
+      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for product type names.");
+      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "cat-char-error" });
+      return;
+    }
+
     setAddingCat(true);
     setError("");
     try {
       const res = await fetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCatName.trim() }),
+        body: JSON.stringify({ name: trimmed }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create category");
@@ -367,7 +375,15 @@ export default function AddProductModal({
 
   const handleInlineAddSite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSiteName.trim()) return;
+    const trimmed = newSiteName.trim().replace(/\s+/g, " ");
+    if (!trimmed) return;
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
+      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for site names.");
+      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "site-char-error" });
+      return;
+    }
+
     setAddingSite(true);
     setError("");
     try {
@@ -375,7 +391,7 @@ export default function AddProductModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: newSiteName.trim(),
+          name: trimmed,
           url: newSiteUrl.trim() || null,
           categoryIds: form.categoryIds,
         }),
@@ -831,7 +847,13 @@ export default function AddProductModal({
                       <input
                         type="text"
                         value={newCatName}
-                        onChange={(e) => setNewCatName(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/[^a-zA-Z0-9 ]/.test(val)) {
+                            toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "cat-char-error" });
+                          }
+                          setNewCatName(val.replace(/[^a-zA-Z0-9 ]/g, ""));
+                        }}
                         placeholder="Product type name (e.g. Skin Care, Ecomm, Supplements)"
                         className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                       />
@@ -1353,7 +1375,13 @@ export default function AddProductModal({
                       <input
                         type="text"
                         value={newSiteName}
-                        onChange={(e) => setNewSiteName(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/[^a-zA-Z0-9 ]/.test(val)) {
+                            toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "site-char-error" });
+                          }
+                          setNewSiteName(val.replace(/[^a-zA-Z0-9 ]/g, ""));
+                        }}
                         placeholder="Site Name (e.g. Health Daily)"
                         className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                       />

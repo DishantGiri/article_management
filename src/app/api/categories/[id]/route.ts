@@ -20,8 +20,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const { name } = await req.json();
-    const cleanName = (name || "").trim();
+    const cleanName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
     if (!cleanName) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(cleanName)) {
+      return NextResponse.json(
+        { error: "Special characters are not allowed. Only letters, numbers, and spaces are permitted for product type names." },
+        { status: 400 }
+      );
+    }
 
     const currentCategory = await prisma.category.findUnique({
       where: { id },
