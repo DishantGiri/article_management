@@ -109,15 +109,7 @@ export async function POST(req: NextRequest) {
 
         if (existingWithSameName) {
           const addedByName = existingWithSameName.addedBy?.name;
-          const writerName = existingWithSameName.article?.writer?.name;
-          let conflictMsg = "";
-          if (addedByName && writerName && addedByName !== writerName) {
-            conflictMsg = `This product has been already added by ${addedByName} or writer ${writerName}.`;
-          } else if (writerName) {
-            conflictMsg = `This product has been already added by writer ${writerName}.`;
-          } else {
-            conflictMsg = `This product has been already added by ${addedByName || "another user"}.`;
-          }
+          const conflictMsg = `Already added by linker ${addedByName || "another linker"} on site ${site.name}.`;
           errors.push(`Row ${rowNum} ("${name}"): ${conflictMsg}`);
           continue;
         }

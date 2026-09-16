@@ -101,7 +101,14 @@ export async function PATCH(
 
     const existing = await prisma.article.findUnique({
       where: { id },
-      include: { product: true }
+      include: {
+        product: {
+          include: {
+            site: { select: { id: true, name: true } },
+          },
+        },
+        writer: { select: { id: true, name: true } },
+      },
     });
     if (!existing) {
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
@@ -124,7 +131,31 @@ export async function PATCH(
 
     // Prevent writer from editing someone else's active article (allow if PENDING so writer can pick it up)
     if (activeUserRole === "WRITER" && existing.writerId && existing.writerId !== activeUserId && existing.status !== "PENDING") {
-      return NextResponse.json({ error: "This article is already in progress or assigned to another writer." }, { status: 403 });
+      const siteSuffix = existing.product?.site?.name ? ` on site ${existing.product.site.name}` : "";
+      const activeWriterName = existing.writer?.name;
+      const writerDesc = activeWriterName ? `writer ${activeWriterName}` : "another writer";
+
+      if (existing.status === "IN_PROGRESS") {
+        return NextResponse.json(
+          { error: `This product is currently being written by ${writerDesc}${siteSuffix}.` },
+          { status: 403 }
+        );
+      } else if (existing.status === "COMPLETED" || existing.status === "APPROVED") {
+        return NextResponse.json(
+          { error: `This article has already been completed by ${writerDesc}${siteSuffix}.` },
+          { status: 403 }
+        );
+      } else if (existing.status === "REDO") {
+        return NextResponse.json(
+          { error: `This article is currently under revision by ${writerDesc}${siteSuffix}.` },
+          { status: 403 }
+        );
+      } else {
+        return NextResponse.json(
+          { error: `This product is currently being worked on by ${writerDesc}${siteSuffix}.` },
+          { status: 403 }
+        );
+      }
     }
 
     // Prevent team lead from modifying an article that is assigned to a writer outside their team
@@ -192,6 +223,36 @@ export async function PATCH(
           { status: 403 }
         );
       }
+
+      // If this specific article already has another writer assigned and is not PENDING:
+      if (existing.writerId && existing.writerId !== parseInt(writerId) && existing.status !== "PENDING") {
+        const siteSuffix = existing.product?.site?.name ? ` on site ${existing.product.site.name}` : "";
+        const activeWriterName = existing.writer?.name;
+        const writerDesc = activeWriterName ? `writer ${activeWriterName}` : "another writer";
+
+        if (existing.status === "IN_PROGRESS") {
+          return NextResponse.json(
+            { error: `This product is currently being written by ${writerDesc}${siteSuffix}.` },
+            { status: 400 }
+          );
+        } else if (existing.status === "COMPLETED" || existing.status === "APPROVED") {
+          return NextResponse.json(
+            { error: `This article has already been completed by ${writerDesc}${siteSuffix}.` },
+            { status: 400 }
+          );
+        } else if (existing.status === "REDO") {
+          return NextResponse.json(
+            { error: `This article is currently under revision by ${writerDesc}${siteSuffix}.` },
+            { status: 400 }
+          );
+        } else {
+          return NextResponse.json(
+            { error: `This product is currently being worked on by ${writerDesc}${siteSuffix}.` },
+            { status: 400 }
+          );
+        }
+      }
+
       // Check writer doesn't already have an in-progress article
       const inProgress = await prisma.article.findFirst({
         where: { writerId: parseInt(writerId), status: "IN_PROGRESS", id: { not: id } },
@@ -225,7 +286,6 @@ export async function PATCH(
             writer: { select: { name: true } },
             product: {
               include: {
-                addedBy: { select: { name: true } },
                 site: { select: { name: true } },
               },
             },
@@ -239,18 +299,20 @@ export async function PATCH(
         );
 
         if (duplicateArticle) {
-          const addedByName = duplicateArticle.product?.addedBy?.name;
           const writerName = duplicateArticle.writer?.name;
           const siteName = duplicateArticle.product?.site?.name;
           const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
+          const writerDesc = writerName ? `writer ${writerName}` : "another writer";
 
           let errorMsg = "";
-          if (addedByName && writerName && addedByName !== writerName) {
-            errorMsg = `This product has been already added by ${addedByName} or writer ${writerName}${siteSuffix}.`;
-          } else if (writerName) {
-            errorMsg = `This product has been already added by writer ${writerName}${siteSuffix}.`;
+          if (duplicateArticle.status === "IN_PROGRESS") {
+            errorMsg = `This product is currently being written by ${writerDesc}${siteSuffix}.`;
+          } else if (duplicateArticle.status === "COMPLETED" || duplicateArticle.status === "APPROVED") {
+            errorMsg = `This article has already been completed by ${writerDesc}${siteSuffix}.`;
+          } else if (duplicateArticle.status === "REDO") {
+            errorMsg = `This article is currently under revision by ${writerDesc}${siteSuffix}.`;
           } else {
-            errorMsg = `This product has been already added by ${addedByName || "another user"}${siteSuffix}.`;
+            errorMsg = `This product is currently being worked on by ${writerDesc}${siteSuffix}.`;
           }
 
           return NextResponse.json({ error: errorMsg }, { status: 400 });
