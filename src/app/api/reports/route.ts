@@ -341,11 +341,12 @@ export async function GET(req: NextRequest) {
     type StatusDistributionItem = { name: string; value: number; color: string; isPlaceholder?: boolean };
 
     const writerMonthlyTrend = Array.from(writerTrendMap.entries()).map(([month, articles]) => ({ month, articles }));
+    const completedArticlesCount = newArticlesList.filter((a) => a.status === "COMPLETED" || a.status === "APPROVED").length;
     const writerStatusDistribution: StatusDistributionItem[] = [
-      { name: "Completed", value: writerStatusCounts["COMPLETED"] || 0, color: "#10b981" },
-      { name: "In Progress", value: writerStatusCounts["IN_PROGRESS"] || 0, color: "#3b82f6" },
-      { name: "Pending", value: writerStatusCounts["PENDING"] || 0, color: "#f59e0b" },
-      { name: "Redo", value: writerStatusCounts["REDO"] || 0, color: "#ef4444" },
+      { name: "New Articles", value: newArticlesList.length, color: "#6366f1" },
+      { name: "Articles Updated", value: updatesList.length, color: "#0284c7" },
+      { name: "Redos Fixed", value: fixesList.length, color: "#d97706" },
+      { name: "Verified Completed", value: completedArticlesCount, color: "#10b981" },
     ].filter((s) => s.value > 0);
     if (writerStatusDistribution.length === 0) {
       writerStatusDistribution.push({ name: "No Articles", value: 0, color: "#e2e8f0", isPlaceholder: true });

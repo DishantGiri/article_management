@@ -67,43 +67,38 @@ export async function PATCH(
       }
     }
 
-    if (name && name.trim().toLowerCase() !== existing.name.trim().toLowerCase()) {
-      const trimmedName = name.trim();
+    const targetName = name !== undefined ? name.trim() : existing.name.trim();
+    const targetSiteId = siteId !== undefined ? Number(siteId) : existing.siteId;
+
+    if (
+      targetName.toLowerCase() !== existing.name.trim().toLowerCase() ||
+      targetSiteId !== existing.siteId
+    ) {
       const conflictProducts = await prisma.product.findMany({
         where: {
           id: { not: parseInt(id) },
-          siteId: siteId ? parseInt(siteId) : existing.siteId,
+          siteId: targetSiteId,
           OR: [
-            { name: trimmedName },
-            { name: trimmedName.toLowerCase() },
-            { name: trimmedName.toUpperCase() },
+            { name: targetName },
+            { name: targetName.toLowerCase() },
+            { name: targetName.toUpperCase() },
           ],
         },
         include: {
           site: { select: { name: true } },
           addedBy: { select: { name: true } },
-          article: { select: { writer: { select: { name: true } } } },
         },
       });
 
       const matching = conflictProducts.filter(
-        (p) => p.name.trim().toLowerCase() === trimmedName.toLowerCase()
+        (p) => p.name.trim().toLowerCase() === targetName.toLowerCase()
       );
 
       if (matching.length > 0) {
         const addedByName = matching[0].addedBy?.name;
-        const writerName = matching[0].article?.writer?.name;
         const siteName = matching[0].site?.name;
         const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
-
-        let errorMsg = "";
-        if (addedByName && writerName && addedByName !== writerName) {
-          errorMsg = `This product has been already added by ${addedByName} or writer ${writerName}${siteSuffix}.`;
-        } else if (writerName) {
-          errorMsg = `This product has been already added by writer ${writerName}${siteSuffix}.`;
-        } else {
-          errorMsg = `This product has been already added by ${addedByName || "another user"}${siteSuffix}.`;
-        }
+        const errorMsg = `Already added by linker ${addedByName || "another linker"}${siteSuffix}.`;
 
         return NextResponse.json({ error: errorMsg }, { status: 400 });
       }

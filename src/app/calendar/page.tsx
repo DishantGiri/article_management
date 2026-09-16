@@ -559,7 +559,14 @@ function CalendarContent() {
                               className="text-[11px] font-mono font-semibold text-slate-400 whitespace-nowrap"
                               title="Nepal Time (NPT)"
                             >
-                              {item.time}
+                              {item.rawTimestamp
+                                ? new Date(item.rawTimestamp).toLocaleTimeString("en-US", {
+                                    timeZone: "Asia/Kathmandu",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  })
+                                : item.time}
                             </span>
                           </div>
 

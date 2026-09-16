@@ -184,33 +184,22 @@ export async function POST(req: NextRequest) {
         if (trimmedNames.length === 1) {
           const singleName = trimmedNames[0];
           const matching = existingProducts.filter((p) => p.name.trim().toLowerCase() === singleName.toLowerCase());
-          const writers = Array.from(new Set(matching.map((p) => p.article?.writer?.name).filter(Boolean)));
           const addedBys = Array.from(new Set(matching.map((p) => p.addedBy?.name).filter(Boolean)));
           const siteNames = Array.from(new Set(matching.map((p) => p.site?.name).filter(Boolean)));
           const siteSuffix = siteNames.length > 0 ? ` on site ${siteNames.join(", ")}` : " on this site";
 
-          const writerPart = writers.join(", ");
           const addedByPart = addedBys.join(", ");
-
-          let errorMsg = "";
-          if (addedByPart && writerPart && addedByPart !== writerPart) {
-            errorMsg = `This product has been already added by ${addedByPart} or writer ${writerPart}${siteSuffix}.`;
-          } else if (writerPart && (!addedByPart || addedByPart === writerPart)) {
-            errorMsg = `This product has been already added by writer ${writerPart}${siteSuffix}.`;
-          } else {
-            errorMsg = `This product has been already added by ${addedByPart || "another user"}${siteSuffix}.`;
-          }
+          const errorMsg = `Already added by linker ${addedByPart || "another linker"}${siteSuffix}.`;
 
           return NextResponse.json({ error: errorMsg }, { status: 400 });
         } else {
           const details = duplicateNames.map((dName) => {
             const matching = existingProducts.filter((p) => p.name.trim().toLowerCase() === dName.toLowerCase());
-            const writers = Array.from(new Set(matching.map((p) => p.article?.writer?.name).filter(Boolean)));
             const addedBys = Array.from(new Set(matching.map((p) => p.addedBy?.name).filter(Boolean)));
             const siteNames = Array.from(new Set(matching.map((p) => p.site?.name).filter(Boolean)));
             const siteStr = siteNames.length > 0 ? ` on ${siteNames.join(", ")}` : "";
-            const userStr = addedBys.length > 0 ? addedBys.join(", ") : (writers.length > 0 ? writers.join(", ") : "another user");
-            return `"${dName}" (added by ${userStr}${siteStr})`;
+            const userStr = addedBys.length > 0 ? `linker ${addedBys.join(", ")}` : "another linker";
+            return `"${dName}" (already added by ${userStr}${siteStr})`;
           });
 
           return NextResponse.json({

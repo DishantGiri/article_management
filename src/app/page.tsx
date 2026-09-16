@@ -2272,7 +2272,7 @@ function WriterActiveFocusWorkspace({
               Reporting issue for link <strong className="text-slate-900 dark:text-white">&quot;{reportingLink.affiliateName}&quot;</strong>:
             </p>
 
-            {reportingLink.linkerRemarks && (
+            {reportingLink.linkerRemarks && (reportingLink.status === "ISSUE" || reportingLink.linkerRemarks.includes("[Flagged by")) && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -2294,7 +2294,7 @@ function WriterActiveFocusWorkspace({
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Issue Description <span className="text-rose-500">*</span>
                 </label>
-                {reportingLink.linkerRemarks && (
+                {reportingLink.linkerRemarks && (reportingLink.status === "ISSUE" || reportingLink.linkerRemarks.includes("[Flagged by")) && (
                   <button
                     type="button"
                     onClick={() => {

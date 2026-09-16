@@ -233,6 +233,75 @@ export async function PATCH(
           },
         });
       }
+
+      // If a previously reported issue was resolved (status changed away from ISSUE)
+      if (existing.status === "ISSUE" && finalLinkLog.status !== "ISSUE") {
+        try {
+          const caller = await prisma.user.findUnique({
+            where: { id: Number(activeUserId) },
+            select: { name: true, role: true },
+          });
+          const callerLabel = caller
+            ? `${caller.name} (${caller.role ? caller.role.replace("_", " ") : "USER"})`
+            : "Admin / Linker";
+
+          const product = await prisma.product.findUnique({
+            where: { id: existing.productId },
+            include: {
+              site: { select: { name: true } },
+              article: {
+                include: {
+                  writer: { select: { id: true, name: true, teamLeadId: true } },
+                },
+              },
+            },
+          });
+
+          const productName = product?.name || "Product";
+          const siteName = product?.site?.name ? ` on site ${product.site.name}` : "";
+          const notifMessage = `✅ Link issue for "${productName}"${siteName} has been resolved by ${callerLabel}. The product is now unblocked.`;
+
+          const recipientIds = new Set<number>();
+          if (product?.article?.writer?.id) {
+            recipientIds.add(product.article.writer.id);
+            if (product.article.writer.teamLeadId) {
+              recipientIds.add(product.article.writer.teamLeadId);
+            }
+          }
+
+          const admins = await prisma.user.findMany({
+            where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
+            select: { id: true },
+          });
+          admins.forEach((a) => recipientIds.add(a.id));
+          recipientIds.delete(Number(activeUserId));
+
+          for (const recipientId of recipientIds) {
+            try {
+              const notif = await prisma.notification.create({
+                data: {
+                  recipientId,
+                  senderId: Number(activeUserId),
+                  type: "LINK_ISSUE",
+                  message: notifMessage,
+                },
+              });
+              await sendRealtimeNotification(recipientId, notif);
+            } catch (e) {
+              console.error("Failed to notify user of link resolution", recipientId, e);
+            }
+          }
+
+          await broadcastRealtimeNotification({
+            senderId: Number(activeUserId),
+            message: notifMessage,
+            type: "LINK_ISSUE",
+            data: { linkLogId: existing.id, resolved: true, productId: existing.productId },
+          });
+        } catch (resErr) {
+          console.error("Failed to process link resolution notification:", resErr);
+        }
+      }
     }
 
     return NextResponse.json(finalLinkLog || updated);

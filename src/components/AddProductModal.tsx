@@ -296,7 +296,7 @@ export default function AddProductModal({
 
   const applyBatchToAll = () => {
     if (!batchCategory && !batchAffiliate && !batchTrendLevel) {
-      toast.error("Please select at least one field (Category, Affiliate Network, or Trend Level) to apply to all rows.");
+      toast.error("Please select at least one field to apply to all rows.");
       return;
     }
 

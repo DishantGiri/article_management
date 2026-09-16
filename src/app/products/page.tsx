@@ -1208,10 +1208,12 @@ function ProductsPageContent() {
       {/* Report Link Issue Modal */}
       {reportingProduct && (() => {
         const linkLogsWithRemarks = (reportingProduct.linkLogs || []).filter(
-          (l: any) => l.linkerRemarks && l.linkerRemarks.trim().length > 0
+          (l: any) =>
+            (l.status === "ISSUE" || (l.linkerRemarks && l.linkerRemarks.includes("[Flagged by"))) &&
+            l.linkerRemarks &&
+            l.linkerRemarks.trim().length > 0
         );
-        const hasLinkRemarks = linkLogsWithRemarks.length > 0;
-        const hasAnyBeforeRemark = hasLinkRemarks;
+        const hasAnyBeforeRemark = linkLogsWithRemarks.length > 0;
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
@@ -1295,7 +1297,7 @@ function ProductsPageContent() {
               </div>
 
               {/* Before Remarks */}
-              {hasAnyBeforeRemark ? (
+              {hasAnyBeforeRemark && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
@@ -1324,11 +1326,6 @@ function ProductsPageContent() {
                     ))}
                   </div>
                 </div>
-              ) : (
-                <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/70 text-[11px] text-slate-500 flex items-center gap-2">
-                  <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>No before remarks recorded on this link yet.</span>
-                </div>
               )}
 
               <div className="space-y-1.5">
@@ -1336,7 +1333,7 @@ function ProductsPageContent() {
                   <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider">
                     Issue Description <span className="text-rose-500">*</span>
                   </label>
-                  {hasLinkRemarks && (
+                  {hasAnyBeforeRemark && (
                     <button
                       type="button"
                       onClick={() => {

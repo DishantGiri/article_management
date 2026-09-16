@@ -505,7 +505,7 @@ export default function ReportsPage() {
               <ChartPieInteractive
                 data={reports.writer.statusDistribution || []}
                 title="Article Pipeline Distribution"
-                description="Active workflow state breakdown across assigned articles"
+                description="Proportional breakdown of new articles, updates, redos fixed, and verified completed"
                 centerLabel="Articles"
               />
             </div>

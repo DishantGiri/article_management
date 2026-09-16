@@ -101,11 +101,18 @@ export function ChartPieInteractive({
 
   const statuses = React.useMemo(() => formattedData.map((item) => item.status), [formattedData])
 
+  const currentLabel = React.useMemo(() => {
+    const activeItem = formattedData[activeIndex]
+    return isZeroOrPlaceholder
+      ? (centerLabel || "Articles")
+      : (activeItem?.status || activeItem?.name || centerLabel || "Articles")
+  }, [formattedData, activeIndex, isZeroOrPlaceholder, centerLabel])
+
   // Dynamically generate chartConfig based on data
   const chartConfig = React.useMemo(() => {
     const config: Record<string, any> = {
-      chartValue: { label: centerLabel },
-      value: { label: centerLabel },
+      chartValue: { label: currentLabel },
+      value: { label: currentLabel },
     }
     formattedData.forEach((item, i) => {
       config[item.status] = {
@@ -114,7 +121,7 @@ export function ChartPieInteractive({
       }
     })
     return config satisfies ChartConfig
-  }, [formattedData, centerLabel])
+  }, [formattedData, currentLabel])
 
   const renderPieShape = React.useCallback(
     ({ index, outerRadius = 0, ...props }: PieSectorShapeProps) => {
@@ -258,6 +265,7 @@ export function ChartPieInteractive({
                         y={viewBox.cy}
                         textAnchor="middle"
                         dominantBaseline="middle"
+                        aria-label={`${Number(displayValue).toLocaleString()} ${subLabel}`}
                       >
                         <tspan
                           x={viewBox.cx}
