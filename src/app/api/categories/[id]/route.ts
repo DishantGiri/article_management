@@ -20,11 +20,24 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const { name } = await req.json();
-    if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    const cleanName = (name || "").trim();
+    if (!cleanName) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+
+    const currentCategory = await prisma.category.findUnique({
+      where: { id },
+    });
+
+    if (!currentCategory) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+
+    if (currentCategory.name.trim() === cleanName) {
+      return NextResponse.json({ error: "No changes made." }, { status: 400 });
+    }
 
     const updatedCategory = await prisma.category.update({
       where: { id },
-      data: { name },
+      data: { name: cleanName },
     });
 
     return NextResponse.json(updatedCategory);

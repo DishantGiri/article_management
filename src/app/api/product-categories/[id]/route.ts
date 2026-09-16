@@ -27,6 +27,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const cleanName = (name || "").trim();
     if (!cleanName) return NextResponse.json({ error: "Category name is required" }, { status: 400 });
 
+    const currentCategory = await prisma.productCategory.findUnique({
+      where: { id },
+    });
+
+    if (!currentCategory) {
+      return NextResponse.json({ error: "Product category not found" }, { status: 404 });
+    }
+
+    if (currentCategory.name.trim() === cleanName) {
+      return NextResponse.json({ error: "No changes made." }, { status: 400 });
+    }
+
     const updatedCategory = await prisma.productCategory.update({
       where: { id },
       data: { name: cleanName },

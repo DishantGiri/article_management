@@ -1008,6 +1008,7 @@ export default function CommissionsPage() {
             }}
             placeholder="Filter by Range"
             align="right"
+            disableFutureDates={true}
           />
 
           {/* Sale Type Filter (for Commission List view) */}

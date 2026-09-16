@@ -662,6 +662,7 @@ export default function SiteDetailPage() {
               }}
               placeholder="Select Date Range"
               align="right"
+              disableFutureDates={true}
             />
           </div>
         </div>

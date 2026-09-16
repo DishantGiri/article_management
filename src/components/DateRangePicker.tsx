@@ -22,7 +22,7 @@ export default function DateRangePicker({
   className = "",
   align = "left",
   maxDate,
-  disableFutureDates = false,
+  disableFutureDates = true,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => {
@@ -77,10 +77,15 @@ export default function DateRangePicker({
   const todayStr = formatDateYMD(todayDate);
   const effectiveMaxDate = maxDate || (disableFutureDates ? todayStr : undefined);
 
+  const [maxYear, maxMonth] = effectiveMaxDate
+    ? effectiveMaxDate.split("-").map(Number)
+    : [undefined, undefined];
+
   const isNextMonthDisabled = Boolean(
     effectiveMaxDate &&
-      (year > todayDate.getFullYear() ||
-        (year === todayDate.getFullYear() && month >= todayDate.getMonth()))
+      maxYear !== undefined &&
+      maxMonth !== undefined &&
+      (year > maxYear || (year === maxYear && month >= maxMonth - 1))
   );
 
   const prevMonth = () => {

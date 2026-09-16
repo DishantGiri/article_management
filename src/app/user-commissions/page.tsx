@@ -521,6 +521,7 @@ export default function UserCommissionsPage() {
                   setEndDate(end);
                 }}
                 placeholder="Select Period Range"
+                disableFutureDates={true}
               />
             </div>
           </div>

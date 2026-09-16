@@ -705,6 +705,7 @@ function LinksPageContent() {
               setCurrentPage(1);
             }}
             placeholder="Select Date Range"
+            disableFutureDates={true}
           />
 
           {/* Reset Filters Action */}

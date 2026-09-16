@@ -84,6 +84,14 @@ export default function ProductCategoriesPage() {
     e.preventDefault();
     if (!selectedCategory || !categoryName.trim()) return;
 
+    if (selectedCategory.name.trim() === categoryName.trim()) {
+      toast.error("No changes made.");
+      setIsEditModalOpen(false);
+      setSelectedCategory(null);
+      setCategoryName("");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -95,7 +103,16 @@ export default function ProductCategoriesPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update category");
+      if (!res.ok) {
+        if (data.error === "No changes made.") {
+          toast.error("No changes made.");
+          setIsEditModalOpen(false);
+          setSelectedCategory(null);
+          setCategoryName("");
+          return;
+        }
+        throw new Error(data.error || "Failed to update category");
+      }
 
       toast.success(`Category updated to "${categoryName.trim()}"!`);
       setIsEditModalOpen(false);
