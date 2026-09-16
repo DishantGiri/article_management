@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
         // Check for existing product with this name
         const existingWithSameName = await prisma.product.findFirst({
           where: {
+            siteId: site.id,
             OR: [
               { name: (row.name || name).trim() },
               { name: (row.name || name).trim().toLowerCase() },

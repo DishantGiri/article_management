@@ -203,16 +203,22 @@ export async function PATCH(
         );
       }
 
-      // Check if this product or another product with the same name was already started or completed
+      // Check if this product or another product with the same name was already started or completed on the SAME site
       const currentProductName = existing.product?.name?.trim();
-      if (currentProductName) {
+      const currentSiteId = existing.product?.siteId;
+      if (currentProductName && currentSiteId) {
         const otherArticles = await prisma.article.findMany({
           where: {
             id: { not: id },
             product: {
-              name: currentProductName,
+              siteId: currentSiteId,
+              OR: [
+                { name: currentProductName },
+                { name: currentProductName.toLowerCase() },
+                { name: currentProductName.toUpperCase() },
+              ],
             },
-            status: { in: ["IN_PROGRESS", "COMPLETED", "APPROVED"] },
+            status: { in: ["IN_PROGRESS", "COMPLETED", "APPROVED", "REDO"] },
             writerId: { not: null },
           },
           include: {
@@ -220,26 +226,31 @@ export async function PATCH(
             product: {
               include: {
                 addedBy: { select: { name: true } },
+                site: { select: { name: true } },
               },
             },
           },
         });
 
         const duplicateArticle = otherArticles.find(
-          (a) => a.product?.name?.trim().toLowerCase() === currentProductName.toLowerCase()
+          (a) =>
+            a.product?.name?.trim().toLowerCase() === currentProductName.toLowerCase() &&
+            a.product?.siteId === currentSiteId
         );
 
         if (duplicateArticle) {
           const addedByName = duplicateArticle.product?.addedBy?.name;
           const writerName = duplicateArticle.writer?.name;
+          const siteName = duplicateArticle.product?.site?.name;
+          const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
 
           let errorMsg = "";
           if (addedByName && writerName && addedByName !== writerName) {
-            errorMsg = `This product has been already added by ${addedByName} or writer ${writerName}.`;
+            errorMsg = `This product has been already added by ${addedByName} or writer ${writerName}${siteSuffix}.`;
           } else if (writerName) {
-            errorMsg = `This product has been already added by writer ${writerName}.`;
+            errorMsg = `This product has been already added by writer ${writerName}${siteSuffix}.`;
           } else {
-            errorMsg = `This product has been already added by ${addedByName || "another user"}.`;
+            errorMsg = `This product has been already added by ${addedByName || "another user"}${siteSuffix}.`;
           }
 
           return NextResponse.json({ error: errorMsg }, { status: 400 });

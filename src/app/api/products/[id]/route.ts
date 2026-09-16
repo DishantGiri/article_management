@@ -72,6 +72,7 @@ export async function PATCH(
       const conflictProducts = await prisma.product.findMany({
         where: {
           id: { not: parseInt(id) },
+          siteId: siteId ? parseInt(siteId) : existing.siteId,
           OR: [
             { name: trimmedName },
             { name: trimmedName.toLowerCase() },
@@ -79,6 +80,7 @@ export async function PATCH(
           ],
         },
         include: {
+          site: { select: { name: true } },
           addedBy: { select: { name: true } },
           article: { select: { writer: { select: { name: true } } } },
         },
@@ -91,14 +93,16 @@ export async function PATCH(
       if (matching.length > 0) {
         const addedByName = matching[0].addedBy?.name;
         const writerName = matching[0].article?.writer?.name;
+        const siteName = matching[0].site?.name;
+        const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
 
         let errorMsg = "";
         if (addedByName && writerName && addedByName !== writerName) {
-          errorMsg = `This product has been already added by ${addedByName} or writer ${writerName}.`;
+          errorMsg = `This product has been already added by ${addedByName} or writer ${writerName}${siteSuffix}.`;
         } else if (writerName) {
-          errorMsg = `This product has been already added by writer ${writerName}.`;
+          errorMsg = `This product has been already added by writer ${writerName}${siteSuffix}.`;
         } else {
-          errorMsg = `This product has been already added by ${addedByName || "another user"}.`;
+          errorMsg = `This product has been already added by ${addedByName || "another user"}${siteSuffix}.`;
         }
 
         return NextResponse.json({ error: errorMsg }, { status: 400 });

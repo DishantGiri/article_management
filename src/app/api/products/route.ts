@@ -131,9 +131,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if any product with the same name already exists in the system
+    const categoriesWithSites = await prisma.category.findMany({
+      where: { id: { in: categoryIds.map(Number) } },
+      include: { sites: true },
+    });
+
+    if (categoriesWithSites.length === 0) {
+      return NextResponse.json({ error: "No valid categories found" }, { status: 404 });
+    }
+
+    const targetSiteIds = new Set<number>();
+    for (const cat of categoriesWithSites) {
+      for (const site of cat.sites) {
+        if (!excludedSet.has(site.id)) {
+          targetSiteIds.add(site.id);
+        }
+      }
+    }
+
+    if (targetSiteIds.size === 0) {
+      return NextResponse.json({ error: "No sites associated with the selected categories" }, { status: 400 });
+    }
+
+    // Check if any product with the same name already exists on any of the target sites
     const existingProducts = await prisma.product.findMany({
       where: {
+        siteId: { in: Array.from(targetSiteIds) },
         OR: trimmedNames.flatMap((tName) => [
           { name: tName },
           { name: tName.toLowerCase() },
@@ -141,6 +164,7 @@ export async function POST(req: NextRequest) {
         ]),
       },
       include: {
+        site: { select: { name: true } },
         addedBy: { select: { name: true } },
         article: {
           select: {
@@ -162,17 +186,19 @@ export async function POST(req: NextRequest) {
           const matching = existingProducts.filter((p) => p.name.trim().toLowerCase() === singleName.toLowerCase());
           const writers = Array.from(new Set(matching.map((p) => p.article?.writer?.name).filter(Boolean)));
           const addedBys = Array.from(new Set(matching.map((p) => p.addedBy?.name).filter(Boolean)));
+          const siteNames = Array.from(new Set(matching.map((p) => p.site?.name).filter(Boolean)));
+          const siteSuffix = siteNames.length > 0 ? ` on site ${siteNames.join(", ")}` : " on this site";
 
           const writerPart = writers.join(", ");
           const addedByPart = addedBys.join(", ");
 
           let errorMsg = "";
           if (addedByPart && writerPart && addedByPart !== writerPart) {
-            errorMsg = `This product has been already added by ${addedByPart} or writer ${writerPart}.`;
+            errorMsg = `This product has been already added by ${addedByPart} or writer ${writerPart}${siteSuffix}.`;
           } else if (writerPart && (!addedByPart || addedByPart === writerPart)) {
-            errorMsg = `This product has been already added by writer ${writerPart}.`;
+            errorMsg = `This product has been already added by writer ${writerPart}${siteSuffix}.`;
           } else {
-            errorMsg = `This product has been already added by ${addedByPart || "another user"}.`;
+            errorMsg = `This product has been already added by ${addedByPart || "another user"}${siteSuffix}.`;
           }
 
           return NextResponse.json({ error: errorMsg }, { status: 400 });
@@ -181,8 +207,10 @@ export async function POST(req: NextRequest) {
             const matching = existingProducts.filter((p) => p.name.trim().toLowerCase() === dName.toLowerCase());
             const writers = Array.from(new Set(matching.map((p) => p.article?.writer?.name).filter(Boolean)));
             const addedBys = Array.from(new Set(matching.map((p) => p.addedBy?.name).filter(Boolean)));
+            const siteNames = Array.from(new Set(matching.map((p) => p.site?.name).filter(Boolean)));
+            const siteStr = siteNames.length > 0 ? ` on ${siteNames.join(", ")}` : "";
             const userStr = addedBys.length > 0 ? addedBys.join(", ") : (writers.length > 0 ? writers.join(", ") : "another user");
-            return `"${dName}" (added by ${userStr})`;
+            return `"${dName}" (added by ${userStr}${siteStr})`;
           });
 
           return NextResponse.json({
@@ -190,15 +218,6 @@ export async function POST(req: NextRequest) {
           }, { status: 400 });
         }
       }
-    }
-
-    const categoriesWithSites = await prisma.category.findMany({
-      where: { id: { in: categoryIds.map(Number) } },
-      include: { sites: true },
-    });
-
-    if (categoriesWithSites.length === 0) {
-      return NextResponse.json({ error: "No valid categories found" }, { status: 404 });
     }
 
     const productsToCreate = [];
