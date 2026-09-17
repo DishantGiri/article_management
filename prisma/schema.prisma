@@ -285,6 +285,7 @@ model LinkGeo {
   linkLogId     Int
   geo           String  // e.g. "US", "UK", "CA"
   affiliateLink String? @db.Text
+  affiliateName String?
 
   linkLog LinkLog @relation(fields: [linkLogId], references: [id], onDelete: Cascade)
 

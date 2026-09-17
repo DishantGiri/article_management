@@ -96,17 +96,19 @@ export async function PATCH(
     }
 
     const { countryLinks } = body;
-    let geosToSet: Array<{ geo: string; affiliateLink?: string }> | null = null;
+    let geosToSet: Array<{ geo: string; affiliateLink?: string; affiliateName?: string }> | null = null;
     if (countryLinks && Array.isArray(countryLinks)) {
       geosToSet = countryLinks.map((c: any) => ({
         geo: String(c.geo || "").trim().toUpperCase(),
         affiliateLink: String(c.affiliateLink || "").trim(),
+        affiliateName: String(c.affiliateName || "").trim() || undefined,
       })).filter((item: any) => Boolean(item.geo));
     } else if (geos && Array.isArray(geos)) {
       geosToSet = geos.map((g: any) => {
         const geoStr = (typeof g === "string" ? g : g?.geo || "").trim().toUpperCase();
         const affLink = (typeof g === "object" && g?.affiliateLink ? String(g.affiliateLink) : "").trim();
-        return { geo: geoStr, affiliateLink: affLink || undefined };
+        const affName = (typeof g === "object" && g?.affiliateName ? String(g.affiliateName) : "").trim();
+        return { geo: geoStr, affiliateLink: affLink || undefined, affiliateName: affName || undefined };
       }).filter((item: any) => Boolean(item.geo));
     }
 
@@ -114,6 +116,14 @@ export async function PATCH(
       await prisma.linkGeo.deleteMany({
         where: { linkLogId: parseInt(id) },
       });
+    }
+
+    let targetAffiliateName = affiliateName !== undefined ? affiliateName : existing.affiliateName;
+    if (!targetAffiliateName && geosToSet && geosToSet.length > 0) {
+      const distinctNames = Array.from(new Set(geosToSet.map((g) => g.affiliateName).filter(Boolean)));
+      if (distinctNames.length > 0) {
+        targetAffiliateName = distinctNames.join(", ");
+      }
     }
 
     const updated = await prisma.linkLog.update({
@@ -125,7 +135,7 @@ export async function PATCH(
         ...(buyLink !== undefined ? { buyLink: updatedBuy } : {}),
         ...(linkerRemarks !== undefined ? { linkerRemarks: linkerRemarks || null } : {}),
         ...(productId !== undefined ? { productId: Number(productId) } : {}),
-        ...(affiliateName !== undefined ? { affiliateName } : {}),
+        ...(targetAffiliateName !== undefined ? { affiliateName: targetAffiliateName } : {}),
         ...(affiliateLink !== undefined ? { affiliateLink } : {}),
         ...(geosToSet !== null
           ? {
@@ -133,6 +143,7 @@ export async function PATCH(
               create: geosToSet.map((item) => ({
                 geo: item.geo,
                 affiliateLink: item.affiliateLink || affiliateLink || existing.affiliateLink,
+                affiliateName: item.affiliateName || targetAffiliateName || existing.affiliateName,
               })),
             },
           }
@@ -210,9 +221,11 @@ export async function PATCH(
       const hasChanges =
         finalLinkLog.bridgePageLink !== existing.bridgePageLink ||
         finalLinkLog.buyLink !== existing.buyLink ||
+        finalLinkLog.affiliateName !== existing.affiliateName ||
         finalLinkLog.affiliateLink !== existing.affiliateLink ||
         finalLinkLog.status !== existing.status ||
-        finalLinkLog.linkerRemarks !== existing.linkerRemarks;
+        finalLinkLog.linkerRemarks !== existing.linkerRemarks ||
+        geosToSet !== null;
 
       if (hasChanges) {
         await prisma.linkHistory.create({

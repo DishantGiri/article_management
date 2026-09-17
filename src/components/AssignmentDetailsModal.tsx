@@ -747,6 +747,11 @@ export default function AssignmentDetailsModal({
                                 <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 font-extrabold text-[10px] uppercase border border-slate-200 dark:border-slate-600 shrink-0">
                                   {g.geo}
                                 </span>
+                                {(g as any).affiliateName && (
+                                  <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-700/60 font-semibold text-[10px] text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-600 shrink-0">
+                                    {(g as any).affiliateName}
+                                  </span>
+                                )}
                                 <a
                                   href={ensureExternalUrl(g.affiliateLink || currentLog.affiliateLink)}
                                   target="_blank"

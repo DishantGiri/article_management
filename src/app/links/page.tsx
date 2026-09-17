@@ -29,7 +29,7 @@ interface LinkLog {
   linkerRemarks?: string | null;
   status: string;
   addedAt: string;
-  geos: { id?: number; geo: string; affiliateLink?: string | null }[];
+  geos: { id?: number; geo: string; affiliateLink?: string | null; affiliateName?: string | null }[];
   addedBy: { name: string };
   updatedBy?: { name: string } | null;
   product: { name: string; slug?: string | null; site?: { name: string }; article?: { articleLink?: string | null } };
@@ -209,7 +209,11 @@ function LinksPageContent() {
         if (!map.has(key)) {
           map.set(key, {
             ...item,
-            geos: [...(item.geos || []).map((g: any) => ({ ...g, affiliateLink: g.affiliateLink || item.affiliateLink }))],
+            geos: [...(item.geos || []).map((g: any) => ({
+              ...g,
+              affiliateLink: g.affiliateLink || item.affiliateLink,
+              affiliateName: g.affiliateName || item.affiliateName,
+            }))],
           });
         } else {
           const existing = map.get(key)!;
@@ -219,9 +223,15 @@ function LinksPageContent() {
               existing.geos.push({
                 ...g,
                 affiliateLink: g.affiliateLink || item.affiliateLink,
+                affiliateName: g.affiliateName || item.affiliateName,
               });
-            } else if (!existing.geos[existingGeoIndex].affiliateLink && (g.affiliateLink || item.affiliateLink)) {
-              existing.geos[existingGeoIndex].affiliateLink = g.affiliateLink || item.affiliateLink;
+            } else {
+              if (!existing.geos[existingGeoIndex].affiliateLink && (g.affiliateLink || item.affiliateLink)) {
+                existing.geos[existingGeoIndex].affiliateLink = g.affiliateLink || item.affiliateLink;
+              }
+              if (!existing.geos[existingGeoIndex].affiliateName && (g.affiliateName || item.affiliateName)) {
+                existing.geos[existingGeoIndex].affiliateName = g.affiliateName || item.affiliateName;
+              }
             }
           }
         }
@@ -264,6 +274,7 @@ function LinksPageContent() {
           l.product?.name,
           l.product?.slug,
           l.affiliateName,
+          ...(l.geos || []).map((g) => g.affiliateName),
           l.product?.site?.name,
           String(l.id),
           String(l.productId),
@@ -803,17 +814,38 @@ function LinksPageContent() {
                         )}
                       </td>
                       <td className="px-3 py-3.5">
-                        <span className="text-[13px] font-medium text-slate-600">{l.affiliateName}</span>
+                        {(() => {
+                          const distinctAffs = Array.from(
+                            new Set((l.geos || []).map((g) => g.affiliateName?.trim()).filter(Boolean))
+                          );
+                          if (distinctAffs.length > 1) {
+                            return (
+                              <div className="flex flex-wrap gap-1 max-w-[170px]">
+                                {distinctAffs.map((aff) => (
+                                  <span
+                                    key={aff}
+                                    className="px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200/60 dark:border-blue-800/60"
+                                  >
+                                    {aff}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{l.affiliateName}</span>;
+                        })()}
                       </td>
                       <td className="px-3 py-3.5 min-w-[220px] max-w-[340px]">
                         {(() => {
                           const geoLinks = (l.geos || []).map((g) => ({
                             geo: g.geo,
                             link: g.affiliateLink || l.affiliateLink || "",
+                            affiliateName: g.affiliateName || l.affiliateName || "",
                           }));
                           const hasDistinctGeoLinks =
                             geoLinks.length > 0 &&
-                            new Set(geoLinks.map((g) => g.link).filter(Boolean)).size > 1;
+                            (new Set(geoLinks.map((g) => g.link).filter(Boolean)).size > 1 ||
+                              new Set(geoLinks.map((g) => g.affiliateName).filter(Boolean)).size > 1);
                           const isExpanded = Boolean(expandedGeos[l.id]);
                           const displayed = isExpanded ? geoLinks : geoLinks.slice(0, 3);
 
@@ -832,6 +864,11 @@ function LinksPageContent() {
                                     <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 text-[#3D4F61] dark:text-slate-200 font-extrabold text-[10px] uppercase border border-slate-200 dark:border-slate-600 shrink-0">
                                       {g.geo}
                                     </span>
+                                    {g.affiliateName && (
+                                      <span className="px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 font-medium text-[9px] border border-slate-200/60 dark:border-slate-600 shrink-0">
+                                        {g.affiliateName}
+                                      </span>
+                                    )}
                                     {g.link ? (
                                       <div className="flex items-center gap-1 min-w-0 flex-1">
                                         <a

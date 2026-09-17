@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Consolidate entries into unified network groups so ONE LinkLog is created per product/network!
-    type NormalizedGeo = { geo: string; affiliateLink: string };
+    type NormalizedGeo = { geo: string; affiliateLink: string; affiliateName?: string };
     type UnifiedEntry = {
       affiliateName: string;
       affiliateLink: string;
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
         const existing = unifiedMap.get(netName)!;
         if (!existing.affiliateLink && affLink) existing.affiliateLink = affLink;
         if (!existing.geos.some((g) => g.geo === geoCode)) {
-          existing.geos.push({ geo: geoCode, affiliateLink: affLink });
+          existing.geos.push({ geo: geoCode, affiliateLink: affLink, affiliateName: netName });
         }
       }
     } else if (Array.isArray(affiliateEntries) && affiliateEntries.length > 0) {
@@ -152,8 +152,9 @@ export async function POST(req: NextRequest) {
         for (const g of entryGeos) {
           const geoCode = (typeof g === "string" ? g : g?.geo || "").trim().toUpperCase();
           const geoLink = (typeof g === "object" && g?.affiliateLink ? g.affiliateLink : affLink).trim();
+          const geoAffName = (typeof g === "object" && g?.affiliateName ? g.affiliateName : netName).trim();
           if (geoCode && !existing.geos.some((item) => item.geo === geoCode)) {
-            existing.geos.push({ geo: geoCode, affiliateLink: geoLink || affLink });
+            existing.geos.push({ geo: geoCode, affiliateLink: geoLink || affLink, affiliateName: geoAffName || netName });
           }
         }
       }
@@ -162,7 +163,7 @@ export async function POST(req: NextRequest) {
       unifiedMap.set(netName, {
         affiliateName: netName,
         affiliateLink: affiliateLink.trim(),
-        geos: uniqueGeos.map((g) => ({ geo: g, affiliateLink: affiliateLink.trim() })),
+        geos: uniqueGeos.map((g) => ({ geo: g, affiliateLink: affiliateLink.trim(), affiliateName: netName })),
       });
     }
 
@@ -236,6 +237,7 @@ export async function POST(req: NextRequest) {
               create: entry.geos.map((g) => ({
                 geo: g.geo,
                 affiliateLink: g.affiliateLink || entry.affiliateLink.trim(),
+                affiliateName: g.affiliateName || entry.affiliateName.trim(),
               })),
             },
           },

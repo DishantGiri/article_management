@@ -55,7 +55,7 @@ interface EditLinkModalProps {
     status: string;
     linkerRemarks?: string | null;
     addedAt?: string;
-    geos?: Array<{ id?: number; geo: string; affiliateLink?: string | null }>;
+    geos?: Array<{ id?: number; geo: string; affiliateLink?: string | null; affiliateName?: string | null }>;
     product?: {
       id?: number;
       name: string;
@@ -279,6 +279,16 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
     );
   };
 
+  const defaultAffiliateNameRef = useRef(defaultAffiliateName);
+  useEffect(() => {
+    defaultAffiliateNameRef.current = defaultAffiliateName;
+  }, [defaultAffiliateName]);
+
+  const allAffiliatesRef = useRef(allAffiliates);
+  useEffect(() => {
+    allAffiliatesRef.current = allAffiliates;
+  }, [allAffiliates]);
+
   // Synchronize countryLinks whenever geos change (only if not during initial load)
   useEffect(() => {
     if (isInitializingRef.current) {
@@ -286,9 +296,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       return;
     }
     setCountryLinks((prev) => {
-      const defName = defaultAffiliateName || allAffiliates[0] || "Standard";
+      const defName = defaultAffiliateNameRef.current || allAffiliatesRef.current[0] || "Standard";
       const autoLink =
-        batchLinkUrl ||
         selectedProduct?.trendLink ||
         selectedProduct?.previewLink ||
         "";
@@ -307,14 +316,13 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
         };
       });
     });
-  }, [geos, defaultAffiliateName, allAffiliates, selectedProduct, batchLinkUrl]);
+  }, [geos, selectedProduct]);
 
   // Load products & reference data and populate from link
   useEffect(() => {
     if (isOpen && link) {
       isInitializingRef.current = true;
       setProductId(link.productId?.toString() || "");
-      setDefaultAffiliateName(link.affiliateName || "");
       setBridgePageLink(link.bridgePageLink || "");
       setBuyLink(link.buyLink || "");
       setStatus(link.status || "REQUESTED");
@@ -330,15 +338,23 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
       const initialCountryLinks = (link.geos || []).map((g) => ({
         geo: g.geo,
-        affiliateName: link.affiliateName || "",
+        affiliateName: g.affiliateName || link.affiliateName || "",
         affiliateLink: g.affiliateLink || link.affiliateLink || "",
       }));
       setCountryLinks(initialCountryLinks);
 
+      const uniqueCountryNets = Array.from(
+        new Set(initialCountryLinks.map((c) => c.affiliateName.trim()).filter(Boolean))
+      );
+      // If all countries share the exact same network name, defaultAffiliateName reflects it.
+      // Otherwise keep empty so user can see countries have distinct networks.
+      setDefaultAffiliateName(uniqueCountryNets.length === 1 ? uniqueCountryNets[0] : "");
+
+      const hasDiffNets = uniqueCountryNets.length > 1;
       const hasDiffLinks = initialCountryLinks.some(
         (c) => c.affiliateLink && c.affiliateLink !== link.affiliateLink
       );
-      setUseCountrySpecificLinks(hasDiffLinks || initialCountryLinks.length > 1);
+      setUseCountrySpecificLinks(hasDiffNets || hasDiffLinks || initialCountryLinks.length > 1);
 
       setAffiliateEntries([
         {
@@ -372,20 +388,30 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   };
 
   const updateCountryLink = (geo: string, field: "affiliateName" | "affiliateLink", value: string) => {
-    setCountryLinks((prev) =>
-      prev.map((item) => {
+    setCountryLinks((prev) => {
+      const updated = prev.map((item) => {
         if (item.geo.toUpperCase() !== geo.toUpperCase()) return item;
-        const updated = { ...item, [field]: value };
+        const up = { ...item, [field]: value };
         if (field === "affiliateLink") {
           if (value && !isValidUrl(value)) {
-            updated.linkError = "Must start with http:// or https:// and be a valid URL";
+            up.linkError = "Must start with http:// or https:// and be a valid URL";
           } else {
-            delete updated.linkError;
+            delete up.linkError;
           }
         }
-        return updated;
-      })
-    );
+        return up;
+      });
+
+      if (field === "affiliateName") {
+        const uniqueNets = Array.from(new Set(updated.map((c) => c.affiliateName.trim()).filter(Boolean)));
+        if (uniqueNets.length === 1 && uniqueNets[0]) {
+          setDefaultAffiliateName(uniqueNets[0]);
+        } else {
+          setDefaultAffiliateName("");
+        }
+      }
+      return updated;
+    });
   };
 
   const applyBatchLinkToAll = () => {
@@ -409,12 +435,14 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
   const handleDefaultAffiliateChange = (newName: string) => {
     setDefaultAffiliateName(newName);
+    if (!newName) return;
     setCountryLinks((prev) =>
       prev.map((c) => ({
         ...c,
         affiliateName: newName,
       }))
     );
+    toast.success(`Applied "${newName}" network to all ${countryLinks.length} country(ies)!`);
   };
 
   const removeCountry = (geo: string) => {
@@ -528,9 +556,16 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
     try {
       const mockUserId = session?.user?.id || 1;
 
+      const countryAffNames = countryLinks.map((c) => c.affiliateName.trim()).filter(Boolean);
+      const uniqueAffNames = Array.from(new Set(countryAffNames));
+
       const primaryAffName = useCountrySpecificLinks
         ? countryLinks[0]?.affiliateName.trim() || defaultAffiliateName || allAffiliates[0] || "Standard"
         : affiliateEntries[0]?.affiliateName.trim() || "Standard";
+
+      const displayAffiliateName = uniqueAffNames.length > 1
+        ? uniqueAffNames.join(", ")
+        : primaryAffName;
 
       const primaryAffLink = useCountrySpecificLinks
         ? countryLinks[0]?.affiliateLink.trim()
@@ -539,7 +574,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       const payload = {
         productId: parseInt(productId),
         updatedById: mockUserId,
-        affiliateName: primaryAffName,
+        affiliateName: displayAffiliateName,
         affiliateLink: primaryAffLink,
         bridgePageLink: bridgePageLink ? bridgePageLink.trim() : null,
         buyLink: buyLink ? buyLink.trim() : null,
@@ -548,10 +583,12 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           ? countryLinks.map((c) => ({
             geo: c.geo,
             affiliateLink: c.affiliateLink.trim(),
+            affiliateName: c.affiliateName.trim(),
           }))
           : geos.map((g) => ({
             geo: g,
             affiliateLink: primaryAffLink,
+            affiliateName: primaryAffName,
           })),
         status,
         linkerRemarks: linkerRemarks ? linkerRemarks.trim() : null,
@@ -850,13 +887,30 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                     <div className="sm:w-56 shrink-0">
-                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                        Default Network for All
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+                          Default Network for All
+                        </label>
+                        {(() => {
+                          const distinct = Array.from(new Set(countryLinks.map((c) => c.affiliateName.trim()).filter(Boolean)));
+                          if (distinct.length > 1) {
+                            return (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/60">
+                                {distinct.length} diff networks
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                       <CustomSelect
                         value={defaultAffiliateName}
                         onChange={handleDefaultAffiliateChange}
-                        placeholder="Select Network..."
+                        placeholder={
+                          Array.from(new Set(countryLinks.map((c) => c.affiliateName.trim()).filter(Boolean))).length > 1
+                            ? "Apply network to all..."
+                            : "Select Network..."
+                        }
                         searchable={true}
                         allowCustom={true}
                         options={allAffiliates.map((n) => ({ value: n, label: n }))}
