@@ -5,7 +5,7 @@
 import { useEffect, useState, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag, Calendar, Lock, Info } from "lucide-react";
+import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag, Calendar, Lock, Info, AlertTriangle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
@@ -30,7 +30,7 @@ interface Article {
     remarks?: string | null;
     site: { name: string };
     category: { name: string };
-    linkLogs?: { linkerRemarks?: string | null; addedAt: string }[];
+    linkLogs?: { linkerRemarks?: string | null; addedAt: string; affiliateLink?: string | null; geos?: any[] }[];
   };
   writer?: { id: number; name: string };
   history?: { notes?: string | null; updatedAt?: string; createdAt?: string }[];
@@ -393,7 +393,12 @@ function ArticlesContent() {
         search
       );
 
-    const matchStatus = !statusFilter || a.status?.toUpperCase() === statusFilter.toUpperCase();
+    const matchStatus = !statusFilter
+      ? true
+      : statusFilter === "NO_LINKS"
+      ? (Boolean(a.articleLink || a.status === "APPROVED" || a.status === "COMPLETED") &&
+         (!a.product?.linkLogs || a.product.linkLogs.length === 0 || !a.product.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0))))
+      : a.status?.toUpperCase() === statusFilter.toUpperCase();
     const matchWriter = !writerFilter || (a.writer?.name ? a.writer.name.toLowerCase() === writerFilter.toLowerCase() : false);
     const matchSite = !siteFilter || (a.product?.site?.name ? a.product.site.name.toLowerCase() === siteFilter.toLowerCase() : false);
 
@@ -841,6 +846,7 @@ function ArticlesContent() {
           className="min-w-[130px]"
           options={[
             { value: "", label: "All Statuses" },
+            { value: "NO_LINKS", label: "⚠️ Published (No Links)" },
             { value: "PENDING", label: "Pending" },
             { value: "IN_PROGRESS", label: "In Progress" },
             { value: "COMPLETED", label: "Completed" },
@@ -989,6 +995,10 @@ function ArticlesContent() {
                       a.product?.slug?.toLowerCase().trim() === search.toLowerCase().trim())
                   );
 
+                  const isPublished = Boolean(a.articleLink || a.status === "APPROVED" || a.status === "COMPLETED");
+                  const hasLinks = a.product?.linkLogs && a.product.linkLogs.length > 0 && a.product.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
+                  const isPublishedWithoutLinks = isPublished && !hasLinks;
+
                   return (
                     <tr
                       key={a.id}
@@ -996,7 +1006,9 @@ function ArticlesContent() {
                           ? "bg-[#FAF9F5]"
                           : isNotificationMatch
                             ? "bg-amber-50/30 ring-1 ring-amber-400/40"
-                            : ""
+                            : isPublishedWithoutLinks
+                              ? "bg-rose-50/20"
+                              : ""
                         }`}
                     >
                       {isManager && (
@@ -1032,25 +1044,45 @@ function ArticlesContent() {
                           )}
                         </td>
                       )}
-                      <td className="px-4 py-3.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedProduct({
-                              ...a.product,
-                              article: {
-                                id: a.id,
-                                status: a.status,
-                                priority: a.priority,
-                                writer: a.writer,
-                              },
-                            });
-                          }}
-                          className="text-[13px] font-semibold text-slate-800 hover:text-indigo-600 hover:underline text-left cursor-pointer transition-colors max-w-[220px] truncate block"
-                          title="Click to view product details"
-                        >
-                          {a.product.name}
-                        </button>
+                      <td className={`px-4 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 border-l-4 border-l-rose-500" : ""}`}>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedProduct({
+                                  ...a.product,
+                                  article: {
+                                    id: a.id,
+                                    status: a.status,
+                                    priority: a.priority,
+                                    writer: a.writer,
+                                  },
+                                });
+                              }}
+                              className={`text-[13px] font-semibold text-left cursor-pointer transition-colors max-w-[220px] truncate block ${
+                                isPublishedWithoutLinks
+                                  ? "text-rose-900 hover:text-rose-700 underline decoration-rose-400 font-bold"
+                                  : "text-slate-800 hover:text-indigo-600 hover:underline"
+                              }`}
+                              title="Click to view product details"
+                            >
+                              {a.product.name}
+                            </button>
+                            {isPublishedWithoutLinks && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs whitespace-nowrap"
+                                title="Article is published, but this product has NO affiliate links configured!"
+                              >
+                                <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                No Links
+                              </span>
+                            )}
+                          </div>
+                          {a.product.slug && (
+                            <span className="text-[11px] font-mono text-slate-400 truncate max-w-[200px]">/{a.product.slug}</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-3.5 whitespace-nowrap">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200/70">

@@ -38,7 +38,7 @@ interface Product {
   site: { id?: number; name: string; url?: string };
   category: { id?: number; name: string };
   addedBy: { id?: number; name: string };
-  article?: { id: number; status: string; writer?: { id?: number; name: string } };
+  article?: { id: number; status: string; writer?: { id?: number; name: string }; articleLink?: string | null };
   linkLogs?: any[];
 }
 
@@ -323,7 +323,11 @@ function ProductsPageContent() {
     const currentStatus = (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
       ? "PENDING"
       : rawStatus;
-    if (statusFilter) {
+    if (statusFilter === "NO_LINKS") {
+      const isPub = Boolean(p.article?.articleLink || rawStatus === "APPROVED" || rawStatus === "COMPLETED");
+      const hasLinks = p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
+      matchStatus = isPub && !hasLinks;
+    } else if (statusFilter) {
       matchStatus = currentStatus === statusFilter;
     } else if (currentUserRole === "WRITER") {
       // By default, remove completed & approved products from writer's available queue
@@ -408,7 +412,15 @@ function ProductsPageContent() {
       (a.product?.category?.name && a.product.category.name.toLowerCase() === selectedCategoryName) ||
       (a.product?.productCategory && a.product.productCategory.toLowerCase() === selectedCategoryName);
 
-    const matchStatus = !statusFilter || a.status === statusFilter;
+    const matchStatus = statusFilter === "NO_LINKS"
+      ? (() => {
+          const isPub = Boolean(a.articleLink || a.status === "APPROVED" || a.status === "COMPLETED");
+          const mProd = products.find((p) => p.id === (a.productId || a.product?.id));
+          const pLogs = mProd?.linkLogs || a.product?.linkLogs || [];
+          const hasLinks = pLogs.length > 0 && pLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
+          return isPub && !hasLinks;
+        })()
+      : (!statusFilter || a.status === statusFilter);
 
     return matchSearch && matchSite && matchCategory && matchStatus;
   });
@@ -730,6 +742,7 @@ function ProductsPageContent() {
               { value: "COMPLETED", label: "Completed" },
               { value: "APPROVED", label: "Approved" },
               { value: "REDO", label: "Redo / Changes" },
+              { value: "NO_LINKS", label: "⚠️ Published (No Links)" },
             ]}
           />
 
@@ -844,18 +857,37 @@ function ProductsPageContent() {
                       ? "PENDING"
                       : rawStatus;
 
+                    const isPublished = Boolean(p.article?.articleLink || rawStatus === "APPROVED" || rawStatus === "COMPLETED");
+                    const hasLinks = p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
+                    const isPublishedWithoutLinks = isPublished && !hasLinks;
+
                     return (
-                      <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="px-3 py-3.5">
-                          <div className="flex flex-col">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedProduct(p)}
-                              className="text-[13px] font-semibold text-slate-800 hover:text-blue-600 hover:underline text-left cursor-pointer transition-colors"
-                              title="Click to view product details"
-                            >
-                              {p.name}
-                            </button>
+                      <tr key={p.id} className={`hover:bg-slate-50/50 transition-colors group ${isPublishedWithoutLinks ? "bg-rose-50/20" : ""}`}>
+                        <td className={`px-3 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 border-l-4 border-l-rose-500" : ""}`}>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedProduct(p)}
+                                className={`text-[13px] font-bold text-left cursor-pointer transition-colors ${
+                                  isPublishedWithoutLinks
+                                    ? "text-rose-900 hover:text-rose-700 underline decoration-rose-400"
+                                    : "text-slate-800 hover:text-blue-600 hover:underline"
+                                }`}
+                                title="Click to view product details"
+                              >
+                                {p.name}
+                              </button>
+                              {isPublishedWithoutLinks && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs whitespace-nowrap"
+                                  title="Article is published, but this product has NO affiliate links configured!"
+                                >
+                                  <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                  No Links
+                                </span>
+                              )}
+                            </div>
                             {p.slug && (
                               <span className="text-[11px] font-mono text-slate-400">/{p.slug}</span>
                             )}
@@ -918,8 +950,18 @@ function ProductsPageContent() {
                             </span>
                           </td>
                         )}
-                        <td className="px-3 py-3.5 text-center">
-                          <span className="text-[13px] font-semibold text-slate-600">{p.linkLogs?.length || 0}</span>
+                        <td className={`px-3 py-3.5 text-center transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/40" : ""}`}>
+                          {isPublishedWithoutLinks ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs"
+                              title="Missing affiliate links for published article"
+                            >
+                              <AlertTriangle className="w-3 h-3 text-rose-600" />
+                              0 Links
+                            </span>
+                          ) : (
+                            <span className="text-[13px] font-semibold text-slate-600">{p.linkLogs?.length || 0}</span>
+                          )}
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
@@ -1094,17 +1136,38 @@ function ProductsPageContent() {
                 <tbody className="divide-y divide-slate-50">
                   {paginatedMyArticles.map((a: any) => {
                     const status = a.status || "PENDING";
+                    const matchingProd = products.find((p) => p.id === (a.productId || a.product?.id));
+                    const prodLinkLogs = matchingProd?.linkLogs || a.product?.linkLogs || [];
+                    const isPublished = Boolean(a.articleLink || status === "APPROVED" || status === "COMPLETED");
+                    const hasLinks = prodLinkLogs.length > 0 && prodLinkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
+                    const isPublishedWithoutLinks = isPublished && !hasLinks;
+
                     return (
-                      <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="px-3 py-3.5">
-                          <button
-                            type="button"
-                            onClick={() => handleViewProductDetails(a)}
-                            className="text-[13px] font-semibold text-slate-800 hover:text-blue-600 hover:underline text-left cursor-pointer transition-colors"
-                            title="Click to view product details"
-                          >
-                            {a.product?.name}
-                          </button>
+                      <tr key={a.id} className={`hover:bg-slate-50/50 transition-colors group ${isPublishedWithoutLinks ? "bg-rose-50/20" : ""}`}>
+                        <td className={`px-3 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 border-l-4 border-l-rose-500" : ""}`}>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => handleViewProductDetails(a)}
+                              className={`text-[13px] font-bold text-left cursor-pointer transition-colors ${
+                                isPublishedWithoutLinks
+                                  ? "text-rose-900 hover:text-rose-700 underline decoration-rose-400"
+                                  : "text-slate-800 hover:text-blue-600 hover:underline"
+                              }`}
+                              title="Click to view product details"
+                            >
+                              {a.product?.name}
+                            </button>
+                            {isPublishedWithoutLinks && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs whitespace-nowrap"
+                                title="Article is published, but this product has NO affiliate links configured!"
+                              >
+                                <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                No Links
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-3.5">
                           {a.product?.site?.url ? (
