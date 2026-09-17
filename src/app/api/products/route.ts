@@ -266,26 +266,7 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    // Auto-create LinkLog for each product with affiliateName
-    for (const p of createdProducts) {
-      if (p.affiliateName && p.affiliateName.trim()) {
-        const slug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-        const buyUrl = p.site.url ? `${p.site.url.replace(/\/+$/, "")}/${slug}` : null;
-
-        await prisma.linkLog.create({
-          data: {
-            productId: p.id,
-            addedById: activeUserId,
-            affiliateName: p.affiliateName.trim(),
-            affiliateLink: p.previewLink || p.trendLink || "",
-            bridgePageLink: null,
-            buyLink: buyUrl,
-            status: "REQUESTED",
-            linkerRemarks: null,
-          },
-        });
-      }
-    }
+    // Do not auto-create LinkLogs - linkers will add real link configurations explicitly
 
     // Notify writers: collect ALL product names per writer, send one grouped notification
     const writerProductMap = new Map<number, string[]>();

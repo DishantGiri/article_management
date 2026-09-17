@@ -148,7 +148,13 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
 
   const productSlug = useMemo(() => {
     if (!selectedProduct?.name) return "";
-    return selectedProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return (
+      selectedProduct.slug ||
+      selectedProduct.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+    );
   }, [selectedProduct]);
 
   const siteBaseUrl = useMemo(() => {
@@ -250,10 +256,9 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   }, [selectedProduct, siteBaseUrl, productSlug]);
 
   const addAffiliateEntry = () => {
-    const defaultAffLink = affiliateLinkOptions[0]?.value || "";
     setAffiliateEntries((prev) => [
       ...prev,
-      { affiliateName: allAffiliates[0] || "", affiliateLink: defaultAffLink },
+      { affiliateName: allAffiliates[0] || "", affiliateLink: "" },
     ]);
   };
 
@@ -694,11 +699,16 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
             </div>
 
             <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-200">
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <span className="truncate">{selectedProduct?.name || "Unknown Product"}</span>
                 {selectedProduct?.site?.name && (
                   <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/80 dark:border-slate-700 shrink-0">
                     Site: {selectedProduct.site.name}
+                  </span>
+                )}
+                {productSlug && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/80 dark:border-indigo-800/60 shrink-0">
+                    /{productSlug}
                   </span>
                 )}
               </div>
@@ -1212,19 +1222,10 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
                       Bridge Page Link
                     </label>
-                    {bridgeLinkOptions.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (bridgeLinkOptions[0]?.value) {
-                            setBridgePageLink(bridgeLinkOptions[0].value);
-                            setBridgePageLinkError("");
-                          }
-                        }}
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
-                      >
-                        Use Auto Landing
-                      </button>
+                    {productSlug && (
+                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        Product Slug: <strong className="text-slate-800 dark:text-slate-200">/{productSlug}</strong>
+                      </span>
                     )}
                   </div>
                   <input
@@ -1239,7 +1240,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                         setBridgePageLinkError("");
                       }
                     }}
-                    placeholder="https://test.com/product-slug"
+                    placeholder={productSlug ? `https://example.com/${productSlug}` : "https://example.com/..."}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400 transition"
                   />
                   {bridgePageLinkError && (
@@ -1253,19 +1254,10 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
                       Buy Link
                     </label>
-                    {buyLinkOptions.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (buyLinkOptions[0]?.value) {
-                            setBuyLink(buyLinkOptions[0].value);
-                            setBuyLinkError("");
-                          }
-                        }}
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
-                      >
-                        Use Auto Buy
-                      </button>
+                    {productSlug && (
+                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        Product Slug: <strong className="text-slate-800 dark:text-slate-200">/{productSlug}</strong>
+                      </span>
                     )}
                   </div>
                   <input
@@ -1281,7 +1273,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                         setBuyLinkError("");
                       }
                     }}
-                    placeholder={bridgePageLink ? "https://test.com/product-slug" : "Enter bridge page link first"}
+                    placeholder={bridgePageLink ? (productSlug ? `https://example.com/${productSlug}` : "https://example.com/...") : "Enter bridge page link first"}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-800"
                   />
                   {buyLinkError && (

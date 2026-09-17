@@ -773,13 +773,18 @@ function LinksPageContent() {
                         }`}
                     >
                       <td className="px-3 py-3.5 max-w-[240px]">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[13px] font-semibold text-slate-800 break-words block">{l.product.name}</span>
-                          {l.status === "ISSUE" && (
-                            <span className="inline-flex items-center text-rose-500 hover:text-rose-700 cursor-pointer" title="Flagged Link Issue">
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                            </span>
-                          )}
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[13px] font-semibold text-slate-800 break-words block">{l.product.name}</span>
+                            {l.status === "ISSUE" && (
+                              <span className="inline-flex items-center text-rose-500 hover:text-rose-700 cursor-pointer" title="Flagged Link Issue">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] font-mono text-slate-400 block truncate">
+                            /{l.product.slug || l.product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
+                          </span>
                         </div>
                       </td>
                       {/* Fix 2: Site Name column */}

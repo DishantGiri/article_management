@@ -1,7 +1,7 @@
 "use client";
 
 import CustomSelect from "@/components/CustomSelect";
-import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
@@ -10,6 +10,7 @@ import { LATAM_CODES, COUNTRY_NAMES, getGeoDisplayName, getCountryFlag } from "@
 interface Product {
   id: number;
   name: string;
+  slug?: string | null;
   trendLink?: string | null;
   previewLink?: string | null;
   linkLogs?: any[];
@@ -193,7 +194,13 @@ export default function AddLinkModal({
 
   const productSlug = useMemo(() => {
     if (!selectedProduct?.name) return "";
-    return selectedProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return (
+      selectedProduct.slug ||
+      selectedProduct.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+    );
   }, [selectedProduct]);
 
   const siteBaseUrl = useMemo(() => {
@@ -295,10 +302,9 @@ export default function AddLinkModal({
   }, [selectedProduct, siteBaseUrl, productSlug]);
 
   const addAffiliateEntry = () => {
-    const defaultAffLink = affiliateLinkOptions[0]?.value || "";
     setAffiliateEntries((prev) => [
       ...prev,
-      { affiliateName: allAffiliates[0] || "", affiliateLink: defaultAffLink },
+      { affiliateName: allAffiliates[0] || "", affiliateLink: "" },
     ]);
   };
 
@@ -363,36 +369,29 @@ export default function AddLinkModal({
     }
   }, [isOpen, preselectedProductId]);
 
-  // Auto-fill smart link defaults on product select
+  // Keep link inputs empty on product select (do NOT auto-fill fake links)
   useEffect(() => {
     if (!selectedProduct) return;
-    const slug = selectedProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    const base = selectedProduct.site?.url ? selectedProduct.site.url.replace(/\/+$/, "") : "";
-    const existingLog = selectedProduct.linkLogs && selectedProduct.linkLogs.length > 0 ? selectedProduct.linkLogs[0] : null;
 
-    const autoBridge = existingLog?.bridgePageLink || selectedProduct.article?.articleLink || (base ? `${base}/${slug}` : "");
-    const autoBuy = existingLog?.buyLink || (base ? `${base}/${slug}` : "");
-    const autoAffLink = existingLog?.affiliateLink || selectedProduct.trendLink || selectedProduct.previewLink || (base ? `${base}/aff/${slug}` : "");
-
-    setBridgePageLink(autoBridge);
-    setBuyLink(autoBuy);
+    setBridgePageLink("");
+    setBuyLink("");
     setBridgeLinkError("");
     setBuyLinkError("");
 
     setAffiliateEntries((prev) => {
       const defaultAffName = allAffiliates[0] || "";
-      if (prev.length === 0 || (!prev[0].affiliateName && !prev[0].affiliateLink)) {
-        return [{ affiliateName: defaultAffName, affiliateLink: autoAffLink }];
+      if (prev.length === 0) {
+        return [{ affiliateName: defaultAffName, affiliateLink: "" }];
       }
       return prev.map((entry, idx) => {
         if (idx === 0) {
           return {
             ...entry,
             affiliateName: entry.affiliateName || defaultAffName,
-            affiliateLink: entry.affiliateLink || autoAffLink,
+            affiliateLink: "",
           };
         }
-        return entry;
+        return { ...entry, affiliateLink: "" };
       });
     });
 
@@ -401,11 +400,10 @@ export default function AddLinkModal({
     }
   }, [selectedProduct, allAffiliates, allGeos]);
 
-  // Synchronize countryLinks whenever geos change
+  // Synchronize countryLinks whenever geos change - do NOT auto-fill fake links
   useEffect(() => {
     setCountryLinks((prev) => {
       const defName = defaultAffiliateName || allAffiliates[0] || "Standard";
-      const autoLink = selectedProduct?.trendLink || selectedProduct?.previewLink || "";
       return geos.map((geo) => {
         const existing = prev.find((p) => p.geo.toUpperCase() === geo.toUpperCase());
         if (existing) {
@@ -417,7 +415,7 @@ export default function AddLinkModal({
         return {
           geo,
           affiliateName: defName,
-          affiliateLink: autoLink,
+          affiliateLink: "",
         };
       });
     });
@@ -749,9 +747,28 @@ export default function AddLinkModal({
                       Locked
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
-                    Product name cannot be changed. You can only switch sites for this product below.
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap mt-1">
+                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                      Product Slug:
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/80 dark:border-indigo-800/60">
+                      /{productSlug}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (productSlug) {
+                          navigator.clipboard.writeText(productSlug);
+                          toast.success("Product slug copied!");
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 cursor-pointer transition"
+                      title="Copy product slug"
+                    >
+                      <Copy className="w-3 h-3" />
+                      Copy
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1362,19 +1379,10 @@ export default function AddLinkModal({
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
                       Bridge Page Link
                     </label>
-                    {bridgeLinkOptions.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (bridgeLinkOptions[0]?.value) {
-                            setBridgePageLink(bridgeLinkOptions[0].value);
-                            setBridgeLinkError("");
-                          }
-                        }}
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
-                      >
-                        Use Auto Landing
-                      </button>
+                    {productSlug && (
+                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        Product Slug: <strong className="text-slate-800 dark:text-slate-200">/{productSlug}</strong>
+                      </span>
                     )}
                   </div>
                   <input
@@ -1389,7 +1397,7 @@ export default function AddLinkModal({
                         setBridgeLinkError("");
                       }
                     }}
-                    placeholder="https://test.com/product-slug"
+                    placeholder={productSlug ? `https://example.com/${productSlug}` : "https://example.com/..."}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400 transition"
                   />
                   {bridgeLinkError && (
@@ -1403,19 +1411,10 @@ export default function AddLinkModal({
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
                       Buy Link
                     </label>
-                    {buyLinkOptions.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (buyLinkOptions[0]?.value) {
-                            setBuyLink(buyLinkOptions[0].value);
-                            setBuyLinkError("");
-                          }
-                        }}
-                        className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
-                      >
-                        Use Auto Buy
-                      </button>
+                    {productSlug && (
+                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        Product Slug: <strong className="text-slate-800 dark:text-slate-200">/{productSlug}</strong>
+                      </span>
                     )}
                   </div>
                   <input
@@ -1431,7 +1430,7 @@ export default function AddLinkModal({
                         setBuyLinkError("");
                       }
                     }}
-                    placeholder={bridgePageLink ? "https://test.com/product-slug" : "Enter bridge page link first"}
+                    placeholder={bridgePageLink ? (productSlug ? `https://example.com/${productSlug}` : "https://example.com/...") : "Enter bridge page link first"}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-800"
                   />
                   {buyLinkError && (

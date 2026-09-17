@@ -1079,9 +1079,9 @@ function ArticlesContent() {
                               </span>
                             )}
                           </div>
-                          {a.product.slug && (
-                            <span className="text-[11px] font-mono text-slate-400 truncate max-w-[200px]">/{a.product.slug}</span>
-                          )}
+                          <span className="text-[11px] font-mono text-slate-400 truncate max-w-[200px]">
+                            /{a.product.slug || a.product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
+                          </span>
                         </div>
                       </td>
                       <td className="px-3 py-3.5 whitespace-nowrap">

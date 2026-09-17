@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
       product: {
         select: {
           name: true,
+          slug: true,
           site: { select: { name: true } },
           article: { select: { articleLink: true } }
         }

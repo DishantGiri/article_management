@@ -888,9 +888,9 @@ function ProductsPageContent() {
                                 </span>
                               )}
                             </div>
-                            {p.slug && (
-                              <span className="text-[11px] font-mono text-slate-400">/{p.slug}</span>
-                            )}
+                            <span className="text-[11px] font-mono text-slate-400 block truncate">
+                              /{p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
+                            </span>
                           </div>
                         </td>
                         <td className="px-3 py-3.5">
@@ -1168,6 +1168,9 @@ function ProductsPageContent() {
                               </span>
                             )}
                           </div>
+                          <span className="text-[11px] font-mono text-slate-400 block truncate">
+                            /{a.product?.slug || a.product?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
+                          </span>
                         </td>
                         <td className="px-3 py-3.5">
                           {a.product?.site?.url ? (

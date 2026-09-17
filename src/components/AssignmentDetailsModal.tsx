@@ -264,6 +264,36 @@ export default function AssignmentDetailsModal({
                   </button>
                 </div>
 
+                {/* Product Slug */}
+                {(() => {
+                  const slug = product.slug || product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                  return (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="inline-flex items-center gap-1 text-xs font-mono font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/80 dark:border-indigo-800/60">
+                        /{slug}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(slug, "product-slug", "Product Slug")}
+                        className="text-[11px] text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer flex items-center gap-1 transition"
+                        title="Copy Product Slug"
+                      >
+                        {copiedKey === "product-slug" ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span className="text-emerald-600">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy Slug</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })()}
+
                 {/* Metadata Pills */}
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
