@@ -1078,7 +1078,7 @@ function ProductsPageContent() {
             </div>
           ) : (
             <div className="overflow-x-auto p-4">
-              <table className="w-full text-left">
+              <table className="w-full text-left min-w-[950px]">
                 <thead>
                   <tr className="border-b border-slate-100">
                     <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Article / Product</th>
@@ -1156,8 +1156,8 @@ function ProductsPageContent() {
                             {new Date(a.updatedAt || a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <div className="flex items-center gap-2 flex-nowrap">
                             {status === "IN_PROGRESS" || status === "REDO" ? (
                               <button
                                 onClick={() => {
@@ -1185,7 +1185,7 @@ function ProductsPageContent() {
                                 onClick={() => handleViewProductDetails(a)}
                                 title="View Product Details"
                                 aria-label="View Product Details"
-                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs"
+                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs shrink-0"
                               >
                                 <Info className="w-3.5 h-3.5" />
                               </button>
@@ -1200,7 +1200,7 @@ function ProductsPageContent() {
                                   setIssueMessage("");
                                 }}
                                 title="Report Link Issue"
-                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 transition-all cursor-pointer shadow-2xs"
+                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 transition-all cursor-pointer shadow-2xs shrink-0"
                               >
                                 <AlertTriangle className="w-3.5 h-3.5" />
                               </button>

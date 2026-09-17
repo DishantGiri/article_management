@@ -706,7 +706,7 @@ function ArticlesContent() {
       )}
 
       {/* Tabs Selector for Articles */}
-      <div className="flex border-b border-[#CBCBCB]/60 mb-5 gap-2">
+      <div className="flex border-b border-slate-200 mb-5 gap-2 overflow-x-auto no-scrollbar pb-px">
         <button
           onClick={() => {
             setWriterFilter("");
@@ -805,9 +805,9 @@ function ArticlesContent() {
       </div>
 
       {/* Filters Bar */}
-      <div className="flex items-center gap-3 mt-4 mb-2">
+      <div className="flex flex-wrap items-center gap-3 mt-4 mb-3">
         {/* Search */}
-        <div className="relative flex-1 max-w-sm bg-white rounded-xl border border-slate-200 shadow-sm flex items-center">
+        <div className="relative flex-1 min-w-[200px] max-w-sm bg-white rounded-xl border border-slate-200 shadow-2xs flex items-center">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="w-4 h-4 text-slate-400" />
           </div>
@@ -928,12 +928,12 @@ function ArticlesContent() {
             <p className="text-slate-500 font-medium">No articles found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto p-4">
-            <table className="w-full text-left">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left min-w-[980px] border-collapse">
               <thead>
-                <tr className="border-b border-slate-100">
+                <tr className="border-b border-slate-200/80 bg-slate-50/75">
                   {isManager && (
-                    <th className="px-3 py-3 w-[4%] text-center">
+                    <th className="px-3 py-3.5 w-10 text-center">
                       <input
                         type="checkbox"
                         checked={
@@ -963,16 +963,16 @@ function ArticlesContent() {
                       />
                     </th>
                   )}
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[22%]">Product</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[18%]">Site</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[15%]">Writer</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[8%]">Priority</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Status</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Date</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[12%]">Remarks</th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[5%]">Link</th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider min-w-[180px]">Product</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-20">Site</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider min-w-[130px]">Writer</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Priority</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-28">Status</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-28 whitespace-nowrap">Date</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center w-24">Remarks</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center w-16">Link</th>
                   {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "WRITER") && (
-                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left w-[10%]">Actions</th>
+                    <th className="px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-left min-w-[170px] whitespace-nowrap">Actions</th>
                   )}
                 </tr>
               </thead>
@@ -1046,42 +1046,42 @@ function ArticlesContent() {
                               },
                             });
                           }}
-                          className="text-[13px] font-semibold text-slate-800 hover:text-blue-600 hover:underline text-left cursor-pointer transition-colors"
+                          className="text-[13px] font-semibold text-slate-800 hover:text-indigo-600 hover:underline text-left cursor-pointer transition-colors max-w-[220px] truncate block"
                           title="Click to view product details"
                         >
                           {a.product.name}
                         </button>
                       </td>
-                      <td className="px-4 py-3.5">
-                        <span className="text-[13px] font-medium text-slate-600">{a.product.site.name}</span>
+                      <td className="px-3 py-3.5 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200/70">
+                          {a.product.site.name}
+                        </span>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 py-3.5 whitespace-nowrap">
                         {a.writer?.name ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[9px] font-bold">
+                            <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold shrink-0">
                               {getInitials(a.writer.name)}
                             </div>
-                            <span className="text-[12px] font-semibold text-slate-600">{a.writer.name}</span>
+                            <span className="text-[12px] font-semibold text-slate-700">{a.writer.name}</span>
                           </div>
                         ) : (
-                          <span className="text-[12px] font-medium text-slate-400">Unassigned</span>
+                          <span className="text-[12px] font-medium text-slate-400 italic">Unassigned</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 py-3.5 whitespace-nowrap">
                         <PriorityBadge priority={(a as any).priority || "MEDIUM"} />
                       </td>
-                      <td className="px-4 py-3.5">
-                        <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${statusColor}`}>
+                      <td className="px-3 py-3.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold ${statusColor}`}>
                           {status === "IN_PROGRESS" ? "In Progress" : status.charAt(0) + status.slice(1).toLowerCase()}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
-                        <span className="text-[12px] font-medium text-slate-500">
-                          {new Date(a.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
+                      <td className="px-3 py-3.5 whitespace-nowrap text-[12px] font-medium text-slate-500">
+                        {new Date(a.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       {/* Writer's and Linker's Remarks cell */}
-                      <td className="px-4 py-3.5 text-center">
+                      <td className="px-3 py-3.5 text-center whitespace-nowrap">
                         {(writerRemarks || linkerRemarks) ? (
                           <button
                             onClick={() => {
@@ -1095,7 +1095,7 @@ function ArticlesContent() {
                                 productName: a.product.name
                               });
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-indigo-650 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all text-[10px] font-bold cursor-pointer shadow-sm"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-indigo-650 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all text-[11px] font-bold cursor-pointer shadow-2xs"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1107,9 +1107,9 @@ function ArticlesContent() {
                           <span className="text-slate-300 font-semibold text-xs">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-center">
+                      <td className="px-2 py-3.5 text-center whitespace-nowrap">
                         {a.articleLink ? (
-                          <a href={ensureExternalUrl(a.articleLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition">
+                          <a href={ensureExternalUrl(a.articleLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition shadow-2xs">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                           </a>
                         ) : (
@@ -1117,8 +1117,8 @@ function ArticlesContent() {
                         )}
                       </td>
                       {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "WRITER") && (
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 flex-nowrap">
                             {/* View Product Details button */}
                             {a.product && (
                               <button
@@ -1136,7 +1136,7 @@ function ArticlesContent() {
                                 }}
                                 title="View Product Details"
                                 aria-label="View Product Details"
-                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs"
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs shrink-0"
                               >
                                 <Info className="w-3.5 h-3.5" />
                               </button>
@@ -1149,7 +1149,7 @@ function ArticlesContent() {
                                 {status === "IN_PROGRESS" && (
                                   <Link
                                     href={`/?articleId=${a.id}`}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#6D8196]/30 bg-[#6D8196]/15 text-[#3D4F61] hover:bg-[#6D8196]/25 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#6D8196]/30 bg-[#6D8196]/15 text-[#3D4F61] hover:bg-[#6D8196]/25 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
                                   >
                                     <PlayCircle className="w-3.5 h-3.5" />
                                     Continue
@@ -1167,7 +1167,7 @@ function ArticlesContent() {
                                               ? `Complete your active revision for "${activeRevisionArticle?.product?.name || "another article"}" before starting another.`
                                               : `Complete your in-progress article for "${activeWritingArticle?.product?.name || "another article"}" before starting a revision.`
                                           }
-                                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[11px] font-bold whitespace-nowrap cursor-not-allowed shadow-none"
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[11px] font-bold whitespace-nowrap cursor-not-allowed shadow-none shrink-0"
                                         >
                                           <Lock className="w-3.5 h-3.5" />
                                           Start Revision
@@ -1177,7 +1177,7 @@ function ArticlesContent() {
                                           type="button"
                                           onClick={() => handleStartRevision(a.id)}
                                           disabled={startingRevisionId === a.id}
-                                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer disabled:opacity-50 shrink-0"
                                         >
                                           <PlayCircle className="w-3.5 h-3.5" />
                                           {startingRevisionId === a.id ? "Starting..." : "Start Revision"}
@@ -1189,7 +1189,7 @@ function ArticlesContent() {
                                           setUpdatingArticle(a);
                                           setUpdateLink(a.articleLink || "");
                                         }}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shrink-0"
                                       >
                                         <FileText className="w-3.5 h-3.5" />
                                         Update
@@ -1206,7 +1206,7 @@ function ArticlesContent() {
                                       setUpdateLink(a.articleLink || "");
                                       setUpdateReason("");
                                     }}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
                                   >
                                     <FileText className="w-3.5 h-3.5" />
                                     Update
@@ -1217,9 +1217,9 @@ function ArticlesContent() {
                                 {status === "APPROVED" && (
                                   <>
                                     {a.specialApprovalRequested ? (
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs shrink-0">
                                         <Clock className="w-3 h-3 text-amber-600 animate-spin" />
-                                        Edit Requested (Pending TL)
+                                        Edit Requested
                                       </span>
                                     ) : (
                                       <button
@@ -1227,7 +1227,7 @@ function ArticlesContent() {
                                           setRequestingUpdateArticle(a);
                                           setRequestEditReason("");
                                         }}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
                                       >
                                         <RotateCcw className="w-3.5 h-3.5" />
                                         Request Edit
@@ -1261,7 +1261,7 @@ function ArticlesContent() {
                                     toast.error("Failed to start writing");
                                   }
                                 }}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold whitespace-nowrap transition-all ${!hasActiveAssignment
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all shrink-0 ${!hasActiveAssignment
                                     ? "bg-[#6D8196] text-white hover:bg-[#5A6D81] cursor-pointer shadow-xs"
                                     : "bg-slate-100 text-slate-400 cursor-not-allowed"
                                   }`}
@@ -1294,7 +1294,7 @@ function ArticlesContent() {
                                         toast.error(e.message || "Failed to approve update");
                                       }
                                     }}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
                                     title={a.specialApprovalRequestReason ? `Writer note: "${a.specialApprovalRequestReason}"` : "Approve writer's edit request"}
                                   >
                                     <Check className="w-3 h-3 stroke-[3]" />
@@ -1310,7 +1310,7 @@ function ArticlesContent() {
                                       setSelectedAssignee(a.writer ? String(a.writer.id) : "");
                                       setFlagInstructions("");
                                     }}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
                                     title="Raise flag to writer that this approved article needs an update"
                                   >
                                     <Flag className="w-3.5 h-3.5 text-amber-600" />
