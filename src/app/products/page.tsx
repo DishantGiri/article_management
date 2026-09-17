@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
-import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare } from "lucide-react";
+import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare, Info } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import AddProductModal from "@/components/AddProductModal";
@@ -439,6 +439,28 @@ function ProductsPageContent() {
     });
   }, [filteredMyArticles, search]);
 
+  const handleViewProductDetails = (a: any) => {
+    if (!a?.product) return;
+    const matchingProd = products.find((p) => p.id === (a.productId || a.product?.id));
+    const baseProduct = matchingProd || a.product;
+    const fullProd = {
+      ...baseProduct,
+      site: baseProduct.site || a.product.site,
+      category: baseProduct.category || a.product.category,
+      addedBy: baseProduct.addedBy || a.product.addedBy,
+      linkLogs: (baseProduct.linkLogs && baseProduct.linkLogs.length > 0)
+        ? baseProduct.linkLogs
+        : (a.product.linkLogs || []),
+      article: {
+        id: a.id,
+        status: a.status,
+        priority: a.priority,
+        writer: a.writer || baseProduct.article?.writer,
+      },
+    };
+    setSelectedProduct(fullProd as any);
+  };
+
   const activeTotalCount = activeTab === "products" ? sortedFiltered.length : sortedFilteredMyArticles.length;
   const totalPages = Math.ceil(activeTotalCount / itemsPerPage);
   const paginated = sortedFiltered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -826,7 +848,14 @@ function ProductsPageContent() {
                       <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-3 py-3.5">
                           <div className="flex flex-col">
-                            <span className="text-[13px] font-semibold text-slate-800">{p.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProduct(p)}
+                              className="text-[13px] font-semibold text-slate-800 hover:text-blue-600 hover:underline text-left cursor-pointer transition-colors"
+                              title="Click to view product details"
+                            >
+                              {p.name}
+                            </button>
                             {p.slug && (
                               <span className="text-[11px] font-mono text-slate-400">/{p.slug}</span>
                             )}
@@ -896,13 +925,24 @@ function ProductsPageContent() {
                           <div className="flex items-center gap-2">
                             {/* Review - for Admin/Team Lead, link to article; for others, show product modal */}
                             {p.article && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") ? (
-                              <Link
-                                href={`/articles/${p.article.id}`}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap shadow-2xs"
-                              >
-                                <FileText className="w-3.5 h-3.5" />
-                                Review
-                              </Link>
+                              <div className="flex items-center gap-1.5">
+                                <Link
+                                  href={`/articles/${p.article.id}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap shadow-2xs"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  Review
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedProduct(p)}
+                                  title="View Product Details"
+                                  aria-label="View Product Details"
+                                  className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs"
+                                >
+                                  <Info className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             ) : (
                               <button
                                 onClick={() => setSelectedProduct(p)}
@@ -1057,7 +1097,14 @@ function ProductsPageContent() {
                     return (
                       <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-3 py-3.5">
-                          <span className="text-[13px] font-semibold text-slate-800">{a.product?.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleViewProductDetails(a)}
+                            className="text-[13px] font-semibold text-slate-800 hover:text-blue-600 hover:underline text-left cursor-pointer transition-colors"
+                            title="Click to view product details"
+                          >
+                            {a.product?.name}
+                          </button>
                         </td>
                         <td className="px-3 py-3.5">
                           {a.product?.site?.url ? (
@@ -1129,6 +1176,19 @@ function ProductsPageContent() {
                                 <FileText className="w-3.5 h-3.5" />
                                 Review
                               </Link>
+                            )}
+
+                            {/* View Product Details button */}
+                            {a.product && (
+                              <button
+                                type="button"
+                                onClick={() => handleViewProductDetails(a)}
+                                title="View Product Details"
+                                aria-label="View Product Details"
+                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs"
+                              >
+                                <Info className="w-3.5 h-3.5" />
+                              </button>
                             )}
 
                             {/* Report link issue button */}

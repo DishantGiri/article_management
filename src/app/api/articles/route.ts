@@ -48,12 +48,13 @@ export async function GET(req: NextRequest) {
     include: {
       product: {
         include: {
-          site: { select: { id: true, name: true } },
+          site: { select: { id: true, name: true, url: true } },
           category: { select: { id: true, name: true } },
+          addedBy: { select: { id: true, name: true } },
           linkLogs: {
-            select: { linkerRemarks: true, addedAt: true },
-            orderBy: { addedAt: "desc" }
-          }
+            include: { geos: true },
+            orderBy: { addedAt: "desc" },
+          },
         },
       },
       writer: { select: { id: true, name: true } },

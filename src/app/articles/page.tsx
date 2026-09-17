@@ -5,13 +5,14 @@
 import { useEffect, useState, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag, Calendar, Lock } from "lucide-react";
+import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag, Calendar, Lock, Info } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import { formatRemarkDate } from "@/components/FormattedRemarks";
+import AssignmentDetailsModal from "@/components/AssignmentDetailsModal";
 
 interface Article {
   id: number;
@@ -98,6 +99,7 @@ function ArticlesContent() {
   const [startingRevisionId, setStartingRevisionId] = useState<number | null>(null);
   const { data: session, status: sessionStatus } = useSession();
   const [mounted, setMounted] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -1031,7 +1033,24 @@ function ArticlesContent() {
                         </td>
                       )}
                       <td className="px-4 py-3.5">
-                        <span className="text-[13px] font-semibold text-slate-800">{a.product.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedProduct({
+                              ...a.product,
+                              article: {
+                                id: a.id,
+                                status: a.status,
+                                priority: a.priority,
+                                writer: a.writer,
+                              },
+                            });
+                          }}
+                          className="text-[13px] font-semibold text-slate-800 hover:text-blue-600 hover:underline text-left cursor-pointer transition-colors"
+                          title="Click to view product details"
+                        >
+                          {a.product.name}
+                        </button>
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="text-[13px] font-medium text-slate-600">{a.product.site.name}</span>
@@ -1100,6 +1119,29 @@ function ArticlesContent() {
                       {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "WRITER") && (
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
+                            {/* View Product Details button */}
+                            {a.product && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedProduct({
+                                    ...a.product,
+                                    article: {
+                                      id: a.id,
+                                      status: a.status,
+                                      priority: a.priority,
+                                      writer: a.writer,
+                                    },
+                                  });
+                                }}
+                                title="View Product Details"
+                                aria-label="View Product Details"
+                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs"
+                              >
+                                <Info className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
                             {/* If current user is the assigned writer of this article */}
                             {isMyArticle(a) && (
                               <>
@@ -1675,6 +1717,14 @@ function ArticlesContent() {
             </div>
           </div>
         </div>
+      )}
+      {selectedProduct && (
+        <AssignmentDetailsModal
+          product={selectedProduct as any}
+          currentUserRole={currentUserRole}
+          currentUserId={session?.user?.id}
+          onClose={() => setSelectedProduct(null)}
+        />
       )}
     </div>
   );
