@@ -43,11 +43,11 @@ interface Product {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-amber-50 text-amber-700 border border-amber-200/60",
-  IN_PROGRESS: "bg-blue-50 text-blue-700 border border-blue-200/60",
-  COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/60",
-  APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/60",
-  REDO: "bg-rose-50 text-rose-700 border border-rose-200/60",
+  PENDING: "bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60",
+  IN_PROGRESS: "bg-blue-50 text-blue-700 border border-blue-200/60 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/60",
+  COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/60 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/60",
+  APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60",
+  REDO: "bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60",
 };
 
 function ProductsPageContent() {
@@ -621,39 +621,39 @@ function ProductsPageContent() {
       {/* Metric Cards Row */}
       {stats && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "LINKER") && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-violet-50 flex items-center justify-center text-violet-500 mb-2"><Package className="w-4 h-4" /></div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-violet-50 dark:bg-violet-950/60 flex items-center justify-center text-violet-500 dark:text-violet-400 mb-2"><Package className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.general.totalProducts || 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Products</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.general.totalProducts || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Total Products</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 mb-2"><Clock className="w-4 h-4" /></div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-500 dark:text-amber-400 mb-2"><Clock className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.unlinkedProducts?.length || 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Pending Products</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.unlinkedProducts?.length || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Pending Products</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 mb-2"><Calendar className="w-4 h-4" /></div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-500 dark:text-indigo-400 mb-2"><Calendar className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.general?.todaysProducts ?? stats.superAdmin?.todaysProducts ?? 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Today's Products</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.general?.todaysProducts ?? stats.superAdmin?.todaysProducts ?? 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Today's Products</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-500 mb-2"><Globe className="w-4 h-4" /></div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-teal-50 dark:bg-teal-950/60 flex items-center justify-center text-teal-500 dark:text-teal-400 mb-2"><Globe className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.general?.totalSites ?? stats.superAdmin?.totalSites ?? 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Sites</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.general?.totalSites ?? stats.superAdmin?.totalSites ?? 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Total Sites</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center text-sky-500 mb-2"><LayoutGrid className="w-4 h-4" /></div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
+            <div className="w-8 h-8 rounded-full bg-sky-50 dark:bg-sky-950/60 flex items-center justify-center text-sky-500 dark:text-sky-400 mb-2"><LayoutGrid className="w-4 h-4" /></div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.general?.totalCategories ?? stats.superAdmin?.totalCategories ?? 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Total Categories</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.general?.totalCategories ?? stats.superAdmin?.totalCategories ?? 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Total Categories</p>
             </div>
           </div>
         </div>
@@ -661,7 +661,7 @@ function ProductsPageContent() {
 
       {/* Tabs Selector: Available Products vs My Articles */}
       {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD" || myArticles.length > 0) && (
-        <div className="flex items-center gap-2 border-b border-[#CBCBCB]/60 mb-5">
+        <div className="flex items-center gap-2 border-b border-[#CBCBCB]/60 dark:border-slate-800 mb-5">
           <button
             type="button"
             onClick={() => {
@@ -669,13 +669,13 @@ function ProductsPageContent() {
               setCurrentPage(1);
             }}
             className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === "products"
-                ? "border-[#6D8196] text-[#6D8196]"
-                : "border-transparent text-slate-500 hover:text-slate-800"
+                ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400"
+                : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
           >
             <Package className="w-4 h-4" />
             <span>Available Products</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-600">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
               {filtered.length}
             </span>
           </button>
@@ -687,14 +687,14 @@ function ProductsPageContent() {
               setCurrentPage(1);
             }}
             className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === "my-articles"
-                ? "border-indigo-600 text-indigo-600 font-bold"
-                : "border-transparent text-slate-500 hover:text-slate-800"
+                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold"
+                : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
           >
             <FileText className="w-4 h-4" />
             <span>My Articles</span>
             {myArticles.length > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
                 {myArticles.length}
               </span>
             )}
@@ -703,7 +703,7 @@ function ProductsPageContent() {
       )}
 
       {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-[#CBCBCB]/60 shadow-xs mb-6">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs mb-6">
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -715,7 +715,7 @@ function ProductsPageContent() {
               placeholder="Search products, sites, categories..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6D8196] focus:border-transparent bg-slate-50 focus:bg-white transition"
+              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#6D8196] focus:border-transparent bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-800 transition"
             />
             {search && (
               <button
@@ -819,7 +819,7 @@ function ProductsPageContent() {
       </div>
 
       {/* Table Content */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-12">
             <LoadingScreen
@@ -831,29 +831,29 @@ function ProductsPageContent() {
         ) : activeTab === "products" ? (
           filtered.length === 0 ? (
             <div className="p-16 text-center">
-              <p className="text-slate-500 font-medium">No products found</p>
+              <p className="text-slate-500 dark:text-slate-400 font-medium">No products found</p>
             </div>
           ) : (
             <div className="overflow-x-auto p-4">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Name</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Type</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Affiliate</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trend</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Added By</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Product Name</th>
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Site</th>
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Category</th>
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Product Type</th>
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Affiliate</th>
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Trend</th>
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Added By</th>
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Date</th>
                     {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Status</th>
                     )}
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Links</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">Actions</th>
+                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-center">Links</th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-left">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                   {paginated.map((p: any) => {
                     const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
                     const rawStatus = p.article?.status || "PENDING";
@@ -866,8 +866,8 @@ function ProductsPageContent() {
                     const isPublishedWithoutLinks = isPublished && !hasLinks;
 
                     return (
-                      <tr key={p.id} className={`hover:bg-slate-50/50 transition-colors group ${isPublishedWithoutLinks ? "bg-rose-50/20" : ""}`}>
-                        <td className={`px-3 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 border-l-4 border-l-rose-500" : ""}`}>
+                      <tr key={p.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group ${isPublishedWithoutLinks ? "bg-rose-50/20 dark:bg-rose-950/20" : ""}`}>
+                        <td className={`px-3 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 dark:bg-rose-950/40 border-l-4 border-l-rose-500" : ""}`}>
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <button
@@ -875,8 +875,8 @@ function ProductsPageContent() {
                                 onClick={() => setSelectedProduct(p)}
                                 className={`text-[13px] font-bold text-left cursor-pointer transition-colors ${
                                   isPublishedWithoutLinks
-                                    ? "text-rose-900 hover:text-rose-700 underline decoration-rose-400"
-                                    : "text-slate-800 hover:text-blue-600 hover:underline"
+                                    ? "text-rose-900 dark:text-rose-300 hover:text-rose-700 dark:hover:text-rose-200 underline decoration-rose-400"
+                                    : "text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-sky-400 hover:underline"
                                 }`}
                                 title="Click to view product details"
                               >
@@ -884,15 +884,15 @@ function ProductsPageContent() {
                               </button>
                               {isPublishedWithoutLinks && (
                                 <span
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs whitespace-nowrap"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 shadow-2xs whitespace-nowrap"
                                   title="Article is published, but this product has NO affiliate links configured!"
                                 >
-                                  <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                  <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
                                   No Links
                                 </span>
                               )}
                             </div>
-                            <span className="text-[11px] font-mono text-slate-400 block truncate">
+                            <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 block truncate">
                               /{p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
                             </span>
                           </div>
@@ -903,36 +903,36 @@ function ProductsPageContent() {
                               href={p.site.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[13px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] hover:underline inline-flex items-center gap-1"
+                              className="text-[13px] font-semibold text-[#6D8196] dark:text-sky-400 hover:text-[#4A4A4A] dark:hover:text-white hover:underline inline-flex items-center gap-1"
                             >
                               <span>{p.site.name}</span>
-                              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                              <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                             </a>
                           ) : (
-                            <span className="text-[13px] font-semibold text-slate-800">{p.site?.name || "-"}</span>
+                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-200">{p.site?.name || "-"}</span>
                           )}
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className="text-[13px] font-medium text-slate-600">
+                          <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">
                             {p.productCategory || p.category?.name}
                           </span>
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-200 bg-slate-50 text-slate-700">
+                          <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                             {p.category?.name || "Ecom"}
                           </span>
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold border border-slate-200 bg-slate-50 text-slate-600">
+                          <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                             {p.affiliateName || "General"}
                           </span>
                         </td>
                         <td className="px-3 py-3.5">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${p.trendLevel === "HIGH"
-                              ? "bg-rose-50 text-rose-600 border border-rose-100"
+                              ? "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 border border-rose-100 dark:border-rose-900/60"
                               : p.trendLevel === "MODERATE"
-                                ? "bg-amber-50 text-amber-600 border border-amber-100"
-                                : "bg-slate-50 text-slate-600 border border-slate-100"
+                                ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300 border border-amber-100 dark:border-amber-900/60"
+                                : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700"
                             }`}>
                             {p.trendLevel === "HIGH" && <Flame className="w-3 h-3 text-rose-500" />}
                             {p.trendLevel === "MODERATE" && <TrendingUp className="w-3 h-3 text-amber-500" />}
@@ -940,10 +940,10 @@ function ProductsPageContent() {
                           </span>
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className="text-[13px] font-medium text-slate-600">{p.addedBy?.name}</span>
+                          <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{p.addedBy?.name}</span>
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className="text-[12px] font-medium text-slate-500">
+                          <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
                             {new Date(p.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </span>
                         </td>
@@ -954,17 +954,17 @@ function ProductsPageContent() {
                             </span>
                           </td>
                         )}
-                        <td className={`px-3 py-3.5 text-center transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/40" : ""}`}>
+                        <td className={`px-3 py-3.5 text-center transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/40 dark:bg-rose-950/30" : ""}`}>
                           {isPublishedWithoutLinks ? (
                             <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 shadow-2xs"
                               title="Missing affiliate links for published article"
                             >
-                              <AlertTriangle className="w-3 h-3 text-rose-600" />
+                              <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                               0 Links
                             </span>
                           ) : (
-                            <span className="text-[13px] font-semibold text-slate-600">{p.linkLogs?.length || 0}</span>
+                            <span className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">{p.linkLogs?.length || 0}</span>
                           )}
                         </td>
                         <td className="px-4 py-3.5">
@@ -974,7 +974,7 @@ function ProductsPageContent() {
                               <div className="flex items-center gap-1.5">
                                 <Link
                                   href={`/articles/${p.article.id}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap shadow-2xs"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-500/50 hover:bg-[#FAF9F5] dark:hover:bg-slate-700/60 transition-all text-[11px] font-semibold whitespace-nowrap shadow-2xs"
                                 >
                                   <FileText className="w-3.5 h-3.5" />
                                   Review
@@ -984,7 +984,7 @@ function ProductsPageContent() {
                                   onClick={() => setSelectedProduct(p)}
                                   title="View Product Details"
                                   aria-label="View Product Details"
-                                  className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs"
+                                  className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 dark:border-blue-800/70 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/70 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer shadow-2xs"
                                 >
                                   <Info className="w-3.5 h-3.5" />
                                 </button>
@@ -992,7 +992,7 @@ function ProductsPageContent() {
                             ) : (
                               <button
                                 onClick={() => setSelectedProduct(p)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-500/50 hover:bg-[#FAF9F5] dark:hover:bg-slate-700/60 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
                               >
                                 <FileText className="w-3.5 h-3.5" />
                                 Preview
@@ -1026,7 +1026,7 @@ function ProductsPageContent() {
                                 }}
                                 className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${status === "PENDING"
                                     ? "bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-2xs active:scale-98"
-                                    : "bg-slate-100 text-slate-500 border border-slate-200/80 cursor-not-allowed"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700 cursor-not-allowed"
                                   }`}
                                 title={
                                   status !== "PENDING"
@@ -1043,7 +1043,7 @@ function ProductsPageContent() {
                                   </>
                                 ) : (
                                   <>
-                                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                    <Lock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                     Taken
                                   </>
                                 )}
@@ -1076,8 +1076,8 @@ function ProductsPageContent() {
                                   className={`inline-flex items-center justify-center p-1.5 rounded-md border transition-all cursor-pointer shadow-2xs ${hasIssue
                                       ? "bg-rose-600 text-white border-rose-700 animate-pulse hover:bg-rose-700"
                                       : hasRemarks
-                                        ? "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100 hover:border-amber-400"
-                                        : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:border-rose-300 hover:text-rose-700"
+                                        ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 hover:border-amber-400"
+                                        : "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 hover:border-rose-300 hover:text-rose-700 dark:hover:text-rose-200"
                                     }`}
                                 >
                                   <AlertTriangle className="w-3.5 h-3.5" />
@@ -1090,14 +1090,14 @@ function ProductsPageContent() {
                               <>
                                 <button
                                   onClick={() => setEditingProduct(p)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-300 dark:hover:border-amber-500/50 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
                                 >
                                   <Edit className="w-3.5 h-3.5" />
                                   Edit
                                 </button>
                                 <button
                                   onClick={() => handleDeleteProduct(p.id, p.name)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-300 dark:hover:border-rose-500/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                   Delete
@@ -1144,19 +1144,17 @@ function ProductsPageContent() {
                     const prodLinkLogs = matchingProd?.linkLogs || a.product?.linkLogs || [];
                     const isPublished = Boolean(a.articleLink || status === "APPROVED" || status === "COMPLETED");
                     const hasLinks = prodLinkLogs.length > 0 && prodLinkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
-                    const isPublishedWithoutLinks = isPublished && !hasLinks;
-
                     return (
-                      <tr key={a.id} className={`hover:bg-slate-50/50 transition-colors group ${isPublishedWithoutLinks ? "bg-rose-50/20" : ""}`}>
-                        <td className={`px-3 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 border-l-4 border-l-rose-500" : ""}`}>
+                      <tr key={a.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group ${isPublishedWithoutLinks ? "bg-rose-50/20 dark:bg-rose-950/20" : ""}`}>
+                        <td className={`px-3 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 dark:bg-rose-950/40 border-l-4 border-l-rose-500" : ""}`}>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <button
                               type="button"
                               onClick={() => handleViewProductDetails(a)}
                               className={`text-[13px] font-bold text-left cursor-pointer transition-colors ${
                                 isPublishedWithoutLinks
-                                  ? "text-rose-900 hover:text-rose-700 underline decoration-rose-400"
-                                  : "text-slate-800 hover:text-blue-600 hover:underline"
+                                  ? "text-rose-900 dark:text-rose-300 hover:text-rose-700 dark:hover:text-rose-200 underline decoration-rose-400"
+                                  : "text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-sky-400 hover:underline"
                               }`}
                               title="Click to view product details"
                             >
@@ -1164,15 +1162,15 @@ function ProductsPageContent() {
                             </button>
                             {isPublishedWithoutLinks && (
                               <span
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs whitespace-nowrap"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 shadow-2xs whitespace-nowrap"
                                 title="Article is published, but this product has NO affiliate links configured!"
                               >
-                                <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
                                 No Links
                               </span>
                             )}
                           </div>
-                          <span className="text-[11px] font-mono text-slate-400 block truncate">
+                          <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 block truncate">
                             /{a.product?.slug || a.product?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
                           </span>
                         </td>
@@ -1182,22 +1180,22 @@ function ProductsPageContent() {
                               href={a.product.site.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[13px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] hover:underline inline-flex items-center gap-1"
+                              className="text-[13px] font-semibold text-[#6D8196] dark:text-sky-400 hover:text-[#4A4A4A] dark:hover:text-white hover:underline inline-flex items-center gap-1"
                             >
                               <span>{a.product.site.name}</span>
-                              <ExternalLink className="w-3 h-3 text-slate-400" />
+                              <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                             </a>
                           ) : (
-                            <span className="text-[13px] font-medium text-slate-600">{a.product?.site?.name || "-"}</span>
+                            <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{a.product?.site?.name || "-"}</span>
                           )}
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className="text-[13px] font-medium text-slate-600">
+                          <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">
                             {a.product?.productCategory || a.product?.category?.name || "-"}
                           </span>
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-200 bg-slate-50 text-slate-700">
+                          <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                             {a.product?.category?.name || "Ecom"}
                           </span>
                         </td>
@@ -1212,17 +1210,17 @@ function ProductsPageContent() {
                               href={a.articleLink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:underline max-w-[140px] truncate"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline max-w-[140px] truncate"
                             >
                               <span>View Link</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           ) : (
-                            <span className="text-xs text-slate-400 italic">Not submitted</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500 italic">Not submitted</span>
                           )}
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className="text-[12px] font-medium text-slate-500">
+                          <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
                             {new Date(a.updatedAt || a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                           </span>
                         </td>
@@ -1241,7 +1239,7 @@ function ProductsPageContent() {
                             ) : (
                               <Link
                                 href={`/articles/${a.id}`}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap shadow-2xs"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-500/50 hover:bg-[#FAF9F5] dark:hover:bg-slate-700/60 transition-all text-[11px] font-semibold whitespace-nowrap shadow-2xs"
                               >
                                 <FileText className="w-3.5 h-3.5" />
                                 Review
@@ -1255,7 +1253,7 @@ function ProductsPageContent() {
                                 onClick={() => handleViewProductDetails(a)}
                                 title="View Product Details"
                                 aria-label="View Product Details"
-                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs shrink-0"
+                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 dark:border-blue-800/70 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/70 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer shadow-2xs shrink-0"
                               >
                                 <Info className="w-3.5 h-3.5" />
                               </button>
@@ -1270,7 +1268,7 @@ function ProductsPageContent() {
                                   setIssueMessage("");
                                 }}
                                 title="Report Link Issue"
-                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 transition-all cursor-pointer shadow-2xs shrink-0"
+                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-rose-200 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 hover:border-rose-300 dark:hover:border-rose-700 transition-all cursor-pointer shadow-2xs shrink-0"
                               >
                                 <AlertTriangle className="w-3.5 h-3.5" />
                               </button>
@@ -1341,62 +1339,62 @@ function ProductsPageContent() {
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 border border-slate-100 animate-scaleIn max-h-[92vh] overflow-y-auto">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 border border-slate-100 dark:border-slate-800 animate-scaleIn max-h-[92vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shadow-xs">
+                  <div className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-xs">
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">Report Link Issue</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">Alert linkers and admins about broken or invalid links</p>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Report Link Issue</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Alert linkers and admins about broken or invalid links</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setReportingProduct(null)}
-                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
+                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Product Info & Links Summary */}
-              <div className="p-3.5 bg-[#FAF9F5] rounded-xl border border-[#CBCBCB]/70 text-xs space-y-2">
+              <div className="p-3.5 bg-[#FAF9F5] dark:bg-slate-800/70 rounded-xl border border-[#CBCBCB]/70 dark:border-slate-700 text-xs space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <span className="text-slate-500 font-medium block text-[11px]">Product:</span>{" "}
-                    <strong className="text-slate-800 text-xs">{reportingProduct.name}</strong>
+                    <span className="text-slate-500 dark:text-slate-400 font-medium block text-[11px]">Product:</span>{" "}
+                    <strong className="text-slate-800 dark:text-slate-100 text-xs">{reportingProduct.name}</strong>
                   </div>
                   <div>
-                    <span className="text-slate-500 font-medium block text-[11px]">Site:</span>{" "}
-                    <strong className="text-slate-800 text-xs">{reportingProduct.site?.name}</strong>
+                    <span className="text-slate-500 dark:text-slate-400 font-medium block text-[11px]">Site:</span>{" "}
+                    <strong className="text-slate-800 dark:text-slate-100 text-xs">{reportingProduct.site?.name}</strong>
                   </div>
                 </div>
                 {reportingProduct.affiliateName && (
                   <div>
-                    <span className="text-slate-500 font-medium">Affiliate:</span>{" "}
-                    <strong className="text-slate-800">{reportingProduct.affiliateName}</strong>
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Affiliate:</span>{" "}
+                    <strong className="text-slate-800 dark:text-slate-100">{reportingProduct.affiliateName}</strong>
                   </div>
                 )}
                 {reportingProduct.linkLogs && reportingProduct.linkLogs.length > 0 && (
-                  <div className="pt-1 border-t border-slate-200/60">
-                    <span className="text-slate-500 font-medium block text-[11px] mb-1">
+                  <div className="pt-1 border-t border-slate-200/60 dark:border-slate-700">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium block text-[11px] mb-1">
                       Configured Links ({reportingProduct.linkLogs.length}):
                     </span>
                     <div className="space-y-1">
                       {reportingProduct.linkLogs.map((l: any, idx: number) => (
                         <div
                           key={l.id || idx}
-                          className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white border border-slate-200/80 text-[11px]"
+                          className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-[11px]"
                         >
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="font-bold text-slate-700 truncate">{l.affiliateName || "Link"}</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-200 truncate">{l.affiliateName || "Link"}</span>
                             {l.affiliateLink && (
                               <a
                                 href={l.affiliateLink}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-[10px] text-blue-600 hover:underline truncate max-w-[180px] font-mono"
+                                className="text-[10px] text-blue-600 dark:text-sky-400 hover:underline truncate max-w-[180px] font-mono"
                               >
                                 {l.affiliateLink}
                               </a>
@@ -1404,10 +1402,10 @@ function ProductsPageContent() {
                           </div>
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${l.status === "ISSUE"
-                                ? "bg-rose-100 text-rose-700 border border-rose-200"
+                                ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60"
                                 : l.status === "ACCEPTED"
-                                  ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                  : "bg-blue-50 text-blue-700 border border-blue-200"
+                                  ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                                  : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60"
                               }`}
                           >
                             {l.status}
@@ -1423,25 +1421,25 @@ function ProductsPageContent() {
               {hasAnyBeforeRemark && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-sky-400" />
                       Before Remarks
                     </label>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 flex items-center gap-1">
                       Before Remark
                     </span>
                   </div>
 
-                  <div className="max-h-52 overflow-y-auto space-y-2.5 p-3 bg-amber-50/50 rounded-xl border border-amber-200/80 shadow-2xs">
+                  <div className="max-h-52 overflow-y-auto space-y-2.5 p-3 bg-amber-50/50 dark:bg-amber-950/30 rounded-xl border border-amber-200/80 dark:border-amber-900/50 shadow-2xs">
                     {linkLogsWithRemarks.map((l: any, idx: number) => (
                       <div key={l.id || idx} className="space-y-1">
                         {linkLogsWithRemarks.length > 1 && (
-                          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
-                            <span className="px-1.5 py-0.5 rounded bg-white border border-slate-200 font-bold text-slate-700">
+                          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                            <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-200">
                               {l.affiliateName || "Link"}
                             </span>
                             <span>•</span>
-                            <span className="uppercase text-[9px] font-bold text-slate-500">Status: {l.status}</span>
+                            <span className="uppercase text-[9px] font-bold text-slate-500 dark:text-slate-400">Status: {l.status}</span>
                           </div>
                         )}
                         <FormattedRemarks remarks={l.linkerRemarks} date={l.updatedAt || l.addedAt} />
@@ -1453,7 +1451,7 @@ function ProductsPageContent() {
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-[#4A4A4A] dark:text-slate-200 uppercase tracking-wider">
                     Issue Description <span className="text-rose-500">*</span>
                   </label>
                   {hasAnyBeforeRemark && (
@@ -1463,7 +1461,7 @@ function ProductsPageContent() {
                         const prev = linkLogsWithRemarks.map((l: any) => l.linkerRemarks).join("\n");
                         setIssueMessage((curr) => (curr ? `${curr}\n${prev}` : prev));
                       }}
-                      className="text-[10px] font-semibold text-blue-600 hover:underline cursor-pointer"
+                      className="text-[10px] font-semibold text-blue-600 dark:text-sky-400 hover:underline cursor-pointer"
                     >
                       Copy Before Remark
                     </button>
@@ -1474,7 +1472,7 @@ function ProductsPageContent() {
                   value={issueMessage}
                   onChange={(e) => setIssueMessage(e.target.value)}
                   placeholder="Describe the issue (e.g. 404 dead link, wrong redirect, expired offer, broken affiliate tag)..."
-                  className="w-full px-3.5 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 shadow-2xs resize-none placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 shadow-2xs resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               </div>
 
@@ -1482,7 +1480,7 @@ function ProductsPageContent() {
                 <button
                   type="button"
                   onClick={() => setReportingProduct(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer transition shadow-2xs"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition shadow-2xs"
                 >
                   Cancel
                 </button>

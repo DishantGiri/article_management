@@ -45,14 +45,14 @@ interface LinkLog {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  REQUESTED: "bg-blue-50 text-blue-700 border border-blue-200/60",
-  ACCEPTED: "bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30",
-  CANCELED: "bg-slate-100 text-slate-600 border border-slate-200",
-  ISSUE: "bg-rose-50 text-rose-700 border border-rose-200/60",
-  NEED_TO_CHECK: "bg-amber-50 text-amber-700 border border-amber-200/60",
-  PRESELL_PAGE: "bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30",
-  REDIRECTED: "bg-yellow-50 text-yellow-800 border border-yellow-200/60",
-  ALERT: "bg-red-50 text-red-700 border border-red-200/60",
+  REQUESTED: "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60",
+  ACCEPTED: "bg-[#6D8196]/15 dark:bg-[#6D8196]/30 text-[#3D4F61] dark:text-sky-200 border border-[#6D8196]/30 dark:border-[#6D8196]/50",
+  CANCELED: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700",
+  ISSUE: "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60",
+  NEED_TO_CHECK: "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60",
+  PRESELL_PAGE: "bg-[#6D8196]/15 dark:bg-[#6D8196]/30 text-[#3D4F61] dark:text-sky-200 border border-[#6D8196]/30 dark:border-[#6D8196]/50",
+  REDIRECTED: "bg-yellow-50 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 border border-yellow-200/60 dark:border-yellow-800/60",
+  ALERT: "bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200/60 dark:border-red-800/60",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -496,16 +496,16 @@ function LinksPageContent() {
             <>
               <button
                 onClick={() => setIsGeoModalOpen(true)}
-                className="px-4 py-2 bg-white border border-slate-200 text-[#4A4A4A] rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] shadow-xs transition flex items-center gap-2 cursor-pointer"
+                className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#4A4A4A] dark:text-slate-200 rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] dark:hover:bg-slate-750 shadow-xs transition flex items-center gap-2 cursor-pointer"
               >
-                <Globe className="w-4 h-4 text-[#6D8196]" />
+                <Globe className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
                 GEOs
               </button>
               <button
                 onClick={() => setIsAffiliateModalOpen(true)}
-                className="px-4 py-2 bg-white border border-slate-200 text-[#4A4A4A] rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] shadow-xs transition flex items-center gap-2 cursor-pointer"
+                className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#4A4A4A] dark:text-slate-200 rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] dark:hover:bg-slate-750 shadow-xs transition flex items-center gap-2 cursor-pointer"
               >
-                <Tag className="w-4 h-4 text-[#6D8196]" />
+                <Tag className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
                 Affiliates
               </button>
               <button
@@ -519,8 +519,8 @@ function LinksPageContent() {
           )}
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
-            <Download className="w-4 h-4 text-slate-500" />
+            className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-750 shadow-sm transition flex items-center gap-2 cursor-pointer">
+            <Download className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             Export
           </button>
         </div>
@@ -535,17 +535,17 @@ function LinksPageContent() {
               setShowOnlyDeadLinks(false);
               setCurrentPage(1);
             }}
-            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${!statusFilter && !showOnlyDeadLinks
-                ? "border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50/5"
-                : "border-slate-200/60 hover:border-indigo-300"
+            className={`bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${!statusFilter && !showOnlyDeadLinks
+                ? "border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50/5 dark:bg-indigo-950/20"
+                : "border-slate-200/60 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600"
               }`}
           >
-            <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 mb-2">
+            <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/60 flex items-center justify-center text-purple-500 dark:text-purple-400 mb-2">
               <Network className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.linkStats?.affiliateNetworks || 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Affiliate Networks</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.linkStats?.affiliateNetworks || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider mt-1">Affiliate Networks</p>
             </div>
           </div>
 
@@ -555,20 +555,20 @@ function LinksPageContent() {
               setShowOnlyDeadLinks(true);
               setCurrentPage(1);
             }}
-            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 relative cursor-pointer transition-all border ${showOnlyDeadLinks
-                ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/5"
-                : "border-slate-200/60 hover:border-rose-300"
+            className={`bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 relative cursor-pointer transition-all border ${showOnlyDeadLinks
+                ? "border-rose-500 ring-1 ring-rose-500 bg-rose-50/5 dark:bg-rose-950/20"
+                : "border-slate-200/60 dark:border-slate-800 hover:border-rose-300 dark:hover:border-rose-600"
               }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+              <div className="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-950/60 flex items-center justify-center text-rose-500 dark:text-rose-400">
                 <AlertTriangle className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full flex items-center gap-1">↓ 2</span>
+              <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full flex items-center gap-1">↓ 2</span>
             </div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.linkStats?.deadLinks || 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Dead Links</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.linkStats?.deadLinks || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider mt-1">Dead Links</p>
             </div>
           </div>
 
@@ -578,17 +578,17 @@ function LinksPageContent() {
               setShowOnlyDeadLinks(false);
               setCurrentPage(1);
             }}
-            className={`bg-white rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${statusFilter === "ISSUE" && !showOnlyDeadLinks
-                ? "border-amber-500 ring-1 ring-amber-500 bg-amber-50/5"
-                : "border-slate-200/60 hover:border-amber-300"
+            className={`bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm flex flex-col justify-between h-32 cursor-pointer transition-all border ${statusFilter === "ISSUE" && !showOnlyDeadLinks
+                ? "border-amber-500 ring-1 ring-amber-500 bg-amber-50/5 dark:bg-amber-950/20"
+                : "border-slate-200/60 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-600"
               }`}
           >
-            <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 mb-2">
+            <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-500 dark:text-amber-400 mb-2">
               <AlertTriangle className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-3xl font-bold text-slate-800">{stats.linkStats?.issueLinks || 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Issue Links</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.linkStats?.issueLinks || 0}</p>
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider mt-1">Issue Links</p>
             </div>
           </div>
         </div>
@@ -605,16 +605,16 @@ function LinksPageContent() {
       )}
 
       {/* Tabs Selector for Links */}
-      <div className="flex border-b border-[#CBCBCB]/60 mb-6 gap-2">
+      <div className="flex border-b border-[#CBCBCB]/60 dark:border-slate-800 mb-6 gap-2">
         <button
           onClick={() => { setStatusFilter(""); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
           className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${!statusFilter && !showOnlyDeadLinks
-              ? "border-[#6D8196] text-[#6D8196] font-bold"
-              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+              ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400 font-bold"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
         >
           <span>All Links</span>
-          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${!statusFilter && !showOnlyDeadLinks ? "bg-slate-200 text-slate-700" : "bg-slate-100 text-slate-500"
+          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${!statusFilter && !showOnlyDeadLinks ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
             }`}>
             {links.length}
           </span>
@@ -622,13 +622,13 @@ function LinksPageContent() {
         <button
           onClick={() => { setStatusFilter("ISSUE"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
           className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === "ISSUE"
-              ? "border-rose-500 text-rose-600 font-bold"
-              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+              ? "border-rose-500 text-rose-600 dark:text-rose-400 font-bold"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
         >
           <span>Flagged Links</span>
           {flaggedLinksCount > 0 && (
-            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700 rounded-full">
+            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 rounded-full">
               {flaggedLinksCount}
             </span>
           )}
@@ -636,13 +636,13 @@ function LinksPageContent() {
         <button
           onClick={() => { setStatusFilter("REQUESTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
           className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === "REQUESTED"
-              ? "border-[#6D8196] text-[#6D8196] font-bold"
-              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+              ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400 font-bold"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
         >
           <span>Pending Requests</span>
           {pendingRequestsCount > 0 && (
-            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${statusFilter === "REQUESTED" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${statusFilter === "REQUESTED" ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
               }`}>
               {pendingRequestsCount}
             </span>
@@ -651,13 +651,13 @@ function LinksPageContent() {
         <button
           onClick={() => { setStatusFilter("ACCEPTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
           className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === "ACCEPTED"
-              ? "border-[#6D8196] text-[#6D8196] font-bold"
-              : "border-transparent text-slate-500 hover:text-[#4A4A4A]"
+              ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400 font-bold"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
         >
           <span>Accepted Links</span>
           {acceptedLinksCount > 0 && (
-            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${statusFilter === "ACCEPTED" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${statusFilter === "ACCEPTED" ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
               }`}>
               {acceptedLinksCount}
             </span>
@@ -681,7 +681,7 @@ function LinksPageContent() {
       )}
 
       {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-[#CBCBCB]/60 shadow-xs mb-6">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs mb-6">
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -693,13 +693,13 @@ function LinksPageContent() {
               placeholder="Search link logs, products, networks..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6D8196] focus:border-transparent bg-slate-50 focus:bg-white transition"
+              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#6D8196] focus:border-transparent bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-800 transition"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => { setSearch(""); router.replace("/links"); setCurrentPage(1); }}
-                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -716,7 +716,7 @@ function LinksPageContent() {
             ]}
             placeholder="All Statuses"
             className="w-auto min-w-[135px]"
-            triggerClassName="px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+            triggerClassName="px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
           />
 
           {/* User Filter */}
@@ -729,7 +729,7 @@ function LinksPageContent() {
             ]}
             placeholder="All Users"
             className="w-auto min-w-[130px]"
-            triggerClassName="px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+            triggerClassName="px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
           />
 
           {/* Date Range Picker */}
@@ -760,7 +760,7 @@ function LinksPageContent() {
       </div>
 
       {/* Table Content */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-12">
             <LoadingScreen
@@ -771,28 +771,28 @@ function LinksPageContent() {
           </div>
         ) : sortedFiltered.length === 0 ? (
           <div className="p-16 text-center">
-            <p className="text-slate-500 font-medium">No links found</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">No links found</p>
           </div>
         ) : (
           <div className="overflow-x-auto p-4">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Article Link</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bridge Page</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Affiliate</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Geo</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Added By</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Modified By</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Remarks</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-[12%]">Actions</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Product</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Site</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Article Link</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Bridge Page</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Affiliate</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Geo</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Added By</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Modified By</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Date</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-center">Remarks</th>
+                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-center w-[12%]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                 {paginated.map((l) => {
                   const statusStyle = STATUS_STYLES[l.status] || STATUS_STYLES.REQUESTED;
                   const statusLabel = STATUS_LABELS[l.status] || l.status;
@@ -806,50 +806,50 @@ function LinksPageContent() {
                   return (
                     <tr
                       key={l.id}
-                      className={`hover:bg-slate-50/50 transition-colors group ${isNotificationMatch ? "bg-amber-50/30 ring-1 ring-amber-400/40" : ""
+                      className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group ${isNotificationMatch ? "bg-amber-50/30 dark:bg-amber-950/30 ring-1 ring-amber-400/40" : ""
                         }`}
                     >
                       <td className="px-3 py-3.5 max-w-[240px]">
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[13px] font-semibold text-slate-800 break-words block">{l.product.name}</span>
+                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 break-words block">{l.product.name}</span>
                             {l.status === "ISSUE" && (
                               <span className="inline-flex items-center text-rose-500 hover:text-rose-700 cursor-pointer" title="Flagged Link Issue">
                                 <AlertTriangle className="w-3.5 h-3.5" />
                               </span>
                             )}
                           </div>
-                          <span className="text-[11px] font-mono text-slate-400 block truncate">
+                          <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 block truncate">
                             /{l.product.slug || l.product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
                           </span>
                         </div>
                       </td>
                       {/* Fix 2: Site Name column */}
                       <td className="px-3 py-3.5">
-                        <span className="text-[11px] font-bold text-[#3D4F61] bg-[#6D8196]/15 border border-[#6D8196]/30 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-bold text-[#3D4F61] dark:text-sky-200 bg-[#6D8196]/15 dark:bg-[#6D8196]/30 border border-[#6D8196]/30 dark:border-[#6D8196]/50 px-2 py-0.5 rounded-full">
                           {l.product.site?.name || "-"}
                         </span>
                       </td>
                       <td className="px-3 py-3.5">
                         {l.product.article?.articleLink ? (
-                          <a href={ensureExternalUrl(l.product.article.articleLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] transition">
+                          <a href={ensureExternalUrl(l.product.article.articleLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] dark:text-sky-400 hover:text-[#4A4A4A] dark:hover:text-white transition">
                             <ExternalLink className="w-3.5 h-3.5" />
                             Article
                           </a>
                         ) : (
-                          <span className="text-[12px] font-semibold text-slate-400">
+                          <span className="text-[12px] font-semibold text-slate-400 dark:text-slate-500">
                             --
                           </span>
                         )}
                       </td>
                       <td className="px-3 py-3.5">
                         {l.bridgePageLink ? (
-                          <a href={ensureExternalUrl(l.bridgePageLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] transition">
+                          <a href={ensureExternalUrl(l.bridgePageLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] dark:text-sky-400 hover:text-[#4A4A4A] dark:hover:text-white transition">
                             <ExternalLink className="w-3.5 h-3.5" />
                             Link
                           </a>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-rose-500">
+                          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-rose-500 dark:text-rose-400">
                             <AlertTriangle className="w-3.5 h-3.5" />
                             Missing
                           </span>
@@ -873,13 +873,13 @@ function LinksPageContent() {
                             <td className="px-3 py-3.5">
                               {selectedGeo && selectedGeoItem ? (
                                 <div className="flex flex-col gap-0.5">
-                                  <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-200">
+                                  <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
                                     {activeAffiliateName}
                                   </span>
-                                  <span className="text-[10px] font-medium text-[#6D8196] flex items-center gap-1">
+                                  <span className="text-[10px] font-medium text-[#6D8196] dark:text-sky-400 flex items-center gap-1">
                                     <span>{getCountryFlag(selectedGeoItem.geo)}</span>
                                     <span>{selectedGeoItem.geo}</span>
-                                    <span className="text-slate-400">· active network</span>
+                                    <span className="text-slate-400 dark:text-slate-400">· active network</span>
                                   </span>
                                 </div>
                               ) : (() => {
@@ -904,7 +904,7 @@ function LinksPageContent() {
                                               }));
                                             }
                                           }}
-                                          className="px-1.5 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[10px] border border-blue-200/60 transition cursor-pointer"
+                                          className="px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200/60 dark:border-blue-800/60 transition cursor-pointer"
                                           title={`Click to switch to ${aff}`}
                                         >
                                           {aff}
@@ -926,7 +926,7 @@ function LinksPageContent() {
                               {(() => {
                                 const geos = l.geos || [];
                                 if (geos.length === 0) {
-                                  return <span className="text-[12px] font-semibold text-slate-300">--</span>;
+                                  return <span className="text-[12px] font-semibold text-slate-300 dark:text-slate-500">--</span>;
                                 }
 
                                 return (
@@ -948,8 +948,8 @@ function LinksPageContent() {
                                             }}
                                             className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-all flex items-center gap-1 cursor-pointer border ${
                                               isSelected
-                                                ? "bg-[#3D4F61] text-white border-[#3D4F61] shadow-2xs ring-2 ring-[#6D8196]/30 font-extrabold"
-                                                : "bg-[#FAF9F5] text-[#4A4A4A] border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#6D8196]/10"
+                                                ? "bg-[#3D4F61] dark:bg-sky-600 text-white border-[#3D4F61] dark:border-sky-500 shadow-2xs ring-2 ring-[#6D8196]/30 dark:ring-sky-500/30 font-extrabold"
+                                                : "bg-[#FAF9F5] dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 border-[#CBCBCB] dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 hover:bg-[#6D8196]/10 dark:hover:bg-slate-700"
                                             }`}
                                             title={`Click to toggle ${g.geo}${g.affiliateName ? ` - ${g.affiliateName}` : ""}`}
                                           >
@@ -964,7 +964,7 @@ function LinksPageContent() {
                                           onClick={() => {
                                             setSelectedRowGeos((prev) => ({ ...prev, [l.productId]: "" }));
                                           }}
-                                          className="text-[9px] font-semibold text-slate-400 hover:text-slate-700 underline ml-0.5 cursor-pointer"
+                                          className="text-[9px] font-semibold text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white underline ml-0.5 cursor-pointer"
                                           title="Reset country selection"
                                         >
                                           Reset
@@ -974,9 +974,9 @@ function LinksPageContent() {
 
                                     {/* Link Card for Active / Country Link */}
                                     {activeAffiliateLink ? (
-                                      <div className="flex items-center gap-1 bg-[#FAF9F5] px-2 py-1 rounded-md border border-slate-200 shadow-2xs">
+                                      <div className="flex items-center gap-1 bg-[#FAF9F5] dark:bg-slate-800 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 shadow-2xs">
                                         {selectedGeo && (
-                                          <span className="px-1.5 py-0.2 rounded bg-white text-[#3D4F61] font-extrabold text-[9px] uppercase border border-slate-200 shrink-0">
+                                          <span className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-700 text-[#3D4F61] dark:text-sky-200 font-extrabold text-[9px] uppercase border border-slate-200 dark:border-slate-600 shrink-0">
                                             {selectedGeo}
                                           </span>
                                         )}
@@ -984,7 +984,7 @@ function LinksPageContent() {
                                           href={ensureExternalUrl(activeAffiliateLink)}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="text-xs font-mono text-[#6D8196] hover:text-[#4A4A4A] hover:underline truncate max-w-[170px]"
+                                          className="text-xs font-mono text-[#6D8196] dark:text-sky-400 hover:text-[#4A4A4A] dark:hover:text-white hover:underline truncate max-w-[170px]"
                                           title={activeAffiliateLink}
                                         >
                                           {activeAffiliateLink.replace(/^https?:\/\/(www\.)?/, "")}
@@ -999,7 +999,7 @@ function LinksPageContent() {
                                                 `${selectedGeo ? `${selectedGeo} ` : ""}affiliate link`
                                               )
                                             }
-                                            className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition cursor-pointer"
                                             title={`Copy ${selectedGeo ? `${selectedGeo} ` : ""}affiliate link`}
                                           >
                                             {copiedKey === `aff-${l.id}-${selectedGeo || "all"}` ? (
@@ -1012,7 +1012,7 @@ function LinksPageContent() {
                                             href={ensureExternalUrl(activeAffiliateLink)}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
+                                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition"
                                             title={`Open ${selectedGeo ? `${selectedGeo} ` : ""}affiliate link`}
                                           >
                                             <ExternalLink className="w-3 h-3" />
@@ -1020,7 +1020,7 @@ function LinksPageContent() {
                                         </div>
                                       </div>
                                     ) : (
-                                      <span className="text-[10px] text-slate-400 italic">No affiliate link</span>
+                                      <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">No affiliate link</span>
                                     )}
                                   </div>
                                 );
@@ -1035,19 +1035,19 @@ function LinksPageContent() {
                         </span>
                       </td>
                       <td className="px-3 py-3.5">
-                        <span className="text-[13px] font-medium text-slate-600">{l.addedBy?.name || "-"}</span>
+                        <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{l.addedBy?.name || "-"}</span>
                       </td>
                       <td className="px-3 py-3.5">
                         {l.updatedBy?.name ? (
-                          <span className="text-[11px] font-semibold text-[#3D4F61] bg-[#6D8196]/10 px-2 py-0.5 rounded-md border border-[#6D8196]/20">
+                          <span className="text-[11px] font-semibold text-[#3D4F61] dark:text-sky-200 bg-[#6D8196]/10 dark:bg-[#6D8196]/25 px-2 py-0.5 rounded-md border border-[#6D8196]/20 dark:border-[#6D8196]/40">
                             {l.updatedBy.name}
                           </span>
                         ) : (
-                          <span className="text-[12px] text-slate-400 italic">-</span>
+                          <span className="text-[12px] text-slate-400 dark:text-slate-500 italic">-</span>
                         )}
                       </td>
                       <td className="px-3 py-3.5">
-                        <span className="text-[12px] font-medium text-slate-500">
+                        <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
                           {new Date(l.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       </td>
@@ -1060,21 +1060,21 @@ function LinksPageContent() {
                               date: l.addedAt,
                               productName: l.product?.name
                             })}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[10px] font-bold cursor-pointer shadow-2xs"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-400 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 transition-all text-[10px] font-bold cursor-pointer shadow-2xs"
                             title="View Remarks Details"
                           >
                             <Info className="w-3.5 h-3.5" />
                             View
                           </button>
                         ) : (
-                          <span className="text-[12px] font-semibold text-slate-300">-</span>
+                          <span className="text-[12px] font-semibold text-slate-300 dark:text-slate-500">-</span>
                         )}
                       </td>
                       <td className="px-3 py-3.5 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => setHistoryLinkLog(l)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[10px] font-bold cursor-pointer shadow-2xs"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-400 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 transition-all text-[10px] font-bold cursor-pointer shadow-2xs"
                             title="View History Details"
                           >
                             <Clock className="w-3.5 h-3.5" />
@@ -1084,14 +1084,14 @@ function LinksPageContent() {
                             <>
                               <button
                                 onClick={() => setEditingLink(l)}
-                                className="p-1.5 rounded-md border border-[#CBCBCB] bg-white text-slate-500 hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition cursor-pointer shadow-2xs"
+                                className="p-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-400 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 transition cursor-pointer shadow-2xs"
                                 title="Edit Link"
                               >
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleDeleteLink(l.id, l.allLinkIds)}
-                                className="p-1.5 rounded-md border border-[#CBCBCB] bg-white text-slate-500 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition cursor-pointer shadow-2xs"
+                                className="p-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer shadow-2xs"
                                 title="Delete Link"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />

@@ -38,24 +38,24 @@ interface Article {
 
 function PriorityBadge({ priority }: { priority: "LOW" | "MEDIUM" | "HIGH" }) {
   if (priority === "HIGH") return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 animate-pulse">
       <Flame className="w-2.5 h-2.5" /> HIGH
     </span>
   );
   if (priority === "LOW") return (
-    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">LOW</span>
+    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">LOW</span>
   );
   return (
-    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">MED</span>
+    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60">MED</span>
   );
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-slate-100 text-slate-700 border border-slate-200/50",
-  IN_PROGRESS: "bg-blue-50 text-blue-700 border border-blue-200/50",
-  COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/50",
-  APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/50",
-  REDO: "bg-rose-50 text-rose-700 border border-rose-200/50",
+  PENDING: "bg-slate-100 text-slate-700 border border-slate-200/50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700/60",
+  IN_PROGRESS: "bg-blue-50 text-blue-700 border border-blue-200/50 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/60",
+  COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/50 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/60",
+  APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/50 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60",
+  REDO: "bg-rose-50 text-rose-700 border border-rose-200/50 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60",
 };
 
 const generateSlug = (productName: string) => {

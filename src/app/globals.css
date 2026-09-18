@@ -203,6 +203,11 @@ body {
   color: #94a3b8 !important;
 }
 
+.dark .text-slate-300,
+.dark .text-gray-300 {
+  color: #94a3b8 !important;
+}
+
 .dark .border-slate-200,
 .dark .border-gray-200,
 .dark .border-slate-100,
@@ -242,7 +247,7 @@ body {
 }
 
 .dark table tbody tr:hover {
-  background-color: #334155 !important;
+  background-color: #1e293b !important;
 }
 
 .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
@@ -264,9 +269,15 @@ body {
 /* Universal Dark Mode Hover Styles */
 .dark .hover\:bg-\[\#FAF9F5\]:hover,
 .dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-50\/40:hover,
+.dark .hover\:bg-slate-50\/50:hover,
+.dark .hover\:bg-slate-50\/60:hover,
+.dark .hover\:bg-slate-50\/70:hover,
+.dark .hover\:bg-slate-50\/80:hover,
 .dark .hover\:bg-gray-50:hover,
-.dark [class*="hover:bg-[#FAF9F5]"]:hover {
-  background-color: #1e293b !important;
+.dark [class*="hover:bg-[#FAF9F5]"]:hover,
+.dark [class*="hover:bg-slate-50"]:hover {
+  background-color: #334155 !important;
   color: #f8fafc !important;
 }
 
@@ -275,9 +286,77 @@ body {
   color: #f8fafc !important;
 }
 
-.dark .hover\:text-slate-900:hover,
-.dark .hover\:text-gray-900:hover {
+.dark .hover\:bg-slate-100:hover,
+.dark [class*="hover:bg-slate-100"]:hover {
+  background-color: #334155 !important;
   color: #f8fafc !important;
+}
+
+.dark .hover\:bg-blue-100:hover,
+.dark [class*="hover:bg-blue-100"]:hover {
+  background-color: rgba(30, 58, 138, 0.6) !important;
+  color: #93c5fd !important;
+}
+
+.dark .hover\:bg-emerald-100:hover,
+.dark [class*="hover:bg-emerald-100"]:hover {
+  background-color: rgba(6, 78, 59, 0.6) !important;
+  color: #6ee7b7 !important;
+}
+
+.dark .hover\:bg-rose-100:hover,
+.dark [class*="hover:bg-rose-100"]:hover {
+  background-color: rgba(76, 5, 25, 0.65) !important;
+  color: #fda4af !important;
+}
+
+.dark .hover\:bg-amber-100:hover,
+.dark [class*="hover:bg-amber-100"]:hover {
+  background-color: rgba(120, 53, 15, 0.65) !important;
+  color: #fcd34d !important;
+}
+
+.dark .hover\:bg-indigo-100:hover,
+.dark [class*="hover:bg-indigo-100"]:hover {
+  background-color: rgba(49, 46, 129, 0.65) !important;
+  color: #a5b4fc !important;
+}
+
+.dark .hover\:bg-\[\#6D8196\]\/10:hover,
+.dark .hover\:bg-\[\#6D8196\]\/15:hover,
+.dark .hover\:bg-\[\#6D8196\]\/20:hover {
+  background-color: rgba(109, 129, 150, 0.3) !important;
+}
+
+/* Fix dark text on hover turning black/invisible in dark mode */
+.dark .hover\:text-\[\#4A4A4A\]:hover,
+.dark [class*="hover:text-[#4A4A4A]"]:hover,
+.dark .hover\:text-\[\#1F2937\]:hover,
+.dark [class*="hover:text-[#1F2937]"]:hover,
+.dark .hover\:text-\[\#3D4F61\]:hover,
+.dark [class*="hover:text-[#3D4F61]"]:hover,
+.dark .hover\:text-slate-700:hover,
+.dark .hover\:text-slate-800:hover,
+.dark .hover\:text-slate-900:hover,
+.dark .hover\:text-gray-700:hover,
+.dark .hover\:text-gray-800:hover,
+.dark .hover\:text-gray-900:hover {
+  color: #ffffff !important;
+}
+
+.dark .hover\:text-\[\#6D8196\]:hover,
+.dark [class*="hover:text-[#6D8196]"]:hover {
+  color: #38bdf8 !important;
+}
+
+.dark .hover\:text-rose-700:hover,
+.dark .hover\:text-rose-800:hover {
+  color: #fda4af !important;
+}
+
+.dark .hover\:text-blue-700:hover,
+.dark .hover\:text-indigo-700:hover {
+  color: #93c5fd !important;
 }
 
 /* Status Banner & Tint Container Dark Adaptations */
@@ -486,7 +565,42 @@ body {
 
 .dark .text-\[\#3D4F61\],
 .dark [class*="text-[#3D4F61]"] {
-  color: #cbd5e1 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Ensure Slate Blue design token #6D8196 has vibrant high contrast in dark mode */
+.dark .text-\[\#6D8196\],
+.dark [class*="text-[#6D8196]"],
+.dark a.text-\[\#6D8196\],
+.dark .text-\[\#6D8196\] a {
+  color: #7dd3fc !important;
+}
+
+.dark .bg-\[\#6D8196\]\/10,
+.dark [class*="bg-[#6D8196]/10"],
+.dark .bg-\[\#6D8196\]\/15,
+.dark [class*="bg-[#6D8196]/15"],
+.dark .bg-\[\#6D8196\]\/20,
+.dark [class*="bg-[#6D8196]/20"] {
+  background-color: rgba(109, 129, 150, 0.25) !important;
+  border-color: rgba(109, 129, 150, 0.45) !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .bg-purple-50,
+.dark .bg-purple-50\/40,
+.dark .bg-purple-50\/50,
+.dark .bg-purple-50\/60,
+.dark .bg-purple-50\/70,
+.dark .bg-purple-50\/80 {
+  background-color: rgba(88, 28, 135, 0.35) !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
+}
+
+.dark .text-purple-500,
+.dark .text-purple-600,
+.dark .text-purple-700 {
+  color: #d8b4fe !important;
 }
 
 .dark .border-\[\#CBCBCB\],
