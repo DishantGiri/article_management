@@ -1439,23 +1439,22 @@ export default function AddLinkModal({
                     {bridgeLinkOptions.length > 0 && (
                       <div className="flex items-center gap-1">
                         <span className="text-[10px] text-slate-400">Presets:</span>
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              setBridgePageLink(e.target.value);
-                              setBridgeLinkError("");
-                            }
-                          }}
-                          className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-transparent cursor-pointer border-none outline-none hover:underline max-w-[150px] truncate"
-                        >
-                          <option value="" className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">Select preset...</option>
-                          {bridgeLinkOptions.map((opt, i) => (
-                            <option key={i} value={opt.value} className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="w-48">
+                          <CustomSelect
+                            value=""
+                            onChange={(val) => {
+                              if (val) {
+                                setBridgePageLink(val);
+                                setBridgeLinkError("");
+                              }
+                            }}
+                            placeholder="Select preset..."
+                            options={bridgeLinkOptions.map((opt) => ({
+                              value: opt.value,
+                              label: opt.label,
+                            }))}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1508,23 +1507,22 @@ export default function AddLinkModal({
                     {buyLinkOptions.length > 0 && (
                       <div className="flex items-center gap-1">
                         <span className="text-[10px] text-slate-400">Presets:</span>
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              setBuyLink(e.target.value);
-                              setBuyLinkError("");
-                            }
-                          }}
-                          className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-transparent cursor-pointer border-none outline-none hover:underline max-w-[150px] truncate"
-                        >
-                          <option value="" className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">Select preset...</option>
-                          {buyLinkOptions.map((opt, i) => (
-                            <option key={i} value={opt.value} className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="w-44">
+                          <CustomSelect
+                            value=""
+                            onChange={(val) => {
+                              if (val) {
+                                setBuyLink(val);
+                                setBuyLinkError("");
+                              }
+                            }}
+                            placeholder="Select preset..."
+                            options={buyLinkOptions.map((opt) => ({
+                              value: opt.value,
+                              label: opt.label,
+                            }))}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1587,22 +1585,23 @@ export default function AddLinkModal({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                  Remarks Template
+                  Remarks <span className="normal-case text-slate-400 dark:text-slate-500 font-medium tracking-normal">Quick</span>
                 </label>
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-slate-400">Quick fill:</span>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value) setLinkerRemarks(e.target.value);
-                    }}
-                    className="text-[10px] bg-transparent text-blue-600 dark:text-blue-400 font-semibold cursor-pointer border-none outline-none hover:underline"
-                  >
-                    <option value="">Choose preset...</option>
-                    {REMARK_TEMPLATES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
+                  <span className="text-[10px] text-slate-400">Template:</span>
+                  <div className="w-56">
+                    <CustomSelect
+                      value=""
+                      onChange={(val) => {
+                        if (val) setLinkerRemarks(val);
+                      }}
+                      placeholder="Choose preset..."
+                      options={REMARK_TEMPLATES.map((t) => ({
+                        value: t.value,
+                        label: t.label,
+                      }))}
+                    />
+                  </div>
                 </div>
               </div>
               <input

@@ -38,6 +38,7 @@ interface HistoryRecord {
   | "LINK_UPDATED"
   | "ARTICLE_UPDATE"
   | "LINK_LOG"
+  | "LINK_ADDED"
   | "LINK_FLAGGED";
   actionLabel: string;
   updatedById: number;
@@ -95,14 +96,23 @@ export default function HistoryPage() {
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    setLoading(true);
-    fetch("/api/history")
-      .then((r) => r.json())
-      .then((data) => {
-        setHistory(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+    const loadHistory = () => {
+      setLoading(true);
+      fetch("/api/history")
+        .then((r) => r.json())
+        .then((data) => {
+          setHistory(Array.isArray(data) ? data : []);
+        })
+        .catch((err) => console.error(err))
+        .finally(() => setLoading(false));
+    };
+
+    loadHistory();
+
+    // Refetch when user returns to this tab (e.g. after saving from a modal)
+    const handleFocus = () => loadHistory();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [session?.user?.id]);
 
   const filtered = history.filter((record) => {
@@ -126,6 +136,7 @@ export default function HistoryPage() {
       )
         return false;
       if (actionFilter === "LINK_LOG" && record.actionType !== "LINK_LOG") return false;
+      if (actionFilter === "LINK_ADDED" && record.actionType !== "LINK_ADDED") return false;
       if (actionFilter === "LINK_FLAGGED" && record.actionType !== "LINK_FLAGGED") return false;
     }
 
@@ -357,6 +368,29 @@ export default function HistoryPage() {
 
           <button
             onClick={() => {
+              setActionFilter("LINK_ADDED");
+              setTypeFilter("");
+              setCurrentPage(1);
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${actionFilter === "LINK_ADDED"
+                ? "bg-emerald-600 text-white shadow-2xs"
+                : "text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              }`}
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            <span>New Links Added</span>
+            {history.filter((h) => h.actionType === "LINK_ADDED").length > 0 && (
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${actionFilter === "LINK_ADDED" ? "bg-white text-emerald-700" : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
+                  }`}
+              >
+                {history.filter((h) => h.actionType === "LINK_ADDED").length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
               setActionFilter("LINK_FLAGGED");
               setTypeFilter("");
               setCurrentPage(1);
@@ -514,6 +548,11 @@ export default function HistoryPage() {
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 whitespace-nowrap">
                             <PlayCircle className="w-3 h-3 text-blue-500" />
                             Started Writing
+                          </span>
+                        ) : record.actionType === "LINK_ADDED" ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-700/80 shadow-2xs whitespace-nowrap">
+                            <Link2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            New Link Added
                           </span>
                         ) : record.actionType === "LINK_FLAGGED" ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 shadow-2xs whitespace-nowrap">

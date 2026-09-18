@@ -143,17 +143,28 @@ export async function GET() {
         h.newStatus === "ISSUE" ||
         Boolean(h.newRemarks && h.newRemarks.includes("[Flagged by"));
 
+      // Detect new link creation: no old values at all
+      const isNewLinkCreation =
+        !isFlaggedIssue &&
+        !h.oldStatus &&
+        !h.oldBridgeLink &&
+        !h.oldBuyLink &&
+        !h.oldAffiliateLink &&
+        !h.oldRemarks;
+
       const noteDetails =
         h.newRemarks ||
         (h.oldStatus && h.newStatus
           ? `Status changed from ${h.oldStatus} to ${h.newStatus}`
-          : "Link log updated");
+          : isNewLinkCreation
+            ? `New link log added (${h.newStatus || "REQUESTED"})`
+            : "Link log updated");
 
       return {
         id: `link-${h.id}`,
         type: "LINK",
-        actionType: isFlaggedIssue ? "LINK_FLAGGED" : "LINK_LOG",
-        actionLabel: isFlaggedIssue ? "Link Issue Flagged" : "Link Log Update",
+        actionType: isFlaggedIssue ? "LINK_FLAGGED" : isNewLinkCreation ? "LINK_ADDED" : "LINK_LOG",
+        actionLabel: isFlaggedIssue ? "Link Issue Flagged" : isNewLinkCreation ? "New Link Added" : "Link Log Update",
         updatedById: h.updatedById,
         updatedBy: h.updatedBy,
         writtenBy: h.linkLog?.addedBy || null,
