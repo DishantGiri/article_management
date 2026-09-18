@@ -81,16 +81,16 @@ export async function PATCH(
     const updatedBuy = buyLink !== undefined ? (buyLink ? String(buyLink).trim() : null) : existing.buyLink;
     const checkStatus = targetStatus !== undefined ? targetStatus : existing.status;
 
-    if (checkStatus === "ACCEPTED" && !updatedBridge) {
+    if (!updatedBridge) {
       return NextResponse.json(
-        { error: "Bridge Page Link is required before setting status to Accepted." },
+        { error: "Bridge Page Link is required before saving changes." },
         { status: 400 }
       );
     }
 
-    if (updatedBuy && !updatedBridge) {
+    if (!updatedBuy) {
       return NextResponse.json(
-        { error: "Bridge Page Link is required before adding a Buy Link." },
+        { error: "Buy Link is required before saving changes." },
         { status: 400 }
       );
     }

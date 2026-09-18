@@ -78,6 +78,7 @@ export default function AddLinkModal({
   const [loadingProducts, setLoadingProducts] = useState(false);
 
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [isChangingProduct, setIsChangingProduct] = useState(false);
   const [isSitesExpanded, setIsSitesExpanded] = useState(false);
   const [bridgePageLink, setBridgePageLink] = useState("");
   const [buyLink, setBuyLink] = useState("");
@@ -356,9 +357,11 @@ export default function AddLinkModal({
 
           if (preselectedProductId) {
             setSelectedProductId(preselectedProductId);
+            setIsChangingProduct(false);
           } else if (prods.length > 0) {
             const firstUnlinked = prods.find((p) => !p.linkLogs || p.linkLogs.length === 0);
             setSelectedProductId(firstUnlinked ? firstUnlinked.id : prods[0].id);
+            setIsChangingProduct(false);
           }
         })
         .catch((err) => {
@@ -502,10 +505,12 @@ export default function AddLinkModal({
           isValidUrl(e.affiliateLink) &&
           !e.linkError
       )) &&
+    !!bridgePageLink?.trim() &&
+    isValidUrl(bridgePageLink) &&
     !bridgeLinkError &&
-    !buyLinkError &&
-    !(status === "ACCEPTED" && !bridgePageLink?.trim()) &&
-    !(buyLink && !bridgePageLink);
+    !!buyLink?.trim() &&
+    isValidUrl(buyLink) &&
+    !buyLinkError;
 
   const handleSubmit = async () => {
     if (!selectedProductId || !selectedProduct) {
@@ -549,23 +554,23 @@ export default function AddLinkModal({
       return;
     }
 
-    if (buyLink && !bridgePageLink) {
-      setError(`Bridge Page Link is required before a Buy Link can be added.`);
+    if (!bridgePageLink?.trim()) {
+      setError("Bridge Page Link is required before saving changes.");
       return;
     }
 
-    if (bridgePageLink && !isValidUrl(bridgePageLink)) {
-      setError(`Please enter a valid Bridge Page Link (must start with http:// or https://)`);
+    if (!isValidUrl(bridgePageLink)) {
+      setError("Please enter a valid Bridge Page Link (must start with http:// or https://)");
       return;
     }
 
-    if (buyLink && !isValidUrl(buyLink)) {
-      setError(`Please enter a valid Buy Link (must start with http:// or https://)`);
+    if (!buyLink?.trim()) {
+      setError("Buy Link (Buy Now) is required before saving changes.");
       return;
     }
 
-    if (status === "ACCEPTED" && !bridgePageLink?.trim()) {
-      setError("Bridge Page Link is required before setting status to Accepted.");
+    if (!isValidUrl(buyLink)) {
+      setError("Please enter a valid Buy Link (must start with http:// or https://)");
       return;
     }
 
@@ -651,8 +656,8 @@ export default function AddLinkModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-1 sm:p-2.5 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-[98vw] max-w-[98vw] flex flex-col h-[96vh] max-h-[96vh] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-fadeIn">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[88vh] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200">
         {/* Header */}
         <div className="px-6 py-4 bg-[#4A4A4A] dark:bg-slate-800 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -696,7 +701,7 @@ export default function AddLinkModal({
                 )}
               </h2>
               <p className="text-xs text-white/80 font-normal">
-                Configure affiliate links and site-specific landing pages via dropdown selections
+                Configure affiliate links, bridge page, and buy now links via dropdown selections
               </p>
             </div>
           </div>
@@ -718,69 +723,119 @@ export default function AddLinkModal({
             </div>
           )}
 
-          {/* Section 1: Product (Locked) & Collapsible Site Switcher */}
-          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-xs">
+          {/* Section 1: Product Selection & Collapsible Site Switcher */}
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3.5 shadow-xs">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 Product <span className="text-rose-500">*</span>
               </label>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
-                <Lock className="w-3 h-3 text-amber-500" />
-                Product Name Locked
-              </span>
+              <div className="flex items-center gap-2">
+                {selectedProduct && (
+                  <button
+                    type="button"
+                    onClick={() => setIsChangingProduct(!isChangingProduct)}
+                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <span>{isChangingProduct ? "Hide Product Search" : "Switch Product"}</span>
+                    {isChangingProduct ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+                )}
+                {preselectedProductId && !isChangingProduct && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+                    <Lock className="w-3 h-3 text-amber-500" />
+                    Preselected
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* Locked Product Display Card */}
-            <div className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl flex items-center justify-between shadow-2xs">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-blue-100/70 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold shrink-0">
-                  <Tag className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                      {selectedProduct?.name || "Loading..."}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-200/80 dark:bg-slate-700/80 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      <Lock className="w-2.5 h-2.5 text-slate-500" />
-                      Locked
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap mt-1">
-                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                      Product Slug:
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/80 dark:border-indigo-800/60">
-                      /{productSlug}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (productSlug) {
-                          navigator.clipboard.writeText(productSlug);
-                          toast.success("Product slug copied!");
-                        }
-                      }}
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 cursor-pointer transition"
-                      title="Copy product slug"
-                    >
-                      <Copy className="w-3 h-3" />
-                      Copy
-                    </button>
-                  </div>
-                </div>
+            {/* Product Search Dropdown (Shown when changing product or if none selected) */}
+            {(isChangingProduct || !selectedProduct) && (
+              <div className="space-y-1">
+                <CustomSelect
+                  value={selectedProduct?.name?.trim().toLowerCase() || (selectedProductId ? String(selectedProductId) : "")}
+                  onChange={(val) => {
+                    const matchOpt = productOptions.find((o) => o.value === val);
+                    if (matchOpt && matchOpt.group.length > 0) {
+                      const sameSite = selectedProduct
+                        ? matchOpt.group.find((p) => p.site?.id === selectedProduct.site?.id)
+                        : null;
+                      const firstUnlinked = matchOpt.group.find((p) => !p.linkLogs || p.linkLogs.length === 0);
+                      const target = sameSite || firstUnlinked || matchOpt.group[0];
+                      setSelectedProductId(target.id);
+                      setIsChangingProduct(false);
+                    } else {
+                      const directNum = Number(val);
+                      if (!isNaN(directNum)) {
+                        setSelectedProductId(directNum);
+                        setIsChangingProduct(false);
+                      }
+                    }
+                  }}
+                  placeholder="Select Product from Dropdown..."
+                  disabled={loadingProducts}
+                  searchable={true}
+                  searchPlaceholder="Search product by name or site..."
+                  options={productOptions.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  }))}
+                />
               </div>
+            )}
 
-              {selectedProduct && (
+            {/* Locked / Selected Product Display Card */}
+            {selectedProduct && !isChangingProduct && (
+              <div className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-blue-100/70 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold shrink-0">
+                    <Tag className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                        {selectedProduct.name}
+                      </span>
+                      {availableSitesForProduct.length > 1 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          {availableSitesForProduct.length} Sites
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap mt-1">
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        Product Slug:
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/80 dark:border-indigo-800/60">
+                        /{productSlug}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (productSlug) {
+                            navigator.clipboard.writeText(productSlug);
+                            toast.success("Product slug copied!");
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 cursor-pointer transition"
+                        title="Copy product slug"
+                      >
+                        <Copy className="w-3 h-3" />
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="text-right shrink-0 pl-3">
                   <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">ID on {selectedProduct.site?.name || "Site"}</span>
                   <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">
                     #{selectedProduct.id}
                   </span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Collapsible Site List for this Product (Collapsed by Default) */}
             {selectedProduct && availableSitesForProduct.length > 0 && (
@@ -1373,16 +1428,34 @@ export default function AddLinkModal({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                {/* Bridge Page Link Text Input */}
+                {/* Bridge Page Link Text Input with Presets Dropdown */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
-                      Bridge Page Link
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1">
+                      <span>Bridge Page Link</span>
+                      <span className="text-rose-500">*</span>
                     </label>
-                    {productSlug && (
-                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                        Product Slug: <strong className="text-slate-800 dark:text-slate-200">/{productSlug}</strong>
-                      </span>
+                    {bridgeLinkOptions.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400">Presets:</span>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setBridgePageLink(e.target.value);
+                              setBridgeLinkError("");
+                            }
+                          }}
+                          className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-transparent cursor-pointer border-none outline-none hover:underline max-w-[150px] truncate"
+                        >
+                          <option value="" className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">Select preset...</option>
+                          {bridgeLinkOptions.map((opt, i) => (
+                            <option key={i} value={opt.value} className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     )}
                   </div>
                   <input
@@ -1400,27 +1473,63 @@ export default function AddLinkModal({
                     placeholder={productSlug ? `https://example.com/${productSlug}` : "https://example.com/..."}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400 transition"
                   />
-                  {bridgeLinkError && (
+                  {bridgeLinkOptions.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      {bridgeLinkOptions.map((opt, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            setBridgePageLink(opt.value);
+                            setBridgeLinkError("");
+                          }}
+                          className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-600 dark:hover:text-blue-300 transition cursor-pointer border border-slate-200/60 dark:border-slate-700"
+                        >
+                          + {opt.label.split(":")[0]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {bridgeLinkError ? (
                     <p className="text-[10px] font-semibold text-rose-500">{bridgeLinkError}</p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400">Required. Enter bridge page link or pick a preset above.</p>
                   )}
                 </div>
 
-                {/* Buy Link Text Input */}
+                {/* Buy Link Text Input with Presets Dropdown */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
-                      Buy Link
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1">
+                      <span>Buy Link (Buy Now)</span>
+                      <span className="text-rose-500">*</span>
                     </label>
-                    {productSlug && (
-                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                        Product Slug: <strong className="text-slate-800 dark:text-slate-200">/{productSlug}</strong>
-                      </span>
+                    {buyLinkOptions.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400">Presets:</span>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setBuyLink(e.target.value);
+                              setBuyLinkError("");
+                            }
+                          }}
+                          className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-transparent cursor-pointer border-none outline-none hover:underline max-w-[150px] truncate"
+                        >
+                          <option value="" className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">Select preset...</option>
+                          {buyLinkOptions.map((opt, i) => (
+                            <option key={i} value={opt.value} className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     )}
                   </div>
                   <input
                     type="text"
                     value={buyLink}
-                    disabled={!bridgePageLink}
                     onChange={(e) => {
                       const val = e.target.value;
                       setBuyLink(val);
@@ -1430,11 +1539,30 @@ export default function AddLinkModal({
                         setBuyLinkError("");
                       }
                     }}
-                    placeholder={bridgePageLink ? (productSlug ? `https://example.com/${productSlug}` : "https://example.com/...") : "Enter bridge page link first"}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-800"
+                    placeholder={productSlug ? `https://example.com/buy/${productSlug}` : "https://example.com/..."}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400 transition"
                   />
-                  {buyLinkError && (
+                  {buyLinkOptions.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      {buyLinkOptions.map((opt, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            setBuyLink(opt.value);
+                            setBuyLinkError("");
+                          }}
+                          className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-600 dark:hover:text-blue-300 transition cursor-pointer border border-slate-200/60 dark:border-slate-700"
+                        >
+                          + {opt.label.split(":")[0]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {buyLinkError ? (
                     <p className="text-[10px] font-semibold text-rose-500">{buyLinkError}</p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400">Required. Enter buy now link or pick a preset above.</p>
                   )}
                 </div>
               </div>
@@ -1515,6 +1643,13 @@ export default function AddLinkModal({
               onClick={handleSubmit}
               disabled={submitting || !isFormValid}
               type="button"
+              title={
+                !isFormValid
+                  ? !bridgePageLink?.trim() || !buyLink?.trim()
+                    ? "Bridge Page Link and Buy Link (Buy Now) are both required before saving"
+                    : "Please configure all required fields (Product, GEOs, Country Links, Bridge Link, Buy Link)"
+                  : undefined
+              }
               className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
             >
               {submitting

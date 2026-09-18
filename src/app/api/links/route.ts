@@ -212,14 +212,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Business rule: status ACCEPTED requires bridgePageLink
-    if (targetStatus === "ACCEPTED" && !bridgePageLink?.trim()) {
-      return NextResponse.json({ error: "Bridge Page Link is required before setting status to Accepted." }, { status: 400 });
+    // Business rule: Bridge Page Link and Buy Link are required
+    if (!bridgePageLink?.trim()) {
+      return NextResponse.json({ error: "Bridge Page Link is required before saving links." }, { status: 400 });
     }
 
-    // Business rule: buyLink requires bridgePageLink
-    if (buyLink && !bridgePageLink?.trim()) {
-      return NextResponse.json({ error: "Bridge Page Link is required before adding a Buy Link." }, { status: 400 });
+    if (!buyLink?.trim()) {
+      return NextResponse.json({ error: "Buy Link is required before saving links." }, { status: 400 });
     }
 
     const createdLinks = await prisma.$transaction(

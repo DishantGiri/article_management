@@ -73,13 +73,15 @@ export default function CustomSelect({
       left = Math.max(12, window.innerWidth - targetWidth - 12);
     }
 
+    const maxH = Math.min(280, Math.max(120, (showAbove ? rect.top : spaceBelow) - 16));
+
     setDropdownStyle({
       position: "fixed",
       top: showAbove ? undefined : `${rect.bottom + 4}px`,
       bottom: showAbove ? `${window.innerHeight - rect.top + 4}px` : undefined,
       left: `${left}px`,
       width: `${targetWidth}px`,
-      maxHeight: "280px",
+      maxHeight: `${maxH}px`,
       zIndex: 99999,
     });
   }, [options.length, isSearchable, minWidth]);
@@ -120,6 +122,7 @@ export default function CustomSelect({
 
   // Close when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
       if (
@@ -133,7 +136,7 @@ export default function CustomSelect({
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   const selectedOption = options.find((o) => o.value === value);
 
@@ -207,20 +210,6 @@ export default function CustomSelect({
 
       {/* Options Scroll List */}
       <div className="overflow-y-auto flex-1 py-1 max-h-56 divide-y divide-slate-50 dark:divide-slate-800/60">
-        {/* Placeholder / Empty Option */}
-        {placeholder && !options.some((o) => o.value === "") && !search && (
-          <div
-            onClick={() => handleSelect("")}
-            className={`mx-1 my-0.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors ${
-              !value
-                ? "bg-[#6D8196]/15 dark:bg-[#6D8196]/30 text-[#3D4F61] dark:text-sky-200 font-bold"
-                : "text-[#737373] dark:text-slate-400 hover:bg-[#FAF9F5] dark:hover:bg-slate-800/80 dark:hover:text-slate-100"
-            }`}
-          >
-            {placeholder}
-          </div>
-        )}
-
         {/* Filtered Options */}
         {filteredOptions.length > 0 ? (
           filteredOptions.map((opt, idx) => {
