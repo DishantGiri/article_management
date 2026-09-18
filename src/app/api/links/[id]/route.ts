@@ -79,7 +79,6 @@ export async function PATCH(
 
     const updatedBridge = bridgePageLink !== undefined ? (bridgePageLink ? String(bridgePageLink).trim() : null) : existing.bridgePageLink;
     const updatedBuy = buyLink !== undefined ? (buyLink ? String(buyLink).trim() : null) : existing.buyLink;
-    const checkStatus = targetStatus !== undefined ? targetStatus : existing.status;
 
     if (!updatedBridge) {
       return NextResponse.json(

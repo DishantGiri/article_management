@@ -25,15 +25,6 @@ import {
 } from "@/lib/geo-constants";
 import { toast } from "react-hot-toast";
 
-interface Product {
-  id: number;
-  name: string;
-  trendLink?: string | null;
-  previewLink?: string | null;
-  site: { name: string; url?: string | null };
-  article?: { articleLink?: string | null };
-  linkLogs?: any[];
-}
 
 interface CountryLinkEntry {
   geo: string;
