@@ -289,7 +289,7 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
         <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-850">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-transparent dark:border-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-750 transition cursor-pointer"
+            className="w-full px-4 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white dark:border dark:border-slate-700 rounded-xl text-sm font-bold transition cursor-pointer shadow-xs"
           >
             Close
           </button>

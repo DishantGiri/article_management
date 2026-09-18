@@ -292,7 +292,7 @@ export default function CustomSelect({
         }}
         className={`w-full flex items-center justify-between transition-all cursor-pointer select-none text-left disabled:opacity-50 disabled:cursor-not-allowed ${triggerClassName}`}
       >
-        <span className="truncate">
+        <span className="truncate flex-1 min-w-0 pr-1">
           {selectedOption ? (
             selectedOption.label
           ) : value ? (

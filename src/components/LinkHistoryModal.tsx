@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Clock, User, Link, ShoppingBag, Info, ShieldAlert } from "lucide-react";
+import { X, Clock, User, Link, ShoppingBag, Info, ShieldAlert, AlertTriangle } from "lucide-react";
 
 interface LinkHistoryModalProps {
   isOpen: boolean;

@@ -28,7 +28,7 @@ import { formatRemarkDate } from "@/components/FormattedRemarks";
 
 interface HistoryRecord {
   id: string;
-  type: "ARTICLE" | "LINK";
+  type: "ARTICLE" | "LINK" | "LINK_ISSUE";
   actionType:
   | "TL_SUGGESTION"
   | "ARTICLE_APPROVAL"
@@ -37,7 +37,8 @@ interface HistoryRecord {
   | "WRITING_STARTED"
   | "LINK_UPDATED"
   | "ARTICLE_UPDATE"
-  | "LINK_LOG";
+  | "LINK_LOG"
+  | "LINK_FLAGGED";
   actionLabel: string;
   updatedById: number;
   productName: string;
@@ -84,7 +85,7 @@ export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"" | "ARTICLE" | "LINK">("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
   const [actionFilter, setActionFilter] = useState<string>("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
