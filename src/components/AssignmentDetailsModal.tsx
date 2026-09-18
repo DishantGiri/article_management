@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   X,
@@ -22,6 +22,7 @@ import {
   Sparkles,
   Share2,
   Calendar,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
@@ -59,7 +60,11 @@ export interface AssignmentProduct {
     linkerRemarks?: string | null;
     addedAt?: string;
     updatedAt?: string;
-    geos?: Array<{ geo: string; affiliateLink?: string | null }>;
+    geos?: Array<{
+      geo: string;
+      affiliateLink?: string | null;
+      affiliateName?: string | null;
+    }>;
   }>;
 }
 
@@ -135,6 +140,7 @@ export default function AssignmentDetailsModal({
 }: AssignmentDetailsModalProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [activeLogIndex, setActiveLogIndex] = useState<number>(0);
+  const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
   const [startingWriting, setStartingWriting] = useState<boolean>(false);
 
   const isWriter = currentUserRole?.toUpperCase() === "WRITER";
@@ -142,6 +148,26 @@ export default function AssignmentDetailsModal({
   const linkLogs = product.linkLogs || [];
   const hasLinkLogs = linkLogs.length > 0;
   const currentLog = linkLogs[activeLogIndex] || linkLogs[0];
+
+  useEffect(() => {
+    setSelectedGeo(null);
+  }, [activeLogIndex, product.id]);
+
+  const activeGeoEntry = currentLog?.geos?.find(
+    (g) => g.geo.toUpperCase() === selectedGeo?.toUpperCase()
+  );
+
+  const activeAffiliateName =
+    activeGeoEntry?.affiliateName?.trim() ||
+    currentLog?.affiliateName?.trim() ||
+    currentLog?.geos?.[0]?.affiliateName?.trim() ||
+    "Standard Affiliate";
+
+  const activeAffiliateLink =
+    activeGeoEntry?.affiliateLink?.trim() ||
+    currentLog?.affiliateLink?.trim() ||
+    currentLog?.geos?.[0]?.affiliateLink?.trim() ||
+    "";
 
   const handleCopy = (text: string, key: string, label: string) => {
     if (!text) return;
@@ -154,26 +180,40 @@ export default function AssignmentDetailsModal({
   };
 
   const handleCopyAllLinks = (log: (typeof linkLogs)[0]) => {
+    const activeGeo = selectedGeo
+      ? log.geos?.find((g) => g.geo.toUpperCase() === selectedGeo.toUpperCase())
+      : null;
+    const affLink = activeGeo?.affiliateLink || log.affiliateLink;
+    const affName = activeGeo?.affiliateName || log.affiliateName;
+
     const lines = [
       `Product: ${product.name}`,
       `Site: ${product.site?.name || ""}`,
+      selectedGeo
+        ? `Selected Geo: ${selectedGeo} (${COUNTRY_NAMES[selectedGeo.toUpperCase()] || selectedGeo})`
+        : null,
+      affName ? `Affiliate Network: ${affName}` : null,
       log.bridgePageLink ? `Bridge Page: ${log.bridgePageLink}` : null,
       log.buyLink ? `Buy Link: ${log.buyLink}` : null,
       isWriter
         ? product.previewLink
           ? `Preview Link: ${product.previewLink}`
           : null
-        : log.affiliateLink
-          ? `Affiliate Link: ${log.affiliateLink}`
+        : affLink
+          ? `Affiliate Link: ${affLink}`
           : null,
-      log.geos && log.geos.length > 0
+      !selectedGeo && log.geos && log.geos.length > 0
         ? `Target Geos: ${log.geos.map((g) => g.geo).join(", ")}`
         : null,
     ].filter(Boolean);
 
     navigator.clipboard.writeText(lines.join("\n"));
     setCopiedKey("all-links");
-    toast.success("Copied all routing links to clipboard!");
+    toast.success(
+      selectedGeo
+        ? `Copied all routing links for ${selectedGeo} to clipboard!`
+        : "Copied all routing links to clipboard!"
+    );
     setTimeout(() => setCopiedKey(null), 1800);
   };
 
@@ -561,10 +601,19 @@ export default function AssignmentDetailsModal({
               <div className="p-5 bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4 shadow-2xs">
                 {/* Network & Status Header */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200/80 dark:border-slate-700/80">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
-                      {currentLog.affiliateName || "Standard Affiliate"}
+                      {activeAffiliateName}
                     </span>
+                    {selectedGeo && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs">
+                        <span>{getCountryFlag(selectedGeo)}</span>
+                        <span className="uppercase">{selectedGeo}</span>
+                        <span className="text-[10px] font-normal text-indigo-500 dark:text-indigo-400">
+                          ({COUNTRY_NAMES[selectedGeo.toUpperCase()] || selectedGeo})
+                        </span>
+                      </span>
+                    )}
                     <span
                       className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${LINK_STATUS_STYLES[currentLog.status]?.bg || "bg-blue-50"
                         } ${LINK_STATUS_STYLES[currentLog.status]?.text || "text-blue-700"} ${LINK_STATUS_STYLES[currentLog.status]?.border || "border-blue-200"
@@ -757,139 +806,78 @@ export default function AssignmentDetailsModal({
                     </div>
                   )}
 
-                  {/* Affiliate Destination Link (displayed for Team Lead, Admins, Linkers; writers only receive dedicated preview link) */}
-                  {!isWriter && (
-                    currentLog.geos && currentLog.geos.some((g) => g.affiliateLink && g.affiliateLink !== currentLog.affiliateLink) ? (
-                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs space-y-2">
-                        <div className="flex items-center gap-1.5 mb-1">
+                  {/* Affiliate Destination Link (displayed for Team Lead, Admins, Linkers; or when country is selected) */}
+                  {(!isWriter || selectedGeo !== null || !product.previewLink) && activeAffiliateLink && (
+                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
+                      <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <Link2 className="w-3.5 h-3.5 text-[#6D8196] shrink-0" />
                           <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                            Country-Specific Affiliate Links ({currentLog.geos.length})
+                            Affiliate Destination Link
                           </span>
-                        </div>
-                        <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                          {currentLog.geos.map((g) => (
-                            <div
-                              key={g.geo}
-                              className="flex items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-800/80 rounded-lg border border-slate-200/60 dark:border-slate-700/60 text-xs"
-                            >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 font-extrabold text-[10px] uppercase border border-slate-200 dark:border-slate-600 shrink-0">
-                                  {g.geo}
-                                </span>
-                                {(g as any).affiliateName && (
-                                  <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-700/60 font-semibold text-[10px] text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-600 shrink-0">
-                                    {(g as any).affiliateName}
-                                  </span>
-                                )}
-                                <a
-                                  href={ensureExternalUrl(g.affiliateLink || currentLog.affiliateLink)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline truncate block"
-                                >
-                                  {g.affiliateLink || currentLog.affiliateLink}
-                                </a>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  onClick={() =>
-                                    handleCopy(
-                                      g.affiliateLink || currentLog.affiliateLink!,
-                                      `geo-aff-${currentLog.id}-${g.geo}`,
-                                      `${g.geo} Affiliate Link`
-                                    )
-                                  }
-                                  className="p-1 px-2 rounded bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold flex items-center gap-1 border border-slate-200 dark:border-slate-600 cursor-pointer"
-                                  title={`Copy ${g.geo} link`}
-                                >
-                                  {copiedKey === `geo-aff-${currentLog.id}-${g.geo}` ? (
-                                    <>
-                                      <Check className="w-3 h-3 text-emerald-600" />
-                                      <span className="text-emerald-600">Copied</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="w-3 h-3 text-slate-400" />
-                                      <span>Copy</span>
-                                    </>
-                                  )}
-                                </button>
-                                <a
-                                  href={ensureExternalUrl(g.affiliateLink || currentLog.affiliateLink)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1 px-1.5 rounded bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600"
-                                  title="Open Link"
-                                >
-                                  <ExternalLink className="w-3 h-3 text-slate-400" />
-                                </a>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : currentLog.affiliateLink ? (
-                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <Link2 className="w-3.5 h-3.5 text-[#6D8196] shrink-0" />
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                              Affiliate Destination Link
+                          {selectedGeo && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs">
+                              <span>{getCountryFlag(selectedGeo)}</span>
+                              <span className="uppercase">{selectedGeo}</span>
                             </span>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() =>
-                                handleCopy(
-                                  currentLog.affiliateLink,
-                                  `aff-${currentLog.id}`,
-                                  "Affiliate Link"
-                                )
-                              }
-                              className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
-                              title="Copy Affiliate Link"
-                            >
-                              {copiedKey === `aff-${currentLog.id}` ? (
-                                <>
-                                  <Check className="w-3 h-3 text-emerald-600" />
-                                  <span className="text-emerald-600">Copied!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3 h-3 text-slate-400" />
-                                  <span>Copy</span>
-                                </>
-                              )}
-                            </button>
-
-                            <a
-                              href={ensureExternalUrl(currentLog.affiliateLink)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
-                              title="Open Destination Link in New Tab"
-                            >
-                              <ExternalLink className="w-3 h-3 text-slate-400" />
-                            </a>
-                          </div>
+                          )}
+                          {activeGeoEntry?.affiliateName && (
+                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                              • {activeGeoEntry.affiliateName}
+                            </span>
+                          )}
                         </div>
 
-                        <a
-                          href={ensureExternalUrl(currentLog.affiliateLink)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
-                        >
-                          {currentLog.affiliateLink}
-                        </a>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() =>
+                              handleCopy(
+                                activeAffiliateLink,
+                                `aff-${currentLog.id}-${selectedGeo || "default"}`,
+                                selectedGeo ? `${selectedGeo} Affiliate Link` : "Affiliate Link"
+                              )
+                            }
+                            className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                            title={`Copy ${selectedGeo ? `${selectedGeo} ` : ""}Affiliate Link`}
+                          >
+                            {copiedKey === `aff-${currentLog.id}-${selectedGeo || "default"}` ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                <span className="text-emerald-600">Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3 text-slate-400" />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+
+                          <a
+                            href={ensureExternalUrl(activeAffiliateLink)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
+                            title="Open Destination Link in New Tab"
+                          >
+                            <ExternalLink className="w-3 h-3 text-slate-400" />
+                          </a>
+                        </div>
                       </div>
-                    ) : null
+
+                      <a
+                        href={ensureExternalUrl(activeAffiliateLink)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
+                      >
+                        {activeAffiliateLink}
+                      </a>
+                    </div>
                   )}
 
                   {/* Fallback if no routing URLs exist */}
-                  {!currentLog.bridgePageLink && !currentLog.buyLink && !product.previewLink && !currentLog.affiliateLink && (!currentLog.geos || currentLog.geos.length === 0) && (
+                  {!currentLog.bridgePageLink && !currentLog.buyLink && !product.previewLink && !activeAffiliateLink && (!currentLog.geos || currentLog.geos.length === 0) && (
                     <div className="p-4 text-center text-xs text-slate-400 italic bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                       No routing URLs, buy now links, or preview links configured for this network yet.
                     </div>
@@ -905,35 +893,84 @@ export default function AssignmentDetailsModal({
 
                 {/* Target Geos Section */}
                 <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Target Geos ({currentLog.geos?.length || 0})
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      Eligible audience country traffic
-                    </span>
+                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Target Geos ({currentLog.geos?.length || 0})
+                      </span>
+                      {selectedGeo && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800/60">
+                          <span>{getCountryFlag(selectedGeo)}</span>
+                          <span>Active: {selectedGeo}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {selectedGeo && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedGeo(null)}
+                          className="text-[11px] text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-semibold cursor-pointer underline flex items-center gap-1 transition"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Show All / Default</span>
+                        </button>
+                      )}
+                      <span className="text-[10px] text-slate-400">
+                        Eligible audience country traffic • Click country to switch link
+                      </span>
+                    </div>
                   </div>
 
                   {currentLog.geos && currentLog.geos.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       {currentLog.geos.map((g) => {
                         const flag = getCountryFlag(g.geo);
                         const countryName =
                           COUNTRY_NAMES[g.geo.toUpperCase()] ||
                           COUNTRY_NAMES[g.geo] ||
                           g.geo;
+                        const isSelected = selectedGeo?.toUpperCase() === g.geo.toUpperCase();
+
                         return (
-                          <div
+                          <button
                             key={g.geo}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs hover:border-[#6D8196] transition-colors"
-                            title={`${g.geo} - ${countryName}`}
+                            type="button"
+                            onClick={() => setSelectedGeo(isSelected ? null : g.geo)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shadow-2xs ${
+                              isSelected
+                                ? "bg-[#6D8196] text-white border-[#6D8196] ring-2 ring-[#6D8196]/30 shadow-xs dark:bg-indigo-600 dark:border-indigo-500"
+                                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196]/80 hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                            }`}
+                            title={`Click to view ${g.geo} (${countryName}) affiliate link & network${
+                              g.affiliateName ? ` • ${g.affiliateName}` : ""
+                            }`}
                           >
                             <span className="text-sm leading-none">{flag}</span>
-                            <span className="uppercase">{g.geo}</span>
-                            <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">
+                            <span className="uppercase tracking-wide">{g.geo}</span>
+                            <span
+                              className={`text-[10px] font-normal hidden sm:inline ${
+                                isSelected ? "text-white/80" : "text-slate-400"
+                              }`}
+                            >
                               ({countryName})
                             </span>
-                          </div>
+                            {g.affiliateName && (
+                              <span
+                                className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                                  isSelected
+                                    ? "bg-white/20 text-white"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                }`}
+                              >
+                                {g.affiliateName}
+                              </span>
+                            )}
+                            {isSelected && (
+                              <Check className="w-3.5 h-3.5 text-white shrink-0 ml-0.5" />
+                            )}
+                          </button>
                         );
                       })}
                     </div>
