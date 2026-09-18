@@ -125,10 +125,15 @@ export async function PATCH(
       }
     }
 
+    const isReportingIssue = Boolean(
+      body.issueMessage ||
+      (targetStatus === "ISSUE" && !buyLink && !bridgePageLink && !affiliateLink && geosToSet === null)
+    );
+
     const updated = await prisma.linkLog.update({
       where: { id: parseInt(id) },
       data: {
-        ...(activeUserId ? { updatedById: Number(activeUserId) } : {}),
+        ...(activeUserId && !isReportingIssue ? { updatedById: Number(activeUserId) } : {}),
         ...(targetStatus !== undefined ? { status: targetStatus as any } : {}),
         ...(bridgePageLink !== undefined ? { bridgePageLink: updatedBridge } : {}),
         ...(buyLink !== undefined ? { buyLink: updatedBuy } : {}),

@@ -22,6 +22,7 @@ import {
   Check,
   X,
   TrendingUp,
+  Tag,
   Link as LinkIcon,
   MessageSquare,
   History as HistoryIcon,
@@ -33,7 +34,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
-import { formatRemarkDate } from "@/components/FormattedRemarks";
+import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
 
 interface Article {
   id: number;

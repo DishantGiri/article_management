@@ -715,7 +715,7 @@ function LinksPageContent() {
               ...Object.keys(STATUS_LABELS).map((k) => ({ value: k, label: STATUS_LABELS[k] })),
             ]}
             placeholder="All Statuses"
-            className="w-auto min-w-[135px]"
+            className="w-44 shrink-0"
             triggerClassName="px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
           />
 
@@ -728,7 +728,7 @@ function LinksPageContent() {
               ...uniqueAdders.map((u) => ({ value: u, label: u })),
             ]}
             placeholder="All Users"
-            className="w-auto min-w-[130px]"
+            className="w-44 shrink-0"
             triggerClassName="px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
           />
 
@@ -1167,19 +1167,19 @@ function LinksPageContent() {
       {/* Remarks Popup Modal */}
       {viewingRemarks && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-850">
               <div>
-                <h3 className="text-sm font-bold text-slate-800">Linker Remarks</h3>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Linker Remarks</h3>
                 {viewingRemarks.productName && (
-                  <p className="text-[11px] font-medium text-slate-500 truncate max-w-[280px]">
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[280px]">
                     {viewingRemarks.productName}
                   </p>
                 )}
               </div>
               <button
                 onClick={() => setViewingRemarks(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1191,10 +1191,10 @@ function LinksPageContent() {
                 textClass="text-xs font-semibold"
               />
             </div>
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex justify-end">
               <button
                 onClick={() => setViewingRemarks(null)}
-                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 shadow-sm transition cursor-pointer"
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white dark:border dark:border-slate-700 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
               >
                 Close
               </button>

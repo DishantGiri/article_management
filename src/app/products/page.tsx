@@ -733,9 +733,9 @@ function ProductsPageContent() {
             value={statusFilter}
             onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
             placeholder="All Statuses"
-            className="w-auto min-w-[135px]"
+            className="w-44 shrink-0"
             minWidth={160}
-            triggerClassName="w-full px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
             options={[
               { value: "", label: "All Statuses" },
               { value: "PENDING", label: "Pending" },
@@ -753,9 +753,9 @@ function ProductsPageContent() {
               value={siteFilter}
               onChange={(val) => { setSiteFilter(val); setCurrentPage(1); }}
               placeholder="All Sites"
-              className="w-auto min-w-[130px]"
+              className="w-44 shrink-0"
               minWidth={160}
-              triggerClassName="w-full px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+              triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
               options={[
                 { value: "", label: "All Sites" },
                 ...uniqueSites.map((s) => ({ value: s, label: s })),
@@ -768,9 +768,9 @@ function ProductsPageContent() {
             value={categoryFilter}
             onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
             placeholder="All Product Types"
-            className="w-auto min-w-[145px]"
+            className="w-44 shrink-0"
             minWidth={175}
-            triggerClassName="w-full px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
             options={[
               { value: "", label: "All Product Types" },
               ...categories.map((c) => ({ value: String(c.id), label: c.name })),
@@ -782,9 +782,9 @@ function ProductsPageContent() {
             value={userFilter}
             onChange={(val) => { setUserFilter(val); setCurrentPage(1); }}
             placeholder="All Users"
-            className="w-auto min-w-[130px]"
+            className="w-44 shrink-0"
             minWidth={160}
-            triggerClassName="w-full px-3.5 py-2 bg-white border border-slate-200 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 shadow-2xs"
+            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
             options={[
               { value: "", label: "All Users" },
               ...uniqueUsers.map((u) => ({ value: u, label: u })),

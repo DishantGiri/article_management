@@ -63,7 +63,6 @@ export async function POST(
           data: {
             status: "ISSUE",
             linkerRemarks: formattedRemark,
-            updatedById: activeUserId,
           },
         });
 

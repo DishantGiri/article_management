@@ -843,7 +843,7 @@ function ArticlesContent() {
           value={statusFilter}
           onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
           placeholder="All Statuses"
-          className="min-w-[130px]"
+          className="w-44 shrink-0"
           options={[
             { value: "", label: "All Statuses" },
             { value: "NO_LINKS", label: "⚠️ Published (No Links)" },
@@ -860,7 +860,7 @@ function ArticlesContent() {
           value={writerFilter}
           onChange={(val) => { setWriterFilter(val); setCurrentPage(1); }}
           placeholder="All Writers"
-          className="min-w-[130px]"
+          className="w-44 shrink-0"
           options={[
             { value: "", label: "All Writers" },
             ...uniqueWriters.map((w) => ({ value: w, label: w })),
@@ -872,7 +872,7 @@ function ArticlesContent() {
           value={siteFilter}
           onChange={(val) => { setSiteFilter(val); setCurrentPage(1); }}
           placeholder="All Sites"
-          className="min-w-[130px]"
+          className="w-44 shrink-0"
           options={[
             { value: "", label: "All Sites" },
             ...uniqueSites.map((s) => ({ value: s, label: s })),

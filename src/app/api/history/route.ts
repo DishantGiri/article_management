@@ -139,6 +139,10 @@ export async function GET() {
     const formattedLinks = linkHistories.map((h) => {
       const oldL = h.oldBridgeLink || h.oldBuyLink || h.oldAffiliateLink;
       const newL = h.newBridgeLink || h.newBuyLink || h.newAffiliateLink;
+      const isFlaggedIssue =
+        h.newStatus === "ISSUE" ||
+        Boolean(h.newRemarks && h.newRemarks.includes("[Flagged by"));
+
       const noteDetails =
         h.newRemarks ||
         (h.oldStatus && h.newStatus
@@ -148,8 +152,8 @@ export async function GET() {
       return {
         id: `link-${h.id}`,
         type: "LINK",
-        actionType: "LINK_LOG",
-        actionLabel: "Link Log Update",
+        actionType: isFlaggedIssue ? "LINK_FLAGGED" : "LINK_LOG",
+        actionLabel: isFlaggedIssue ? "Link Issue Flagged" : "Link Log Update",
         updatedById: h.updatedById,
         updatedBy: h.updatedBy,
         writtenBy: h.linkLog?.addedBy || null,

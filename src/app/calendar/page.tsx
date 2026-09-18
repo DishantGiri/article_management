@@ -614,7 +614,7 @@ function CalendarContent() {
               <span>{data?.targetUser.name} &bull; {data?.targetUser.role?.replace("_", " ")}</span>
               <button
                 onClick={() => setInspectingDay(null)}
-                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-750 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 dark:border dark:border-slate-700 font-bold transition cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white dark:border dark:border-slate-700 font-bold shadow-xs transition cursor-pointer"
               >
                 Close
               </button>
