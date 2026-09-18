@@ -455,7 +455,7 @@ export default function HistoryPage() {
           <div className="overflow-x-auto p-2">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <tr className="border-b border-slate-100 dark:border-slate-700 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-800/60">
                   <th className="px-4 py-3.5 w-[13%]">Type / Action</th>
                   <th className="px-4 py-3.5 w-[11%]">Date & Time</th>
                   <th className="px-4 py-3.5 w-[15%]">Product / Site</th>
@@ -465,7 +465,7 @@ export default function HistoryPage() {
                   <th className="px-4 py-3.5 w-[25%]">Modification & Suggestion Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100/70 dark:divide-slate-800 text-xs">
+              <tbody className="divide-y divide-slate-100/70 dark:divide-slate-700/60 text-xs">
                 {paginated.map((record) => {
                   const isRedoSuggestion = record.actionType === "TL_SUGGESTION";
                   const isApproval = record.actionType === "ARTICLE_APPROVAL";
@@ -480,8 +480,13 @@ export default function HistoryPage() {
                   return (
                     <tr
                       key={record.id}
-                      className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors group ${isRedoSuggestion ? "bg-rose-50/20 dark:bg-rose-950/20" : isApproval ? "bg-emerald-50/15 dark:bg-emerald-950/20" : ""
-                        }`}
+                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/80 transition-colors group ${
+                        isRedoSuggestion
+                          ? "bg-rose-50/30 dark:bg-rose-950/25"
+                          : isApproval
+                            ? "bg-emerald-50/20 dark:bg-emerald-950/25"
+                            : "bg-white dark:bg-slate-900"
+                      }`}
                     >
                       {/* 1. Type / Action Badge */}
                       <td className="px-4 py-4 align-top">
@@ -537,7 +542,7 @@ export default function HistoryPage() {
                             year: "numeric",
                           })}
                         </p>
-                        <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                        <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 mt-0.5">
                           {new Date(record.updatedAt).toLocaleTimeString("en-US", {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -547,9 +552,9 @@ export default function HistoryPage() {
 
                       {/* 3. Product / Site */}
                       <td className="px-4 py-4 align-top">
-                        <p className="font-bold text-slate-900 dark:text-slate-100 leading-snug">{record.productName}</p>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
-                          <Globe className="w-2.5 h-2.5 text-slate-400" />
+                        <p className="font-bold text-slate-900 dark:text-white leading-snug">{record.productName}</p>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-md bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-200 text-[10px] font-bold border border-slate-200 dark:border-slate-600">
+                          <Globe className="w-2.5 h-2.5 text-slate-400 dark:text-slate-400" />
                           {record.siteName}
                         </span>
                       </td>
@@ -558,11 +563,11 @@ export default function HistoryPage() {
                       <td className="px-4 py-4 align-top">
                         {record.writtenBy ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs">
+                            <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-700/80 text-indigo-700 dark:text-indigo-200 flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs">
                               {getInitials(record.writtenBy.name)}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-slate-900 dark:text-slate-100 truncate leading-tight">
+                              <p className="font-bold text-slate-900 dark:text-white truncate leading-tight">
                                 {record.writtenBy.name}
                               </p>
                               <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
@@ -571,9 +576,9 @@ export default function HistoryPage() {
                             </div>
                           </div>
                         ) : record.type === "LINK" ? (
-                          <span className="text-[11px] text-slate-400 italic">N/A (Linker Stream)</span>
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">N/A (Linker Stream)</span>
                         ) : (
-                          <span className="text-[11px] text-slate-400 italic">Unassigned</span>
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">Unassigned</span>
                         )}
                       </td>
 
@@ -583,22 +588,22 @@ export default function HistoryPage() {
                           <div
                             className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs ${
                               record.actionType === "LINK_FLAGGED" || isRedoSuggestion
-                                ? "bg-rose-100 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300"
+                                ? "bg-rose-100 dark:bg-rose-900/60 border border-rose-200 dark:border-rose-700/80 text-rose-700 dark:text-rose-200"
                                 : isApproval
-                                  ? "bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300"
-                                  : "bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                                  ? "bg-emerald-100 dark:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-700/80 text-emerald-700 dark:text-emerald-200"
+                                  : "bg-slate-100 dark:bg-slate-700/80 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-100"
                               }`}
                           >
                             {getInitials(record.updatedBy?.name)}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-slate-900 dark:text-slate-100 truncate leading-tight">
+                            <p className="font-bold text-slate-900 dark:text-white truncate leading-tight">
                               {record.updatedBy?.name || "System"}
                             </p>
                             <p className={`text-[9px] font-bold uppercase tracking-wider ${
                               record.actionType === "LINK_FLAGGED"
                                 ? "text-rose-600 dark:text-rose-400 font-extrabold"
-                                : "text-slate-400"
+                                : "text-slate-400 dark:text-slate-400"
                             }`}>
                               {record.actionType === "LINK_FLAGGED"
                                 ? `FLAGGED BY (${record.updatedBy?.role ? record.updatedBy.role.replace("_", " ") : "USER"})`
@@ -612,11 +617,11 @@ export default function HistoryPage() {
                       <td className="px-4 py-4 align-top">
                         {record.approvedBy ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-700/80 text-emerald-700 dark:text-emerald-200 flex items-center justify-center text-[10px] font-extrabold shrink-0 shadow-2xs">
                               {getInitials(record.approvedBy.name)}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-slate-900 dark:text-slate-100 truncate leading-tight">
+                              <p className="font-bold text-slate-900 dark:text-white truncate leading-tight">
                                 {record.approvedBy.name}
                               </p>
                               <p className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-0.5">
@@ -625,13 +630,13 @@ export default function HistoryPage() {
                             </div>
                           </div>
                         ) : record.newStatus === "REDO" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700/80">
                             Needs Revision
                           </span>
                         ) : record.type === "LINK" ? (
-                          <span className="text-[11px] text-slate-400 italic">-</span>
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">-</span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700/70">
                             Pending Approval
                           </span>
                         )}
@@ -642,13 +647,13 @@ export default function HistoryPage() {
                         <div className="space-y-2">
                           {/* SPECIAL DISPLAY: TL Suggestion on Call to Writer */}
                           {isRedoSuggestion && (
-                            <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-rose-200 dark:border-rose-800/60 shadow-2xs space-y-1">
+                            <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-rose-200 dark:border-rose-700/80 shadow-2xs space-y-1">
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700 dark:text-rose-300 flex items-center gap-1">
                                   <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                                   TL Suggestion to {record.writtenBy?.name || "Writer"}
                                 </span>
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950/90 text-rose-800 dark:text-rose-300 border border-transparent dark:border-rose-800/60">
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-700/60">
                                   Action Required
                                 </span>
                               </div>
@@ -660,7 +665,7 @@ export default function HistoryPage() {
 
                           {/* SPECIAL DISPLAY: Editorial Approval */}
                           {isApproval && (
-                            <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-2xs space-y-1">
+                            <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-emerald-200 dark:border-emerald-700/80 shadow-2xs space-y-1">
                               <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                 Approved by {record.updatedBy?.name} for {record.writtenBy?.name || "Writer"}
@@ -676,11 +681,11 @@ export default function HistoryPage() {
                           {/* Status Transition Pill */}
                           {record.oldStatus && record.newStatus && !isRedoSuggestion && !isApproval && (
                             <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                              <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded text-[9px]">
+                              <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded text-[9px]">
                                 {record.oldStatus}
                               </span>
                               <ArrowRight className="w-3 h-3 text-slate-400" />
-                              <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded text-[9px]">
+                              <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-700/80 text-indigo-700 dark:text-indigo-300 rounded text-[9px]">
                                 {record.newStatus}
                               </span>
                             </div>
@@ -688,12 +693,12 @@ export default function HistoryPage() {
 
                           {/* Writer remarks if present */}
                           {writerRemarks && (
-                            <div className="p-2.5 bg-indigo-50/70 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/60 rounded-xl text-xs text-indigo-900 dark:text-indigo-200 font-medium space-y-1">
+                            <div className="p-2.5 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/60 rounded-xl text-xs text-indigo-900 dark:text-indigo-100 font-medium space-y-1">
                               <div className="flex items-center justify-between gap-2">
                                 <span className="font-bold text-indigo-800 dark:text-indigo-300 block text-[10px] uppercase">
                                   Writer Remarks:
                                 </span>
-                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-300 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-indigo-200/80 dark:border-slate-700 shadow-2xs">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-300 bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded border border-indigo-200/80 dark:border-slate-600 shadow-2xs">
                                   <Calendar className="w-2.5 h-2.5 text-indigo-400" />
                                   {formatRemarkDate(record.updatedAt)}
                                 </span>
@@ -704,13 +709,13 @@ export default function HistoryPage() {
 
                           {/* SPECIAL DISPLAY: Flagged Link Issue */}
                           {record.actionType === "LINK_FLAGGED" ? (
-                            <div className="p-2.5 bg-rose-50/80 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-900/60 shadow-2xs space-y-1">
+                            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/50 rounded-xl border border-rose-200 dark:border-rose-800/70 shadow-2xs space-y-1">
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700 dark:text-rose-300 flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-rose-500" />
+                                  <AlertTriangle className="w-3 h-3 text-rose-500 dark:text-rose-400" />
                                   Issue Flagged by {record.updatedBy?.name || "Writer"}
                                 </span>
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-900/70 text-rose-800 dark:text-rose-300">
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-700/60">
                                   Attention Linkers
                                 </span>
                               </div>
@@ -723,7 +728,7 @@ export default function HistoryPage() {
                             !isApproval &&
                             record.notes &&
                             !record.notes.includes("Writer remarks:") && (
-                              <div className="text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/90 p-2 rounded-xl border border-slate-100 dark:border-slate-700/80 font-medium leading-relaxed">
+                              <div className="text-xs text-slate-700 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl border border-slate-100 dark:border-slate-700 font-medium leading-relaxed">
                                 {record.notes}
                               </div>
                             )
@@ -731,7 +736,7 @@ export default function HistoryPage() {
 
                           {/* Link Updated */}
                           {record.oldLink !== record.newLink && record.newLink && (
-                            <div className="text-[11px] text-blue-700 dark:text-blue-200 bg-blue-50/60 dark:bg-blue-950/50 p-2 rounded-xl border border-blue-100 dark:border-blue-900/60 font-mono break-all truncate">
+                            <div className="text-[11px] text-blue-700 dark:text-blue-200 bg-blue-50/60 dark:bg-blue-950/60 p-2 rounded-xl border border-blue-100 dark:border-blue-800/70 font-mono break-all truncate">
                               <span className="font-bold font-sans block text-[10px] uppercase text-blue-800 dark:text-blue-300">
                                 Link Updated:
                               </span>
