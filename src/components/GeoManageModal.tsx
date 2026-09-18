@@ -160,30 +160,30 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh] border border-slate-100 dark:border-slate-800 animate-scaleIn overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-850 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-              <Globe className="w-4 h-4 text-emerald-600" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center">
+              <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-[15px] font-bold text-slate-900">Manage GEOs</h2>
-              <p className="text-xs text-slate-400 font-medium">{geos.length} custom GEOs</p>
+              <h2 className="text-[15px] font-bold text-slate-900 dark:text-white">Manage GEOs</h2>
+              <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">{geos.length} custom GEOs</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Add New */}
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 tracking-wide">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60">
+          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-wide">
             Add Custom GEO Code
           </label>
           <div className="flex gap-2">
@@ -202,33 +202,33 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
               onKeyDown={(e) => e.key === "Enter" && !adding && handleAdd()}
               placeholder="e.g. IN, SG, NZ, LATAM..."
               maxLength={10}
-              className={`flex-1 px-3 py-2 bg-white border rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition font-mono uppercase ${
+              className={`flex-1 px-3 py-2 bg-white dark:bg-slate-950 border rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition font-mono uppercase ${
                 error
-                  ? "border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
-                  : "border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                  ? "border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-950"
+                  : "border-slate-200 dark:border-slate-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950"
               }`}
             />
             <button
               onClick={handleAdd}
               disabled={adding || !newCode.trim()}
-              className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               {adding ? "Adding..." : "Add"}
             </button>
           </div>
           {error && (
-            <p className="mt-2 text-xs text-rose-500 font-medium">{error}</p>
+            <p className="mt-2 text-xs text-rose-500 dark:text-rose-400 font-medium">{error}</p>
           )}
-          <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-200/60 flex-wrap gap-2">
-            <p className="text-[10px] text-slate-500 font-medium">
+          <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800 flex-wrap gap-2">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
               Only GEOs added here will appear in the link selector.
             </p>
             <button
               type="button"
               onClick={handleImportLatam}
               disabled={adding}
-              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
+              className="text-xs font-bold text-emerald-600 dark:text-emerald-300 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
             >
               🌎 Import 27 LATAM Countries
             </button>
@@ -244,11 +244,11 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
             </div>
           ) : geos.length === 0 ? (
             <div className="py-12 text-center">
-              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                <Globe className="w-6 h-6 text-slate-300" />
+              <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                <Globe className="w-6 h-6 text-slate-300 dark:text-slate-600" />
               </div>
-              <p className="text-sm font-semibold text-slate-500">No custom GEOs yet</p>
-              <p className="text-xs text-slate-400 mt-1">Add country codes above to extend the selector.</p>
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-300">No custom GEOs yet</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Add country codes above to extend the selector.</p>
             </div>
           ) : (
             <ul className="space-y-1.5">
@@ -257,19 +257,19 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
                 return (
                   <li
                     key={g.id}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition group"
+                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 transition group"
                   >
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                      <span className="text-sm font-bold text-slate-800 font-mono tracking-wide">{g.code}</span>
+                      <span className="text-sm font-bold text-slate-800 dark:text-white font-mono tracking-wide">{g.code}</span>
                       {countryName && countryName.toUpperCase() !== g.code.toUpperCase() && (
-                        <span className="text-xs text-slate-500 font-medium">({countryName})</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">({countryName})</span>
                       )}
                     </div>
                     <button
                       onClick={() => handleDelete(g.id, g.code)}
                       disabled={deletingId === g.id}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition disabled:opacity-50 cursor-pointer"
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 opacity-0 group-hover:opacity-100 transition disabled:opacity-50 cursor-pointer"
                       title={`Delete ${g.code}`}
                     >
                       {deletingId === g.id ? (
@@ -286,10 +286,10 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100">
+        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-850">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-200 transition"
+            className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-transparent dark:border-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-750 transition cursor-pointer"
           >
             Close
           </button>

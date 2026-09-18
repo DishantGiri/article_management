@@ -114,24 +114,24 @@ export default function LinkHistoryModal({ isOpen, onClose, linkLog }: LinkHisto
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden border border-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800 animate-scaleIn">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-850">
           <div>
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/50 dark:border-indigo-800/60 px-2 py-0.5 rounded-full">
               Link log ID: #{linkLog.id}
             </span>
-            <h2 className="text-base font-bold text-slate-900 mt-1">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white mt-1">
               History: {linkLog.affiliateName}
             </h2>
-            <p className="text-xs text-slate-400 font-medium">
+            <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">
               Product: {linkLog.product.name}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -141,17 +141,17 @@ export default function LinkHistoryModal({ isOpen, onClose, linkLog }: LinkHisto
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 space-y-2">
-              <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-              <p className="text-xs font-semibold text-slate-400">Fetching history logs...</p>
+              <div className="w-8 h-8 border-4 border-indigo-100 dark:border-indigo-950 border-t-indigo-600 dark:border-t-indigo-400 rounded-full animate-spin" />
+              <p className="text-xs font-semibold text-slate-400 dark:text-slate-400">Fetching history logs...</p>
             </div>
           ) : history.length === 0 ? (
             <div className="text-center py-16 space-y-2">
-              <Clock className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-sm font-semibold text-slate-500">No edit history recorded yet</p>
-              <p className="text-xs text-slate-400">All subsequent updates made by linkers will be tracked here.</p>
+              <Clock className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-300">No edit history recorded yet</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">All subsequent updates made by linkers will be tracked here.</p>
             </div>
           ) : (
-            <div className="relative pl-6 border-l border-slate-200 space-y-8">
+            <div className="relative pl-6 border-l border-slate-200 dark:border-slate-800 space-y-8">
               {history.map((item, idx) => {
                 const diffs = getDiffs(item);
                 const isCreation = !item.oldStatus && !item.oldAffiliateLink && !item.oldBridgeLink;
@@ -159,16 +159,16 @@ export default function LinkHistoryModal({ isOpen, onClose, linkLog }: LinkHisto
                 return (
                   <div key={item.id} className="relative group">
                     {/* Circle timeline indicator */}
-                    <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-white border-2 border-indigo-500 group-hover:scale-110 transition-transform flex items-center justify-center">
+                    <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-white dark:bg-slate-900 border-2 border-indigo-500 group-hover:scale-110 transition-transform flex items-center justify-center">
                       <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                     </div>
 
-                    <div className="bg-slate-50/50 hover:bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-sm transition-all">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-3">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                    <div className="bg-slate-50/50 hover:bg-slate-50 dark:bg-slate-850/60 dark:hover:bg-slate-850 rounded-xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm transition-all">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 mb-3">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-semibold">
                           <User className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-slate-800 font-bold">{item.updatedBy.name}</span>
-                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                          <span className="text-slate-800 dark:text-slate-100 font-bold">{item.updatedBy.name}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wide">
                             {item.updatedBy?.role ? item.updatedBy.role.replace("_", " ") : "USER"}
                           </span>
                         </div>
@@ -180,43 +180,43 @@ export default function LinkHistoryModal({ isOpen, onClose, linkLog }: LinkHisto
 
                       {isCreation ? (
                         <div className="space-y-1">
-                          <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                             🌱 Link Log Created
                           </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 bg-white p-3 rounded-lg border border-slate-100 text-[11px]">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-[11px]">
                             {item.newAffiliateLink && (
-                              <div><span className="font-bold text-slate-400">Affiliate:</span> <span className="text-slate-700 break-all">{item.newAffiliateLink}</span></div>
+                              <div><span className="font-bold text-slate-400">Affiliate:</span> <span className="text-slate-700 dark:text-slate-200 break-all">{item.newAffiliateLink}</span></div>
                             )}
                             {item.newBridgeLink && (
-                              <div><span className="font-bold text-slate-400">Bridge:</span> <span className="text-slate-700 break-all">{item.newBridgeLink}</span></div>
+                              <div><span className="font-bold text-slate-400">Bridge:</span> <span className="text-slate-700 dark:text-slate-200 break-all">{item.newBridgeLink}</span></div>
                             )}
                             {item.newBuyLink && (
-                              <div><span className="font-bold text-slate-400">Buy:</span> <span className="text-slate-700 break-all">{item.newBuyLink}</span></div>
+                              <div><span className="font-bold text-slate-400">Buy:</span> <span className="text-slate-700 dark:text-slate-200 break-all">{item.newBuyLink}</span></div>
                             )}
                             {item.newStatus && (
-                              <div><span className="font-bold text-slate-400">Status:</span> <span className="text-slate-700">{item.newStatus}</span></div>
+                              <div><span className="font-bold text-slate-400">Status:</span> <span className="text-slate-700 dark:text-slate-200">{item.newStatus}</span></div>
                             )}
                           </div>
                         </div>
                       ) : diffs.length === 0 ? (
-                        <p className="text-xs text-slate-500 italic">No fields were modified (metadata update)</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">No fields were modified (metadata update)</p>
                       ) : (
                         <div className="space-y-3.5">
                           {diffs.map((diff, dIdx) => {
                             const DiffIcon = diff.icon;
                             return (
                               <div key={dIdx} className="space-y-1">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                                   <DiffIcon className="w-3 h-3 text-slate-400" />
                                   {diff.field}
                                 </span>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white border border-slate-100 p-2.5 rounded-lg">
-                                  <div className="text-rose-600 font-medium bg-rose-50/30 p-1.5 rounded border border-rose-100/50 break-all">
-                                    <span className="text-[10px] font-bold text-rose-500 block uppercase mb-0.5">Old</span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2.5 rounded-lg">
+                                  <div className="text-rose-600 dark:text-rose-200 font-medium bg-rose-50/40 dark:bg-rose-950/40 p-2 rounded border border-rose-100 dark:border-rose-900/60 break-all">
+                                    <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 block uppercase mb-0.5">Old</span>
                                     {diff.oldVal}
                                   </div>
-                                  <div className="text-emerald-700 font-medium bg-emerald-50/20 p-1.5 rounded border border-emerald-100/40 break-all">
-                                    <span className="text-[10px] font-bold text-emerald-600 block uppercase mb-0.5">New</span>
+                                  <div className="text-emerald-700 dark:text-emerald-200 font-medium bg-emerald-50/40 dark:bg-emerald-950/40 p-2 rounded border border-emerald-100 dark:border-emerald-900/60 break-all">
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block uppercase mb-0.5">New</span>
                                     {diff.newVal}
                                   </div>
                                 </div>
@@ -234,10 +234,10 @@ export default function LinkHistoryModal({ isOpen, onClose, linkLog }: LinkHisto
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 shadow-sm transition"
+            className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition cursor-pointer"
           >
             Close Logs
           </button>

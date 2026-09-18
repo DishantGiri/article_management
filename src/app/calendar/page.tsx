@@ -243,9 +243,9 @@ function CalendarContent() {
           )}
 
           {data?.targetUser && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
-              <span className="text-xs font-semibold text-slate-700">{data.targetUser.name}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ROLE_BADGES[data.targetUser.role || ""] || "bg-slate-100 text-slate-600"}`}>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xs">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{data.targetUser.name}</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ROLE_BADGES[data.targetUser.role || ""] || "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"}`}>
                 {data.targetUser.role?.replace("_", " ") || "Member"}
               </span>
             </div>
@@ -254,7 +254,7 @@ function CalendarContent() {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-sm font-semibold flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
           <span>{error}</span>
         </div>
@@ -264,80 +264,80 @@ function CalendarContent() {
       {data && (
         <div className={`grid grid-cols-2 sm:grid-cols-3 ${isWriter ? "lg:grid-cols-4" : "lg:grid-cols-5"} gap-3.5`}>
           {/* Card 1: Working Days */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-sm transition space-y-1">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-sm transition space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span>Working Days</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs ring-4 ring-emerald-100" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs ring-4 ring-emerald-100 dark:ring-emerald-950/60" />
             </div>
-            <p className="text-2xl font-extrabold text-emerald-600 tracking-tight">
+            <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
               {data.summary.totalWorkingDays}
             </p>
-            <p className="text-[11px] font-medium text-slate-400">Recorded productivity</p>
+            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Recorded productivity</p>
           </div>
 
           {/* Card 2: Non-Working / Inactive Days */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-sm transition space-y-1">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-sm transition space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span>Inactive Days</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-xs ring-4 ring-rose-100" />
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-xs ring-4 ring-rose-100 dark:ring-rose-950/60" />
             </div>
-            <p className="text-2xl font-extrabold text-rose-600 tracking-tight">
+            <p className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 tracking-tight">
               {data.summary.totalNonWorkingDays}
             </p>
-            <p className="text-[11px] font-medium text-slate-400">Past days with 0 activities</p>
+            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Past days with 0 activities</p>
           </div>
 
           {/* Card 3: Articles Completed */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-sm transition space-y-1">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-sm transition space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span>Completed Articles</span>
-              <FileText className="w-4 h-4 text-blue-500" />
+              <FileText className="w-4 h-4 text-blue-500 dark:text-blue-400" />
             </div>
-            <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            <p className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               {data.summary.totalArticlesCompleted}
             </p>
-            <p className="text-[11px] font-medium text-slate-400">Drafted & finalized</p>
+            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Drafted & finalized</p>
           </div>
 
           {/* Card 4: Links Actioned */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-sm transition space-y-1">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-sm transition space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span>Links Actioned</span>
-              <Link2 className="w-4 h-4 text-emerald-500" />
+              <Link2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
             </div>
-            <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            <p className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               {data.summary.totalLinksActioned}
             </p>
-            <p className="text-[11px] font-medium text-slate-400">Logged or modified</p>
+            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Logged or modified</p>
           </div>
 
           {/* Card 5: Writing Time - Hidden from writers */}
           {!isWriter && (
-            <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-sm transition space-y-1 col-span-2 sm:col-span-1">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-sm transition space-y-1 col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
                 <span>Writing Time</span>
-                <Clock className="w-4 h-4 text-[#6D8196]" />
+                <Clock className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
               </div>
-              <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {formatWritingTime(data.summary.totalWritingTimeMin)}
               </p>
-              <p className="text-[11px] font-medium text-slate-400">Total hours spent</p>
+              <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Total hours spent</p>
             </div>
           )}
         </div>
       )}
 
       {/* ── Main Calendar Container ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
         {/* Calendar Controls Toolbar */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">{data?.monthLabel}</h2>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-bold text-[10px]">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">{data?.monthLabel}</h2>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 font-bold text-[10px]">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Worked Day
               </span>
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/60 font-bold text-[10px]">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60 font-bold text-[10px]">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Non-Working Day
               </span>
             </div>
@@ -347,22 +347,22 @@ function CalendarContent() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleTodayMonth}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               Current Month
             </button>
-            <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-2xs">
+            <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-2xs">
               <button
                 onClick={handlePrevMonth}
-                className="p-2 hover:bg-slate-50 text-slate-600 transition cursor-pointer"
+                className="p-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
                 title="Previous Month"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-2 text-xs font-mono font-bold text-slate-700">{selectedMonth}</span>
+              <span className="px-2 text-xs font-mono font-bold text-slate-700 dark:text-slate-200">{selectedMonth}</span>
               <button
                 onClick={handleNextMonth}
-                className="p-2 hover:bg-slate-50 text-slate-600 transition cursor-pointer"
+                className="p-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
                 title="Next Month"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -372,7 +372,7 @@ function CalendarContent() {
         </div>
 
         {/* ── Weekday Labels Header ── */}
-        <div className="grid grid-cols-7 border-b border-slate-100 text-center text-xs font-bold text-slate-400 bg-slate-50/50 py-2.5">
+        <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-800 text-center text-xs font-bold text-slate-400 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-850/60 py-2.5">
           <div>SUN</div>
           <div>MON</div>
           <div>TUE</div>
@@ -383,10 +383,10 @@ function CalendarContent() {
         </div>
 
         {/* ── Calendar Days Grid ── */}
-        <div className="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-100">
+        <div className="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-100 dark:divide-slate-800">
           {/* Padding empty cells for previous month remainder */}
           {paddingDays.map((_, i) => (
-            <div key={`pad-${i}`} className="min-h-[105px] sm:min-h-[120px] bg-slate-50/40 opacity-40 p-2 select-none" />
+            <div key={`pad-${i}`} className="min-h-[105px] sm:min-h-[120px] bg-slate-50/40 dark:bg-slate-900/40 opacity-40 p-2 select-none" />
           ))}
 
           {/* Actual days of month */}
@@ -399,7 +399,7 @@ function CalendarContent() {
               <div
                 key={day.date}
                 onClick={() => setInspectingDay(day)}
-                className={`min-h-[105px] sm:min-h-[120px] p-2 sm:p-2.5 transition-all duration-150 relative flex flex-col justify-between cursor-pointer group ${day.isToday ? "bg-indigo-50/30" : "bg-white hover:bg-slate-50/80"
+                className={`min-h-[105px] sm:min-h-[120px] p-2 sm:p-2.5 transition-all duration-150 relative flex flex-col justify-between cursor-pointer group ${day.isToday ? "bg-indigo-50/30 dark:bg-indigo-950/20" : "bg-white hover:bg-slate-50/80 dark:bg-slate-900 dark:hover:bg-slate-850"
                   }`}
               >
                 {/* Day Header Row */}
@@ -407,7 +407,7 @@ function CalendarContent() {
                   <span
                     className={`text-xs font-bold rounded-lg px-2 py-0.5 transition ${day.isToday
                         ? "bg-[#6D8196] text-white shadow-xs"
-                        : "text-slate-700 group-hover:text-slate-900"
+                        : "text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white"
                       }`}
                   >
                     {day.dayNumber}
@@ -421,15 +421,15 @@ function CalendarContent() {
                           className="flex items-center gap-1"
                           title={`${day.activityCount} work activities recorded`}
                         >
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-200 animate-pulse" />
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900 animate-pulse" />
                         </div>
                       ) : (
                         <div className="flex items-center" title="No work activity recorded">
-                          <span className="w-2 h-2 rounded-full bg-rose-500/80 ring-2 ring-rose-100" />
+                          <span className="w-2 h-2 rounded-full bg-rose-500/80 ring-2 ring-rose-100 dark:ring-rose-950" />
                         </div>
                       )
                     ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-200" title="Future date" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700" title="Future date" />
                     )}
                   </div>
                 </div>
@@ -439,16 +439,16 @@ function CalendarContent() {
                   {hasActivities ? (
                     <>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 truncate">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 truncate">
                           ✓ {day.activityCount} action{day.activityCount > 1 ? "s" : ""}
                         </span>
                       </div>
                       {/* Short list of first 1-2 items */}
-                      <p className="text-[10px] text-slate-500 font-medium truncate">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
                         {day.activities[0].title}
                       </p>
                       {day.activities.length > 1 && (
-                        <p className="text-[9px] text-slate-400 font-semibold truncate">
+                        <p className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold truncate">
                           +{day.activities.length - 1} more
                         </p>
                       )}
@@ -459,8 +459,8 @@ function CalendarContent() {
                 </div>
 
                 {/* Bottom Card Footer */}
-                <div className="text-[10px] text-slate-400 font-semibold opacity-0 group-hover:opacity-100 transition flex items-center justify-end">
-                  <span className="text-[#6D8196] font-bold flex items-center gap-0.5">
+                <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold opacity-0 group-hover:opacity-100 transition flex items-center justify-end">
+                  <span className="text-[#6D8196] dark:text-sky-400 font-bold flex items-center gap-0.5">
                     Inspect <ArrowRight className="w-2.5 h-2.5" />
                   </span>
                 </div>
@@ -473,24 +473,24 @@ function CalendarContent() {
       {/* ── Day Detail Work History Modal ── */}
       {inspectingDay && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col border border-slate-100 overflow-hidden animate-scaleIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col border border-slate-100 dark:border-slate-800 overflow-hidden animate-scaleIn">
             {/* Modal Header */}
-            <div className="px-6 py-4 bg-[#FAF9F5] border-b border-slate-200/80 flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 bg-[#FAF9F5] dark:bg-slate-850 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#6D8196] shadow-2xs font-bold font-mono">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[#6D8196] dark:text-sky-400 shadow-2xs font-bold font-mono">
                   {inspectingDay.dayNumber}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
                     {moment(inspectingDay.date).format("dddd, MMMM D, YYYY")}
                   </h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     {inspectingDay.isWorkingDay ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active Working Day ({inspectingDay.activityCount} Activities)
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Inactive / No Work Recorded
                       </span>
                     )}
@@ -500,7 +500,7 @@ function CalendarContent() {
 
               <button
                 onClick={() => setInspectingDay(null)}
-                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
+                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -510,10 +510,10 @@ function CalendarContent() {
             <div className="p-6 overflow-y-auto space-y-4">
               {inspectingDay.activities.length === 0 ? (
                 <div className="py-12 text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-2">
                     <CalendarIcon className="w-6 h-6" />
                   </div>
-                  <h4 className="text-sm font-bold text-slate-700">No Activity Logged</h4>
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">No Activity Logged</h4>
                   <p className="text-xs text-slate-400 max-w-sm mx-auto">
                     There are no articles written, links added, or updates recorded for {data?.targetUser.name} on this date.
                   </p>
@@ -524,7 +524,7 @@ function CalendarContent() {
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Work Activity Timeline ({inspectingDay.activities.length})
                     </p>
-                    <span className="text-[10px] font-bold text-[#6D8196] bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60">
+                    <span className="text-[10px] font-bold text-[#6D8196] dark:text-sky-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700">
                       NPT (UTC+5:45)
                     </span>
                   </div>
@@ -537,7 +537,7 @@ function CalendarContent() {
                       return (
                         <div
                           key={item.id}
-                          className="p-4 rounded-xl border border-slate-200/80 bg-white hover:border-slate-300 transition shadow-2xs space-y-2"
+                          className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-2xs space-y-2"
                         >
                           {/* Item Top Row */}
                           <div className="flex items-start justify-between gap-2">
@@ -549,7 +549,7 @@ function CalendarContent() {
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.bg} ${meta.text} ${meta.border}`}>
                                   {item.badge}
                                 </span>
-                                <h4 className="text-sm font-bold text-slate-900 mt-1">{item.title}</h4>
+                                <h4 className="text-sm font-bold text-slate-900 dark:text-white mt-1">{item.title}</h4>
                               </div>
                             </div>
 
@@ -570,9 +570,9 @@ function CalendarContent() {
 
                           {/* Subtitle & Details */}
                           <div className="pl-8 space-y-1">
-                            <p className="text-xs text-slate-600 font-medium">{item.subtitle}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{item.subtitle}</p>
                             {item.details && (
-                              <p className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100 font-sans">
+                              <p className="text-xs text-slate-500 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/90 p-2 rounded-lg border border-slate-100 dark:border-slate-800 font-sans">
                                 {sanitizeDetailText(item.details)}
                               </p>
                             )}
@@ -580,12 +580,12 @@ function CalendarContent() {
                             {/* Extra Info: duration or link */}
                             <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px]">
                               {!isWriter && item.durationMin && item.durationMin > 0 && (
-                                <span className="flex items-center gap-1 font-semibold text-slate-500">
-                                  <Clock className="w-3 h-3 text-[#6D8196]" /> Time: {formatWritingTime(item.durationMin)}
+                                <span className="flex items-center gap-1 font-semibold text-slate-500 dark:text-slate-400">
+                                  <Clock className="w-3 h-3 text-[#6D8196] dark:text-sky-400" /> Time: {formatWritingTime(item.durationMin)}
                                 </span>
                               )}
                               {item.status && (
-                                <span className="font-bold text-indigo-600">
+                                <span className="font-bold text-indigo-600 dark:text-indigo-400">
                                   Status: {item.status}
                                 </span>
                               )}
@@ -594,7 +594,7 @@ function CalendarContent() {
                                   href={item.link.startsWith("http") ? item.link : `https://${item.link}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 font-semibold text-[#6D8196] hover:underline"
+                                  className="inline-flex items-center gap-1 font-semibold text-[#6D8196] dark:text-sky-400 hover:underline"
                                 >
                                   View Item <ExternalLink className="w-3 h-3" />
                                 </a>
@@ -610,11 +610,11 @@ function CalendarContent() {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-500">
+            <div className="px-6 py-3 bg-slate-50 dark:bg-slate-850 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
               <span>{data?.targetUser.name} &bull; {data?.targetUser.role?.replace("_", " ")}</span>
               <button
                 onClick={() => setInspectingDay(null)}
-                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold transition cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-750 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 dark:border dark:border-slate-700 font-bold transition cursor-pointer"
               >
                 Close
               </button>
@@ -630,7 +630,7 @@ export default function CalendarPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center p-6 bg-[#FAF9F5]">
+        <div className="min-h-screen flex items-center justify-center p-6 bg-[#FAF9F5] dark:bg-slate-950">
           <LoadingScreen message="Loading Work History Calendar..." size="md" />
         </div>
       }

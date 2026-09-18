@@ -331,21 +331,21 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   const writerRemarksDate = writerRemarkHistoryItem?.updatedAt || article.updatedAt;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1500px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A] space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1500px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-100 space-y-6">
       {/* ─── TOP ACTION BAR ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="px-3 py-1.5 rounded-xl bg-white border border-[#CBCBCB] hover:border-[#6D8196] text-slate-600 hover:text-slate-900 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-[#CBCBCB] dark:border-slate-800 hover:border-[#6D8196] dark:hover:border-[#6D8196] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back
           </button>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-            <Link href="/articles" className="hover:text-slate-700 transition">Articles</Link>
+            <Link href="/articles" className="hover:text-slate-700 dark:hover:text-slate-200 transition">Articles</Link>
             <span>/</span>
-            <span className="text-slate-700 font-bold truncate max-w-[200px] sm:max-w-none">{product.name}</span>
+            <span className="text-slate-700 dark:text-slate-100 font-bold truncate max-w-[200px] sm:max-w-none">{product.name}</span>
           </div>
         </div>
 
@@ -390,38 +390,38 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
       {/* Error / Success Alerts */}
       {error && (
-        <div className="px-4 py-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
+        <div className="px-4 py-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}
       {success && (
-        <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
+        <div className="px-4 py-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
           <span>{success}</span>
         </div>
       )}
 
       {/* ─── HERO CARD: ARTICLE, WRITER & PRODUCT OVERVIEW ─────────── */}
-      <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 sm:p-8 shadow-xs space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-6">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
           <div className="space-y-3 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
+              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                 {product.site.name}
               </span>
-              <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1.5">
-                <LayoutGrid className="w-3.5 h-3.5 text-[#6D8196]" />
+              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1.5">
+                <LayoutGrid className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                 {product.category.name}
               </span>
               {product.productCategory && (
-                <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-[11px] font-bold">
+                <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold">
                   {product.productCategory}
                 </span>
               )}
               {product.trendLevel && (
-                <span className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                <span className="px-2.5 py-1 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 rounded-lg text-[11px] font-bold flex items-center gap-1">
                   <Flame className="w-3.5 h-3.5" />
                   {product.trendLevel} Trend
                 </span>
@@ -429,7 +429,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
             </div>
 
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {product.name}
               </h1>
               <p className="text-xs text-slate-400 font-medium mt-1 flex items-center gap-2">
@@ -441,18 +441,18 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
           </div>
 
           {/* Assigned Writer Profile Box */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 min-w-[260px] flex items-center gap-3.5 shadow-2xs">
-            <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-extrabold text-sm flex-shrink-0 shadow-2xs">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 min-w-[260px] flex items-center gap-3.5 shadow-2xs">
+            <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-extrabold text-sm flex-shrink-0 shadow-2xs">
               {getInitials(article.writer?.name)}
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                 Assigned Author
               </span>
-              <p className="text-sm font-extrabold text-slate-900 truncate">
+              <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
                 {article.writer?.name || "Unassigned"}
               </p>
-              <p className="text-[11px] text-slate-500 truncate font-medium">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-medium">
                 {article.writer?.email || "Pending writer claim"}
               </p>
             </div>
@@ -460,9 +460,9 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
         </div>
 
         {/* ─── DIRECT LINKS SECTION (Prominent document & product links) ─── */}
-        <div className="p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl space-y-4">
+        <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 rounded-2xl space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <LinkIcon className="w-3.5 h-3.5 text-[#6D8196]" />
               Submission & Resource Links
             </span>
@@ -797,12 +797,12 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
               {/* STATE 3: PENDING WRITER */}
               {article.status === "PENDING" && (
-                <div className="p-4 bg-amber-50/80 border border-amber-200/80 rounded-2xl space-y-2">
-                  <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
-                    <Clock className="w-4 h-4 text-amber-600" />
+                <div className="p-4 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl space-y-2">
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     <span>Article Pending Assignment</span>
                   </div>
-                  <p className="text-xs text-amber-900 font-medium leading-relaxed">
+                  <p className="text-xs text-amber-900 dark:text-amber-100 font-medium leading-relaxed">
                     This article has not been claimed or written yet. Review controls will become available once an eligible writer claims the assignment and submits their completed article document.
                   </p>
                 </div>
@@ -810,13 +810,13 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
               {/* STATE 4: IN PROGRESS */}
               {article.status === "IN_PROGRESS" && (
-                <div className="p-4 bg-blue-50/80 border border-blue-200/80 rounded-2xl space-y-2">
-                  <div className="flex items-center gap-2 text-blue-800 font-bold text-xs">
-                    <PenTool className="w-4 h-4 text-blue-600" />
+                <div className="p-4 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 rounded-2xl space-y-2">
+                  <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 font-bold text-xs">
+                    <PenTool className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span>Drafting in Progress</span>
                   </div>
-                  <p className="text-xs text-blue-900 font-medium leading-relaxed">
-                    Writer <strong>{article.writer?.name || "Assigned Writer"}</strong> is actively working on this article. {isManager ? "The live stopwatch is running. Review controls will unlock as soon as the article is submitted." : "Review controls will unlock as soon as the article is submitted."}
+                  <p className="text-xs text-blue-900 dark:text-blue-100 font-medium leading-relaxed">
+                    Writer <strong className="text-slate-900 dark:text-white">{article.writer?.name || "Assigned Writer"}</strong> is actively working on this article. {isManager ? "The live stopwatch is running. Review controls will unlock as soon as the article is submitted." : "Review controls will unlock as soon as the article is submitted."}
                   </p>
                 </div>
               )}
@@ -825,23 +825,23 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
               {article.status === "APPROVED" && (
                 <div className="space-y-4">
                   {article.specialApprovalRequested ? (
-                    <div className="p-5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-3.5 shadow-2xs">
+                    <div className="p-5 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl space-y-3.5 shadow-2xs">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
-                          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                           <span>Writer Requested Permission to Edit Approved Article</span>
                         </div>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
                           Pending Decision
                         </span>
                       </div>
 
-                      <p className="text-xs text-amber-900 leading-relaxed font-medium">
-                        Writer <strong>{article.writer?.name || "Assigned Writer"}</strong> is requesting permission from the Team Lead to reopen and make modifications to this finalized article.
+                      <p className="text-xs text-amber-900 dark:text-amber-100 leading-relaxed font-medium">
+                        Writer <strong className="text-slate-900 dark:text-white">{article.writer?.name || "Assigned Writer"}</strong> is requesting permission from the Team Lead to reopen and make modifications to this finalized article.
                       </p>
 
-                      <div className="p-3 bg-white rounded-xl border border-amber-200/80 text-xs text-amber-950 font-medium space-y-1">
-                        <span className="font-bold block text-amber-800 text-[10px] uppercase tracking-wider">Writer&apos;s Explanation / Reason:</span>
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-amber-200/80 dark:border-amber-800/60 text-xs text-amber-950 dark:text-amber-100 font-medium space-y-1">
+                        <span className="font-bold block text-amber-800 dark:text-amber-300 text-[10px] uppercase tracking-wider">Writer&apos;s Explanation / Reason:</span>
                         <p className="italic">&quot;{article.specialApprovalRequestReason || "No specific reason provided"}&quot;</p>
                       </div>
 
@@ -894,7 +894,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                                 toast.error(e.message || "Failed to decline update");
                               }
                             }}
-                            className="px-3.5 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                            className="px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
                           >
                             Decline Request
                           </button>
@@ -902,10 +902,10 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                       )}
                     </div>
                   ) : (
-                    <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl space-y-3">
+                    <div className="p-4 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl space-y-3">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           <span>Article Approved & Finalized</span>
                         </div>
                         {isManager && (
@@ -914,15 +914,15 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                               setShowFlagModal(true);
                               setFlagReason("");
                             }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
                             title="Raise a flag to the writer that this approved article requires revisions"
                           >
-                            <Flag className="w-3.5 h-3.5 text-amber-600" />
+                            <Flag className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                             <span>Flag for Update</span>
                           </button>
                         )}
                       </div>
-                      <p className="text-xs text-emerald-900 font-medium leading-relaxed">
+                      <p className="text-xs text-emerald-900 dark:text-emerald-100 font-medium leading-relaxed">
                         This article has passed all editorial checks and has been approved. If revisions are required later, you can raise a flag to reopen it for the writer.
                       </p>
                     </div>
@@ -933,23 +933,23 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
           )}
 
           {/* ─── AFFILIATE & TRACKING LINKS SECTION ─── */}
-          <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <LinkIcon className="w-4 h-4 text-[#6D8196]" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
               Tracked Links & GEO Networks ({product.linkLogs?.length || 0})
             </h3>
 
             {/* Dedicated Product Preview Link if present */}
             {product.previewLink && (
-              <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-200/60 flex items-center justify-between gap-2">
+              <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Globe className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
-                  <span className="text-[10px] font-extrabold text-indigo-700 uppercase flex-shrink-0">Preview Link:</span>
+                  <Globe className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                  <span className="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-300 uppercase flex-shrink-0">Preview Link:</span>
                   <a
                     href={ensureExternalUrl(product.previewLink)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-indigo-600 hover:underline truncate font-mono text-[11px]"
+                    className="text-indigo-600 dark:text-sky-400 hover:underline truncate font-mono text-[11px]"
                   >
                     {product.previewLink}
                   </a>
@@ -960,7 +960,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                       navigator.clipboard.writeText(product.previewLink || "");
                       toast.success("Preview link copied!");
                     }}
-                    className="p-1 rounded hover:bg-indigo-100 text-indigo-600 cursor-pointer"
+                    className="p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 cursor-pointer"
                     title="Copy Preview Link"
                   >
                     <Copy className="w-3.5 h-3.5" />
@@ -969,7 +969,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                     href={ensureExternalUrl(product.previewLink)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1 rounded hover:bg-indigo-100 text-indigo-600"
+                    className="p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300"
                     title="Open Preview Link"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -981,10 +981,10 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
             {product.linkLogs?.length > 0 ? (
               <div className="space-y-3">
                 {product.linkLogs.map((log: any) => (
-                  <div key={log.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200/70 space-y-3">
+                  <div key={log.id} className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800 text-sm">{log.affiliateName}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                      <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{log.affiliateName}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-transparent dark:border-blue-800/60">
                         {log.status}
                       </span>
                     </div>
@@ -997,7 +997,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                             href={ensureExternalUrl(log.bridgePageLink)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-600 hover:underline truncate flex-1 font-mono text-[11px]"
+                            className="text-indigo-600 dark:text-sky-400 hover:underline truncate flex-1 font-mono text-[11px]"
                           >
                             {log.bridgePageLink}
                           </a>
@@ -1006,7 +1006,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                               navigator.clipboard.writeText(log.bridgePageLink);
                               toast.success("Bridge link copied!");
                             }}
-                            className="p-1 rounded hover:bg-slate-200 text-slate-500"
+                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-pointer"
                             title="Copy Bridge Link"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -1016,12 +1016,12 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
                       {log.buyLink && (
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold text-emerald-700 uppercase flex-shrink-0">Buy Now Link:</span>
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase flex-shrink-0">Buy Now Link:</span>
                           <a
                             href={ensureExternalUrl(log.buyLink)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-emerald-600 hover:underline truncate flex-1 font-mono text-[11px]"
+                            className="text-emerald-600 dark:text-emerald-300 hover:underline truncate flex-1 font-mono text-[11px]"
                           >
                             {log.buyLink}
                           </a>
@@ -1030,7 +1030,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                               navigator.clipboard.writeText(log.buyLink);
                               toast.success("Buy now link copied!");
                             }}
-                            className="p-1 rounded hover:bg-slate-200 text-slate-500"
+                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-pointer"
                             title="Copy Buy Now Link"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -1045,7 +1045,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                             href={ensureExternalUrl(log.affiliateLink)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-600 hover:underline truncate flex-1 font-mono text-[11px]"
+                            className="text-indigo-600 dark:text-sky-400 hover:underline truncate flex-1 font-mono text-[11px]"
                           >
                             {log.affiliateLink}
                           </a>
@@ -1054,7 +1054,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                               navigator.clipboard.writeText(log.affiliateLink);
                               toast.success("Affiliate link copied!");
                             }}
-                            className="p-1 rounded hover:bg-slate-200 text-slate-500"
+                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-pointer"
                             title="Copy Affiliate Link"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -1070,7 +1070,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                           return (
                             <span
                               key={g.geo}
-                              className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-600 shadow-2xs"
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[10px] font-bold text-slate-600 dark:text-slate-200 shadow-2xs"
                             >
                               <span>{g.geo}</span>
                               {geoLink && (
@@ -1081,7 +1081,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                                     navigator.clipboard.writeText(geoLink);
                                     toast.success(`${g.geo} affiliate link copied!`);
                                   }}
-                                  className="p-0.5 hover:bg-slate-100 rounded text-slate-400 hover:text-indigo-600 transition cursor-pointer"
+                                  className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-sky-400 transition cursor-pointer"
                                   title={`Copy ${g.geo} link`}
                                 >
                                   <Copy className="w-3 h-3" />
@@ -1096,26 +1096,26 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-400 italic">No affiliate links configured for this product yet.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 italic">No affiliate links configured for this product yet.</p>
             )}
           </div>
 
           {/* ─── REMARKS & SPECIAL APPROVAL SECTION ─── */}
           {(product.remarks || writerRemarks || article.specialApprovalRequested || article.specialApproval) && (
-            <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-[#6D8196]" />
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
                 Notes & Special Approvals
               </h3>
 
               {/* Special Approval Granted */}
               {article.specialApproval && (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1">
-                  <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
-                    <Shield className="w-4 h-4" />
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl space-y-1">
+                  <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
+                    <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     <span>Special Approval Granted by {article.specialApproval.approvedBy.name}</span>
                   </div>
-                  <p className="text-xs text-emerald-700 italic font-medium">
+                  <p className="text-xs text-emerald-700 dark:text-emerald-200 italic font-medium">
                     &quot;{article.specialApproval.reason}&quot;
                   </p>
                 </div>
@@ -1123,12 +1123,12 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
               {/* Special Approval Pending */}
               {article.specialApprovalRequested && !article.specialApproval && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
-                  <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
-                    <Flag className="w-4 h-4" />
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-1">
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                    <Flag className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     <span>Special Approval Requested (No-Link Exemption)</span>
                   </div>
-                  <p className="text-xs text-amber-700 italic font-medium">
+                  <p className="text-xs text-amber-700 dark:text-amber-200 italic font-medium">
                     Reason: &quot;{article.specialApprovalRequestReason || "No explanation provided."}&quot;
                   </p>
                 </div>
@@ -1136,19 +1136,19 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
               {/* Writer Remarks */}
               {writerRemarks && (
-                <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-1.5">
+                <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/60 rounded-xl space-y-1.5">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">
+                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider block">
                       Writer Remarks
                     </span>
                     {writerRemarksDate && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 bg-white px-2 py-0.5 rounded-md border border-indigo-200/80 shadow-2xs">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 dark:text-indigo-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs">
                         <Calendar className="w-3 h-3 text-indigo-400 shrink-0" />
                         {formatRemarkDate(writerRemarksDate)}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-indigo-900 font-medium whitespace-pre-wrap leading-relaxed">
+                  <p className="text-xs text-indigo-900 dark:text-indigo-100 font-medium whitespace-pre-wrap leading-relaxed">
                     {writerRemarks}
                   </p>
                 </div>
@@ -1156,19 +1156,19 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
               {/* Linker Remarks */}
               {product.remarks && (
-                <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-xl space-y-1.5">
+                <div className="p-4 bg-amber-50/60 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-800/60 rounded-xl space-y-1.5">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
+                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider block">
                       Linker / Product Remarks
                     </span>
                     {product.addedAt && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-white px-2 py-0.5 rounded-md border border-amber-200/80 shadow-2xs">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-amber-200/80 dark:border-amber-800/60 shadow-2xs">
                         <Calendar className="w-3 h-3 text-amber-500 shrink-0" />
                         {formatRemarkDate(product.addedAt)}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-amber-900 font-medium whitespace-pre-wrap leading-relaxed">
+                  <p className="text-xs text-amber-900 dark:text-amber-100 font-medium whitespace-pre-wrap leading-relaxed">
                     {product.remarks}
                   </p>
                 </div>
@@ -1181,30 +1181,30 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
         <div className="lg:col-span-5 space-y-6">
           {/* Timing Metrics Card - Hidden from writers */}
           {isManager && (
-            <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#6D8196]" />
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
                 Production & Velocity Metrics
               </h3>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Started At</p>
-                  <p className="text-xs font-bold text-slate-700">
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
                     {article.startedAt ? new Date(article.startedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "-"}
                   </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Completed At</p>
-                  <p className="text-xs font-bold text-slate-700">
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
                     {article.completedAt ? new Date(article.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "-"}
                   </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Writing Time</p>
-                  <p className="text-sm font-extrabold text-slate-900">
+                  <p className="text-sm font-extrabold text-slate-900 dark:text-white">
                     {article.writingTimeMin !== undefined && article.writingTimeMin !== null
                       ? article.writingTimeMin >= 60
                         ? `${Math.floor(article.writingTimeMin / 60)}h ${article.writingTimeMin % 60}m`
@@ -1213,9 +1213,9 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                   </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Revision Time</p>
-                  <p className="text-sm font-extrabold text-slate-900">
+                  <p className="text-sm font-extrabold text-slate-900 dark:text-white">
                     {article.updateTimeMin !== undefined && article.updateTimeMin !== null
                       ? article.updateTimeMin >= 60
                         ? `${Math.floor(article.updateTimeMin / 60)}h ${article.updateTimeMin % 60}m`
@@ -1228,29 +1228,29 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
           )}
 
           {/* Past Reviews Log */}
-          <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#6D8196]" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
               Editorial Reviews History ({article.reviews?.length || 0})
             </h3>
 
             {article.reviews && article.reviews.length > 0 ? (
-              <div className="space-y-3 max-h-72 overflow-y-auto pr-1 divide-y divide-slate-100">
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1 divide-y divide-slate-100 dark:divide-slate-800">
                 {article.reviews.map((r) => (
                   <div key={r.id} className="pt-3 first:pt-0 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800">{r.reviewedBy.name}</span>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{r.reviewedBy.name}</span>
                       <span
                         className={`px-2 py-0.5 rounded text-[10px] font-bold ${r.approved
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-rose-100 text-rose-800"
+                            ? "bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-transparent dark:border-emerald-800/60"
+                            : "bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-transparent dark:border-rose-800/60"
                           }`}
                       >
                         {r.approved ? "APPROVED" : "NEEDS CHANGES"}
                       </span>
                     </div>
                     {r.suggestion && (
-                      <p className="text-xs text-slate-600 italic bg-slate-50 p-2 rounded-lg border border-slate-100 font-medium">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 italic bg-slate-50 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-700 font-medium">
                         &quot;{r.suggestion}&quot;
                       </p>
                     )}
@@ -1266,9 +1266,9 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
           </div>
 
           {/* Update History Audit Trail */}
-          <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <HistoryIcon className="w-4 h-4 text-[#6D8196]" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <HistoryIcon className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
               Activity & Audit Trail ({article.history?.length || 0})
             </h3>
 
@@ -1279,15 +1279,15 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                   const parts = hasRemarks ? h.notes.split("Writer remarks:") : [h.notes, ""];
 
                   return (
-                    <div key={h.id} className="relative pl-4 border-l-2 border-slate-200 py-0.5 text-left">
-                      <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-slate-400 border border-white" />
+                    <div key={h.id} className="relative pl-4 border-l-2 border-slate-200 dark:border-slate-700 py-0.5 text-left">
+                      <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-slate-400 border border-white dark:border-slate-900" />
                       <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <p className="text-xs font-bold text-slate-800 truncate">{h.updatedBy.name}</p>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{h.updatedBy.name}</p>
                         <span className="text-[10px] text-slate-400 font-semibold">
                           {new Date(h.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-600 font-medium leading-normal">{parts[0]}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-normal">{parts[0]}</p>
                     </div>
                   );
                 })}

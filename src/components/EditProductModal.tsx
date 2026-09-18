@@ -229,16 +229,16 @@ export default function EditProductModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col border border-slate-100">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col border border-slate-100 dark:border-slate-800 animate-scaleIn">
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-[#4A4A4A] text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 bg-[#4A4A4A] dark:bg-slate-850 text-white flex items-center justify-between shrink-0 border-b border-transparent dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#6D8196]/30 border border-[#6D8196]/40 flex items-center justify-center text-white shadow-inner">
               <Package className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">Edit Product</h2>
-              <p className="text-xs text-[#EAEAEA] font-medium">Update details, product type, category & link settings</p>
+              <p className="text-xs text-[#EAEAEA] dark:text-slate-400 font-medium">Update details, product type, category & link settings</p>
             </div>
           </div>
           <button
@@ -252,7 +252,7 @@ export default function EditProductModal({
         {/* Modal Body */}
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2 shadow-2xs">
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2 shadow-2xs">
               <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -267,8 +267,8 @@ export default function EditProductModal({
               {/* Product Name & Product Slug */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Package className="w-3.5 h-3.5 text-[#6D8196]" />
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                     Product Name <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -282,10 +282,10 @@ export default function EditProductModal({
                       }
                     }}
                     placeholder="Product Name"
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 transition-all shadow-2xs ${
+                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 transition-all shadow-2xs ${
                       name.trim().length > 0 && name.trim().length < 2
                         ? "border-rose-400 focus:border-rose-500"
-                        : "border-slate-200 focus:border-[#6D8196]"
+                        : "border-slate-200 dark:border-slate-700 focus:border-[#6D8196]"
                     }`}
                   />
                   {name.trim().length > 0 && name.trim().length < 2 && (
@@ -297,8 +297,8 @@ export default function EditProductModal({
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Link2 className="w-3.5 h-3.5 text-[#6D8196]" />
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                       Product Slug <span className="text-slate-400 font-normal text-[10px] normal-case">(Auto-generated)</span>
                     </label>
                     {isSlugEdited && (
@@ -308,7 +308,7 @@ export default function EditProductModal({
                           setIsSlugEdited(false);
                           setSlug(generateSlug(name));
                         }}
-                        className="text-[10px] font-bold text-[#6D8196] hover:underline"
+                        className="text-[10px] font-bold text-[#6D8196] dark:text-sky-400 hover:underline"
                         title="Reset slug to match product name"
                       >
                         Reset to Auto
@@ -323,7 +323,7 @@ export default function EditProductModal({
                       setSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-"));
                     }}
                     placeholder="e.g. product-slug"
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs text-xs"
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs text-xs"
                   />
                 </div>
               </div>
@@ -331,8 +331,8 @@ export default function EditProductModal({
               {/* Affiliate & Product Category */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                     Affiliate Network / Name
                   </label>
                   {!showCustomAffiliate ? (
@@ -366,12 +366,12 @@ export default function EditProductModal({
                         }}
                         maxLength={50}
                         placeholder="Enter affiliate name..."
-                        className="flex-1 px-3.5 py-2.5 bg-white border border-[#6D8196] rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
+                        className="flex-1 px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-[#6D8196] dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
                       />
                       <button
                         type="button"
                         onClick={() => setShowCustomAffiliate(false)}
-                        className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
+                        className="px-3 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -380,8 +380,8 @@ export default function EditProductModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                     Product Category
                   </label>
                   <CustomSelect
@@ -399,8 +399,8 @@ export default function EditProductModal({
               {/* Site & Product Type */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-[#6D8196]" />
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                     Site <span className="text-rose-500">*</span>
                   </label>
                   <CustomSelect
@@ -412,8 +412,8 @@ export default function EditProductModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-[#6D8196]" />
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                     Product Type <span className="text-rose-500">*</span>
                   </label>
                   <CustomSelect
@@ -428,8 +428,8 @@ export default function EditProductModal({
               {/* Trend Level & Trend Link */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-[#6D8196]" />
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                     Trend Level
                   </label>
                   <CustomSelect
@@ -445,8 +445,8 @@ export default function EditProductModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Link2 className="w-3.5 h-3.5 text-[#6D8196]" />
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Link2 className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                     Trend Link URL
                   </label>
                   <input
@@ -462,10 +462,10 @@ export default function EditProductModal({
                       }
                     }}
                     placeholder="https://..."
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
+                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none transition-all shadow-2xs ${
                       trendLinkError
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                        : "border-slate-200 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                        : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
                     }`}
                   />
                   {trendLinkError && (
@@ -477,8 +477,8 @@ export default function EditProductModal({
               {/* Preview Link & Remarks */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
                     Preview Link URL
                   </label>
                   <input
@@ -494,10 +494,10 @@ export default function EditProductModal({
                       }
                     }}
                     placeholder="https://..."
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${
+                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none transition-all shadow-2xs ${
                       previewLinkError
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                        : "border-slate-200 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                        : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
                     }`}
                   />
                   {previewLinkError && (
@@ -506,22 +506,22 @@ export default function EditProductModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Remarks</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Remarks</label>
                   <input
                     type="text"
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
                     placeholder="Optional notes or instructions..."
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 justify-end">
+              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 justify-end">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition text-xs cursor-pointer shadow-2xs"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition text-xs cursor-pointer shadow-2xs"
                 >
                   Cancel
                 </button>

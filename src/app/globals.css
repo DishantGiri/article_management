@@ -58,6 +58,8 @@ body {
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-slate-850: #151f32;
+  --color-slate-750: #243044;
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -372,7 +374,10 @@ body {
 .dark .text-rose-950,
 .dark .text-rose-900,
 .dark .text-rose-800,
-.dark .text-rose-700 {
+.dark .text-rose-700,
+.dark .text-rose-600,
+.dark [class*="text-rose-600"],
+.dark [class*="text-rose-700"] {
   color: #fda4af !important;
 }
 
@@ -396,7 +401,10 @@ body {
 .dark .text-emerald-950,
 .dark .text-emerald-900,
 .dark .text-emerald-800,
-.dark .text-emerald-700 {
+.dark .text-emerald-700,
+.dark .text-emerald-600,
+.dark [class*="text-emerald-600"],
+.dark [class*="text-emerald-700"] {
   color: #6ee7b7 !important;
 }
 
@@ -419,7 +427,10 @@ body {
 .dark .text-blue-950,
 .dark .text-blue-900,
 .dark .text-blue-800,
-.dark .text-blue-700 {
+.dark .text-blue-700,
+.dark .text-blue-600,
+.dark [class*="text-blue-600"],
+.dark [class*="text-blue-700"] {
   color: #93c5fd !important;
 }
 
@@ -441,7 +452,10 @@ body {
 .dark .text-indigo-950,
 .dark .text-indigo-900,
 .dark .text-indigo-800,
-.dark .text-indigo-700 {
+.dark .text-indigo-700,
+.dark .text-indigo-600,
+.dark [class*="text-indigo-600"],
+.dark [class*="text-indigo-700"] {
   color: #a5b4fc !important;
 }
 
@@ -453,7 +467,10 @@ body {
 
 .dark .bg-amber-50,
 .dark .bg-amber-50\/50,
-.dark .bg-amber-50\/80 {
+.dark .bg-amber-50\/60,
+.dark .bg-amber-50\/70,
+.dark .bg-amber-50\/80,
+.dark .bg-amber-50\/90 {
   background-color: rgba(120, 53, 15, 0.4) !important;
   border-color: rgba(245, 158, 11, 0.35) !important;
 }
@@ -461,13 +478,61 @@ body {
 .dark .text-amber-950,
 .dark .text-amber-900,
 .dark .text-amber-800,
-.dark .text-amber-700 {
-  color: #fcd34d !important;
+.dark .text-amber-700,
+.dark .text-amber-600,
+.dark [class*="text-amber-600"],
+.dark [class*="text-amber-700"],
+.dark [class*="text-amber-800"],
+.dark [class*="text-amber-900"] {
+  color: #fde047 !important;
 }
 
 .dark .border-amber-200,
-.dark .border-amber-200\/60 {
+.dark .border-amber-200\/60,
+.dark .border-amber-200\/80,
+.dark .border-amber-300 {
   border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+.dark .text-purple-950,
+.dark .text-purple-900,
+.dark .text-purple-800,
+.dark .text-purple-700,
+.dark .text-purple-600,
+.dark .text-violet-700,
+.dark .text-violet-600,
+.dark [class*="text-purple-600"],
+.dark [class*="text-purple-700"],
+.dark [class*="text-violet-600"] {
+  color: #d8b4fe !important;
+}
+
+.dark .text-sky-700,
+.dark .text-sky-600,
+.dark [class*="text-sky-600"],
+.dark [class*="text-sky-700"] {
+  color: #7dd3fc !important;
+}
+
+.dark .text-\[\#5A6D81\],
+.dark [class*="text-[#5A6D81]"] {
+  color: #93c5fd !important;
+}
+
+.dark .bg-slate-850,
+.dark [class*="bg-slate-850"] {
+  background-color: #151f32 !important;
+}
+
+.dark .bg-slate-750,
+.dark [class*="bg-slate-750"] {
+  background-color: #243044 !important;
+}
+
+.dark .bg-slate-200,
+.dark [class*="bg-slate-200"] {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
 }
 
 /* Badge 100-level tint adaptations */

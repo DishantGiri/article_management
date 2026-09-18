@@ -847,21 +847,21 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
         </div>
 
         {/* Card 4: Writing Velocity & Team */}
-        <div className="bg-white rounded-2xl p-5 border border-[#CBCBCB]/60 shadow-xs card-hover-effect flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs card-hover-effect flex flex-col justify-between">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Avg Writing Time</span>
-              <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Avg Writing Time</span>
+              <p className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {sa.avgWritingTime}<span className="text-base font-medium text-slate-400 ml-1">hrs</span>
               </p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-800/60">
               <Clock className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-500 font-medium">Writers & Linkers</span>
-            <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Writers & Linkers</span>
+            <span className="font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
               {sa.totalWriters} writers · {sa.totalLinkers} linkers
             </span>
           </div>
@@ -894,16 +894,16 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
       {/* CHARTS ROW 2: Writer Velocity & Live Audit Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Writer Performance */}
-        <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Award className="w-4 h-4 text-indigo-500" />
                 Top Writer Output Velocity
               </h3>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">Ranked by total approved articles</p>
+              <p className="text-xs text-slate-400 dark:text-slate-400 font-medium mt-0.5">Ranked by total approved articles</p>
             </div>
-            <Link href="/team-members" className="text-xs font-bold text-[#6D8196] hover:underline flex items-center gap-1">
+            <Link href="/team-members" className="text-xs font-bold text-[#6D8196] dark:text-sky-400 hover:underline flex items-center gap-1">
               Full Report <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -935,43 +935,43 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
         </div>
 
         {/* Live Platform Activity Stream */}
-        <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-500" />
                 Live System Audit & Events
               </h3>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">Real-time actions across all operational workflows</p>
+              <p className="text-xs text-slate-400 dark:text-slate-400 font-medium mt-0.5">Real-time actions across all operational workflows</p>
             </div>
-            <Link href="/history" className="text-xs font-bold text-[#6D8196] hover:underline flex items-center gap-1">
+            <Link href="/history" className="text-xs font-bold text-[#6D8196] dark:text-sky-400 hover:underline flex items-center gap-1">
               Audit Logs <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          <div className="divide-y divide-slate-100 max-h-68 overflow-y-auto pr-1 space-y-2">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-68 overflow-y-auto pr-1 space-y-2">
             {!sa.recentActivity || sa.recentActivity.length === 0 ? (
               <p className="text-center text-slate-400 text-xs py-16">No recent activity logged.</p>
             ) : (
               sa.recentActivity.slice(0, 8).map((act: any) => {
                 let icon = <Activity className="w-3.5 h-3.5 text-slate-500" />;
-                let bg = "bg-slate-50 border-slate-200";
+                let bg = "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
 
                 if (act.type === "product_added") {
-                  icon = <Package className="w-3.5 h-3.5 text-indigo-600" />;
-                  bg = "bg-indigo-50 border-indigo-100";
+                  icon = <Package className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />;
+                  bg = "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-100 dark:border-indigo-900/60";
                 } else if (act.type === "article_completed" || act.type === "article_approved") {
-                  icon = <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />;
-                  bg = "bg-emerald-50 border-emerald-100";
+                  icon = <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />;
+                  bg = "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-100 dark:border-emerald-900/60";
                 } else if (act.type === "link_issue") {
-                  icon = <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />;
-                  bg = "bg-rose-50 border-rose-100";
+                  icon = <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />;
+                  bg = "bg-rose-50 dark:bg-rose-950/60 border-rose-100 dark:border-rose-900/60";
                 } else if (act.type.startsWith("link_")) {
-                  icon = <LinkIcon className="w-3.5 h-3.5 text-blue-600" />;
-                  bg = "bg-blue-50 border-blue-100";
+                  icon = <LinkIcon className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />;
+                  bg = "bg-blue-50 dark:bg-blue-950/60 border-blue-100 dark:border-blue-900/60";
                 } else if (act.type.startsWith("article_")) {
-                  icon = <FileText className="w-3.5 h-3.5 text-amber-600" />;
-                  bg = "bg-amber-50 border-amber-100";
+                  icon = <FileText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />;
+                  bg = "bg-amber-50 dark:bg-amber-950/60 border-amber-100 dark:border-amber-900/60";
                 }
 
                 const timeLabel = new Date(act.date).toLocaleDateString(undefined, {
@@ -987,9 +987,9 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
                       {icon}
                     </div>
                     <div className="flex-1 flex justify-between gap-2">
-                      <p className="text-slate-700 leading-snug font-medium">
-                        <strong className="text-slate-900 font-bold">{act.user}</strong> - {act.type.replace("_", " ")} on{" "}
-                        <span className="font-semibold text-slate-800">{act.item}</span>
+                      <p className="text-slate-700 dark:text-slate-300 leading-snug font-medium">
+                        <strong className="text-slate-900 dark:text-white font-bold">{act.user}</strong> - {act.type.replace("_", " ")} on{" "}
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{act.item}</span>
                       </p>
                       <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{timeLabel}</span>
                     </div>
@@ -1005,15 +1005,15 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <Link
           href="/products"
-          className="p-4 bg-white rounded-2xl border border-[#CBCBCB]/60 hover:border-[#6D8196] shadow-2xs card-hover-effect flex items-center justify-between"
+          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 hover:border-[#6D8196] dark:hover:border-slate-700 shadow-2xs card-hover-effect flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Package className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-800">Products Catalog</p>
-              <p className="text-[11px] text-slate-400">Manage all specs & types</p>
+              <p className="text-xs font-bold text-slate-800 dark:text-white">Products Catalog</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-400">Manage all specs & types</p>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -1021,15 +1021,15 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
 
         <Link
           href="/articles"
-          className="p-4 bg-white rounded-2xl border border-[#CBCBCB]/60 hover:border-[#6D8196] shadow-2xs card-hover-effect flex items-center justify-between"
+          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 hover:border-[#6D8196] dark:hover:border-slate-700 shadow-2xs card-hover-effect flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <FileText className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-800">Editorial Pipeline</p>
-              <p className="text-[11px] text-slate-400">Monitor drafts & timing</p>
+              <p className="text-xs font-bold text-slate-800 dark:text-white">Editorial Pipeline</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-400">Monitor drafts & timing</p>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -1037,15 +1037,15 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
 
         <Link
           href="/links"
-          className="p-4 bg-white rounded-2xl border border-[#CBCBCB]/60 hover:border-[#6D8196] shadow-2xs card-hover-effect flex items-center justify-between"
+          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 hover:border-[#6D8196] dark:hover:border-slate-700 shadow-2xs card-hover-effect flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <LinkIcon className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-800">Link Log Control</p>
-              <p className="text-[11px] text-slate-400">Affiliates, Geos & Bridge</p>
+              <p className="text-xs font-bold text-slate-800 dark:text-white">Link Log Control</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-400">Affiliates, Geos & Bridge</p>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -1053,15 +1053,15 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
 
         <Link
           href="/reports"
-          className="p-4 bg-white rounded-2xl border border-[#CBCBCB]/60 hover:border-[#6D8196] shadow-2xs card-hover-effect flex items-center justify-between"
+          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 hover:border-[#6D8196] dark:hover:border-slate-700 shadow-2xs card-hover-effect flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
               <BarChart3 className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-800">Analytics & Reports</p>
-              <p className="text-[11px] text-slate-400">Writer productivity logs</p>
+              <p className="text-xs font-bold text-slate-800 dark:text-white">Analytics & Reports</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-400">Writer productivity logs</p>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -1104,85 +1104,85 @@ function TeamLeadMissionControl({
     <div className="space-y-8 animate-fadeIn">
       {/* Stat Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-5 border border-[#CBCBCB]/60 shadow-xs flex flex-col justify-between card-hover-effect">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs flex flex-col justify-between card-hover-effect">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Pending Review</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pending Review</span>
+            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
               <ClipboardList className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900">{tl.pendingReview}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Articles awaiting quality check</p>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{tl.pendingReview}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Articles awaiting quality check</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-[#CBCBCB]/60 shadow-xs flex flex-col justify-between card-hover-effect">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs flex flex-col justify-between card-hover-effect">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Approved Today</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Approved Today</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900">{tl.completedToday}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Successfully finalized today</p>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{tl.completedToday}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Successfully finalized today</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-[#CBCBCB]/60 shadow-xs flex flex-col justify-between card-hover-effect">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs flex flex-col justify-between card-hover-effect">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600">Edit Requests</span>
-            <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">Edit Requests</span>
+            <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center">
               <Star className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900">{tl.specialApprovals}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Writers requesting to edit approved articles</p>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{tl.specialApprovals}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Writers requesting to edit approved articles</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-[#CBCBCB]/60 shadow-xs flex flex-col justify-between card-hover-effect">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs flex flex-col justify-between card-hover-effect">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600">Reported Link Issues</span>
-            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Reported Link Issues</span>
+            <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900">{tl.issueLinks}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Needs linker attention</p>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{tl.issueLinks}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Needs linker attention</p>
           </div>
         </div>
       </div>
 
       {/* Pending Edit Requests on Approved Articles */}
       {tl.editRequests && tl.editRequests.length > 0 && (
-        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-5 shadow-xs space-y-3 animate-fadeIn">
+        <div className="bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl p-5 shadow-xs space-y-3 animate-fadeIn">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-amber-900 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <h3 className="text-sm font-bold text-amber-900 dark:text-amber-300 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               Approved Article Edit Requests ({tl.editRequests.length})
             </h3>
-            <span className="text-[11px] font-bold text-amber-700">Writers requesting permission to update approved articles</span>
+            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400">Writers requesting permission to update approved articles</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {tl.editRequests.map((req: any) => (
-              <div key={req.id} className="bg-white p-4 rounded-xl border border-amber-200 shadow-2xs flex flex-col justify-between space-y-2">
+              <div key={req.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 shadow-2xs flex flex-col justify-between space-y-2">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-slate-900">{req.product}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">{req.site}</span>
+                    <span className="font-bold text-xs text-slate-900 dark:text-white">{req.product}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{req.site}</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Requested by: <strong className="text-slate-700">{req.writer}</strong>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Requested by: <strong className="text-slate-700 dark:text-slate-200">{req.writer}</strong>
                   </p>
-                  <p className="text-xs text-amber-950 bg-amber-50/60 p-2 rounded-lg border border-amber-100 mt-2 italic font-medium">
+                  <p className="text-xs text-amber-950 dark:text-amber-200 bg-amber-50/60 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-100 dark:border-amber-900/50 mt-2 italic font-medium">
                     &quot;{req.reason}&quot;
                   </p>
                 </div>
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <Link
                     href={`/articles/${req.id}-${generateSlug(req.product)}`}
                     className="px-3.5 py-1.5 rounded-lg bg-[#6D8196] hover:bg-[#5A6D81] text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
@@ -1199,45 +1199,45 @@ function TeamLeadMissionControl({
       {/* Main Review Section */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Review Queue (3 cols) */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+        <div className="lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs flex flex-col">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <ClipboardList className="w-4 h-4 text-[#6D8196]" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
                 Review Dispatch Queue ({tl.reviewQueue.length})
               </h3>
-              <p className="text-xs text-slate-400 font-medium">Verify article links and approve or request revisions</p>
+              <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">Verify article links and approve or request revisions</p>
             </div>
-            <Link href="/articles" className="text-xs font-bold text-[#6D8196] hover:underline flex items-center gap-1">
+            <Link href="/articles" className="text-xs font-bold text-[#6D8196] dark:text-sky-400 hover:underline flex items-center gap-1">
               All Articles <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          <div className="divide-y divide-slate-100 flex-1">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
             {tl.reviewQueue.length === 0 ? (
               <div className="py-16 text-center space-y-2">
                 <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
-                <p className="text-xs font-bold text-slate-700">All caught up!</p>
-                <p className="text-xs text-slate-400">No submitted articles are currently waiting for your review.</p>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">All caught up!</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">No submitted articles are currently waiting for your review.</p>
               </div>
             ) : (
               tl.reviewQueue.map((item) => (
-                <div key={item.id} className="py-4 flex items-center justify-between gap-4 hover:bg-slate-50/70 transition px-2 rounded-xl">
+                <div key={item.id} className="py-4 flex items-center justify-between gap-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/70 transition px-2 rounded-xl">
                   <div className="space-y-1 flex-1">
-                    <p className="text-xs font-bold text-slate-900 leading-tight">{item.product}</p>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="font-semibold text-slate-700">{item.writer}</span>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{item.product}</p>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">{item.writer}</span>
                       <span>·</span>
-                      <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold text-slate-600">{item.site}</span>
+                      <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 dark:text-slate-300">{item.site}</span>
                       {item.completedAt && (
                         <>
                           <span>·</span>
-                          <span className="text-[10px] text-slate-400">{new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">{new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </>
                       )}
                     </div>
                     {item.remark && (
-                      <p className="text-[11px] text-slate-600 bg-amber-50/80 p-2 rounded-lg border border-amber-200/50 mt-1.5 italic">
+                      <p className="text-[11px] text-slate-600 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200/50 dark:border-amber-900/50 mt-1.5 italic">
                         &quot;{item.remark}&quot;
                       </p>
                     )}
@@ -1259,16 +1259,16 @@ function TeamLeadMissionControl({
         </div>
 
         {/* Writer Performance Chart (2 cols) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#CBCBCB]/60 p-6 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#6D8196]" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
                 Assigned Writers Velocity
               </h3>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">Articles approved across your team</p>
+              <p className="text-xs text-slate-400 dark:text-slate-400 font-medium mt-0.5">Articles approved across your team</p>
             </div>
-            <Link href="/team-members" className="text-xs font-bold text-[#6D8196] hover:underline flex items-center gap-1">
+            <Link href="/team-members" className="text-xs font-bold text-[#6D8196] dark:text-sky-400 hover:underline flex items-center gap-1">
               Full Report <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -1306,42 +1306,42 @@ function LinkerOperationsStudio({ data, router }: { data: DashboardData; router:
     <div className="space-y-8 animate-fadeIn">
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="bg-white rounded-2xl p-5 border border-[#CBCBCB]/60 shadow-xs card-hover-effect flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs card-hover-effect flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Products Added by You</span>
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Products Added by You</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Package className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900">{data.linkerProducts.length}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Under your management</p>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{data.linkerProducts.length}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Under your management</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-[#CBCBCB]/60 shadow-xs card-hover-effect flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs card-hover-effect flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Configured Links</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Configured Links</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <LinkIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900">{data.linkerLinks.length}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Active affiliate logs</p>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{data.linkerLinks.length}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Active affiliate logs</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-[#CBCBCB]/60 shadow-xs card-hover-effect flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs card-hover-effect flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600">Link Flag Issues</span>
-            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Link Flag Issues</span>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900">{data.general.issueLinks || 0}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Writers flagged issues</p>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{data.general.issueLinks || 0}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Writers flagged issues</p>
           </div>
         </div>
       </div>
@@ -1356,14 +1356,14 @@ function LinkerOperationsStudio({ data, router }: { data: DashboardData; router:
 
       {/* Flagged Alert Warning */}
       {data.flaggedLinks && data.flaggedLinks.length > 0 && (
-        <div className="p-5 bg-rose-50/80 border border-rose-200/80 rounded-2xl shadow-xs space-y-3">
+        <div className="p-5 bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 rounded-2xl shadow-xs space-y-3">
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/60 flex items-center justify-center text-rose-600 dark:text-rose-400 flex-shrink-0">
               <AlertTriangle className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h2 className="font-bold text-rose-900 text-sm">Action Required: Flagged Link Issues</h2>
-              <p className="text-xs text-rose-700/90 mt-0.5">
+              <h2 className="font-bold text-rose-900 dark:text-rose-200 text-sm">Action Required: Flagged Link Issues</h2>
+              <p className="text-xs text-rose-700/90 dark:text-rose-300 mt-0.5">
                 Writers have flagged potential dead links or configuration issues with the following entries.
               </p>
             </div>
@@ -1374,7 +1374,7 @@ function LinkerOperationsStudio({ data, router }: { data: DashboardData; router:
               <Link
                 key={l.id}
                 href={`/links?editLinkId=${l.id}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-rose-100/50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-xl transition shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-rose-100/50 dark:hover:bg-slate-800 border border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-200 text-xs font-semibold rounded-xl transition shadow-2xs"
               >
                 <span>⚠️ {l.affiliateName}</span>
                 <span className="text-[10px] opacity-70">({l.product.name})</span>
@@ -1388,21 +1388,21 @@ function LinkerOperationsStudio({ data, router }: { data: DashboardData; router:
       {/* Two Column Log View */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Your Added Products */}
-        <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 text-sm">Your Added Products</h3>
-            <Link href="/products" className="text-xs text-[#6D8196] hover:underline font-semibold">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 className="font-bold text-slate-800 dark:text-white text-sm">Your Added Products</h3>
+            <Link href="/products" className="text-xs text-[#6D8196] dark:text-sky-400 hover:underline font-semibold">
               View all →
             </Link>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {data.linkerProducts.length === 0 ? (
               <p className="p-8 text-center text-slate-400 text-xs">You haven&apos;t added any products yet.</p>
             ) : (
               data.linkerProducts.map((p) => (
-                <div key={p.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 transition">
+                <div key={p.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/70 transition">
                   <div>
-                    <p className="text-xs font-bold text-slate-900">{p.name}</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">{p.name}</p>
                     <p className="text-[10px] text-slate-400 font-medium">
                       {p.site.name} · {p.category.name}
                     </p>
@@ -1417,21 +1417,21 @@ function LinkerOperationsStudio({ data, router }: { data: DashboardData; router:
         </div>
 
         {/* Your Configured Links */}
-        <div className="bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 text-sm">Your Configured Links</h3>
-            <Link href="/links" className="text-xs text-[#6D8196] hover:underline font-semibold">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 className="font-bold text-slate-800 dark:text-white text-sm">Your Configured Links</h3>
+            <Link href="/links" className="text-xs text-[#6D8196] dark:text-sky-400 hover:underline font-semibold">
               Manage Links →
             </Link>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {data.linkerLinks.length === 0 ? (
               <p className="p-8 text-center text-slate-400 text-xs">No links configured yet.</p>
             ) : (
               data.linkerLinks.map((l) => (
-                <div key={l.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 transition">
+                <div key={l.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/70 transition">
                   <div>
-                    <p className="text-xs font-bold text-slate-900">{l.affiliateName}</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">{l.affiliateName}</p>
                     <p className="text-[10px] text-slate-400 font-medium">Product: {l.product.name}</p>
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${LINK_STATUS_COLORS[l.status]}`}>

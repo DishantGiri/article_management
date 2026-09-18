@@ -175,8 +175,8 @@ export default function HistoryPage() {
     }
 
     return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 py-3 px-4 border-t border-slate-100">
-        <p className="text-xs font-semibold text-slate-400">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 py-3 px-4 border-t border-slate-100 dark:border-slate-800">
+        <p className="text-xs font-semibold text-slate-400 dark:text-slate-400">
           Showing {filtered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} -{" "}
           {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length}
         </p>
@@ -184,7 +184,7 @@ export default function HistoryPage() {
           <button
             onClick={() => setCurrentPage(1)}
             disabled={currentPage === 1}
-            className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+            className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 hover:text-slate-700 dark:hover:text-white disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-slate-800 transition cursor-pointer"
             title="First Page"
           >
             First
@@ -192,7 +192,7 @@ export default function HistoryPage() {
           <button
             onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-750 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-slate-800 transition cursor-pointer"
             title="Previous Page"
           >
             &lt;
@@ -201,7 +201,7 @@ export default function HistoryPage() {
           {start > 1 && (
             <button
               onClick={() => setCurrentPage(start - 1)}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 px-1 cursor-pointer"
+              className="text-xs font-bold text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 cursor-pointer"
               title="Previous 5 Pages"
             >
               ...
@@ -214,7 +214,7 @@ export default function HistoryPage() {
               onClick={() => setCurrentPage(p)}
               className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition cursor-pointer ${currentPage === p
                   ? "bg-[#6D8196] text-white shadow-2xs"
-                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750"
                 }`}
             >
               {p}
@@ -224,7 +224,7 @@ export default function HistoryPage() {
           {end < totalPages && (
             <button
               onClick={() => setCurrentPage(end + 1)}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 px-1 cursor-pointer"
+              className="text-xs font-bold text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 cursor-pointer"
               title="Next 5 Pages"
             >
               ...
@@ -234,7 +234,7 @@ export default function HistoryPage() {
           <button
             onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-750 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-slate-800 transition cursor-pointer"
             title="Next Page"
           >
             &gt;
@@ -242,7 +242,7 @@ export default function HistoryPage() {
           <button
             onClick={() => setCurrentPage(totalPages)}
             disabled={currentPage === totalPages}
-            className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+            className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 hover:text-slate-700 dark:hover:text-white disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-slate-800 transition cursor-pointer"
             title="Last Page"
           >
             Last
@@ -253,18 +253,18 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1650px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A] space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1650px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-200 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">System Activity & Audit Log</h1>
-          <p className="text-slate-500 text-xs mt-1 font-medium">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">System Activity & Audit Log</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 font-medium">
             Chronological audit of editorial reviews, writer submissions, team lead suggestions, and link logs
           </p>
         </div>
 
         {/* Quick Activity Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
           <button
             onClick={() => {
               setActionFilter("");
@@ -273,7 +273,7 @@ export default function HistoryPage() {
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${!actionFilter && !typeFilter
                 ? "bg-[#6D8196] text-white shadow-2xs"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
               }`}
           >
             All Activity
@@ -287,14 +287,14 @@ export default function HistoryPage() {
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${actionFilter === "TL_SUGGESTION"
                 ? "bg-rose-600 text-white shadow-2xs"
-                : "text-slate-600 hover:text-rose-700 hover:bg-rose-50"
+                : "text-slate-600 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
               }`}
           >
             <AlertTriangle className="w-3.5 h-3.5" />
             <span>TL Suggestions & Redos</span>
             {history.filter((h) => h.actionType === "TL_SUGGESTION").length > 0 && (
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${actionFilter === "TL_SUGGESTION" ? "bg-white text-rose-700" : "bg-rose-100 text-rose-700"
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${actionFilter === "TL_SUGGESTION" ? "bg-white text-rose-700" : "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300"
                   }`}
               >
                 {history.filter((h) => h.actionType === "TL_SUGGESTION").length}
@@ -310,7 +310,7 @@ export default function HistoryPage() {
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${actionFilter === "ARTICLE_APPROVAL"
                 ? "bg-emerald-600 text-white shadow-2xs"
-                : "text-slate-600 hover:text-emerald-700 hover:bg-emerald-50"
+                : "text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
               }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -325,7 +325,7 @@ export default function HistoryPage() {
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${actionFilter === "ARTICLE_SUBMISSION"
                 ? "bg-indigo-600 text-white shadow-2xs"
-                : "text-slate-600 hover:text-indigo-700 hover:bg-indigo-50"
+                : "text-slate-600 dark:text-slate-300 hover:text-indigo-700 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
               }`}
           >
             <FileText className="w-3.5 h-3.5" />
@@ -340,7 +340,7 @@ export default function HistoryPage() {
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${actionFilter === "LINK_LOG"
                 ? "bg-blue-600 text-white shadow-2xs"
-                : "text-slate-600 hover:text-blue-700 hover:bg-blue-50"
+                : "text-slate-600 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
               }`}
           >
             <Link2 className="w-3.5 h-3.5" />
@@ -350,7 +350,7 @@ export default function HistoryPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
         {/* Search */}
         <div className="relative flex-1 min-w-[240px] max-w-sm">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -362,7 +362,7 @@ export default function HistoryPage() {
               setSearch(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] bg-white placeholder-slate-400 text-slate-800 transition"
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] bg-white dark:bg-slate-950 placeholder-slate-400 dark:placeholder-slate-500 text-slate-800 dark:text-slate-100 transition"
           />
         </div>
 
@@ -384,7 +384,7 @@ export default function HistoryPage() {
         />
 
         {/* Date Filter */}
-        <div className="border-l border-slate-100 pl-3">
+        <div className="border-l border-slate-100 dark:border-slate-800 pl-3">
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -404,7 +404,7 @@ export default function HistoryPage() {
       </div>
 
       {/* Main Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         {loading ? (
           <div className="py-20">
             <LoadingScreen
@@ -415,15 +415,15 @@ export default function HistoryPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-20 text-center space-y-2">
-            <Clock className="w-10 h-10 text-slate-300 mx-auto" />
-            <p className="text-slate-700 font-bold text-sm">No activity records found</p>
-            <p className="text-slate-400 text-xs">Try adjusting your search criteria or date ranges.</p>
+            <Clock className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+            <p className="text-slate-700 dark:text-slate-200 font-bold text-sm">No activity records found</p>
+            <p className="text-slate-400 dark:text-slate-500 text-xs">Try adjusting your search criteria or date ranges.</p>
           </div>
         ) : (
           <div className="overflow-x-auto p-2">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="px-4 py-3.5 w-[13%]">Type / Action</th>
                   <th className="px-4 py-3.5 w-[11%]">Date & Time</th>
                   <th className="px-4 py-3.5 w-[15%]">Product / Site</th>
@@ -433,7 +433,7 @@ export default function HistoryPage() {
                   <th className="px-4 py-3.5 w-[25%]">Modification & Suggestion Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100/70 text-xs">
+              <tbody className="divide-y divide-slate-100/70 dark:divide-slate-800 text-xs">
                 {paginated.map((record) => {
                   const isRedoSuggestion = record.actionType === "TL_SUGGESTION";
                   const isApproval = record.actionType === "ARTICLE_APPROVAL";
@@ -631,12 +631,12 @@ export default function HistoryPage() {
 
                           {/* Status Transition Pill */}
                           {record.oldStatus && record.newStatus && !isRedoSuggestion && !isApproval && (
-                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
-                              <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[9px]">
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                              <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded text-[9px]">
                                 {record.oldStatus}
                               </span>
                               <ArrowRight className="w-3 h-3 text-slate-400" />
-                              <span className="px-1.5 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded text-[9px]">
+                              <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded text-[9px]">
                                 {record.newStatus}
                               </span>
                             </div>
@@ -644,12 +644,12 @@ export default function HistoryPage() {
 
                           {/* Writer remarks if present */}
                           {writerRemarks && (
-                            <div className="p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-xl text-xs text-indigo-900 font-medium space-y-1">
+                            <div className="p-2.5 bg-indigo-50/70 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/60 rounded-xl text-xs text-indigo-900 dark:text-indigo-200 font-medium space-y-1">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="font-bold text-indigo-800 block text-[10px] uppercase">
+                                <span className="font-bold text-indigo-800 dark:text-indigo-300 block text-[10px] uppercase">
                                   Writer Remarks:
                                 </span>
-                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 bg-white px-1.5 py-0.5 rounded border border-indigo-200/80 shadow-2xs">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-300 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-indigo-200/80 dark:border-slate-700 shadow-2xs">
                                   <Calendar className="w-2.5 h-2.5 text-indigo-400" />
                                   {formatRemarkDate(record.updatedAt)}
                                 </span>
@@ -663,15 +663,15 @@ export default function HistoryPage() {
                             !isApproval &&
                             record.notes &&
                             !record.notes.includes("Writer remarks:") && (
-                              <div className="text-xs text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100 font-medium leading-relaxed">
+                              <div className="text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/90 p-2 rounded-xl border border-slate-100 dark:border-slate-700/80 font-medium leading-relaxed">
                                 {record.notes}
                               </div>
                             )}
 
                           {/* Link Updated */}
                           {record.oldLink !== record.newLink && record.newLink && (
-                            <div className="text-[11px] text-blue-700 bg-blue-50/60 p-2 rounded-xl border border-blue-100 font-mono break-all truncate">
-                              <span className="font-bold font-sans block text-[10px] uppercase text-blue-800">
+                            <div className="text-[11px] text-blue-700 dark:text-blue-200 bg-blue-50/60 dark:bg-blue-950/50 p-2 rounded-xl border border-blue-100 dark:border-blue-900/60 font-mono break-all truncate">
+                              <span className="font-bold font-sans block text-[10px] uppercase text-blue-800 dark:text-blue-300">
                                 Link Updated:
                               </span>
                               {record.newLink}
