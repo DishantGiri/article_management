@@ -65,23 +65,35 @@ export default function CustomSelect({
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    const estimatedHeight = Math.min(280, Math.max(120, (options.length + (isSearchable ? 1 : 0)) * 36));
-    const showAbove = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
+    const spaceAbove = rect.top;
 
-    const targetWidth = minWidth ? Math.max(rect.width, minWidth) : rect.width;
+    // Content height estimate: items * 36px + padding (8px) + search box (44px) if searchable
+    const estimatedHeight = Math.min(280, (options.length + (isSearchable ? 1 : 0)) * 36 + 16);
+
+    // Show above if there isn't enough room below for the estimated height AND there is more space above
+    const showAbove = spaceBelow < Math.max(140, estimatedHeight) && spaceAbove > spaceBelow;
+
+    // Ensure dropdown popup has a comfortable minimum readable width (at least 160px or trigger width)
+    const effectiveMinWidth = minWidth || 160;
+    const targetWidth = Math.max(rect.width, effectiveMinWidth);
+
+    // Prevent horizontal overflow
     let left = rect.left;
     if (left + targetWidth > window.innerWidth - 12) {
       left = Math.max(12, window.innerWidth - targetWidth - 12);
     }
+    left = Math.max(12, left);
 
-    const maxH = Math.min(280, Math.max(120, (showAbove ? rect.top : spaceBelow) - 16));
+    // Clamp maxHeight strictly to available viewport space (leaving padding from window edge)
+    const availableSpace = showAbove ? (spaceAbove - 16) : (spaceBelow - 16);
+    const maxH = Math.min(280, Math.max(80, Math.floor(availableSpace)));
 
     setDropdownStyle({
       position: "fixed",
-      top: showAbove ? undefined : `${rect.bottom + 4}px`,
-      bottom: showAbove ? `${window.innerHeight - rect.top + 4}px` : undefined,
-      left: `${left}px`,
-      width: `${targetWidth}px`,
+      top: showAbove ? undefined : `${Math.floor(rect.bottom + 4)}px`,
+      bottom: showAbove ? `${Math.floor(window.innerHeight - rect.top + 4)}px` : undefined,
+      left: `${Math.floor(left)}px`,
+      width: `${Math.floor(targetWidth)}px`,
       maxHeight: `${maxH}px`,
       zIndex: 99999,
     });
@@ -167,7 +179,7 @@ export default function CustomSelect({
       style={portal ? dropdownStyle : undefined}
       className={`${
         portal
-          ? "bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-2xl border border-[#CBCBCB] dark:border-slate-700 flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden text-slate-800 dark:text-slate-100"
+          ? "bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-[#CBCBCB] dark:border-slate-700 flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden text-slate-800 dark:text-slate-100"
           : `absolute z-50 mt-1.5 left-0 shadow-xl border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-900 py-1 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150 text-slate-800 dark:text-slate-100 ${popupClassName}`
       }`}
     >
@@ -210,7 +222,7 @@ export default function CustomSelect({
       )}
 
       {/* Options Scroll List */}
-      <div className="overflow-y-auto flex-1 py-1 max-h-56 divide-y divide-slate-50 dark:divide-slate-800/60">
+      <div className="overflow-y-auto flex-1 min-h-0 py-1 divide-y divide-slate-50 dark:divide-slate-800/60">
         {/* Filtered Options */}
         {filteredOptions.length > 0 ? (
           filteredOptions.map((opt, idx) => {
@@ -269,8 +281,16 @@ export default function CustomSelect({
         ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between transition-all cursor-pointer select-none text-left disabled:opacity-50 disabled:cursor-not-allowed ${triggerClassName}`}
+        onClick={() => {
+          if (disabled) return;
+          if (!isOpen) {
+            updatePosition();
+            setIsOpen(true);
+          } else {
+            setIsOpen(false);
+          }
+        }}
+        className={`w-full flex items-center justify-between transition-all cursor-pointer select-none text-left disabled:opacity-50 disabled:cursor-not-allowed ${triggerClassName}`}
       >
         <span className="truncate">
           {selectedOption ? (
