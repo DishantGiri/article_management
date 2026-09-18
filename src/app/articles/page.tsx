@@ -937,7 +937,7 @@ function ArticlesContent() {
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left min-w-[980px] border-collapse">
               <thead>
-                <tr className="border-b border-slate-200/80 bg-slate-50/75">
+                <tr className="border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-900/80">
                   {isManager && (
                     <th className="px-3 py-3.5 w-10 text-center">
                       <input
@@ -964,25 +964,25 @@ function ArticlesContent() {
                             setSelectedArticleIds((prev) => prev.filter((id) => !pageIds.includes(id)));
                           }
                         }}
-                        className="w-4 h-4 rounded border-slate-300 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
+                        className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
                         title="Select all completed articles ready for approval on current page"
                       />
                     </th>
                   )}
-                  <th className="px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider min-w-[180px]">Product</th>
-                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-20">Site</th>
-                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider min-w-[130px]">Writer</th>
-                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Priority</th>
-                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-28">Status</th>
-                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-28 whitespace-nowrap">Date</th>
-                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center w-24">Remarks</th>
-                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center w-16">Link</th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[180px]">Product</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-20">Site</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[130px]">Writer</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24">Priority</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28">Status</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28 whitespace-nowrap">Date</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center w-24">Remarks</th>
+                  <th className="px-2 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center w-16">Link</th>
                   {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "WRITER") && (
-                    <th className="px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-left min-w-[170px] whitespace-nowrap">Actions</th>
+                    <th className="px-4 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-left min-w-[170px] whitespace-nowrap">Actions</th>
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                 {paginated.map((a: any) => {
                   const status = a.status || "PENDING";
                   const statusColor = STATUS_COLORS[status] || STATUS_COLORS.PENDING;
@@ -1002,12 +1002,12 @@ function ArticlesContent() {
                   return (
                     <tr
                       key={a.id}
-                      className={`hover:bg-slate-50/50 transition-colors group ${isSelected
-                          ? "bg-[#FAF9F5]"
+                      className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group ${isSelected
+                          ? "bg-[#FAF9F5] dark:bg-slate-800/60"
                           : isNotificationMatch
-                            ? "bg-amber-50/30 ring-1 ring-amber-400/40"
+                            ? "bg-amber-50/30 dark:bg-amber-950/30 ring-1 ring-amber-400/40"
                             : isPublishedWithoutLinks
-                              ? "bg-rose-50/20"
+                              ? "bg-rose-50/20 dark:bg-rose-950/20"
                               : ""
                         }`}
                     >
@@ -1022,21 +1022,21 @@ function ArticlesContent() {
                                   prev.includes(a.id) ? prev.filter((id) => id !== a.id) : [...prev, a.id]
                                 );
                               }}
-                              className="w-4 h-4 rounded border-slate-300 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
+                              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-[#6D8196] focus:ring-[#6D8196] cursor-pointer"
                               title="Select article to approve"
                             />
                           ) : a.status === "APPROVED" ? (
-                            <span className="text-emerald-600 font-bold text-xs" title="Already Approved">✓</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs" title="Already Approved">✓</span>
                           ) : a.status === "IN_PROGRESS" ? (
                             <span
-                              className="text-slate-300 text-xs font-bold select-none cursor-not-allowed"
+                              className="text-slate-300 dark:text-slate-600 text-xs font-bold select-none cursor-not-allowed"
                               title="In Progress - writer is actively drafting. Cannot approve until completed."
                             >
                               -
                             </span>
                           ) : (
                             <span
-                              className="text-slate-300 text-xs select-none cursor-not-allowed"
+                              className="text-slate-300 dark:text-slate-600 text-xs select-none cursor-not-allowed"
                               title={!a.writer?.id ? "Unassigned - cannot approve" : "Cannot approve in current status"}
                             >
                               -
@@ -1044,7 +1044,7 @@ function ArticlesContent() {
                           )}
                         </td>
                       )}
-                      <td className={`px-4 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 border-l-4 border-l-rose-500" : ""}`}>
+                      <td className={`px-4 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 dark:bg-rose-950/40 border-l-4 border-l-rose-500" : ""}`}>
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <button
@@ -1062,8 +1062,8 @@ function ArticlesContent() {
                               }}
                               className={`text-[13px] font-semibold text-left cursor-pointer transition-colors max-w-[220px] truncate block ${
                                 isPublishedWithoutLinks
-                                  ? "text-rose-900 hover:text-rose-700 underline decoration-rose-400 font-bold"
-                                  : "text-slate-800 hover:text-indigo-600 hover:underline"
+                                  ? "text-rose-900 dark:text-rose-300 hover:text-rose-700 dark:hover:text-rose-200 underline decoration-rose-400 font-bold"
+                                  : "text-slate-800 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline"
                               }`}
                               title="Click to view product details"
                             >
@@ -1071,34 +1071,34 @@ function ArticlesContent() {
                             </button>
                             {isPublishedWithoutLinks && (
                               <span
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs whitespace-nowrap"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 shadow-2xs whitespace-nowrap"
                                 title="Article is published, but this product has NO affiliate links configured!"
                               >
-                                <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
                                 No Links
                               </span>
                             )}
                           </div>
-                          <span className="text-[11px] font-mono text-slate-400 truncate max-w-[200px]">
+                          <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 truncate max-w-[200px]">
                             /{a.product.slug || a.product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
                           </span>
                         </div>
                       </td>
                       <td className="px-3 py-3.5 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200/70">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700">
                           {a.product.site.name}
                         </span>
                       </td>
                       <td className="px-3 py-3.5 whitespace-nowrap">
                         {a.writer?.name ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+                            <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                               {getInitials(a.writer.name)}
                             </div>
-                            <span className="text-[12px] font-semibold text-slate-700">{a.writer.name}</span>
+                            <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-200">{a.writer.name}</span>
                           </div>
                         ) : (
-                          <span className="text-[12px] font-medium text-slate-400 italic">Unassigned</span>
+                          <span className="text-[12px] font-medium text-slate-400 dark:text-slate-500 italic">Unassigned</span>
                         )}
                       </td>
                       <td className="px-3 py-3.5 whitespace-nowrap">
@@ -1109,7 +1109,7 @@ function ArticlesContent() {
                           {status === "IN_PROGRESS" ? "In Progress" : status.charAt(0) + status.slice(1).toLowerCase()}
                         </span>
                       </td>
-                      <td className="px-3 py-3.5 whitespace-nowrap text-[12px] font-medium text-slate-500">
+                      <td className="px-3 py-3.5 whitespace-nowrap text-[12px] font-medium text-slate-500 dark:text-slate-400">
                         {new Date(a.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       {/* Writer's and Linker's Remarks cell */}
@@ -1127,7 +1127,7 @@ function ArticlesContent() {
                                 productName: a.product.name
                               });
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-indigo-650 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all text-[11px] font-bold cursor-pointer shadow-2xs"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 hover:text-indigo-650 dark:hover:text-sky-300 hover:border-indigo-300 dark:hover:border-sky-500/50 hover:bg-indigo-50/50 dark:hover:bg-slate-700/60 transition-all text-[11px] font-bold cursor-pointer shadow-2xs"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1136,16 +1136,16 @@ function ArticlesContent() {
                             View
                           </button>
                         ) : (
-                          <span className="text-slate-300 font-semibold text-xs">-</span>
+                          <span className="text-slate-300 dark:text-slate-600 font-semibold text-xs">-</span>
                         )}
                       </td>
                       <td className="px-2 py-3.5 text-center whitespace-nowrap">
                         {a.articleLink ? (
-                          <a href={ensureExternalUrl(a.articleLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition shadow-2xs">
+                          <a href={ensureExternalUrl(a.articleLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition shadow-2xs">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                           </a>
                         ) : (
-                          <span className="text-[12px] font-bold text-slate-300">--</span>
+                          <span className="text-[12px] font-bold text-slate-300 dark:text-slate-600">--</span>
                         )}
                       </td>
                       {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "WRITER") && (
@@ -1168,7 +1168,7 @@ function ArticlesContent() {
                                 }}
                                 title="View Product Details"
                                 aria-label="View Product Details"
-                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-2xs shrink-0"
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-blue-200 dark:border-blue-800/70 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/70 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer shadow-2xs shrink-0"
                               >
                                 <Info className="w-3.5 h-3.5" />
                               </button>
@@ -1181,7 +1181,7 @@ function ArticlesContent() {
                                 {status === "IN_PROGRESS" && (
                                   <Link
                                     href={`/?articleId=${a.id}`}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#6D8196]/30 bg-[#6D8196]/15 text-[#3D4F61] hover:bg-[#6D8196]/25 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#6D8196]/30 dark:border-sky-500/30 bg-[#6D8196]/15 dark:bg-sky-950/40 text-[#3D4F61] dark:text-sky-300 hover:bg-[#6D8196]/25 dark:hover:bg-sky-900/40 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
                                   >
                                     <PlayCircle className="w-3.5 h-3.5" />
                                     Continue
@@ -1209,7 +1209,7 @@ function ArticlesContent() {
                                           type="button"
                                           onClick={() => handleStartRevision(a.id)}
                                           disabled={startingRevisionId === a.id}
-                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer disabled:opacity-50 shrink-0"
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer disabled:opacity-50 shrink-0"
                                         >
                                           <PlayCircle className="w-3.5 h-3.5" />
                                           {startingRevisionId === a.id ? "Starting..." : "Start Revision"}
@@ -1221,7 +1221,7 @@ function ArticlesContent() {
                                           setUpdatingArticle(a);
                                           setUpdateLink(a.articleLink || "");
                                         }}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shrink-0"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shrink-0"
                                       >
                                         <FileText className="w-3.5 h-3.5" />
                                         Update
@@ -1238,7 +1238,7 @@ function ArticlesContent() {
                                       setUpdateLink(a.articleLink || "");
                                       setUpdateReason("");
                                     }}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
                                   >
                                     <FileText className="w-3.5 h-3.5" />
                                     Update
@@ -1249,7 +1249,7 @@ function ArticlesContent() {
                                 {status === "APPROVED" && (
                                   <>
                                     {a.specialApprovalRequested ? (
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs shrink-0">
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 shadow-2xs shrink-0">
                                         <Clock className="w-3 h-3 text-amber-600 animate-spin" />
                                         Edit Requested
                                       </span>
@@ -1259,7 +1259,7 @@ function ArticlesContent() {
                                           setRequestingUpdateArticle(a);
                                           setRequestEditReason("");
                                         }}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
                                       >
                                         <RotateCcw className="w-3.5 h-3.5" />
                                         Request Edit
@@ -1295,7 +1295,7 @@ function ArticlesContent() {
                                 }}
                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all shrink-0 ${!hasActiveAssignment
                                     ? "bg-[#6D8196] text-white hover:bg-[#5A6D81] cursor-pointer shadow-xs"
-                                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                                   }`}
                               >
                                 <PlayCircle className="w-3.5 h-3.5" />
@@ -1342,7 +1342,7 @@ function ArticlesContent() {
                                       setSelectedAssignee(a.writer ? String(a.writer.id) : "");
                                       setFlagInstructions("");
                                     }}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 hover:border-amber-300 dark:hover:border-amber-700 transition-all text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-2xs shrink-0"
                                     title="Raise flag to writer that this approved article needs an update"
                                   >
                                     <Flag className="w-3.5 h-3.5 text-amber-600" />
@@ -1352,7 +1352,7 @@ function ArticlesContent() {
 
                                 <Link
                                   href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-500/50 hover:bg-[#FAF9F5] dark:hover:bg-slate-700/60 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
                                 >
                                   <FileText className="w-3.5 h-3.5" />
                                   Details
@@ -1364,7 +1364,7 @@ function ArticlesContent() {
                             {currentUserRole === "WRITER" && a.writer?.id !== currentUserId && (status === "IN_PROGRESS" || status === "REDO" || status === "COMPLETED" || status === "APPROVED") && (
                               <Link
                                 href={`/articles/${a.id}-${generateSlug(a.product.name)}`}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] bg-white text-[#4A4A4A] hover:text-[#6D8196] hover:border-[#6D8196] hover:bg-[#FAF9F5] transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-500/50 hover:bg-[#FAF9F5] dark:hover:bg-slate-700/60 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
                               >
                                 <FileText className="w-3.5 h-3.5" />
                                 Details
@@ -1386,30 +1386,30 @@ function ArticlesContent() {
       {/* Writer update modal */}
       {updatingArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="px-6 py-5 border-b border-slate-100">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2 mb-1">
                 {updatingArticle.status === "REDO" ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60">
                     Needs Changes
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60">
                     Completed
                   </span>
                 )}
                 {(updatingArticle as any).priority === "HIGH" && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 animate-pulse">
                     <Flame className="w-2.5 h-2.5" /> HIGH PRIORITY
                   </span>
                 )}
               </div>
-              <h2 className="text-[15px] font-bold text-slate-900">{updatingArticle.product.name}</h2>
-              <p className="text-xs text-slate-400 mt-0.5">{updatingArticle.product.site.name}</p>
+              <h2 className="text-[15px] font-bold text-slate-900 dark:text-slate-100">{updatingArticle.product.name}</h2>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{updatingArticle.product.site.name}</p>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
                   Updated Article Link <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -1417,13 +1417,13 @@ function ArticlesContent() {
                   value={updateLink}
                   onChange={(e) => setUpdateLink(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
+                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
                 />
               </div>
 
               {currentUserRole === "WRITER" && updatingArticle.status !== "REDO" && updatingArticle.status !== "COMPLETED" && (
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
                     Reason for Update <span className="text-rose-500">* (Admin / Super Admin Approval Required)</span>
                   </label>
                   <textarea
@@ -1431,7 +1431,7 @@ function ArticlesContent() {
                     value={updateReason}
                     onChange={(e) => setUpdateReason(e.target.value)}
                     placeholder="Provide a clear reason why this article link is being updated..."
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition resize-none font-medium"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition resize-none font-medium"
                   />
                 </div>
               )}
@@ -1439,7 +1439,7 @@ function ArticlesContent() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => { setUpdatingArticle(null); setUpdateLink(""); setUpdateReason(""); }}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                 >
                   Cancel
                 </button>
@@ -1504,14 +1504,14 @@ function ArticlesContent() {
       {/* Request Edit Permission Modal on Approved Article */}
       {requestingUpdateArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-150">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <RotateCcw className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <RotateCcw className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   Request Edit on Approved Article
                 </h3>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
                   Team Lead permission required to reopen approved articles
                 </p>
               </div>
@@ -1520,25 +1520,25 @@ function ArticlesContent() {
                   setRequestingUpdateArticle(null);
                   setRequestEditReason("");
                 }}
-                className="text-slate-400 hover:text-slate-600 transition cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="px-6 py-5 space-y-4">
-              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Article</span>
-                <p className="text-xs font-bold text-slate-900 mt-0.5">{requestingUpdateArticle.product.name}</p>
-                <p className="text-[11px] text-slate-500 font-medium">{requestingUpdateArticle.product.site.name}</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 mt-0.5">{requestingUpdateArticle.product.name}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{requestingUpdateArticle.product.site.name}</p>
               </div>
 
-              <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-900 leading-relaxed font-medium">
+              <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 rounded-xl text-xs text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
                 Once submitted, your Team Lead will receive this request. Once approved by your Team Lead, this article will be unlocked so you can make and resubmit the necessary revisions.
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                   Reason for Update / Changes Needed <span className="text-rose-500">*</span>
                 </label>
                 <textarea
@@ -1546,17 +1546,17 @@ function ArticlesContent() {
                   value={requestEditReason}
                   onChange={(e) => setRequestEditReason(e.target.value)}
                   placeholder="Explain why this approved article needs updating (e.g. broken link, product detail correction, new guidelines)..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition resize-none font-medium placeholder-slate-400"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition resize-none font-medium placeholder-slate-400 dark:placeholder-slate-500"
                 />
               </div>
 
-              <div className="flex gap-2.5 pt-2 border-t border-slate-100">
+              <div className="flex gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => {
                     setRequestingUpdateArticle(null);
                     setRequestEditReason("");
                   }}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1576,14 +1576,14 @@ function ArticlesContent() {
       {/* Flag Approved Article for Update Modal */}
       {flaggingArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-150">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Flag className="w-4 h-4 text-amber-600" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   Flag Approved Article for Update
                 </h3>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
                   Raise a flag to writer that this approved article requires revisions
                 </p>
               </div>
@@ -1593,7 +1593,7 @@ function ArticlesContent() {
                   setSelectedAssignee("");
                   setFlagInstructions("");
                 }}
-                className="text-slate-400 hover:text-slate-600 transition cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1601,21 +1601,21 @@ function ArticlesContent() {
 
             <div className="px-6 py-5 space-y-4">
               {/* Product Info */}
-              <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl space-y-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Article</span>
-                <p className="text-sm font-bold text-slate-900">{flaggingArticle.product.name}</p>
-                <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                  <span className="bg-white px-2 py-0.5 rounded border border-slate-200 text-[10px] font-bold text-slate-700">
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{flaggingArticle.product.name}</p>
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="bg-white dark:bg-slate-700 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600 text-[10px] font-bold text-slate-700 dark:text-slate-200">
                     {flaggingArticle.product.site.name}
                   </span>
                   <span>·</span>
-                  <span>Original Writer: <strong className="text-slate-700">{flaggingArticle.writer?.name || "Unassigned"}</strong></span>
+                  <span>Original Writer: <strong className="text-slate-700 dark:text-slate-200">{flaggingArticle.writer?.name || "Unassigned"}</strong></span>
                 </div>
               </div>
 
               {/* Writer Assignment */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Assign Update To Writer <span className="text-rose-500">*</span>
                 </label>
                 <CustomSelect
@@ -1623,7 +1623,7 @@ function ArticlesContent() {
                   onChange={(val) => setSelectedAssignee(val)}
                   placeholder="-- Choose Writer --"
                   portal={true}
-                  triggerClassName="w-full px-3.5 py-2.5 bg-white border border-slate-200 hover:border-amber-400 focus:border-amber-500 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs"
+                  triggerClassName="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-amber-400 focus:border-amber-500 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-100 shadow-2xs"
                   options={[
                     ...(flaggingArticle.writer && !teamMembers.some((m) => m.id === flaggingArticle.writer?.id)
                       ? [
@@ -1643,7 +1643,7 @@ function ArticlesContent() {
 
               {/* Instructions / Reason for Update */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Update Instructions & Feedback <span className="text-rose-500">*</span>
                 </label>
                 <textarea
@@ -1651,22 +1651,22 @@ function ArticlesContent() {
                   value={flagInstructions}
                   onChange={(e) => setFlagInstructions(e.target.value)}
                   placeholder="Specify what needs to be updated (e.g. broken article link, price changes, client requests new GEO link)..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition resize-none font-medium placeholder-slate-400"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition resize-none font-medium placeholder-slate-400 dark:placeholder-slate-500"
                 />
               </div>
 
-              <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 leading-relaxed font-medium">
+              <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 rounded-xl text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
                 This will unlock the article back to <strong>In Progress</strong> for the selected writer, log your instructions, and notify them immediately.
               </div>
 
-              <div className="flex gap-2.5 pt-2 border-t border-slate-100">
+              <div className="flex gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => {
                     setFlaggingArticle(null);
                     setSelectedAssignee("");
                     setFlagInstructions("");
                   }}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1691,11 +1691,11 @@ function ArticlesContent() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200"
           >
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Remarks: {selectedRemarks.productName}</h2>
-              <button onClick={() => setSelectedRemarks(null)} className="text-slate-400 hover:text-slate-600 transition">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Remarks: {selectedRemarks.productName}</h2>
+              <button onClick={() => setSelectedRemarks(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1705,17 +1705,17 @@ function ArticlesContent() {
               {selectedRemarks.writer && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 uppercase tracking-wider">
                       Writer Remarks
                     </span>
                     {selectedRemarks.writerDate && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700 shadow-2xs">
                         <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                         {formatRemarkDate(selectedRemarks.writerDate)}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap leading-relaxed font-medium">
+                  <p className="text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 whitespace-pre-wrap leading-relaxed font-medium">
                     {selectedRemarks.writer}
                   </p>
                 </div>
@@ -1723,26 +1723,26 @@ function ArticlesContent() {
               {selectedRemarks.linker && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 uppercase tracking-wider">
                       Linker Remarks
                     </span>
                     {selectedRemarks.linkerDate && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700 shadow-2xs">
                         <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                         {formatRemarkDate(selectedRemarks.linkerDate)}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap leading-relaxed font-medium">
+                  <p className="text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 whitespace-pre-wrap leading-relaxed font-medium">
                     {selectedRemarks.linker}
                   </p>
                 </div>
               )}
             </div>
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex justify-end">
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex justify-end">
               <button
                 onClick={() => setSelectedRemarks(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition"
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold transition cursor-pointer"
               >
                 Close
               </button>

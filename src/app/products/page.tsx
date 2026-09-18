@@ -1137,13 +1137,14 @@ function ProductsPageContent() {
                     <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                   {paginatedMyArticles.map((a: any) => {
                     const status = a.status || "PENDING";
                     const matchingProd = products.find((p) => p.id === (a.productId || a.product?.id));
                     const prodLinkLogs = matchingProd?.linkLogs || a.product?.linkLogs || [];
                     const isPublished = Boolean(a.articleLink || status === "APPROVED" || status === "COMPLETED");
                     const hasLinks = prodLinkLogs.length > 0 && prodLinkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
+                    const isPublishedWithoutLinks = isPublished && !hasLinks;
                     return (
                       <tr key={a.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group ${isPublishedWithoutLinks ? "bg-rose-50/20 dark:bg-rose-950/20" : ""}`}>
                         <td className={`px-3 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 dark:bg-rose-950/40 border-l-4 border-l-rose-500" : ""}`}>
