@@ -113,38 +113,38 @@ export async function POST(req: NextRequest) {
     const unifiedMap = new Map<string, UnifiedEntry>();
 
     if (Array.isArray(countryLinks) && countryLinks.length > 0) {
+      const distinctNames = Array.from(
+        new Set(countryLinks.map((c) => c.affiliateName?.trim()).filter(Boolean))
+      );
+      const primaryName = (affiliateName || distinctNames[0] || "Standard").trim();
+      const primaryLink = (affiliateLink || countryLinks[0]?.affiliateLink || "").trim();
+
+      const geosToSave: NormalizedGeo[] = [];
       for (const c of countryLinks) {
-        const netName = (c.affiliateName || affiliateName || "Standard").trim();
-        const affLink = (c.affiliateLink || affiliateLink || "").trim();
         const geoCode = String(c.geo || "").trim().toUpperCase();
         if (!geoCode) continue;
-
-        if (!unifiedMap.has(netName)) {
-          unifiedMap.set(netName, {
-            affiliateName: netName,
-            affiliateLink: affLink,
-            geos: [],
-          });
-        }
-        const existing = unifiedMap.get(netName)!;
-        if (!existing.affiliateLink && affLink) existing.affiliateLink = affLink;
-        if (!existing.geos.some((g) => g.geo === geoCode)) {
-          existing.geos.push({ geo: geoCode, affiliateLink: affLink, affiliateName: netName });
+        const affLink = (c.affiliateLink || affiliateLink || "").trim();
+        const affName = (c.affiliateName || affiliateName || "Standard").trim();
+        if (!geosToSave.some((g) => g.geo === geoCode)) {
+          geosToSave.push({ geo: geoCode, affiliateLink: affLink, affiliateName: affName });
         }
       }
+
+      unifiedMap.set("unified_country_submission", {
+        affiliateName: primaryName,
+        affiliateLink: primaryLink,
+        geos: geosToSave,
+      });
     } else if (Array.isArray(affiliateEntries) && affiliateEntries.length > 0) {
+      const allGeosToSave: NormalizedGeo[] = [];
+      const distinctNets: string[] = [];
+      let primaryAffLink = (affiliateLink || "").trim();
+
       for (const entry of affiliateEntries) {
         const netName = (entry.affiliateName || "Standard").trim();
         const affLink = (entry.affiliateLink || "").trim();
-        if (!unifiedMap.has(netName)) {
-          unifiedMap.set(netName, {
-            affiliateName: netName,
-            affiliateLink: affLink,
-            geos: [],
-          });
-        }
-        const existing = unifiedMap.get(netName)!;
-        if (!existing.affiliateLink && affLink) existing.affiliateLink = affLink;
+        if (netName && !distinctNets.includes(netName)) distinctNets.push(netName);
+        if (!primaryAffLink && affLink) primaryAffLink = affLink;
 
         const entryGeos = Array.isArray(entry.geos) && entry.geos.length > 0
           ? entry.geos
@@ -154,11 +154,19 @@ export async function POST(req: NextRequest) {
           const geoCode = (typeof g === "string" ? g : g?.geo || "").trim().toUpperCase();
           const geoLink = (typeof g === "object" && g?.affiliateLink ? g.affiliateLink : affLink).trim();
           const geoAffName = (typeof g === "object" && g?.affiliateName ? g.affiliateName : netName).trim();
-          if (geoCode && !existing.geos.some((item) => item.geo === geoCode)) {
-            existing.geos.push({ geo: geoCode, affiliateLink: geoLink || affLink, affiliateName: geoAffName || netName });
+          if (geoCode && !allGeosToSave.some((item) => item.geo === geoCode)) {
+            allGeosToSave.push({ geo: geoCode, affiliateLink: geoLink || affLink, affiliateName: geoAffName || netName });
           }
         }
       }
+
+      const primaryAffName = (affiliateName || distinctNets[0] || "Standard").trim();
+
+      unifiedMap.set("unified_affiliate_submission", {
+        affiliateName: primaryAffName,
+        affiliateLink: primaryAffLink,
+        geos: allGeosToSave,
+      });
     } else if (affiliateName && affiliateLink) {
       const netName = affiliateName.trim();
       unifiedMap.set(netName, {

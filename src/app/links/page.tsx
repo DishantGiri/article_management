@@ -18,9 +18,18 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { getCountryFlag } from "@/lib/geo-constants";
+
+const ensureExternalUrl = (url: string | null | undefined) => {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
 
 interface LinkLog {
   id: number;
+  allLinkIds?: number[];
   productId: number;
   affiliateName: string;
   affiliateLink: string;
@@ -84,6 +93,7 @@ function LinksPageContent() {
 
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [expandedGeos, setExpandedGeos] = useState<Record<number, boolean>>({});
+  const [selectedRowGeos, setSelectedRowGeos] = useState<Record<number, string>>({});
 
   const handleCopy = (text: string, key: string, label: string) => {
     if (!text) return;
@@ -167,16 +177,22 @@ function LinksPageContent() {
     toast.success("CSV exported successfully!");
   };
 
-  const handleDeleteLink = async (linkId: number) => {
+  const handleDeleteLink = async (linkId: number, allIds?: number[]) => {
     openConfirm(
       "Are you sure you want to delete this link log? This action cannot be undone.",
       async () => {
         const uId = session?.user?.id || 2;
         try {
-          const res = await fetch(`/api/links/${linkId}?callerId=${uId}`, {
-            method: "DELETE",
-          });
-          if (!res.ok) throw new Error((await res.json()).error || "Failed to delete link");
+          const idsToDelete = allIds && allIds.length > 0 ? allIds : [linkId];
+          await Promise.all(
+            idsToDelete.map((id) =>
+              fetch(`/api/links/${id}?callerId=${uId}`, {
+                method: "DELETE",
+              }).then(async (res) => {
+                if (!res.ok) throw new Error((await res.json()).error || "Failed to delete link");
+              })
+            )
+          );
           toast.success("Link deleted successfully!");
           refreshLinksData(false);
         } catch (err: any) {
@@ -202,28 +218,49 @@ function LinksPageContent() {
       fetch(`/api/products?userId=${uId}`).then((r) => (r.ok ? r.json() : [])),
     ]).then(([linksData, dashboardData, productsData]) => {
       const rawArr = Array.isArray(linksData) ? linksData : [];
-      // Consolidate duplicate entries for same product & affiliate setup so one product is displayed with all its geo links
+      // Consolidate duplicate entries for same product so one product is displayed with all its geo links
       const map = new Map<string, any>();
       for (const item of rawArr) {
-        const key = `${item.productId}_${(item.affiliateName || "").toLowerCase()}_${item.bridgePageLink || ""}_${item.buyLink || ""}_${item.status}`;
+        const key = item.productId ? `prod-${item.productId}` : `link-${item.id}`;
         if (!map.has(key)) {
           map.set(key, {
             ...item,
+            allLinkIds: [item.id],
             geos: [...(item.geos || []).map((g: any) => ({
               ...g,
-              affiliateLink: g.affiliateLink || item.affiliateLink,
-              affiliateName: g.affiliateName || item.affiliateName,
+              affiliateLink: g.affiliateLink || item.affiliateLink || "",
+              affiliateName: g.affiliateName || item.affiliateName || "",
             }))],
           });
         } else {
           const existing = map.get(key)!;
+          if (!existing.allLinkIds.includes(item.id)) {
+            existing.allLinkIds.push(item.id);
+          }
+          if (!existing.bridgePageLink && item.bridgePageLink) {
+            existing.bridgePageLink = item.bridgePageLink;
+          }
+          if (!existing.buyLink && item.buyLink) {
+            existing.buyLink = item.buyLink;
+          }
+          if (!existing.affiliateLink && item.affiliateLink) {
+            existing.affiliateLink = item.affiliateLink;
+          }
+          if (!existing.affiliateName && item.affiliateName) {
+            existing.affiliateName = item.affiliateName;
+          }
+          if (item.linkerRemarks && !existing.linkerRemarks?.includes(item.linkerRemarks)) {
+            existing.linkerRemarks = existing.linkerRemarks
+              ? `${existing.linkerRemarks}\n${item.linkerRemarks}`
+              : item.linkerRemarks;
+          }
           for (const g of item.geos || []) {
             const existingGeoIndex = existing.geos.findIndex((eg: any) => eg.geo === g.geo);
             if (existingGeoIndex === -1) {
               existing.geos.push({
                 ...g,
-                affiliateLink: g.affiliateLink || item.affiliateLink,
-                affiliateName: g.affiliateName || item.affiliateName,
+                affiliateLink: g.affiliateLink || item.affiliateLink || "",
+                affiliateName: g.affiliateName || item.affiliateName || "",
               });
             } else {
               if (!existing.geos[existingGeoIndex].affiliateLink && (g.affiliateLink || item.affiliateLink)) {
@@ -795,7 +832,7 @@ function LinksPageContent() {
                       </td>
                       <td className="px-3 py-3.5">
                         {l.product.article?.articleLink ? (
-                          <a href={l.product.article.articleLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] transition">
+                          <a href={ensureExternalUrl(l.product.article.articleLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] transition">
                             <ExternalLink className="w-3.5 h-3.5" />
                             Article
                           </a>
@@ -807,7 +844,7 @@ function LinksPageContent() {
                       </td>
                       <td className="px-3 py-3.5">
                         {l.bridgePageLink ? (
-                          <a href={l.bridgePageLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] transition">
+                          <a href={ensureExternalUrl(l.bridgePageLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#6D8196] hover:text-[#4A4A4A] transition">
                             <ExternalLink className="w-3.5 h-3.5" />
                             Link
                           </a>
@@ -818,168 +855,180 @@ function LinksPageContent() {
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-3.5">
-                        {(() => {
-                          const distinctAffs = Array.from(
-                            new Set((l.geos || []).map((g) => g.affiliateName?.trim()).filter(Boolean))
-                          );
-                          if (distinctAffs.length > 1) {
-                            return (
-                              <div className="flex flex-wrap gap-1 max-w-[170px]">
-                                {distinctAffs.map((aff) => (
-                                  <span
-                                    key={aff}
-                                    className="px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200/60 dark:border-blue-800/60"
-                                  >
-                                    {aff}
+                      {(() => {
+                        const selectedGeo = selectedRowGeos[l.productId] || "";
+                        const selectedGeoItem = (l.geos || []).find((g: any) => g.geo === selectedGeo);
+
+                        const activeAffiliateName = selectedGeoItem
+                          ? (selectedGeoItem.affiliateName || l.affiliateName || "-")
+                          : (l.affiliateName || l.geos?.[0]?.affiliateName || "-");
+
+                        const activeAffiliateLink = selectedGeoItem
+                          ? (selectedGeoItem.affiliateLink || l.affiliateLink || "")
+                          : (l.affiliateLink || l.geos?.[0]?.affiliateLink || "");
+
+                        return (
+                          <>
+                            {/* AFFILIATE COLUMN */}
+                            <td className="px-3 py-3.5">
+                              {selectedGeo && selectedGeoItem ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-200">
+                                    {activeAffiliateName}
                                   </span>
-                                ))}
-                              </div>
-                            );
-                          }
-                          return <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{l.affiliateName}</span>;
-                        })()}
-                      </td>
-                      <td className="px-3 py-3.5 min-w-[220px] max-w-[340px]">
-                        {(() => {
-                          const geoLinks = (l.geos || []).map((g) => ({
-                            geo: g.geo,
-                            link: g.affiliateLink || l.affiliateLink || "",
-                            affiliateName: g.affiliateName || l.affiliateName || "",
-                          }));
-                          const hasDistinctGeoLinks =
-                            geoLinks.length > 0 &&
-                            (new Set(geoLinks.map((g) => g.link).filter(Boolean)).size > 1 ||
-                              new Set(geoLinks.map((g) => g.affiliateName).filter(Boolean)).size > 1);
-                          const isExpanded = Boolean(expandedGeos[l.id]);
-                          const displayed = isExpanded ? geoLinks : geoLinks.slice(0, 3);
+                                  <span className="text-[10px] font-medium text-[#6D8196] flex items-center gap-1">
+                                    <span>{getCountryFlag(selectedGeoItem.geo)}</span>
+                                    <span>{selectedGeoItem.geo}</span>
+                                    <span className="text-slate-400">· active network</span>
+                                  </span>
+                                </div>
+                              ) : (() => {
+                                const distinctAffs = Array.from(
+                                  new Set((l.geos || []).map((g: any) => g.affiliateName?.trim()).filter(Boolean))
+                                );
+                                if (distinctAffs.length > 1) {
+                                  return (
+                                    <div className="flex flex-wrap gap-1 max-w-[190px]">
+                                      {distinctAffs.map((aff) => (
+                                        <button
+                                          key={aff}
+                                          type="button"
+                                          onClick={() => {
+                                            const matchedGeo = (l.geos || []).find(
+                                              (g: any) => g.affiliateName?.trim() === aff
+                                            );
+                                            if (matchedGeo) {
+                                              setSelectedRowGeos((prev) => ({
+                                                ...prev,
+                                                [l.productId]: matchedGeo.geo,
+                                              }));
+                                            }
+                                          }}
+                                          className="px-1.5 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[10px] border border-blue-200/60 transition cursor-pointer"
+                                          title={`Click to switch to ${aff}`}
+                                        >
+                                          {aff}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">
+                                    {activeAffiliateName}
+                                  </span>
+                                );
+                              })()}
+                            </td>
 
-                          if (geoLinks.length === 0) {
-                            return <span className="text-[12px] font-semibold text-slate-300">--</span>;
-                          }
+                            {/* GEO COLUMN */}
+                            <td className="px-3 py-3.5 min-w-[230px] max-w-[340px]">
+                              {(() => {
+                                const geos = l.geos || [];
+                                if (geos.length === 0) {
+                                  return <span className="text-[12px] font-semibold text-slate-300">--</span>;
+                                }
 
-                          if (hasDistinctGeoLinks) {
-                            return (
-                              <div className="flex flex-col gap-1.5">
-                                {displayed.map((g) => (
-                                  <div
-                                    key={g.geo}
-                                    className="flex items-center gap-1.5 bg-[#FAF9F5] dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] shadow-2xs group/geo"
-                                  >
-                                    <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 text-[#3D4F61] dark:text-slate-200 font-extrabold text-[10px] uppercase border border-slate-200 dark:border-slate-600 shrink-0">
-                                      {g.geo}
-                                    </span>
-                                    {g.affiliateName && (
-                                      <span className="px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 font-medium text-[9px] border border-slate-200/60 dark:border-slate-600 shrink-0">
-                                        {g.affiliateName}
-                                      </span>
-                                    )}
-                                    {g.link ? (
-                                      <div className="flex items-center gap-1 min-w-0 flex-1">
+                                return (
+                                  <div className="flex flex-col gap-1.5">
+                                    {/* Country Badges / Toggles */}
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                      {geos.map((g: any) => {
+                                        const isSelected = selectedGeo === g.geo;
+                                        const flag = getCountryFlag(g.geo);
+                                        return (
+                                          <button
+                                            key={g.geo}
+                                            type="button"
+                                            onClick={() => {
+                                              setSelectedRowGeos((prev) => ({
+                                                ...prev,
+                                                [l.productId]: prev[l.productId] === g.geo ? "" : g.geo,
+                                              }));
+                                            }}
+                                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-all flex items-center gap-1 cursor-pointer border ${
+                                              isSelected
+                                                ? "bg-[#3D4F61] text-white border-[#3D4F61] shadow-2xs ring-2 ring-[#6D8196]/30 font-extrabold"
+                                                : "bg-[#FAF9F5] text-[#4A4A4A] border-[#CBCBCB] hover:border-[#6D8196] hover:bg-[#6D8196]/10"
+                                            }`}
+                                            title={`Click to toggle ${g.geo}${g.affiliateName ? ` - ${g.affiliateName}` : ""}`}
+                                          >
+                                            <span className="text-[11px] leading-none">{flag}</span>
+                                            <span>{g.geo}</span>
+                                          </button>
+                                        );
+                                      })}
+                                      {selectedGeo && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedRowGeos((prev) => ({ ...prev, [l.productId]: "" }));
+                                          }}
+                                          className="text-[9px] font-semibold text-slate-400 hover:text-slate-700 underline ml-0.5 cursor-pointer"
+                                          title="Reset country selection"
+                                        >
+                                          Reset
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {/* Link Card for Active / Country Link */}
+                                    {activeAffiliateLink ? (
+                                      <div className="flex items-center gap-1 bg-[#FAF9F5] px-2 py-1 rounded-md border border-slate-200 shadow-2xs">
+                                        {selectedGeo && (
+                                          <span className="px-1.5 py-0.2 rounded bg-white text-[#3D4F61] font-extrabold text-[9px] uppercase border border-slate-200 shrink-0">
+                                            {selectedGeo}
+                                          </span>
+                                        )}
                                         <a
-                                          href={g.link}
+                                          href={ensureExternalUrl(activeAffiliateLink)}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="text-xs font-mono text-[#6D8196] hover:text-[#4A4A4A] dark:text-indigo-400 hover:underline truncate"
-                                          title={g.link}
+                                          className="text-xs font-mono text-[#6D8196] hover:text-[#4A4A4A] hover:underline truncate max-w-[170px]"
+                                          title={activeAffiliateLink}
                                         >
-                                          {g.link.replace(/^https?:\/\/(www\.)?/, "")}
+                                          {activeAffiliateLink.replace(/^https?:\/\/(www\.)?/, "")}
                                         </a>
                                         <div className="flex items-center gap-0.5 shrink-0 ml-auto">
                                           <button
                                             type="button"
-                                            onClick={() => handleCopy(g.link, `geo-${l.id}-${g.geo}`, `${g.geo} link`)}
-                                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer"
-                                            title={`Copy ${g.geo} link`}
+                                            onClick={() =>
+                                              handleCopy(
+                                                activeAffiliateLink,
+                                                `aff-${l.id}-${selectedGeo || "all"}`,
+                                                `${selectedGeo ? `${selectedGeo} ` : ""}affiliate link`
+                                              )
+                                            }
+                                            className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                                            title={`Copy ${selectedGeo ? `${selectedGeo} ` : ""}affiliate link`}
                                           >
-                                            {copiedKey === `geo-${l.id}-${g.geo}` ? (
+                                            {copiedKey === `aff-${l.id}-${selectedGeo || "all"}` ? (
                                               <Check className="w-3 h-3 text-emerald-600" />
                                             ) : (
                                               <Copy className="w-3 h-3" />
                                             )}
                                           </button>
                                           <a
-                                            href={g.link}
+                                            href={ensureExternalUrl(activeAffiliateLink)}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
-                                            title={`Open ${g.geo} link`}
+                                            className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
+                                            title={`Open ${selectedGeo ? `${selectedGeo} ` : ""}affiliate link`}
                                           >
                                             <ExternalLink className="w-3 h-3" />
                                           </a>
                                         </div>
                                       </div>
                                     ) : (
-                                      <span className="text-[10px] text-slate-400 italic">No link</span>
+                                      <span className="text-[10px] text-slate-400 italic">No affiliate link</span>
                                     )}
                                   </div>
-                                ))}
-                                {geoLinks.length > 3 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleExpandGeos(l.id)}
-                                    className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline text-left cursor-pointer"
-                                  >
-                                    {isExpanded ? "▲ Show less" : `▼ +${geoLinks.length - 3} more country links`}
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          }
-
-                          // Shared single link for all GEOs
-                          return (
-                            <div className="flex flex-col gap-1">
-                              <div className="flex gap-1 flex-wrap">
-                                {l.geos.map((g) => (
-                                  <span
-                                    key={g.geo}
-                                    className="px-1.5 py-0.5 rounded bg-[#FAF9F5] text-[#4A4A4A] text-[10px] font-bold uppercase border border-[#CBCBCB]"
-                                  >
-                                    {g.geo}
-                                  </span>
-                                ))}
-                              </div>
-                              {l.affiliateLink && (
-                                <div className="flex items-center gap-1 mt-0.5 bg-[#FAF9F5] dark:bg-slate-800/80 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700">
-                                  <a
-                                    href={l.affiliateLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs font-mono text-[#6D8196] hover:text-[#4A4A4A] hover:underline truncate max-w-[170px]"
-                                    title={l.affiliateLink}
-                                  >
-                                    {l.affiliateLink.replace(/^https?:\/\/(www\.)?/, "")}
-                                  </a>
-                                  <div className="flex items-center gap-0.5 shrink-0 ml-auto">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopy(l.affiliateLink, `aff-${l.id}`, "Affiliate link")}
-                                      className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-                                      title="Copy affiliate link"
-                                    >
-                                      {copiedKey === `aff-${l.id}` ? (
-                                        <Check className="w-3 h-3 text-emerald-600" />
-                                      ) : (
-                                        <Copy className="w-3 h-3" />
-                                      )}
-                                    </button>
-                                    <a
-                                      href={l.affiliateLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
-                                      title="Open affiliate link"
-                                    >
-                                      <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </td>
+                                );
+                              })()}
+                            </td>
+                          </>
+                        );
+                      })()}
                       <td className="px-3 py-3.5">
                         <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${statusStyle}`}>
                           {statusLabel}
@@ -1041,7 +1090,7 @@ function LinksPageContent() {
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => handleDeleteLink(l.id)}
+                                onClick={() => handleDeleteLink(l.id, l.allLinkIds)}
                                 className="p-1.5 rounded-md border border-[#CBCBCB] bg-white text-slate-500 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition cursor-pointer shadow-2xs"
                                 title="Delete Link"
                               >
