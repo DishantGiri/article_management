@@ -34,7 +34,10 @@ export async function GET(req: NextRequest) {
     });
     const siteIds = accesses.map((a) => a.siteId);
     allowedFilter = {
-      product: { siteId: { in: siteIds } }
+      OR: [
+        { product: { siteId: { in: siteIds } } },
+        { writerId: userId },
+      ],
     };
   }
 

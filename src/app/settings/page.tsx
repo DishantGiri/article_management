@@ -91,24 +91,90 @@ export default function SettingsPage() {
   // Testing sound audio object
   const [isPlayingTestSound, setIsPlayingTestSound] = useState(false);
 
+  // Track initial values to prevent redundant saves and false success notifications
+  const [initialProfile, setInitialProfile] = useState<{ name: string; image: string }>({ name: "", image: "" });
+  const [initialNotifs, setInitialNotifs] = useState<{
+    soundEnabled: boolean;
+    soundVolume: number;
+    toastEnabled: boolean;
+    desktopEnabled: boolean;
+    notifArticleStatus: boolean;
+    notifLinkIssues: boolean;
+    notifProductAdded: boolean;
+    notifAnnouncements: boolean;
+  } | null>(null);
+  const [initialWorkspace, setInitialWorkspace] = useState<{
+    defaultLandingPage: string;
+    tableDensity: "cozy" | "compact";
+    autoRefreshInterval: string;
+  } | null>(null);
+
+  // Change detection
+  const hasProfileChanges =
+    name.trim() !== initialProfile.name.trim() ||
+    (imageUrl.trim() || "") !== (initialProfile.image.trim() || "");
+
+  const hasNotifChanges = initialNotifs ? (
+    soundEnabled !== initialNotifs.soundEnabled ||
+    soundVolume !== initialNotifs.soundVolume ||
+    toastEnabled !== initialNotifs.toastEnabled ||
+    desktopEnabled !== initialNotifs.desktopEnabled ||
+    notifArticleStatus !== initialNotifs.notifArticleStatus ||
+    notifLinkIssues !== initialNotifs.notifLinkIssues ||
+    notifProductAdded !== initialNotifs.notifProductAdded ||
+    notifAnnouncements !== initialNotifs.notifAnnouncements
+  ) : false;
+
+  const hasWorkspaceChanges = initialWorkspace ? (
+    defaultLandingPage !== initialWorkspace.defaultLandingPage ||
+    tableDensity !== initialWorkspace.tableDensity ||
+    autoRefreshInterval !== initialWorkspace.autoRefreshInterval
+  ) : false;
+
   // Load preferences from localStorage and database
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setSoundEnabled(localStorage.getItem("notif_sound_enabled") !== "false");
+      const sEnabled = localStorage.getItem("notif_sound_enabled") !== "false";
       const vol = localStorage.getItem("notif_sound_volume");
-      if (vol !== null) {
-        setSoundVolume(Math.round(parseFloat(vol) * 100));
-      }
-      setToastEnabled(localStorage.getItem("notif_toast_enabled") !== "false");
-      setDesktopEnabled(localStorage.getItem("notif_desktop_enabled") === "true");
-      setNotifArticleStatus(localStorage.getItem("notif_sub_articles") !== "false");
-      setNotifLinkIssues(localStorage.getItem("notif_sub_links") !== "false");
-      setNotifProductAdded(localStorage.getItem("notif_sub_products") !== "false");
-      setNotifAnnouncements(localStorage.getItem("notif_sub_broadcasts") !== "false");
+      const sVol = vol !== null ? Math.round(parseFloat(vol) * 100) : 80;
+      const tEnabled = localStorage.getItem("notif_toast_enabled") !== "false";
+      const dEnabled = localStorage.getItem("notif_desktop_enabled") === "true";
+      const nArticles = localStorage.getItem("notif_sub_articles") !== "false";
+      const nLinks = localStorage.getItem("notif_sub_links") !== "false";
+      const nProducts = localStorage.getItem("notif_sub_products") !== "false";
+      const nAnnounce = localStorage.getItem("notif_sub_broadcasts") !== "false";
 
-      setDefaultLandingPage(localStorage.getItem("pref_default_landing") || "/");
-      setTableDensity((localStorage.getItem("pref_table_density") as any) || "cozy");
-      setAutoRefreshInterval(localStorage.getItem("pref_auto_refresh") || "30");
+      setSoundEnabled(sEnabled);
+      setSoundVolume(sVol);
+      setToastEnabled(tEnabled);
+      setDesktopEnabled(dEnabled);
+      setNotifArticleStatus(nArticles);
+      setNotifLinkIssues(nLinks);
+      setNotifProductAdded(nProducts);
+      setNotifAnnouncements(nAnnounce);
+      setInitialNotifs({
+        soundEnabled: sEnabled,
+        soundVolume: sVol,
+        toastEnabled: tEnabled,
+        desktopEnabled: dEnabled,
+        notifArticleStatus: nArticles,
+        notifLinkIssues: nLinks,
+        notifProductAdded: nProducts,
+        notifAnnouncements: nAnnounce,
+      });
+
+      const dLanding = localStorage.getItem("pref_default_landing") || "/";
+      const tDensity = ((localStorage.getItem("pref_table_density") as any) || "cozy") as "cozy" | "compact";
+      const aRefresh = localStorage.getItem("pref_auto_refresh") || "30";
+
+      setDefaultLandingPage(dLanding);
+      setTableDensity(tDensity);
+      setAutoRefreshInterval(aRefresh);
+      setInitialWorkspace({
+        defaultLandingPage: dLanding,
+        tableDensity: tDensity,
+        autoRefreshInterval: aRefresh,
+      });
 
       if ("Notification" in window) {
         setDesktopPermission(Notification.permission);
@@ -126,12 +192,25 @@ export default function SettingsPage() {
         if (res.ok) {
           const user = await res.json();
           setUserData(user);
-          setName(user.name || session.user.name || "");
-          setEmail(user.email || session.user.email || "");
-          setImageUrl(user.image || "");
+          const loadedName = user.name || session.user.name || "";
+          const loadedEmail = user.email || session.user.email || "";
+          const loadedImage = user.image || "";
+          setName(loadedName);
+          setEmail(loadedEmail);
+          setImageUrl(loadedImage);
+          setInitialProfile({
+            name: loadedName,
+            image: loadedImage,
+          });
         } else if (session.user) {
-          setName(session.user.name || "");
-          setEmail(session.user.email || "");
+          const fallbackName = session.user.name || "";
+          const fallbackEmail = session.user.email || "";
+          setName(fallbackName);
+          setEmail(fallbackEmail);
+          setInitialProfile({
+            name: fallbackName,
+            image: "",
+          });
         }
       } catch (err) {
         console.error("Failed to load user profile", err);
@@ -147,6 +226,11 @@ export default function SettingsPage() {
     if (e) e.preventDefault();
     if (!session?.user?.id) return;
 
+    if (!hasProfileChanges) {
+      toast.error("No changes made.");
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch(`/api/users/${session.user.id}`, {
@@ -159,6 +243,15 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
+        const updatedUser = await res.json().catch(() => null);
+        const savedName = updatedUser?.name || name.trim();
+        const savedImage = updatedUser?.image || imageUrl.trim();
+        setName(savedName);
+        setImageUrl(savedImage);
+        setInitialProfile({
+          name: savedName,
+          image: savedImage,
+        });
         toast.success("Profile changes saved successfully!");
       } else {
         const data = await res.json();
@@ -173,6 +266,10 @@ export default function SettingsPage() {
 
   // Handle Notification Settings Save
   const handleSaveNotifications = () => {
+    if (!hasNotifChanges) {
+      toast.error("No changes made.");
+      return;
+    }
     if (typeof window !== "undefined") {
       localStorage.setItem("notif_sound_enabled", soundEnabled ? "true" : "false");
       localStorage.setItem("notif_sound_volume", (soundVolume / 100).toFixed(2));
@@ -183,17 +280,51 @@ export default function SettingsPage() {
       localStorage.setItem("notif_sub_products", notifProductAdded ? "true" : "false");
       localStorage.setItem("notif_sub_broadcasts", notifAnnouncements ? "true" : "false");
     }
+    setInitialNotifs({
+      soundEnabled,
+      soundVolume,
+      toastEnabled,
+      desktopEnabled,
+      notifArticleStatus,
+      notifLinkIssues,
+      notifProductAdded,
+      notifAnnouncements,
+    });
     toast.success("Notification preferences saved!");
   };
 
   // Handle Workspace Preferences Save
   const handleSaveWorkspace = () => {
+    if (!hasWorkspaceChanges) {
+      toast.error("No changes made.");
+      return;
+    }
     if (typeof window !== "undefined") {
       localStorage.setItem("pref_default_landing", defaultLandingPage);
       localStorage.setItem("pref_table_density", tableDensity);
       localStorage.setItem("pref_auto_refresh", autoRefreshInterval);
     }
+    setInitialWorkspace({
+      defaultLandingPage,
+      tableDensity,
+      autoRefreshInterval,
+    });
     toast.success("Workspace preferences updated!");
+  };
+
+  // Handle Top Save Preferences Action
+  const handleSavePreferences = () => {
+    if (activeTab === "profile") {
+      handleSaveProfile();
+    } else if (activeTab === "appearance") {
+      toast.error("No changes made.");
+    } else if (activeTab === "notifications") {
+      handleSaveNotifications();
+    } else if (activeTab === "workspace") {
+      handleSaveWorkspace();
+    } else {
+      toast.error("No changes made.");
+    }
   };
 
   // Play Test Notification Sound
@@ -335,13 +466,7 @@ export default function SettingsPage() {
           {/* Quick Actions */}
           <div className="flex items-center gap-2.5 self-stretch sm:self-auto">
             <button
-              onClick={() => {
-                if (activeTab === "profile") handleSaveProfile();
-                else if (activeTab === "appearance") toast.success("Appearance settings saved!");
-                else if (activeTab === "notifications") handleSaveNotifications();
-                else if (activeTab === "workspace") handleSaveWorkspace();
-                else toast.success("Settings up to date!");
-              }}
+              onClick={handleSavePreferences}
               disabled={saving}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#6D8196] hover:bg-[#5A6D81] disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
             >

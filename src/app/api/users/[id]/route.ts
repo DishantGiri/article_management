@@ -29,6 +29,7 @@ export async function GET(
         id: true,
         name: true,
         email: true,
+        image: true,
         role: true,
         allowLinkLogAccess: true,
         approved: true,

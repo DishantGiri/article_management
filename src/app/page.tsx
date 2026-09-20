@@ -259,21 +259,20 @@ export default function DashboardPage() {
     }
   };
 
-  const handleNotificationClick = async (n: any) => {
+  const handleNotificationClick = (n: any) => {
     if (!n.isRead) {
-      try {
-        await fetch("/api/notifications", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notificationId: n.id }),
-        });
-        setNotifications((prev) =>
-          prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item))
-        );
-        window.dispatchEvent(new CustomEvent("notifications-updated"));
-      } catch (err) {
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item))
+      );
+      window.dispatchEvent(new CustomEvent("notifications-updated"));
+
+      fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: n.id }),
+      }).catch((err) => {
         console.error("Failed to mark notification as read:", err);
-      }
+      });
     }
     setShowBellDropdown(false);
     const targetUrl = getNotificationTargetUrl(n, currentUserRole);
@@ -524,8 +523,9 @@ export default function DashboardPage() {
                       const linkUrl = getNotificationTargetUrl(n, currentUserRole);
 
                       return (
-                        <div
+                        <Link
                           key={n.id}
+                          href={linkUrl}
                           onClick={() => handleNotificationClick(n)}
                           className={`p-3 rounded-xl border text-xs flex flex-col gap-1.5 transition-all block cursor-pointer ${!n.isRead
                               ? "bg-[#FAF9F5] hover:bg-white border-[#6D8196]/40 font-semibold shadow-2xs"
@@ -543,7 +543,7 @@ export default function DashboardPage() {
                           <span className="text-[10px] text-slate-400 font-medium self-end">
                             {new Date(n.createdAt).toLocaleDateString()}
                           </span>
-                        </div>
+                        </Link>
                       );
                     })
                   )}

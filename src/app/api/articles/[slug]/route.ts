@@ -56,16 +56,19 @@ export async function GET(
   const userRole = session.user.role;
 
   if (userRole === "WRITER") {
-    const access = await prisma.siteAccess.findUnique({
-      where: {
-        userId_siteId: {
-          userId,
-          siteId: article.product.siteId,
+    const isAssignedWriter = article.writerId === userId;
+    if (!isAssignedWriter) {
+      const access = await prisma.siteAccess.findUnique({
+        where: {
+          userId_siteId: {
+            userId,
+            siteId: article.product.siteId,
+          },
         },
-      },
-    });
-    if (!access) {
-      return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+      });
+      if (!access) {
+        return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+      }
     }
   } else if (userRole === "TEAM_LEAD") {
     const isUnderTL =
@@ -114,18 +117,21 @@ export async function PATCH(
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
-    // Site access check: only WRITER is restricted by SiteAccess
+    // Site access check: only WRITER is restricted by SiteAccess, unless they are the assigned writer
     if (activeUserRole === "WRITER") {
-      const access = await prisma.siteAccess.findUnique({
-        where: {
-          userId_siteId: {
-            userId: activeUserId,
-            siteId: existing.product.siteId,
+      const isAssignedWriter = existing.writerId === activeUserId;
+      if (!isAssignedWriter) {
+        const access = await prisma.siteAccess.findUnique({
+          where: {
+            userId_siteId: {
+              userId: activeUserId,
+              siteId: existing.product.siteId,
+            },
           },
-        },
-      });
-      if (!access) {
-        return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+        });
+        if (!access) {
+          return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+        }
       }
     }
 

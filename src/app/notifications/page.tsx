@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 
 interface Notification {
@@ -86,32 +87,22 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleNotificationClick = async (notification: Notification) => {
-    // 1. Mark as read in DB if it's currently unread
+  const handleNotificationClick = (notification: Notification) => {
+    // Optimistically mark as read in local state immediately
     if (!notification.isRead) {
-      try {
-        const res = await fetch("/api/notifications", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notificationId: notification.id }),
-        });
-        if (res.ok) {
-          // Update local state
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
-          );
-          // Tell Sidebar to refetch
-          window.dispatchEvent(new CustomEvent("notifications-updated"));
-        }
-      } catch (err) {
-        console.error("Failed to mark single notification as read:", err);
-      }
-    }
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
+      );
+      window.dispatchEvent(new CustomEvent("notifications-updated"));
 
-    // 2. Redirect based on notification type, message content, and apply accurate filters
-    const userRole = session?.user?.role || "WRITER";
-    const targetUrl = getNotificationTargetUrl(notification, userRole);
-    router.push(targetUrl);
+      fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: notification.id }),
+      }).catch((err) => {
+        console.error("Failed to mark single notification as read:", err);
+      });
+    }
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -247,9 +238,21 @@ export default function NotificationsPage() {
                 minute: "2-digit",
               });
 
+              const targetUrl = getNotificationTargetUrl(notification, session?.user?.role || "WRITER");
+              const dest = targetUrl.startsWith("/links")
+                ? "Links (Filter Applied)"
+                : targetUrl.startsWith("/articles")
+                ? "Articles (Filter Applied)"
+                : targetUrl.startsWith("/products")
+                ? "Products (Filter Applied)"
+                : targetUrl.startsWith("/notices")
+                ? "Notice Board"
+                : "Workspace";
+
               return (
-                <div
+                <Link
                   key={notification.id}
+                  href={targetUrl}
                   onClick={() => handleNotificationClick(notification)}
                   className={`bg-white border rounded-2xl p-4 flex items-center gap-4 transition-all cursor-pointer shadow-2xs hover:shadow-sm ${
                     !notification.isRead
@@ -266,24 +269,9 @@ export default function NotificationsPage() {
                       {notification.message}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      {(() => {
-                        const targetUrl = getNotificationTargetUrl(notification, session?.user?.role || "WRITER");
-                        const dest = targetUrl.startsWith("/links")
-                          ? "Links (Filter Applied)"
-                          : targetUrl.startsWith("/articles")
-                          ? "Articles (Filter Applied)"
-                          : targetUrl.startsWith("/products")
-                          ? "Products (Filter Applied)"
-                          : targetUrl.startsWith("/notices")
-                          ? "Notice Board"
-                          : "Workspace";
-
-                        return (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#6D8196] bg-[#6D8196]/10 px-2 py-0.5 rounded-md">
-                            <span>→ Open in {dest}</span>
-                          </span>
-                        );
-                      })()}
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#6D8196] bg-[#6D8196]/10 px-2 py-0.5 rounded-md">
+                        <span>→ Open in {dest}</span>
+                      </span>
                     </div>
                   </div>
 
@@ -297,7 +285,7 @@ export default function NotificationsPage() {
                       )}
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
 
