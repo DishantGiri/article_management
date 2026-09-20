@@ -196,12 +196,12 @@ export default function Sidebar() {
 
   const currentUser = session?.user
     ? {
-        id: session.user.id,
-        name: session.user.name || "User",
-        email: session.user.email || "",
-        role: session.user.role as Role | null,
-        image: session.user.image || null,
-      }
+      id: session.user.id,
+      name: session.user.name || "User",
+      email: session.user.email || "",
+      role: session.user.role as Role | null,
+      image: session.user.image || null,
+    }
     : null;
 
   useEffect(() => {
@@ -230,7 +230,7 @@ export default function Sidebar() {
           window.removeEventListener("click", unlockAudio);
           window.removeEventListener("keydown", unlockAudio);
         })
-        .catch(() => {});
+        .catch(() => { });
     };
     window.addEventListener("click", unlockAudio);
     window.addEventListener("keydown", unlockAudio);
@@ -302,7 +302,7 @@ export default function Sidebar() {
               if (soundEnabled) {
                 audioObj.volume = Math.max(0, Math.min(1, isNaN(soundVolume) ? 0.8 : soundVolume));
                 audioObj.currentTime = 0;
-                audioObj.play().catch(() => {});
+                audioObj.play().catch(() => { });
               }
 
               if (desktopEnabled && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
@@ -365,7 +365,7 @@ export default function Sidebar() {
 
     window.addEventListener("notifications-marked-read", refreshCount);
     window.addEventListener("notifications-updated", refreshCount);
-    
+
     return () => {
       window.removeEventListener("notifications-marked-read", refreshCount);
       window.removeEventListener("notifications-updated", refreshCount);
@@ -405,8 +405,8 @@ export default function Sidebar() {
   const userRole = (currentUser?.role || session?.user?.role || "").toUpperCase();
   const visibleNavItems = userRole
     ? NAV_ITEMS.filter((item) =>
-        item.roles.some((r) => r.toUpperCase() === userRole)
-      )
+      item.roles.some((r) => r.toUpperCase() === userRole)
+    )
     : [];
 
   const activeHref = visibleNavItems.reduce((best, item) => {
@@ -483,9 +483,8 @@ export default function Sidebar() {
 
       {/* Sidebar Drawer */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 flex flex-col border-r border-[#CBCBCB]/50 dark:border-slate-800 shadow-xs transition-transform duration-300 ease-in-out lg:z-40 lg:translate-x-0 ${
-          isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 flex flex-col border-r border-[#CBCBCB]/50 dark:border-slate-800 shadow-xs transition-transform duration-300 ease-in-out lg:z-40 lg:translate-x-0 ${isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
+          }`}
         suppressHydrationWarning
       >
         {/* Logo Header */}
@@ -532,11 +531,10 @@ export default function Sidebar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsMobileOpen(false)}
-                  className={`flex items-center gap-3 pl-6 pr-4 py-2.5 text-sm transition-all duration-200 group rounded-r-xl ${
-                    active
+                  className={`flex items-center gap-3 pl-6 pr-4 py-2.5 text-sm transition-all duration-200 group rounded-r-xl ${active
                       ? "bg-[#6D8196] text-white font-semibold shadow-xs"
                       : "text-[#4A4A4A] hover:text-slate-900 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/80 font-medium"
-                  }`}
+                    }`}
                 >
                   <span className={active ? "text-white" : "text-[#6D8196]/70 group-hover:text-[#6D8196] dark:text-slate-400 dark:group-hover:text-white transition-colors"}>
                     <item.icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
@@ -568,33 +566,30 @@ export default function Sidebar() {
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
             <button
               onClick={() => setTheme("light")}
-              className={`p-1.5 rounded-md transition cursor-pointer ${
-                theme === "light"
+              className={`p-1.5 rounded-md transition cursor-pointer ${theme === "light"
                   ? "bg-white text-amber-500 shadow-xs"
                   : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              }`}
+                }`}
               title="Light theme"
             >
               <Sun className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setTheme("dark")}
-              className={`p-1.5 rounded-md transition cursor-pointer ${
-                theme === "dark"
+              className={`p-1.5 rounded-md transition cursor-pointer ${theme === "dark"
                   ? "bg-slate-900 text-sky-400 shadow-xs"
                   : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              }`}
+                }`}
               title="Dark theme"
             >
               <Moon className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setTheme("system")}
-              className={`p-1.5 rounded-md transition cursor-pointer ${
-                theme === "system"
+              className={`p-1.5 rounded-md transition cursor-pointer ${theme === "system"
                   ? "bg-white dark:bg-slate-900 text-indigo-500 shadow-xs"
                   : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              }`}
+                }`}
               title="System theme"
             >
               <Monitor className="w-3.5 h-3.5" />
@@ -659,11 +654,10 @@ export default function Sidebar() {
                                 console.error("Failed to switch role:", err);
                               }
                             }}
-                            className={`px-2 py-1 text-[9px] font-bold rounded text-center transition cursor-pointer border ${
-                              currentUser.role === r
+                            className={`px-2 py-1 text-[9px] font-bold rounded text-center transition cursor-pointer border ${currentUser.role === r
                                 ? "bg-slate-900 dark:bg-[#6D8196] border-slate-900 dark:border-[#6D8196] text-white"
                                 : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                            }`}
+                              }`}
                           >
                             {r.replace("_", " ")}
                           </button>
@@ -684,11 +678,10 @@ export default function Sidebar() {
                               console.error("Failed to switch role:", err);
                             }
                           }}
-                          className={`col-span-2 px-2 py-1 text-[9px] font-bold rounded text-center transition cursor-pointer border ${
-                            currentUser.role === null
+                          className={`col-span-2 px-2 py-1 text-[9px] font-bold rounded text-center transition cursor-pointer border ${currentUser.role === null
                               ? "bg-slate-900 dark:bg-[#6D8196] border-slate-900 dark:border-[#6D8196] text-white"
                               : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                          }`}
+                            }`}
                         >
                           No Role (Null)
                         </button>

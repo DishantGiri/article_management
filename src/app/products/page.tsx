@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
-import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare, Info } from "lucide-react";
+import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import AddProductModal from "@/components/AddProductModal";
@@ -16,6 +16,7 @@ import DateRangePicker from "@/components/DateRangePicker";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
+import TopHeader from "@/components/TopHeader";
 
 interface Category {
   id: number;
@@ -76,7 +77,8 @@ function ProductsPageContent() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeTab, setActiveTab] = useState<"products" | "my-articles">("products");
   const [myArticles, setMyArticles] = useState<any[]>([]);
-  const itemsPerPage = 10;
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const itemsPerPage = 8;
 
   // Sync search and filter params whenever searchParams changes (e.g. from notification click)
   useEffect(() => {
@@ -183,6 +185,27 @@ function ProductsPageContent() {
 
   const [stats, setStats] = useState<any>(null);
 
+  const handleMarkAllAsRead = async () => {
+    if (!session?.user?.id) return;
+    try {
+      const res = await fetch("/api/notifications/read-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: session.user.id }),
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      }
+    } catch (err) {}
+  };
+
+  const handleNotificationClick = (notif: any) => {
+    if (!notif.isRead) {
+      fetch(`/api/notifications/${notif.id}/read`, { method: "PATCH" });
+      setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)));
+    }
+  };
+
   const refreshProductsData = (showLoading = false) => {
     if (!session?.user?.id) return;
     const mockUserId = session.user.id;
@@ -195,13 +218,15 @@ function ProductsPageContent() {
       fetch("/api/categories").then((r) => (r.ok ? r.json() : [])),
       fetch(`/api/dashboard?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/articles?writerId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/notifications?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
     ])
-      .then(([productsData, categoriesData, dashboardData, articlesData]) => {
+      .then(([productsData, categoriesData, dashboardData, articlesData, notifsData]) => {
         const prods = Array.isArray(productsData) ? productsData : [];
         setProducts(prods);
         setCategories(Array.isArray(categoriesData) ? categoriesData : []);
         setStats(dashboardData);
         setMyArticles(Array.isArray(articlesData) ? articlesData : []);
+        setNotifications(Array.isArray(notifsData) ? notifsData : []);
       })
       .finally(() => {
         if (showLoading) setLoading(false);
@@ -478,90 +503,87 @@ function ProductsPageContent() {
   const paginated = sortedFiltered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginatedMyArticles = sortedFilteredMyArticles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  const formatTableDate = (dateStr: string) => {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "-";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
-    const pageSize = 5;
-    const currentBlock = Math.floor((currentPage - 1) / pageSize);
-    const start = currentBlock * pageSize + 1;
-    const end = Math.min(totalPages, start + pageSize - 1);
+    const startItem = activeTotalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, activeTotalCount);
 
-    const pages = [];
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
+    const getPageNumbers = () => {
+      if (totalPages <= 7) {
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+      }
+      if (currentPage <= 3) {
+        return [1, 2, 3, "...", totalPages - 2, totalPages - 1, totalPages];
+      } else if (currentPage >= totalPages - 2) {
+        return [1, 2, 3, "...", totalPages - 2, totalPages - 1, totalPages];
+      } else {
+        return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+      }
+    };
+
+    const pages = getPageNumbers();
 
     return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 py-3 px-2 border-t border-slate-100">
-        <p className="text-xs font-semibold text-slate-400">
-          Showing {activeTotalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, activeTotalCount)} of {activeTotalCount}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 py-3.5 px-4 border-t border-slate-100 dark:border-slate-800">
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          Showing {startItem}-{endItem} of {activeTotalCount}
         </p>
         <div className="flex items-center gap-1.5 flex-wrap">
+          {pages.map((p, idx) => {
+            if (p === "...") {
+              return (
+                <span key={`dots-${idx}`} className="px-1.5 py-1 text-xs font-bold text-slate-400">
+                  ...
+                </span>
+              );
+            }
+            const pageNum = Number(p);
+            const isActive = currentPage === pageNum;
+            return (
+              <button
+                key={pageNum}
+                type="button"
+                onClick={() => setCurrentPage(pageNum)}
+                className={`min-w-[28px] h-7 px-2 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs font-extrabold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+
           <button
-            onClick={() => setCurrentPage(1)}
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
-            title="First Page"
-          >
-            First
-          </button>
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition ml-1"
             title="Previous Page"
           >
-            &lt;
+            <ChevronLeft className="w-4 h-4" />
           </button>
 
-          {start > 1 && (
-            <button
-              onClick={() => setCurrentPage(start - 1)}
-              className="text-xs font-bold text-slate-400 hover:text-[#6D8196] px-1 cursor-pointer"
-              title="Previous 5 Pages"
-            >
-              ...
-            </button>
-          )}
-
-          {pages.map(p => (
-            <button
-              key={p}
-              onClick={() => setCurrentPage(p)}
-              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${currentPage === p
-                  ? "bg-[#6D8196] text-white border border-[#6D8196] shadow-xs"
-                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-                }`}
-            >
-              {p}
-            </button>
-          ))}
-
-          {end < totalPages && (
-            <button
-              onClick={() => setCurrentPage(end + 1)}
-              className="text-xs font-bold text-slate-400 hover:text-[#6D8196] px-1 cursor-pointer"
-              title="Next 5 Pages"
-            >
-              ...
-            </button>
-          )}
-
           <button
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages || totalPages === 0}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition"
             title="Next Page"
           >
-            &gt;
-          </button>
-          <button
-            onClick={() => setCurrentPage(totalPages)}
-            disabled={currentPage === totalPages || totalPages === 0}
-            className="px-2.5 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
-            title="Last Page"
-          >
-            Last
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -585,157 +607,147 @@ function ProductsPageContent() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] text-[#4A4A4A]" suppressHydrationWarning>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">Products</h1>
-          <p className="text-[#737373] text-sm mt-0.5 font-medium">{filtered.length} products found</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white rounded-lg text-sm font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer">
-              <Plus className="w-4 h-4" />
-              Add Product
-            </button>
-          )}
-          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
-            <button
-              onClick={() => setIsImportModalOpen(true)}
-              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
-              <Upload className="w-4 h-4 text-slate-500" />
-              Import
-            </button>
-          )}
-          <button
-            onClick={handleExportCSV}
-            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition flex items-center gap-2 cursor-pointer">
-            <Download className="w-4 h-4 text-slate-500" />
-            Export
-          </button>
-        </div>
-      </div>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-100 space-y-6" suppressHydrationWarning>
+      {/* ─── MODERN DESIGN TOP HEADER ──────────────────────────── */}
+      <TopHeader
+        notifications={notifications}
+        onMarkAllAsRead={handleMarkAllAsRead}
+        onNotificationClick={handleNotificationClick}
+      />
 
-      {/* Metric Cards Row */}
-      {stats && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "LINKER") && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-violet-50 dark:bg-violet-950/60 flex items-center justify-center text-violet-500 dark:text-violet-400 mb-2"><Package className="w-4 h-4" /></div>
-            <div>
-              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.general.totalProducts || 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Total Products</p>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-500 dark:text-amber-400 mb-2"><Clock className="w-4 h-4" /></div>
-            <div>
-              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.unlinkedProducts?.length || 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Pending Products</p>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-500 dark:text-indigo-400 mb-2"><Calendar className="w-4 h-4" /></div>
-            <div>
-              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.general?.todaysProducts ?? stats.superAdmin?.todaysProducts ?? 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Today's Products</p>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-teal-50 dark:bg-teal-950/60 flex items-center justify-center text-teal-500 dark:text-teal-400 mb-2"><Globe className="w-4 h-4" /></div>
-            <div>
-              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.general?.totalSites ?? stats.superAdmin?.totalSites ?? 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Total Sites</p>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between h-32">
-            <div className="w-8 h-8 rounded-full bg-sky-50 dark:bg-sky-950/60 flex items-center justify-center text-sky-500 dark:text-sky-400 mb-2"><LayoutGrid className="w-4 h-4" /></div>
-            <div>
-              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.general?.totalCategories ?? stats.superAdmin?.totalCategories ?? 0}</p>
-              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">Total Categories</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs Selector: Available Products vs My Articles */}
-      {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD" || myArticles.length > 0) && (
-        <div className="flex items-center gap-2 border-b border-[#CBCBCB]/60 dark:border-slate-800 mb-5">
+      {/* ─── NAVIGATION TABS & ACTIONS ROW ─────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-6">
           <button
             type="button"
             onClick={() => {
               setActiveTab("products");
               setCurrentPage(1);
             }}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === "products"
-                ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-              }`}
+            className={`pb-3 text-sm font-semibold transition relative cursor-pointer ${
+              activeTab === "products"
+                ? "text-slate-900 dark:text-white border-b-2 border-slate-900 dark:border-white font-bold"
+                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
           >
-            <Package className="w-4 h-4" />
-            <span>Available Products</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              {filtered.length}
-            </span>
+            All Products
           </button>
+
+          {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD" || myArticles.length > 0) && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("my-articles");
+                setCurrentPage(1);
+              }}
+              className={`pb-3 text-sm font-semibold transition relative cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "my-articles"
+                  ? "text-slate-900 dark:text-white border-b-2 border-slate-900 dark:border-white font-bold"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              <span>My Articles</span>
+              {myArticles.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                  {myArticles.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          <Link
+            href="/product-types"
+            className="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition"
+          >
+            Product Types and Categories
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-3 pb-3 sm:pb-0">
+          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Import</span>
+            </button>
+          )}
 
           <button
-            type="button"
-            onClick={() => {
-              setActiveTab("my-articles");
-              setCurrentPage(1);
-            }}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === "my-articles"
-                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-              }`}
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs transition cursor-pointer"
           >
-            <FileText className="w-4 h-4" />
-            <span>My Articles</span>
-            {myArticles.length > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
-                {myArticles.length}
-              </span>
-            )}
+            <Upload className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export</span>
           </button>
+
+          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#00A389] hover:bg-[#008f78] text-white rounded-lg text-xs font-semibold shadow-xs transition active:scale-98 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Product</span>
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Filters Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search */}
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Search className="w-4 h-4 text-slate-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search products, sites, categories..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#6D8196] focus:border-transparent bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-800 transition"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => { setSearch(""); router.replace("/products"); setCurrentPage(1); }}
-                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+      {/* ─── 5 METRIC CARDS ROW ───────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Total Products */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between h-28">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Products</span>
+          <span className="text-3xl font-extrabold text-[#7C3AED] dark:text-[#A78BFA]">
+            {stats?.general?.totalProducts ?? products.length}
+          </span>
+        </div>
 
+        {/* Pending Products */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between h-28">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Pending Products</span>
+          <span className="text-3xl font-extrabold text-[#F59E0B] dark:text-[#FBBF24]">
+            {stats?.unlinkedProducts?.length ?? products.filter((p) => !p.article || p.article.status === "PENDING").length}
+          </span>
+        </div>
+
+        {/* Today's Products */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between h-28">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Today's Products</span>
+          <span className="text-3xl font-extrabold text-[#3B82F6] dark:text-[#60A5FA]">
+            {stats?.general?.todaysProducts ?? stats?.superAdmin?.todaysProducts ?? 0}
+          </span>
+        </div>
+
+        {/* Total Sites */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between h-28">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Sites</span>
+          <span className="text-3xl font-extrabold text-[#059669] dark:text-[#10B981]">
+            {stats?.general?.totalSites ?? stats?.superAdmin?.totalSites ?? uniqueSites.length}
+          </span>
+        </div>
+
+        {/* Total Categories */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between h-28">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Categories</span>
+          <span className="text-3xl font-extrabold text-[#0284C7] dark:text-[#38BDF8]">
+            {stats?.general?.totalCategories ?? stats?.superAdmin?.totalCategories ?? categories.length}
+          </span>
+        </div>
+      </div>
+
+      {/* ─── FILTERS BAR ───────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Status Filter */}
           <CustomSelect
             value={statusFilter}
             onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
             placeholder="All Statuses"
-            className="w-44 shrink-0"
+            className="w-38 shrink-0"
             minWidth={160}
-            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
             options={[
               { value: "", label: "All Statuses" },
               { value: "PENDING", label: "Pending" },
@@ -748,29 +760,27 @@ function ProductsPageContent() {
           />
 
           {/* Site Filter */}
-          {uniqueSites.length > 0 && (
-            <CustomSelect
-              value={siteFilter}
-              onChange={(val) => { setSiteFilter(val); setCurrentPage(1); }}
-              placeholder="All Sites"
-              className="w-44 shrink-0"
-              minWidth={160}
-              triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
-              options={[
-                { value: "", label: "All Sites" },
-                ...uniqueSites.map((s) => ({ value: s, label: s })),
-              ]}
-            />
-          )}
+          <CustomSelect
+            value={siteFilter}
+            onChange={(val) => { setSiteFilter(val); setCurrentPage(1); }}
+            placeholder="All Sites"
+            className="w-36 shrink-0"
+            minWidth={150}
+            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+            options={[
+              { value: "", label: "All Sites" },
+              ...uniqueSites.map((s) => ({ value: s, label: s })),
+            ]}
+          />
 
-          {/* Product Type (Category) Filter */}
+          {/* Product Type Filter */}
           <CustomSelect
             value={categoryFilter}
             onChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
             placeholder="All Product Types"
-            className="w-44 shrink-0"
-            minWidth={175}
-            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+            className="w-40 shrink-0"
+            minWidth={165}
+            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
             options={[
               { value: "", label: "All Product Types" },
               ...categories.map((c) => ({ value: String(c.id), label: c.name })),
@@ -782,16 +792,53 @@ function ProductsPageContent() {
             value={userFilter}
             onChange={(val) => { setUserFilter(val); setCurrentPage(1); }}
             placeholder="All Users"
-            className="w-44 shrink-0"
-            minWidth={160}
-            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-sky-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+            className="w-36 shrink-0"
+            minWidth={150}
+            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
             options={[
               { value: "", label: "All Users" },
               ...uniqueUsers.map((u) => ({ value: u, label: u })),
             ]}
           />
 
-          {/* Date Range Picker */}
+          {/* Reset Filters Action */}
+          {activeFiltersCount > 0 && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="px-3 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Reset ({activeFiltersCount})</span>
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2.5 ml-auto">
+          {/* Search */}
+          <div className="relative min-w-[200px] sm:w-60">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-slate-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/90 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white dark:bg-slate-900 shadow-2xs transition"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => { setSearch(""); router.replace("/products"); setCurrentPage(1); }}
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Date */}
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -800,26 +847,15 @@ function ProductsPageContent() {
               setEndDate(end);
               setCurrentPage(1);
             }}
-            placeholder="Select Date Range"
+            placeholder="Filter Date"
+            align="right"
             disableFutureDates={true}
           />
-
-          {/* Reset Filters Action */}
-          {activeFiltersCount > 0 && (
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <X className="w-3.5 h-3.5" />
-              <span>Reset ({activeFiltersCount})</span>
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Table Content */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      {/* ─── TABLE CONTENT ─────────────────────────────────────── */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         {loading ? (
           <div className="py-12">
             <LoadingScreen
@@ -834,26 +870,22 @@ function ProductsPageContent() {
               <p className="text-slate-500 dark:text-slate-400 font-medium">No products found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto p-4">
-              <table className="w-full text-left">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Product Name</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Site</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Category</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Product Type</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Affiliate</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Trend</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Added By</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Date</th>
-                    {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                    )}
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-center">Links</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-left">Actions</th>
+                  <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/40">
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Name</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Site</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Category</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Type</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Affiliate</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Trend</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Added By</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">Links</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100/70 dark:divide-slate-800/60">
                   {paginated.map((p: any) => {
                     const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
                     const rawStatus = p.article?.status || "PENDING";
@@ -866,142 +898,135 @@ function ProductsPageContent() {
                     const isPublishedWithoutLinks = isPublished && !hasLinks;
 
                     return (
-                      <tr key={p.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group ${isPublishedWithoutLinks ? "bg-rose-50/20 dark:bg-rose-950/20" : ""}`}>
-                        <td className={`px-3 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 dark:bg-rose-950/40 border-l-4 border-l-rose-500" : ""}`}>
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedProduct(p)}
-                                className={`text-[13px] font-bold text-left cursor-pointer transition-colors ${
-                                  isPublishedWithoutLinks
-                                    ? "text-rose-900 dark:text-rose-300 hover:text-rose-700 dark:hover:text-rose-200 underline decoration-rose-400"
-                                    : "text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-sky-400 hover:underline"
-                                }`}
-                                title="Click to view product details"
+                      <tr
+                        key={p.id}
+                        className={`group relative hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${
+                          isPublishedWithoutLinks ? "bg-rose-50/20 dark:bg-rose-950/20" : ""
+                        }`}
+                      >
+                        {/* Product Name */}
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProduct(p)}
+                              className="text-xs font-semibold text-slate-900 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-400 transition text-left cursor-pointer"
+                              title="Click to view details"
+                            >
+                              {p.name}
+                            </button>
+                            {isPublishedWithoutLinks && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                                title="Article published without affiliate links"
                               >
-                                {p.name}
-                              </button>
-                              {isPublishedWithoutLinks && (
-                                <span
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 shadow-2xs whitespace-nowrap"
-                                  title="Article is published, but this product has NO affiliate links configured!"
-                                >
-                                  <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
-                                  No Links
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 block truncate">
-                              /{p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
-                            </span>
+                                <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                No Links
+                              </span>
+                            )}
                           </div>
                         </td>
-                        <td className="px-3 py-3.5">
+
+                        {/* Site */}
+                        <td className="px-4 py-3.5">
                           {p.site?.url ? (
                             <a
                               href={p.site.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[13px] font-semibold text-[#6D8196] dark:text-sky-400 hover:text-[#4A4A4A] dark:hover:text-white hover:underline inline-flex items-center gap-1"
+                              className="text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1"
                             >
                               <span>{p.site.name}</span>
                               <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                             </a>
                           ) : (
-                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-200">{p.site?.name || "-"}</span>
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{p.site?.name || "-"}</span>
                           )}
                         </td>
-                        <td className="px-3 py-3.5">
-                          <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">
-                            {p.productCategory || p.category?.name}
+
+                        {/* Category */}
+                        <td className="px-4 py-3.5">
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                            {p.productCategory || p.category?.name || "-"}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5">
-                          <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+
+                        {/* Product Type */}
+                        <td className="px-4 py-3.5">
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                             {p.category?.name || "Ecom"}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5">
-                          <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+
+                        {/* Affiliate */}
+                        <td className="px-4 py-3.5">
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                             {p.affiliateName || "General"}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${p.trendLevel === "HIGH"
-                              ? "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 border border-rose-100 dark:border-rose-900/60"
-                              : p.trendLevel === "MODERATE"
-                                ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300 border border-amber-100 dark:border-amber-900/60"
-                                : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700"
-                            }`}>
-                            {p.trendLevel === "HIGH" && <Flame className="w-3 h-3 text-rose-500" />}
-                            {p.trendLevel === "MODERATE" && <TrendingUp className="w-3 h-3 text-amber-500" />}
-                            {p.trendLevel === "HIGH" ? "High" : p.trendLevel === "MODERATE" ? "Moderate" : "Low"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3.5">
-                          <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{p.addedBy?.name}</span>
-                        </td>
-                        <td className="px-3 py-3.5">
-                          <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
-                            {new Date(p.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </span>
-                        </td>
-                        {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
-                          <td className="px-3 py-3.5">
-                            <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${STATUS_COLORS[status] || STATUS_COLORS.PENDING}`}>
-                              {status === "IN_PROGRESS" ? "In Progress" : status.charAt(0) + status.slice(1).toLowerCase()}
-                            </span>
-                          </td>
-                        )}
-                        <td className={`px-3 py-3.5 text-center transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/40 dark:bg-rose-950/30" : ""}`}>
-                          {isPublishedWithoutLinks ? (
-                            <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 shadow-2xs"
-                              title="Missing affiliate links for published article"
-                            >
-                              <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
-                              0 Links
-                            </span>
-                          ) : (
-                            <span className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">{p.linkLogs?.length || 0}</span>
-                          )}
-                        </td>
+
+                        {/* Trend */}
                         <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2">
-                            {/* Review - for Admin/Team Lead, link to article; for others, show product modal */}
-                            {p.article && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") ? (
-                              <div className="flex items-center gap-1.5">
-                                <Link
-                                  href={`/articles/${p.article.id}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-500/50 hover:bg-[#FAF9F5] dark:hover:bg-slate-700/60 transition-all text-[11px] font-semibold whitespace-nowrap shadow-2xs"
-                                >
-                                  <FileText className="w-3.5 h-3.5" />
-                                  Review
-                                </Link>
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedProduct(p)}
-                                  title="View Product Details"
-                                  aria-label="View Product Details"
-                                  className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 dark:border-blue-800/70 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/70 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer shadow-2xs"
-                                >
-                                  <Info className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setSelectedProduct(p)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-500/50 hover:bg-[#FAF9F5] dark:hover:bg-slate-700/60 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer shadow-2xs"
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                              p.trendLevel === "HIGH" || !p.trendLevel
+                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60"
+                                : p.trendLevel === "MODERATE"
+                                ? "bg-amber-50 text-amber-600 border border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60"
+                                : "bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+                            }`}
+                          >
+                            {(p.trendLevel === "HIGH" || !p.trendLevel) && <Flame className="w-3.5 h-3.5 text-emerald-500" />}
+                            {p.trendLevel === "MODERATE" && <TrendingUp className="w-3.5 h-3.5 text-amber-500" />}
+                            {p.trendLevel === "HIGH" || !p.trendLevel ? "High" : p.trendLevel === "MODERATE" ? "Moderate" : "Low"}
+                          </span>
+                        </td>
+
+                        {/* Added By (fades on hover) */}
+                        <td className="px-4 py-3.5 transition-opacity duration-200 group-hover:opacity-0">
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{p.addedBy?.name || "-"}</span>
+                        </td>
+
+                        {/* Links (fades on hover) */}
+                        <td className="px-4 py-3.5 text-center transition-opacity duration-200 group-hover:opacity-0">
+                          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{p.linkLogs?.length || 0}</span>
+                        </td>
+
+                        {/* Date & Hover Action Slider */}
+                        <td className="px-4 py-3.5 relative whitespace-nowrap">
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400 transition-opacity duration-200 group-hover:opacity-0">
+                            {formatTableDate(p.addedAt)}
+                          </span>
+
+                          {/* Action Slider Pill that opens from the right on row hover */}
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex items-center gap-3.5 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-md rounded-xl px-3.5 py-1.5 opacity-0 translate-x-12 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 ease-out whitespace-nowrap">
+                            {/* Preview */}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProduct(p)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+                              title="Preview Product"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                              <span>Preview</span>
+                            </button>
+
+                            {/* Review if article exists for Admin/Team Lead */}
+                            {p.article && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
+                              <Link
+                                href={`/articles/${p.article.id}`}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition"
+                                title="Review Article"
                               >
-                                <FileText className="w-3.5 h-3.5" />
-                                Preview
-                              </button>
+                                <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                                <span>Review</span>
+                              </Link>
                             )}
 
-                            {/* WRITER & TEAM_LEAD: Write button / Taken button */}
+                            {/* Writer: Write / Taken */}
                             {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD") && (
                               <button
+                                type="button"
                                 disabled={status !== "PENDING"}
                                 onClick={async (e) => {
                                   e.stopPropagation();
@@ -1024,41 +1049,55 @@ function ProductsPageContent() {
                                     toast.error(err.message || "Failed to start writing");
                                   }
                                 }}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${status === "PENDING"
-                                    ? "bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-2xs active:scale-98"
-                                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700 cursor-not-allowed"
-                                  }`}
-                                title={
-                                  status !== "PENDING"
-                                    ? p.article?.writer?.name
-                                      ? `Taken by ${p.article.writer.name}`
-                                      : "Article already taken"
-                                    : "Click to start writing this article"
-                                }
+                                className={`inline-flex items-center gap-1.5 text-xs font-semibold transition ${
+                                  status === "PENDING"
+                                    ? "text-teal-600 hover:text-teal-700 cursor-pointer"
+                                    : "text-slate-400 cursor-not-allowed"
+                                }`}
                               >
                                 {status === "PENDING" ? (
                                   <>
-                                    <PlayCircle className="w-3.5 h-3.5" />
-                                    Write
+                                    <PlayCircle className="w-3.5 h-3.5 text-teal-600" />
+                                    <span>Write</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Lock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                    Taken
+                                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Taken</span>
                                   </>
                                 )}
                               </button>
                             )}
 
-                            {/* Report Link Issue (Red Triangle Button) */}
+                            {/* Edit */}
+                            {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingProduct(p)}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
+                                title="Edit Product"
+                              >
+                                <Edit className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                <span>Edit</span>
+                              </button>
+                            )}
+
+                            {/* Delete */}
+                            {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteProduct(p.id, p.name)}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition cursor-pointer"
+                                title="Delete Product"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                                <span>Delete</span>
+                              </button>
+                            )}
+
+                            {/* Link Issue Flag (if issue exists or to report) */}
                             {(() => {
                               const hasIssue = p.linkLogs?.some((l: any) => l.status === "ISSUE");
-                              const remarksList = (p.linkLogs || [])
-                                .map((l: any) => l.linkerRemarks)
-                                .filter(Boolean);
-                              const hasRemarks = remarksList.length > 0;
-                              const firstRemark = remarksList[0];
-
                               return (
                                 <button
                                   type="button"
@@ -1066,44 +1105,15 @@ function ProductsPageContent() {
                                     setReportingProduct(p);
                                     setIssueMessage("");
                                   }}
-                                  title={
-                                    hasIssue
-                                      ? `Link issue flagged: ${firstRemark || "Click to view/update"}`
-                                      : hasRemarks
-                                        ? `Existing remark: ${firstRemark}`
-                                        : "Report Link Issue"
-                                  }
-                                  className={`inline-flex items-center justify-center p-1.5 rounded-md border transition-all cursor-pointer shadow-2xs ${hasIssue
-                                      ? "bg-rose-600 text-white border-rose-700 animate-pulse hover:bg-rose-700"
-                                      : hasRemarks
-                                        ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 hover:border-amber-400"
-                                        : "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 hover:border-rose-300 hover:text-rose-700 dark:hover:text-rose-200"
-                                    }`}
+                                  title={hasIssue ? "Link issue flagged: Click to view/update" : "Report Link Issue"}
+                                  className={`p-1 rounded transition cursor-pointer ${
+                                    hasIssue ? "text-rose-600 animate-pulse bg-rose-50" : "text-slate-400 hover:text-amber-500"
+                                  }`}
                                 >
                                   <AlertTriangle className="w-3.5 h-3.5" />
                                 </button>
                               );
                             })()}
-
-                            {/* LINKER/ADMIN: Edit & Delete buttons */}
-                            {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
-                              <>
-                                <button
-                                  onClick={() => setEditingProduct(p)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-300 dark:hover:border-amber-500/50 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
-                                >
-                                  <Edit className="w-3.5 h-3.5" />
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteProduct(p.id, p.name)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-300 dark:hover:border-rose-500/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all text-[11px] font-semibold whitespace-nowrap cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  Delete
-                                </button>
-                              </>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -1120,24 +1130,24 @@ function ProductsPageContent() {
             <div className="p-16 text-center space-y-2">
               <FileText className="w-8 h-8 text-slate-300 mx-auto" />
               <p className="text-slate-600 font-bold text-sm">No articles in your queue yet</p>
-              <p className="text-slate-400 text-xs">Switch to &ldquo;Available Products&rdquo; above and click &ldquo;Write&rdquo; to start your first article!</p>
+              <p className="text-slate-400 text-xs">Switch to &ldquo;All Products&rdquo; above and click &ldquo;Write&rdquo; to start your first article!</p>
             </div>
           ) : (
-            <div className="overflow-x-auto p-4">
-              <table className="w-full text-left min-w-[950px]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Article / Product</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Site</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Type</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Article Link</th>
-                    <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Last Updated</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">Actions</th>
+                  <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/40">
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Article / Product</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Site</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Category</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Type</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Status</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Article Link</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Last Updated</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100/70 dark:divide-slate-800/60">
                   {paginatedMyArticles.map((a: any) => {
                     const status = a.status || "PENDING";
                     const matchingProd = products.find((p) => p.id === (a.productId || a.product?.id));
@@ -1146,72 +1156,58 @@ function ProductsPageContent() {
                     const hasLinks = prodLinkLogs.length > 0 && prodLinkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
                     const isPublishedWithoutLinks = isPublished && !hasLinks;
                     return (
-                      <tr key={a.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group ${isPublishedWithoutLinks ? "bg-rose-50/20 dark:bg-rose-950/20" : ""}`}>
-                        <td className={`px-3 py-3.5 transition-colors ${isPublishedWithoutLinks ? "bg-rose-50/70 dark:bg-rose-950/40 border-l-4 border-l-rose-500" : ""}`}>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => handleViewProductDetails(a)}
-                              className={`text-[13px] font-bold text-left cursor-pointer transition-colors ${
-                                isPublishedWithoutLinks
-                                  ? "text-rose-900 dark:text-rose-300 hover:text-rose-700 dark:hover:text-rose-200 underline decoration-rose-400"
-                                  : "text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-sky-400 hover:underline"
-                              }`}
-                              title="Click to view product details"
-                            >
-                              {a.product?.name}
-                            </button>
-                            {isPublishedWithoutLinks && (
-                              <span
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 shadow-2xs whitespace-nowrap"
-                                title="Article is published, but this product has NO affiliate links configured!"
-                              >
-                                <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
-                                No Links
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 block truncate">
-                            /{a.product?.slug || a.product?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}
-                          </span>
+                      <tr
+                        key={a.id}
+                        className={`group relative hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${
+                          isPublishedWithoutLinks ? "bg-rose-50/20 dark:bg-rose-950/20" : ""
+                        }`}
+                      >
+                        <td className="px-4 py-3.5">
+                          <button
+                            type="button"
+                            onClick={() => handleViewProductDetails(a)}
+                            className="text-xs font-semibold text-slate-900 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-400 transition text-left cursor-pointer"
+                          >
+                            {a.product?.name}
+                          </button>
                         </td>
-                        <td className="px-3 py-3.5">
+                        <td className="px-4 py-3.5">
                           {a.product?.site?.url ? (
                             <a
                               href={a.product.site.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[13px] font-semibold text-[#6D8196] dark:text-sky-400 hover:text-[#4A4A4A] dark:hover:text-white hover:underline inline-flex items-center gap-1"
+                              className="text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1"
                             >
                               <span>{a.product.site.name}</span>
                               <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                             </a>
                           ) : (
-                            <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{a.product?.site?.name || "-"}</span>
+                            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{a.product?.site?.name || "-"}</span>
                           )}
                         </td>
-                        <td className="px-3 py-3.5">
-                          <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">
+                        <td className="px-4 py-3.5">
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                             {a.product?.productCategory || a.product?.category?.name || "-"}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5">
-                          <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                        <td className="px-4 py-3.5">
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                             {a.product?.category?.name || "Ecom"}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5">
-                          <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${STATUS_COLORS[status] || STATUS_COLORS.PENDING}`}>
+                        <td className="px-4 py-3.5">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${STATUS_COLORS[status] || STATUS_COLORS.PENDING}`}>
                             {status === "IN_PROGRESS" ? "In Progress" : status.charAt(0) + status.slice(1).toLowerCase()}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5">
+                        <td className="px-4 py-3.5">
                           {a.articleLink ? (
                             <a
                               href={a.articleLink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline max-w-[140px] truncate"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline max-w-[140px] truncate"
                             >
                               <span>View Link</span>
                               <ExternalLink className="w-3 h-3" />
@@ -1220,47 +1216,48 @@ function ProductsPageContent() {
                             <span className="text-xs text-slate-400 dark:text-slate-500 italic">Not submitted</span>
                           )}
                         </td>
-                        <td className="px-3 py-3.5">
-                          <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
-                            {new Date(a.updatedAt || a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        <td className="px-4 py-3.5 transition-opacity duration-200 group-hover:opacity-0">
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {formatTableDate(a.updatedAt || a.createdAt)}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <div className="flex items-center gap-2 flex-nowrap">
+                        <td className="px-4 py-3.5 relative whitespace-nowrap">
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400 transition-opacity duration-200 group-hover:opacity-0">
+                            {formatTableDate(a.createdAt)}
+                          </span>
+
+                          {/* Slider Action pill on hover */}
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex items-center gap-3.5 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-md rounded-xl px-3.5 py-1.5 opacity-0 translate-x-12 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 ease-out whitespace-nowrap">
                             {status === "IN_PROGRESS" || status === "REDO" ? (
                               <button
-                                onClick={() => {
-                                  window.location.href = "/#writer-tracker";
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-2xs cursor-pointer"
+                                onClick={() => { window.location.href = "/#writer-tracker"; }}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition cursor-pointer"
                               >
                                 <PlayCircle className="w-3.5 h-3.5" />
-                                Continue Writing
+                                <span>Continue Writing</span>
                               </button>
                             ) : (
                               <Link
                                 href={`/articles/${a.id}`}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-500/50 hover:bg-[#FAF9F5] dark:hover:bg-slate-700/60 transition-all text-[11px] font-semibold whitespace-nowrap shadow-2xs"
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition"
                               >
                                 <FileText className="w-3.5 h-3.5" />
-                                Review
+                                <span>Review</span>
                               </Link>
                             )}
 
-                            {/* View Product Details button */}
                             {a.product && (
                               <button
                                 type="button"
                                 onClick={() => handleViewProductDetails(a)}
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 transition cursor-pointer"
                                 title="View Product Details"
-                                aria-label="View Product Details"
-                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-blue-200 dark:border-blue-800/70 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/70 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer shadow-2xs shrink-0"
                               >
-                                <Info className="w-3.5 h-3.5" />
+                                <Info className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Details</span>
                               </button>
                             )}
 
-                            {/* Report link issue button */}
                             {a.product && (
                               <button
                                 type="button"
@@ -1269,9 +1266,10 @@ function ProductsPageContent() {
                                   setIssueMessage("");
                                 }}
                                 title="Report Link Issue"
-                                className="inline-flex items-center justify-center p-1.5 rounded-md border border-rose-200 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 hover:border-rose-300 dark:hover:border-rose-700 transition-all cursor-pointer shadow-2xs shrink-0"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 transition cursor-pointer"
                               >
                                 <AlertTriangle className="w-3.5 h-3.5" />
+                                <span>Issue</span>
                               </button>
                             )}
                           </div>
