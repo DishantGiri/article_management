@@ -56,6 +56,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import CustomSelect from "@/components/CustomSelect";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
+import TopHeader from "@/components/TopHeader";
 
 interface DashboardData {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -375,53 +376,25 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-8 animate-fadeIn" suppressHydrationWarning>
-      {/* ─── TOP GLASS HEADER & GREETING ──────────────────────────── */}
-      <div className="glass-panel rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 border border-[#CBCBCB]/50">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/25">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {(currentUserRole || "USER").replace("_", " ")}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">·</span>
-            <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#6D8196]" />
-              Enterprise Active
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2" suppressHydrationWarning>
-            {getGreeting()}, {session?.user?.name || "Team Member"}
-          </h1>
-          <p className="text-xs text-slate-500 font-medium">
-            {currentUserRole === "SUPER_ADMIN" && "Platform Command Hub - Full visibility across all sites, writers, and networks."}
-            {currentUserRole === "ADMIN" && "System Administration & Operations Control Center."}
-            {currentUserRole === "TEAM_LEAD" && "Editorial Review Queue & Team Velocity Dispatch."}
-            {currentUserRole === "LINKER" && "Affiliate Gateway & Link Log Operations."}
-            {currentUserRole === "WRITER" && "Focused Writing Station & Assignment Delivery."}
-          </p>
-        </div>
-
-        {/* Action Controls & Notifications */}
-        <div className="flex items-center gap-3 self-start md:self-center flex-wrap">
-          {/* Individual Unpaid Commission Widget (WRITER, LINKER, TEAM_LEAD) */}
-          {(currentUserRole === "WRITER" || currentUserRole === "LINKER" || currentUserRole === "TEAM_LEAD") && (
-            <div
-              onClick={() => setShowCommission((prev) => !prev)}
-              className="flex items-center bg-white/95 dark:bg-slate-800/95 border border-[#CBCBCB]/70 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700/80 rounded-2xl px-3.5 py-1.5 shadow-2xs gap-2.5 cursor-pointer select-none transition group hover:shadow-xs"
-              title={showCommission ? "Click to hide (display in XXXX)" : "Click to unhide commission"}
-            >
-              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/70 dark:border-amber-800/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Wallet className="w-4 h-4" />
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400">
-                    Unpaid Commission
-                  </span>
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" title="Pending Payout" />
+      {/* ─── MODERN DESIGN TOP HEADER ──────────────────────────── */}
+      <TopHeader
+        notifications={notifications}
+        onMarkAllAsRead={handleMarkAllAsRead}
+        onNotificationClick={handleNotificationClick}
+        extraActions={
+          <>
+            {/* Individual Unpaid Commission Widget (WRITER, LINKER, TEAM_LEAD) */}
+            {(currentUserRole === "WRITER" || currentUserRole === "LINKER" || currentUserRole === "TEAM_LEAD") && (
+              <div
+                onClick={() => setShowCommission((prev) => !prev)}
+                className="flex items-center bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/70 dark:border-slate-700/80 hover:border-amber-400 dark:hover:border-amber-600 rounded-full px-3.5 py-1.5 shadow-2xs gap-2 cursor-pointer select-none transition group"
+                title={showCommission ? "Click to hide (display in XXXX)" : "Click to unhide commission"}
+              >
+                <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Wallet className="w-3.5 h-3.5" />
                 </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-sm sm:text-base font-black text-slate-800 dark:text-white font-mono tracking-tight">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 font-mono">
+                  <span>
                     {showCommission
                       ? `Rs. ${(data?.individualCommission?.unpaidAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                       : "Rs. XXXX"}
@@ -432,11 +405,11 @@ export default function DashboardPage() {
                       e.stopPropagation();
                       setShowCommission((prev) => !prev);
                     }}
-                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition cursor-pointer"
+                    className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                     title={showCommission ? "Hide unpaid commission" : "Show unpaid commission"}
                     aria-label={showCommission ? "Hide unpaid commission" : "Show unpaid commission"}
                   >
-                    {showCommission ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-slate-500" />}
+                    {showCommission ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </button>
                   {showCommission && (data?.individualCommission?.recentPendingSales?.length ?? 0) > 0 && (
                     <button
@@ -445,124 +418,29 @@ export default function DashboardPage() {
                         e.stopPropagation();
                         setShowCommissionDetailsModal(true);
                       }}
-                      className="p-1 rounded-lg text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition cursor-pointer"
+                      className="p-0.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition cursor-pointer"
                       title="View Pending Sales Breakdown"
                       aria-label="View Pending Sales Breakdown"
                     >
-                      <Info className="w-3.5 h-3.5" />
+                      <Info className="w-3 h-3" />
                     </button>
                   )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={() => fetchDashboardData(false)}
-            disabled={refreshing}
-            className="p-2.5 rounded-xl border border-[#CBCBCB]/70 bg-white hover:bg-slate-50 text-slate-600 transition duration-150 cursor-pointer shadow-2xs flex items-center gap-1.5 text-xs font-semibold"
-            title="Refresh Live Data"
-          >
-            <RefreshCw className={`w-4 h-4 text-[#6D8196] ${refreshing ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-
-          {/* Quick Create shortcut for Linkers and Admins */}
-          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
-            <Link
-              href="/products"
-              className="px-3.5 py-2 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white transition duration-150 shadow-xs flex items-center gap-1.5 text-xs font-bold"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Products</span>
-            </Link>
-          )}
-
-          {/* Notification Bell with Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowBellDropdown(!showBellDropdown)}
-              className="relative p-2.5 rounded-xl border border-[#CBCBCB]/70 bg-white hover:bg-slate-50 text-slate-600 transition duration-150 shadow-2xs cursor-pointer"
-              aria-label="View notifications"
-            >
-              <Bell className="w-4 h-4 text-[#4A4A4A]" />
-              {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-extrabold flex items-center justify-center border-2 border-white animate-pulse">
-                  {unreadNotificationsCount}
-                </span>
-              )}
-            </button>
-
-            {showBellDropdown && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-[#CBCBCB]/80 rounded-2xl shadow-xl z-50 p-4 space-y-3 animate-scaleIn">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</span>
-                    {unreadNotificationsCount > 0 && (
-                      <span className="text-[10px] bg-[#6D8196]/15 text-[#3D4F61] border border-[#6D8196]/30 font-bold px-2 py-0.5 rounded-full">
-                        {unreadNotificationsCount} new
-                      </span>
-                    )}
-                  </div>
-                  {unreadNotificationsCount > 0 && (
-                    <button
-                      onClick={handleMarkAllAsRead}
-                      className="text-[11px] font-bold text-[#6D8196] hover:text-slate-900 transition flex items-center gap-1 cursor-pointer"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Mark read
-                    </button>
-                  )}
-                </div>
-
-                <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-                  {notifications.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic text-center py-6">No notifications in the past month</p>
-                  ) : (
-                    notifications.slice(0, 10).map((n) => {
-                      const linkUrl = getNotificationTargetUrl(n, currentUserRole);
-
-                      return (
-                        <Link
-                          key={n.id}
-                          href={linkUrl}
-                          onClick={() => handleNotificationClick(n)}
-                          className={`p-3 rounded-xl border text-xs flex flex-col gap-1.5 transition-all block cursor-pointer ${!n.isRead
-                              ? "bg-[#FAF9F5] hover:bg-white border-[#6D8196]/40 font-semibold shadow-2xs"
-                              : "bg-white hover:bg-[#FAF9F5] border-[#CBCBCB]/50 text-slate-600"
-                            }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`leading-snug ${!n.isRead ? "text-slate-900 font-bold" : "text-slate-600"}`}>
-                              {n.message}
-                            </p>
-                            {!n.isRead && (
-                              <span className="w-2 h-2 rounded-full bg-[#6D8196] flex-shrink-0 mt-1" />
-                            )}
-                          </div>
-                          <span className="text-[10px] text-slate-400 font-medium self-end">
-                            {new Date(n.createdAt).toLocaleDateString()}
-                          </span>
-                        </Link>
-                      );
-                    })
-                  )}
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                  <Link
-                    href="/notifications"
-                    onClick={() => setShowBellDropdown(false)}
-                    className="text-[#6D8196] hover:text-slate-900 font-bold transition flex items-center gap-1"
-                  >
-                    All Notifications →
-                  </Link>
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      </div>
+
+            {/* Refresh Live Data Button */}
+            <button
+              onClick={() => fetchDashboardData(false)}
+              disabled={refreshing}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-slate-900 hover:bg-slate-200/70 dark:hover:bg-slate-800 border border-slate-200/70 dark:border-slate-700/80 flex items-center justify-center text-slate-600 dark:text-slate-300 transition shadow-2xs cursor-pointer"
+              title="Refresh Live Data"
+            >
+              <RefreshCw className={`w-4 h-4 text-slate-600 dark:text-slate-300 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
+          </>
+        }
+      />
 
       {/* ─── ROLE: SUPER_ADMIN & ADMIN VIEW ────────────────────────── */}
       {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN") && (
