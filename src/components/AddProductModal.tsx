@@ -957,10 +957,10 @@ export default function AddProductModal({
                     </div>
                   </div>
 
-                  {/* Control Center: Side-by-Side Direct Paste & Batch Fill Cards */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 shrink-0">
-                    {/* Card 1: Direct Paste Box (6 columns) */}
-                    <div className="lg:col-span-6 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                  {/* Control Center: Stacked Direct Paste & Batch Fill Cards */}
+                  <div className="grid grid-cols-1 gap-3 shrink-0">
+                    {/* Card 1: Direct Paste Box (full width) */}
+                    <div className="bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
                       <div className="flex items-center justify-between mb-2">
                         <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 tracking-wide">
                           <ClipboardList className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -998,7 +998,7 @@ export default function AddProductModal({
                       </div>
 
                       <textarea
-                        rows={4}
+                        rows={6}
                         value={bulkPasteText}
                         onChange={(e) => updateRowsFromText(e.target.value)}
                         onPaste={(e) => {
@@ -1021,8 +1021,8 @@ export default function AddProductModal({
                       </div>
                     </div>
 
-                    {/* Card 2: Batch Fill & Sites Toolbar (6 columns) */}
-                    <div className="lg:col-span-6 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                    {/* Card 2: Batch Fill & Sites Toolbar (full width) */}
+                    <div className="bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
                           Fill All Rows
