@@ -29,9 +29,12 @@ import {
   Building2,
 } from "lucide-react";
 
+import { getCountryFlag, TIER1_CODES, LATAM_COUNTRIES, COUNTRY_NAMES } from "@/lib/geo-constants";
+
 interface Site {
   id: number;
   name: string;
+  allowCountrySpecific?: boolean;
 }
 
 interface Category {
@@ -47,6 +50,7 @@ interface Affiliate {
 export interface SpreadsheetRow {
   name: string;
   slug: string;
+  country?: string;
   category: string;
   affiliateName: string;
   trendLevel: string;
@@ -59,6 +63,7 @@ interface FormData {
   categoryIds: number[];
   name: string;
   slug: string;
+  country?: string;
   category: string;
   trendLink: string;
   trendLevel: string;
@@ -317,6 +322,7 @@ export default function AddProductModal({
     categoryIds: [],
     name: "",
     slug: "",
+    country: "",
     category: "",
     trendLink: "",
     trendLevel: "HIGH",
@@ -573,6 +579,7 @@ export default function AddProductModal({
             products: validRows.map((r) => ({
               name: r.name.trim(),
               slug: r.slug?.trim() ? generateSlug(r.slug) : generateSlug(r.name),
+              country: r.country?.trim() || null,
               productCategory: r.category.trim(),
               affiliateName: r.affiliateName.trim(),
               trendLevel: r.trendLevel || "HIGH",
@@ -680,6 +687,7 @@ export default function AddProductModal({
         body: JSON.stringify({
           name: form.name.trim(),
           slug: form.slug?.trim() ? generateSlug(form.slug) : generateSlug(form.name),
+          country: form.country?.trim() || null,
           categoryIds: form.categoryIds,
           excludedSiteIds,
           productCategory: form.category.trim() || null,
@@ -721,6 +729,7 @@ export default function AddProductModal({
   );
 
   const activeSites = previewSites.filter((site: any) => !excludedSiteIds.includes(site.id));
+  const hasCountrySpecificSite = activeSites.some((site: any) => Boolean(site.allowCountrySpecific));
 
   const userRole = session?.user?.role;
   const canAddProduct = userRole === "SUPER_ADMIN" || userRole === "ADMIN" || userRole === "LINKER";
@@ -1549,6 +1558,40 @@ export default function AddProductModal({
                       />
                     </div>
                   </div>
+
+                  {hasCountrySpecificSite && (
+                    <div className="p-3.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          Target Country / Market <span className="text-slate-400 font-normal text-[10px] normal-case">(Optional - Default: Worldwide)</span>
+                        </label>
+                        <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 rounded-md">
+                          Country-specific Site
+                        </span>
+                      </div>
+                      <CustomSelect
+                        value={form.country || ""}
+                        onChange={(val) => update("country", val)}
+                        placeholder="🌐 Default / Global (Worldwide)"
+                        className="w-full"
+                        options={[
+                          { value: "", label: "🌐 Default / Global (Worldwide)" },
+                          ...TIER1_CODES.map((code) => ({
+                            value: code,
+                            label: `${getCountryFlag(code)} ${COUNTRY_NAMES[code] || code} (${code})`,
+                          })),
+                          ...LATAM_COUNTRIES.map((c) => ({
+                            value: c.code,
+                            label: `${c.flag} ${c.name} (${c.code})`,
+                          })),
+                        ]}
+                      />
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Products with the same name on this site are allowed if they target different countries.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Grid 2-Column: Category & Affiliate Network */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

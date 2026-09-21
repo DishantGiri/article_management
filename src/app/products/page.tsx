@@ -17,6 +17,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import TopHeader from "@/components/TopHeader";
+import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 interface Category {
   id: number;
@@ -27,6 +28,7 @@ interface Product {
   id: number;
   name: string;
   slug?: string | null;
+  country?: string | null;
   siteId: number;
   categoryId: number;
   productCategory?: string | null;
@@ -36,10 +38,10 @@ interface Product {
   previewLink?: string;
   remarks?: string;
   addedAt: string;
-  site: { id?: number; name: string; url?: string };
+  site: { id?: number; name: string; url?: string; allowCountrySpecific?: boolean };
   category: { id?: number; name: string };
   addedBy: { id?: number; name: string };
-  article?: { id: number; status: string; writer?: { id?: number; name: string }; articleLink?: string | null };
+  article?: { id: number; status: string; country?: string | null; writer?: { id?: number; name: string }; articleLink?: string | null };
   linkLogs?: any[];
 }
 
@@ -915,6 +917,15 @@ function ProductsPageContent() {
                             >
                               {p.name}
                             </button>
+                            {(p.country || p.article?.country) && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs"
+                                title={`Target Country: ${p.country || p.article?.country} (${COUNTRY_NAMES[((p.country || p.article?.country) || "").toUpperCase()] || (p.country || p.article?.country)})`}
+                              >
+                                <span>{getCountryFlag(p.country || p.article?.country || "")}</span>
+                                <span className="uppercase">{p.country || p.article?.country}</span>
+                              </span>
+                            )}
                             {isPublishedWithoutLinks && (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"

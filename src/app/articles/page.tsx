@@ -13,11 +13,13 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import { formatRemarkDate } from "@/components/FormattedRemarks";
 import AssignmentDetailsModal from "@/components/AssignmentDetailsModal";
+import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 interface Article {
   id: number;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO";
   priority: "LOW" | "MEDIUM" | "HIGH";
+  country?: string | null;
   updatedAt: string;
   startedAt?: string | null;
   articleLink?: string;
@@ -27,6 +29,7 @@ interface Article {
     id: number;
     name: string;
     slug?: string | null;
+    country?: string | null;
     remarks?: string | null;
     site: { name: string };
     category: { name: string };
@@ -1056,6 +1059,7 @@ function ArticlesContent() {
                                     id: a.id,
                                     status: a.status,
                                     priority: a.priority,
+                                    country: a.country || a.product.country || null,
                                     writer: a.writer,
                                   },
                                 });
@@ -1069,6 +1073,15 @@ function ArticlesContent() {
                             >
                               {a.product.name}
                             </button>
+                            {(a.country || a.product.country) && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs whitespace-nowrap"
+                                title={`Target Country: ${a.country || a.product.country} (${COUNTRY_NAMES[((a.country || a.product.country) || "").toUpperCase()] || (a.country || a.product.country)})`}
+                              >
+                                <span>{getCountryFlag(a.country || a.product.country || "")}</span>
+                                <span className="uppercase">{a.country || a.product.country}</span>
+                              </span>
+                            )}
                             {isPublishedWithoutLinks && (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 shadow-2xs whitespace-nowrap"

@@ -35,11 +35,13 @@ import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
+import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 interface Article {
   id: number;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO";
   articleLink?: string;
+  country?: string;
   startedAt?: string;
   completedAt?: string;
   writingTimeMin?: number;
@@ -52,12 +54,13 @@ interface Article {
   product: {
     id: number;
     name: string;
+    country?: string;
     trendLink?: string;
     previewLink?: string;
     remarks?: string;
     productCategory?: string;
     trendLevel?: string;
-    site: { id: number; name: string };
+    site: { id: number; name: string; allowCountrySpecific?: boolean };
     category: { id: number; name: string };
     addedBy: { name: string };
     addedAt: string;
@@ -128,10 +131,35 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   const [newLinkValue, setNewLinkValue] = useState("");
   const [updateReason, setUpdateReason] = useState("");
   const [updatingLink, setUpdatingLink] = useState(false);
+  const [updatingCountry, setUpdatingCountry] = useState(false);
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [flagReason, setFlagReason] = useState("");
   const [submittingFlag, setSubmittingFlag] = useState(false);
   const { data: session } = useSession();
+
+  const handleCountryChange = async (newCountry: string) => {
+    setUpdatingCountry(true);
+    try {
+      const res = await fetch(`/api/articles/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country: newCountry || null,
+          callerId: currentUserId,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to update country");
+      }
+      toast.success(newCountry ? `Country updated to ${newCountry}` : "Set to Default / Global");
+      setArticle((prev) => (prev ? { ...prev, country: newCountry || undefined } : prev));
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update country");
+    } finally {
+      setUpdatingCountry(false);
+    }
+  };
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -427,6 +455,13 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                   {product.trendLevel} Trend
                 </span>
               )}
+              {(article.country || product.country) && (
+                <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/60 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
+                  <span>{getCountryFlag(article.country || product.country || "")}</span>
+                  <span className="uppercase">{article.country || product.country}</span>
+                  <span className="opacity-75 font-medium">({COUNTRY_NAMES[(article.country || product.country || "").toUpperCase()] || (article.country || product.country)})</span>
+                </span>
+              )}
             </div>
 
             <div>
@@ -553,6 +588,51 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
           {/* Links Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Target Country / Market Card (when site allows country-specific articles) */}
+            {product.site.allowCountrySpecific && (
+              <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-750 shadow-2xs flex flex-col justify-between space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
+                    Target Country / Market
+                  </span>
+                  {updatingCountry && (
+                    <span className="text-[10px] text-[#6D8196] font-bold animate-pulse">Saving...</span>
+                  )}
+                </div>
+                <div>
+                  <select
+                    value={article.country || product.country || ""}
+                    disabled={updatingCountry}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#6D8196] focus:outline-none transition cursor-pointer"
+                  >
+                    <option value="">🌐 Default / Global (Worldwide)</option>
+                    <optgroup label="Tier 1 English Geos">
+                      <option value="US">🇺🇸 US - United States</option>
+                      <option value="UK">🇬🇧 UK - United Kingdom</option>
+                      <option value="CA">🇨🇦 CA - Canada</option>
+                      <option value="AU">🇦🇺 AU - Australia</option>
+                    </optgroup>
+                    <optgroup label="Latin America (LATAM)">
+                      <option value="MX">🇲🇽 MX - Mexico</option>
+                      <option value="BR">🇧🇷 BR - Brazil</option>
+                      <option value="AR">🇦🇷 AR - Argentina</option>
+                      <option value="CO">🇨🇴 CO - Colombia</option>
+                      <option value="CL">🇨🇱 CL - Chile</option>
+                      <option value="PE">🇵🇪 PE - Peru</option>
+                      <option value="EC">🇪🇨 EC - Ecuador</option>
+                    </optgroup>
+                    <optgroup label="Europe">
+                      <option value="DE">🇩🇪 DE - Germany</option>
+                      <option value="FR">🇫🇷 FR - France</option>
+                      <option value="ES">🇪🇸 ES - Spain</option>
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* Article Document Link Card */}
             <div className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs flex flex-col justify-between space-y-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">

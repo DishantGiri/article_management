@@ -32,6 +32,7 @@ export interface AssignmentProduct {
   id: number;
   name: string;
   slug?: string | null;
+  country?: string | null;
   siteId: number;
   categoryId: number;
   productCategory?: string | null;
@@ -41,13 +42,14 @@ export interface AssignmentProduct {
   previewLink?: string;
   remarks?: string;
   addedAt: string;
-  site: { id?: number; name: string; url?: string };
+  site: { id?: number; name: string; url?: string; allowCountrySpecific?: boolean };
   category: { id?: number; name: string };
   addedBy: { id?: number; name: string };
   article?: {
     id: number;
     status: string;
     priority?: string;
+    country?: string | null;
     writer?: { id?: number; name: string };
   };
   linkLogs?: Array<{
@@ -355,6 +357,14 @@ export default function AssignmentDetailsModal({
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs font-bold border border-amber-200 dark:border-amber-800/60 shadow-2xs">
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                       <span>{product.trendLevel} Trend</span>
+                    </span>
+                  )}
+
+                  {(product.country || product.article?.country) && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/60 shadow-2xs">
+                      <span>{getCountryFlag(product.country || product.article?.country || "")}</span>
+                      <span className="uppercase">{product.country || product.article?.country}</span>
+                      <span className="opacity-75 font-medium">({COUNTRY_NAMES[(product.country || product.article?.country || "").toUpperCase()] || (product.country || product.article?.country)})</span>
                     </span>
                   )}
                 </div>
