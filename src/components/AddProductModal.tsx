@@ -1583,7 +1583,7 @@ export default function AddProductModal({
                           })),
                           ...LATAM_COUNTRIES.map((c) => ({
                             value: c.code,
-                            label: `${c.flag} ${c.name} (${c.code})`,
+                            label: `${getCountryFlag(c.code)} ${c.name} (${c.code})`,
                           })),
                         ]}
                       />
