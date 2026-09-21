@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, FileText, Link as LinkIcon, Users, Globe, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText } from "lucide-react";
+import { LayoutDashboard, LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
@@ -41,9 +41,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/",
-    label: "Dashboard",
+    label: "Overview",
     roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
-    icon: LayoutDashboard,
+    icon: LayoutGrid,
   },
   {
     href: "/calendar",
@@ -90,7 +90,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/reports",
-    label: "Work Reports",
+    label: "Work Report",
     roles: ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "WRITER", "LINKER"],
     icon: BarChart2,
   },
@@ -431,20 +431,19 @@ export default function Sidebar() {
             <Menu className="w-5 h-5" />
           </button>
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center shadow-xs border border-slate-200/60 dark:border-slate-700 p-0.5 shrink-0">
+            <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700/60 shadow-2xs">
               <Image
                 src="/logo.png"
-                alt="Article Flow Logo"
-                width={32}
-                height={32}
-                className="w-full h-full object-contain rounded-md"
+                alt="Articleflow"
+                width={28}
+                height={28}
+                className="w-full h-full object-cover"
                 priority
               />
             </div>
-            <div>
-              <p className="text-[#4A4A4A] font-bold text-xs leading-tight">Article Flow</p>
-              <p className="text-[#737373] text-[9px] font-medium">Enterprise Manager</p>
-            </div>
+            <span className="text-slate-900 dark:text-white font-bold text-base tracking-tight">
+              Articleflow<span className="text-teal-600">.</span>
+            </span>
           </Link>
         </div>
 
@@ -489,21 +488,20 @@ export default function Sidebar() {
       >
         {/* Logo Header */}
         <div className="px-6 py-6 border-b border-[#CBCBCB]/40 dark:border-slate-800 flex items-center justify-between" suppressHydrationWarning>
-          <Link href="/" className="flex items-center gap-3 group cursor-pointer" suppressHydrationWarning>
-            <div className="w-9 h-9 rounded-xl overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center shadow-xs border border-slate-200/60 dark:border-slate-700 p-1 shrink-0 group-hover:scale-105 transition-transform" suppressHydrationWarning>
+          <Link href="/" className="flex items-center gap-2.5 group cursor-pointer" suppressHydrationWarning>
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-slate-700/60 shadow-2xs" suppressHydrationWarning>
               <Image
                 src="/logo.png"
-                alt="Article Flow Logo"
-                width={36}
-                height={36}
-                className="w-full h-full object-contain rounded-lg"
+                alt="Articleflow"
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
                 priority
               />
             </div>
-            <div suppressHydrationWarning>
-              <p className="text-[#4A4A4A] dark:text-slate-100 font-bold text-sm leading-tight group-hover:text-[#6D8196] transition-colors">Article Flow</p>
-              <p className="text-[#737373] dark:text-slate-400 text-[10px] mt-0.5 font-medium">Enterprise Manager</p>
-            </div>
+            <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+              Articleflow<span className="text-teal-600">.</span>
+            </span>
           </Link>
           {/* Mobile close button */}
           <button
@@ -516,11 +514,11 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-5 space-y-1 overflow-y-auto pr-4">
+        <nav className="flex-1 py-5 space-y-1 overflow-y-auto pr-1">
           {status === "loading" || !isMounted ? (
-            <div className="space-y-2 px-6">
+            <div className="space-y-2 px-4">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-9 bg-[#FAF9F5] dark:bg-slate-800/60 rounded-r-lg animate-pulse" />
+                <div key={i} className="h-9 bg-[#FAF9F5] dark:bg-slate-800/60 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : visibleNavItems.length > 0 ? (
@@ -531,12 +529,12 @@ export default function Sidebar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsMobileOpen(false)}
-                  className={`flex items-center gap-3 pl-6 pr-4 py-2.5 text-sm transition-all duration-200 group rounded-r-xl ${active
-                      ? "bg-[#6D8196] text-white font-semibold shadow-xs"
-                      : "text-[#4A4A4A] hover:text-slate-900 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/80 font-medium"
+                  className={`flex items-center gap-3 mx-3 px-3.5 py-2.5 text-sm transition-all duration-200 group rounded-xl ${active
+                      ? "bg-[#e6f4f1] text-[#0d9488] dark:bg-teal-950/60 dark:text-teal-300 font-semibold shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/70 font-medium"
                     }`}
                 >
-                  <span className={active ? "text-white" : "text-[#6D8196]/70 group-hover:text-[#6D8196] dark:text-slate-400 dark:group-hover:text-white transition-colors"}>
+                  <span className={active ? "text-[#0d9488] dark:text-teal-300" : "text-slate-400 group-hover:text-slate-600 dark:text-slate-400 dark:group-hover:text-slate-200 transition-colors"}>
                     <item.icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
                   </span>
                   <div className="flex-1 flex items-center justify-between">

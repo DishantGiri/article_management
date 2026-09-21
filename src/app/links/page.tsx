@@ -778,18 +778,16 @@ function LinksPageContent() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Product</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Site</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Article Link</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Bridge Page</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Affiliate</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Geo</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Added By</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Modified By</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Date</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-center">Remarks</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-center w-[12%]">Actions</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Product</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Site</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Article Link</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Bridge Page</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Affiliate</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Geo</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Added By</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Modified By</th>
+                  <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
@@ -806,7 +804,7 @@ function LinksPageContent() {
                   return (
                     <tr
                       key={l.id}
-                      className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group ${isNotificationMatch ? "bg-amber-50/30 dark:bg-amber-950/30 ring-1 ring-amber-400/40" : ""
+                      className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/70 transition-colors group relative ${isNotificationMatch ? "bg-amber-50/30 dark:bg-amber-950/30 ring-1 ring-amber-400/40" : ""
                         }`}
                     >
                       <td className="px-3 py-3.5 max-w-[240px]">
@@ -1034,10 +1032,13 @@ function LinksPageContent() {
                           {statusLabel}
                         </span>
                       </td>
-                      <td className="px-3 py-3.5">
+                      {/* Added By (fades on hover) */}
+                      <td className="px-3.5 py-3.5 transition-opacity duration-200 group-hover:opacity-0">
                         <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">{l.addedBy?.name || "-"}</span>
                       </td>
-                      <td className="px-3 py-3.5">
+
+                      {/* Modified By (fades on hover) */}
+                      <td className="px-3.5 py-3.5 transition-opacity duration-200 group-hover:opacity-0">
                         {l.updatedBy?.name ? (
                           <span className="text-[11px] font-semibold text-[#3D4F61] dark:text-sky-200 bg-[#6D8196]/10 dark:bg-[#6D8196]/25 px-2 py-0.5 rounded-md border border-[#6D8196]/20 dark:border-[#6D8196]/40">
                             {l.updatedBy.name}
@@ -1046,57 +1047,83 @@ function LinksPageContent() {
                           <span className="text-[12px] text-slate-400 dark:text-slate-500 italic">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-3.5">
-                        <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
-                          {new Date(l.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </td>
-                      {/* Fix 4: Remarks column */}
-                      <td className="px-3 py-3.5 text-center">
-                        {l.linkerRemarks ? (
+
+                      {/* Date & Hover Action Slider Pill (matching product table) */}
+                      <td className="px-3.5 py-3.5 relative whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 transition-opacity duration-200 group-hover:opacity-0">
+                          <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                            {new Date(l.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                          {l.linkerRemarks && (
+                            <span
+                              onClick={() => setViewingRemarks({
+                                remarks: l.linkerRemarks || "",
+                                date: l.addedAt,
+                                productName: l.product?.name
+                              })}
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[10px] font-semibold cursor-pointer"
+                              title="Click to view remarks"
+                            >
+                              <Info className="w-3 h-3" />
+                              <span>Remarks</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Action Slider Pill that opens from the right on row hover */}
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 flex items-center gap-2.5 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-md rounded-xl px-3 py-1.5 opacity-0 translate-x-12 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 ease-out whitespace-nowrap">
+                          {/* Details */}
                           <button
-                            onClick={() => setViewingRemarks({
-                              remarks: l.linkerRemarks || "",
-                              date: l.addedAt,
-                              productName: l.product?.name
-                            })}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-400 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 transition-all text-[10px] font-bold cursor-pointer shadow-2xs"
-                            title="View Remarks Details"
-                          >
-                            <Info className="w-3.5 h-3.5" />
-                            View
-                          </button>
-                        ) : (
-                          <span className="text-[12px] font-semibold text-slate-300 dark:text-slate-500">-</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
+                            type="button"
                             onClick={() => setHistoryLinkLog(l)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-200 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-400 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 transition-all text-[10px] font-bold cursor-pointer shadow-2xs"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
                             title="View History Details"
                           >
-                            <Clock className="w-3.5 h-3.5" />
-                            Details
+                            <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                            <span>Details</span>
                           </button>
+
+                          {/* Remarks */}
+                          {l.linkerRemarks && (
+                            <button
+                              type="button"
+                              onClick={() => setViewingRemarks({
+                                remarks: l.linkerRemarks || "",
+                                date: l.addedAt,
+                                productName: l.product?.name
+                              })}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition cursor-pointer"
+                              title="View Remarks Details"
+                            >
+                              <Info className="w-3.5 h-3.5 text-amber-500" />
+                              <span>Remarks</span>
+                            </button>
+                          )}
+
+                          {/* Edit */}
                           {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
-                            <>
-                              <button
-                                onClick={() => setEditingLink(l)}
-                                className="p-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-[#6D8196] dark:hover:text-sky-300 hover:border-[#6D8196] dark:hover:border-sky-400 hover:bg-[#FAF9F5] dark:hover:bg-slate-700 transition cursor-pointer shadow-2xs"
-                                title="Edit Link"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteLink(l.id, l.allLinkIds)}
-                                className="p-1.5 rounded-md border border-[#CBCBCB] dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer shadow-2xs"
-                                title="Delete Link"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
+                            <button
+                              type="button"
+                              onClick={() => setEditingLink(l)}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition cursor-pointer"
+                              title="Edit Link"
+                            >
+                              <Edit className="w-3.5 h-3.5 text-indigo-500" />
+                              <span>Edit</span>
+                            </button>
+                          )}
+
+                          {/* Delete */}
+                          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLink(l.id, l.allLinkIds)}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition cursor-pointer"
+                              title="Delete Link"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <span>Delete</span>
+                            </button>
                           )}
                         </div>
                       </td>

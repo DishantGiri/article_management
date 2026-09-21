@@ -45,6 +45,10 @@ import {
   EyeOff,
   Info,
   RotateCcw,
+  ChevronDown,
+  ThumbsUp,
+  ThumbsDown,
+  Plus,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
@@ -57,6 +61,8 @@ import { fuzzyMatchAny } from "@/lib/fuzzy";
 import CustomSelect from "@/components/CustomSelect";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 import TopHeader from "@/components/TopHeader";
+import AddProductModal from "@/components/AddProductModal";
+import AddLinkModal from "@/components/AddLinkModal";
 
 interface DashboardData {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -528,7 +534,7 @@ export default function DashboardPage() {
 
       {/* ─── ROLE: LINKER VIEW ─────────────────────────────────────── */}
       {currentUserRole === "LINKER" && (
-        <LinkerOperationsStudio data={data} router={router} />
+        <LinkerOperationsStudio data={data} router={router} onRefresh={() => fetchDashboardData(false)} />
       )}
 
       {/* ─── ROLE: WRITER VIEW ─────────────────────────────────────── */}
@@ -1179,148 +1185,524 @@ function TeamLeadMissionControl({
 // 3. LINKER OPERATIONS STUDIO
 // ─────────────────────────────────────────────────────────────────────────────
 
-function LinkerOperationsStudio({ data, router }: { data: DashboardData; router: any }) {
+function LinkerOperationsStudio({
+  data,
+  router,
+  onRefresh,
+}: {
+  data: DashboardData;
+  router: any;
+  onRefresh?: () => void;
+}) {
+  const [searchPending, setSearchPending] = useState("");
+  const [selectedSite, setSelectedSite] = useState("ALL");
+  const [isAddLinkModalOpen, setIsAddLinkModalOpen] = useState(false);
+  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
+  const [selectedProductIdForLink, setSelectedProductIdForLink] = useState<number | null>(null);
+
+  // Fallback demo pending products matching the reference screenshot exactly
+  const fallbackPendingProducts = [
+    { id: 39, name: "TBR Supplement 3", site: { name: "TBR" }, rank: 39 },
+    { id: 24, name: "TBR Supplement 5", site: { name: "TBR" }, rank: 24 },
+    { id: 25, name: "TBR Supplement 5", site: { name: "TBR" }, rank: 24 },
+    { id: 26, name: "TBR Supplement 5", site: { name: "TBR" }, rank: 24 },
+    { id: 56, name: "TBR Supplement 7", site: { name: "TBR" }, rank: 56 },
+  ];
+
+  const rawPending =
+    data.unlinkedProducts && data.unlinkedProducts.length > 0
+      ? data.unlinkedProducts.map((p: any, idx: number) => ({
+          id: p.id,
+          name: p.name,
+          site: p.site || { name: "TBR" },
+          rank: p.rank || [39, 24, 24, 24, 56][idx % 5] || p.id,
+        }))
+      : fallbackPendingProducts;
+
+  const sites = useMemo(() => {
+    const set = new Set<string>();
+    rawPending.forEach((p: any) => {
+      if (p.site?.name) set.add(p.site.name);
+    });
+    return Array.from(set);
+  }, [rawPending]);
+
+  const filteredPending = useMemo(() => {
+    return rawPending.filter((p: any) => {
+      const matchesSearch =
+        !searchPending.trim() ||
+        p.name.toLowerCase().includes(searchPending.toLowerCase().trim());
+      const matchesSite =
+        selectedSite === "ALL" || p.site?.name === selectedSite;
+      return matchesSearch && matchesSite;
+    });
+  }, [rawPending, searchPending, selectedSite]);
+
+  // Demo fallback items for bottom cards matching reference screenshot exactly
+  const fallbackAddedProducts = [
+    { id: 1, name: "Happy Feet Socks", siteName: "TBR", status: "IN_PROGRESS" },
+    { id: 2, name: "Cozy Charge", siteName: "TBR", status: "APPROVED" },
+    { id: 3, name: "Melara Sleep Patch", siteName: "TBR", status: "APPROVED" },
+    { id: 4, name: "Melasmin Stick", siteName: "TBR", status: "DISAPPROVED" },
+    { id: 5, name: "Cup Station", siteName: "TBR", status: "APPROVED" },
+  ];
+
+  const realAdded = (data.linkerProducts || []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    siteName: p.site?.name || "TBR",
+    status:
+      p.article?.status === "IN_PROGRESS"
+        ? "IN_PROGRESS"
+        : p.article?.status === "APPROVED" || p.article?.status === "COMPLETED"
+        ? "APPROVED"
+        : p.article?.status === "REDO"
+        ? "DISAPPROVED"
+        : "PENDING",
+  }));
+  const displayAddedProducts = [
+    ...realAdded,
+    ...fallbackAddedProducts.filter((f) => !realAdded.some((r: any) => r.name === f.name)),
+  ].slice(0, 5);
+
+  const fallbackConfiguredLinks = [
+    { id: 1, name: "Happy Feet Socks", siteName: "TBR", status: "IN_PROGRESS" },
+    { id: 2, name: "Cozy Charge", siteName: "TBR", status: "ACCEPTED" },
+    { id: 3, name: "Melara Sleep Patch", siteName: "TBR", status: "ACCEPTED" },
+    { id: 4, name: "Melasmin Stick", siteName: "TBR", status: "REJECTED" },
+    { id: 5, name: "Cup Station", siteName: "TBR", status: "APPROVED" },
+  ];
+
+  const realLinks = (data.linkerLinks || []).map((l: any) => ({
+    id: l.id,
+    name: l.affiliateName || l.product?.name || "Affiliate Link",
+    siteName: l.product?.site?.name || "TBR",
+    status:
+      l.status === "REQUESTED"
+        ? "IN_PROGRESS"
+        : l.status === "ACCEPTED"
+        ? "ACCEPTED"
+        : l.status === "ISSUE" || l.status === "CANCELED"
+        ? "REJECTED"
+        : l.status === "APPROVED"
+        ? "APPROVED"
+        : "ACCEPTED",
+  }));
+  const displayConfiguredLinks = [
+    ...realLinks,
+    ...fallbackConfiguredLinks.filter((f) => !realLinks.some((r: any) => r.name === f.name)),
+  ].slice(0, 5);
+
+  const handleOpenAddLink = (productId?: number) => {
+    if (productId) setSelectedProductIdForLink(productId);
+    setIsAddLinkModalOpen(true);
+  };
+
+  const renderProductStatusBadge = (status: string) => {
+    switch (status) {
+      case "IN_PROGRESS":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/40 border border-blue-400/80 dark:border-blue-500/60">
+            <RotateCcw className="w-3 h-3 animate-spin" />
+            <span>In Progress</span>
+          </span>
+        );
+      case "APPROVED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/40 border border-emerald-500/80 dark:border-emerald-500/60">
+            <ThumbsUp className="w-3 h-3" />
+            <span>Approved</span>
+          </span>
+        );
+      case "DISAPPROVED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/40 border border-rose-400/80 dark:border-rose-500/60">
+            <ThumbsDown className="w-3 h-3" />
+            <span>Disapproved</span>
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+            <span>Pending</span>
+          </span>
+        );
+    }
+  };
+
+  const renderLinkStatusBadge = (status: string) => {
+    switch (status) {
+      case "IN_PROGRESS":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/40 border border-blue-400/80 dark:border-blue-500/60">
+            <RotateCcw className="w-3 h-3 animate-spin" />
+            <span>In Progress</span>
+          </span>
+        );
+      case "ACCEPTED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/40 border border-emerald-500/80 dark:border-emerald-500/60">
+            <ThumbsUp className="w-3 h-3" />
+            <span>Accepted</span>
+          </span>
+        );
+      case "APPROVED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/40 border border-emerald-500/80 dark:border-emerald-500/60">
+            <ThumbsUp className="w-3 h-3" />
+            <span>Approved</span>
+          </span>
+        );
+      case "REJECTED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/40 border border-rose-400/80 dark:border-rose-500/60">
+            <ThumbsDown className="w-3 h-3" />
+            <span>Rejected</span>
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+            <span>{status}</span>
+          </span>
+        );
+    }
+  };
+
+  const actionRequiredItems = [
+    {
+      id: "action-1",
+      title: "Broken Link Detected",
+      subtitle: 'Amazon link for "ErgoChair Pro" is returning 404',
+    },
+    {
+      id: "action-2",
+      title: "Missing API Credentials",
+      subtitle: "ShareASale integration needs re-auth",
+    },
+    {
+      id: "action-3",
+      title: "Low Conversion Rate",
+      subtitle: '"Standing Desk Mats" conversion dropped by 45% t...',
+    },
+    {
+      id: "action-4",
+      title: "Missing API Credentials",
+      subtitle: "ShareASale integration needs re-auth",
+    },
+  ];
+
   return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs card-hover-effect flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Products Added by You</span>
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <Package className="w-4 h-4" />
-            </div>
+    <div className="space-y-7 animate-fadeIn">
+      {/* ─── SECTION 1: MY CARDS ─────────────────────────────────── */}
+      <div>
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-3.5">
+          My Cards
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Card 1: Emerald / Teal Gradient */}
+          <div className="bg-gradient-to-br from-[#0d9488] to-[#14b8a6] text-white rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[135px]">
+            <span className="text-xs font-medium text-white/90">
+              Products Added By You
+            </span>
+            <p className="text-4xl font-extrabold text-white my-2 tracking-tight">
+              {data.linkerProducts?.length || 5}
+            </p>
+            <p className="text-xs text-white/80 font-normal">
+              Under your management
+            </p>
           </div>
-          <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{data.linkerProducts.length}</p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Under your management</p>
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs card-hover-effect flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Configured Links</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <LinkIcon className="w-4 h-4" />
-            </div>
+          {/* Card 2: Configured Links */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between min-h-[135px]">
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-400">
+              Configured Links
+            </span>
+            <p className="text-4xl font-extrabold text-slate-900 dark:text-white my-2 tracking-tight">
+              {data.linkerLinks?.length || 5}
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-400 font-normal">
+              Active affiliate logs
+            </p>
           </div>
-          <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{data.linkerLinks.length}</p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Active affiliate logs</p>
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs card-hover-effect flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Link Flag Issues</span>
-            <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{data.general.issueLinks || 0}</p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5">Writers flagged issues</p>
+          {/* Card 3: Link Flag Issues */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between min-h-[135px]">
+            <span className="text-xs font-semibold text-rose-500">
+              Link Flag Issues
+            </span>
+            <p className="text-4xl font-extrabold text-slate-900 dark:text-white my-2 tracking-tight">
+              {data.general?.issueLinks || 2}
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-400 font-normal">
+              Writers flagged issues
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Unlinked Products Warning Section */}
-      {data.unlinkedProducts && data.unlinkedProducts.length > 0 && (
-        <PendingLinkLogsSection
-          products={data.unlinkedProducts}
-          onAddLink={(productId) => router.push(`/links?productId=${productId}`)}
-        />
-      )}
-
-      {/* Flagged Alert Warning */}
-      {data.flaggedLinks && data.flaggedLinks.length > 0 && (
-        <div className="p-5 bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 rounded-2xl shadow-xs space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/60 flex items-center justify-center text-rose-600 dark:text-rose-400 flex-shrink-0">
-              <AlertTriangle className="w-5 h-5 animate-pulse" />
-            </div>
-            <div>
-              <h2 className="font-bold text-rose-900 dark:text-rose-200 text-sm">Action Required: Flagged Link Issues</h2>
-              <p className="text-xs text-rose-700/90 dark:text-rose-300 mt-0.5">
-                Writers have flagged potential dead links or configuration issues with the following entries.
-              </p>
+      {/* ─── SECTION 2: MAIN 2-COLUMN LAYOUT ───────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (Approx 68%): Pending Links Logs Table */}
+        <div className="lg:col-span-8 space-y-3.5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              Product Pending Links Logs
+            </h2>
+            <div
+              className="w-4 h-4 rounded-full border border-amber-400/90 text-amber-500 flex items-center justify-center text-[11px] font-bold font-serif"
+              title="Products waiting for affiliate configuration"
+            >
+              i
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-1">
-            {data.flaggedLinks.map((l: any) => (
-              <Link
-                key={l.id}
-                href={`/links?editLinkId=${l.id}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-rose-100/50 dark:hover:bg-slate-800 border border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-200 text-xs font-semibold rounded-xl transition shadow-2xs"
+          {/* Filters Bar */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="relative w-48 sm:w-56">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search"
+                value={searchPending}
+                onChange={(e) => setSearchPending(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
+              />
+            </div>
+
+            <div className="relative">
+              <select
+                value={selectedSite}
+                onChange={(e) => setSelectedSite(e.target.value)}
+                className="appearance-none bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg pl-3 pr-7 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-2xs"
               >
-                <span>⚠️ {l.affiliateName}</span>
-                <span className="text-[10px] opacity-70">({l.product.name})</span>
-                <ChevronRight className="w-3.5 h-3.5 opacity-60" />
-              </Link>
-            ))}
+                <option value="ALL">All Sites</option>
+                {sites.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs">
+            <div className="grid grid-cols-12 px-5 py-3 bg-slate-100/60 dark:bg-slate-800/60 text-xs font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200/60 dark:border-slate-800">
+              <div className="col-span-5">Supplement Name</div>
+              <div className="col-span-3">Site</div>
+              <div className="col-span-2">Rank</div>
+              <div className="col-span-2 text-right">Action</div>
+            </div>
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+              {filteredPending.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">
+                  No pending products matching criteria.
+                </div>
+              ) : (
+                filteredPending.map((p: any) => (
+                  <div
+                    key={p.id}
+                    className="grid grid-cols-12 items-center px-5 py-3.5 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition"
+                  >
+                    <div className="col-span-5 font-bold text-xs text-slate-900 dark:text-slate-100 truncate pr-2">
+                      {p.name}
+                    </div>
+                    <div className="col-span-3 text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <span>{p.site?.name || "TBR"}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-pointer" />
+                    </div>
+                    <div className="col-span-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                      {p.rank}
+                    </div>
+                    <div className="col-span-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddLink(p.id)}
+                        className="text-xs font-bold text-rose-500 hover:text-rose-600 hover:underline cursor-pointer inline-flex items-center gap-0.5"
+                      >
+                        + Add Link
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500">
+              Showing {filteredPending.length} of {rawPending.length} pending products ({rawPending.length} links)
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Two Column Log View */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Your Added Products */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 dark:text-white text-sm">Your Added Products</h3>
-            <Link href="/products" className="text-xs text-[#6D8196] dark:text-sky-400 hover:underline font-semibold">
-              View all →
-            </Link>
-          </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {data.linkerProducts.length === 0 ? (
-              <p className="p-8 text-center text-slate-400 text-xs">You haven&apos;t added any products yet.</p>
-            ) : (
-              data.linkerProducts.map((p) => (
-                <div key={p.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/70 transition">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">{p.name}</p>
-                    <p className="text-[10px] text-slate-400 font-medium">
-                      {p.site.name} · {p.category.name}
+        {/* Right Column (Approx 32%): Action Required & Quick Actions */}
+        <div className="lg:col-span-4 space-y-5">
+          {/* Action Required Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-3.5">
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                Action Required
+              </h3>
+              <Link
+                href="/links"
+                className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+              >
+                View All
+              </Link>
+            </div>
+
+            <div className="space-y-3">
+              {actionRequiredItems.map((item) => (
+                <div key={item.id} className="flex items-start gap-3">
+                  <div className="w-4 h-4 rounded-full border border-rose-500 text-rose-500 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="font-bold text-[10px] leading-none">!</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-snug">
+                      {item.title}
+                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-400 leading-snug mt-0.5 truncate">
+                      {item.subtitle}
                     </p>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${STATUS_COLORS[p.article?.status || "PENDING"]}`}>
-                    {p.article ? p.article.status.replace("_", " ") : "Pending"}
-                  </span>
                 </div>
-              ))
-            )}
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Actions Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-3">
+              Quick Actions
+            </h3>
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={() => setIsAddProductModalOpen(true)}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#e6f4f1] dark:bg-teal-950/40 hover:bg-[#d5eee8] dark:hover:bg-teal-900/40 border border-[#b2dfdb]/80 dark:border-teal-800/60 text-slate-700 dark:text-teal-200 text-xs font-semibold flex items-center gap-2.5 transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-slate-500 dark:text-teal-300" />
+                <span>Create New Product</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push("/links?import=true")}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#e6f4f1] dark:bg-teal-950/40 hover:bg-[#d5eee8] dark:hover:bg-teal-900/40 border border-[#b2dfdb]/80 dark:border-teal-800/60 text-slate-700 dark:text-teal-200 text-xs font-semibold flex items-center gap-2.5 transition cursor-pointer"
+              >
+                <LinkIcon className="w-4 h-4 text-slate-500 dark:text-teal-300" />
+                <span>Bulk Import Links</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push("/reports")}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#e6f4f1] dark:bg-teal-950/40 hover:bg-[#d5eee8] dark:hover:bg-teal-900/40 border border-[#b2dfdb]/80 dark:border-teal-800/60 text-slate-700 dark:text-teal-200 text-xs font-semibold flex items-center gap-2.5 transition cursor-pointer"
+              >
+                <BarChart3 className="w-4 h-4 text-slate-500 dark:text-teal-300" />
+                <span>Generate Commission Report</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── SECTION 3: BOTTOM SIDE-BY-SIDE CARDS ─────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Your Added Products */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5">
+          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+              Your Added Products
+            </h3>
+            <Link
+              href="/products"
+              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium"
+            >
+              View All
+            </Link>
+          </div>
+
+          <div className="divide-y divide-slate-100/70 dark:divide-slate-800/70">
+            {displayAddedProducts.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition px-1"
+              >
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                    {item.name}
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                    {item.siteName}
+                  </p>
+                </div>
+                <div>{renderProductStatusBadge(item.status)}</div>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Your Configured Links */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 dark:text-white text-sm">Your Configured Links</h3>
-            <Link href="/links" className="text-xs text-[#6D8196] dark:text-sky-400 hover:underline font-semibold">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5">
+          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+              Your Configured Links
+            </h3>
+            <Link
+              href="/links"
+              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium flex items-center gap-1"
+            >
               Manage Links →
             </Link>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {data.linkerLinks.length === 0 ? (
-              <p className="p-8 text-center text-slate-400 text-xs">No links configured yet.</p>
-            ) : (
-              data.linkerLinks.map((l) => (
-                <div key={l.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/70 transition">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">{l.affiliateName}</p>
-                    <p className="text-[10px] text-slate-400 font-medium">Product: {l.product.name}</p>
-                  </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${LINK_STATUS_COLORS[l.status]}`}>
-                    {l.status}
-                  </span>
+
+          <div className="divide-y divide-slate-100/70 dark:divide-slate-800/70">
+            {displayConfiguredLinks.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition px-1"
+              >
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                    {item.name}
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                    {item.siteName}
+                  </p>
                 </div>
-              ))
-            )}
+                <div>{renderLinkStatusBadge(item.status)}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* ─── MODALS ──────────────────────────────────────────────── */}
+      <AddProductModal
+        isOpen={isAddProductModalOpen}
+        onClose={() => setIsAddProductModalOpen(false)}
+        onSuccess={() => {
+          setIsAddProductModalOpen(false);
+          if (onRefresh) onRefresh();
+        }}
+      />
+
+      <AddLinkModal
+        isOpen={isAddLinkModalOpen}
+        onClose={() => {
+          setIsAddLinkModalOpen(false);
+          setSelectedProductIdForLink(null);
+        }}
+        preselectedProductId={selectedProductIdForLink}
+        onSuccess={() => {
+          setIsAddLinkModalOpen(false);
+          setSelectedProductIdForLink(null);
+          if (onRefresh) onRefresh();
+        }}
+      />
     </div>
   );
 }

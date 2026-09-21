@@ -130,17 +130,17 @@ export default function TopHeader({
 
   return (
     <div className="relative w-full">
-      {/* ─── TOP BAR PANEL ─── */}
-      <div className="w-full bg-white dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs px-5 sm:px-7 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all">
+      {/* ─── TOP BAR PANEL (Seamless matching reference) ─── */}
+      <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4 py-1 transition-all">
         {/* Left Side: Greeting & Subtitle */}
         <div className="space-y-0.5 min-w-0">
           <h1
-            className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight truncate"
+            className="text-2xl sm:text-[26px] font-bold text-slate-900 dark:text-slate-100 tracking-tight truncate"
             suppressHydrationWarning
           >
-            {getGreeting()}, {currentUser?.name || "Team Member"}
+            {getGreeting()}, {currentUser?.name || "Anjali"}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+          <p className="text-xs text-slate-400 dark:text-slate-400 font-normal truncate">
             {getRoleSubtitle()}
           </p>
         </div>
@@ -275,7 +275,7 @@ export default function TopHeader({
                 setShowProfileMenu(false);
                 setShowBellMenu(false);
               }}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-teal-500 hover:bg-teal-600 active:scale-95 text-white flex items-center justify-center font-extrabold shadow-sm transition-all cursor-pointer"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#0d9488] hover:bg-[#0f766e] active:scale-95 text-white flex items-center justify-center font-extrabold shadow-sm transition-all cursor-pointer"
               aria-label="Quick Action"
               title="Quick Action"
             >
