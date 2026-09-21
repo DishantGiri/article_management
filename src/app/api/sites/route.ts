@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         id: true,
         name: true,
         url: true,
+        allowCountrySpecific: true,
         categories: {
           select: { id: true, name: true }
         },
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
         name: site.name,
         slug: slugifySite(site.name),
         url: site.url,
+        allowCountrySpecific: site.allowCountrySpecific ?? false,
         categories: site.categories,
         productsCount: site._count.products,
         categoriesCount: site._count.categories,
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, url, categoryIds } = body;
+    const { name, url, categoryIds, allowCountrySpecific } = body;
 
     const trimmedName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
 
@@ -107,6 +109,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: trimmedName,
         url,
+        allowCountrySpecific: Boolean(allowCountrySpecific),
         categories: {
           connect: Array.isArray(categoryIds) ? categoryIds.map((id: number) => ({ id })) : []
         }

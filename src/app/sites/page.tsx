@@ -38,6 +38,7 @@ interface SiteData {
   name: string;
   slug?: string;
   url: string | null;
+  allowCountrySpecific?: boolean;
   productsCount: number;
   categoriesCount: number;
   linksCount: number;
@@ -76,6 +77,7 @@ export default function SitesPage() {
   const [form, setForm] = useState({
     name: "",
     url: "",
+    allowCountrySpecific: false,
     categoryIds: [] as number[],
   });
   const [urlError, setUrlError] = useState("");
@@ -116,7 +118,7 @@ export default function SitesPage() {
 
   const openAddModal = () => {
     setEditingSiteId(null);
-    setForm({ name: "", url: "", categoryIds: [] });
+    setForm({ name: "", url: "", allowCountrySpecific: false, categoryIds: [] });
     setError("");
     setUrlError("");
     setShowModal(true);
@@ -127,6 +129,7 @@ export default function SitesPage() {
     setForm({
       name: s.name,
       url: s.url || "",
+      allowCountrySpecific: Boolean(s.allowCountrySpecific),
       categoryIds: s.categories?.map((c) => c.id) || [],
     });
     setError("");
@@ -196,8 +199,9 @@ export default function SitesPage() {
         const categoriesSame =
           currentCatIds.length === formCatIds.length &&
           currentCatIds.every((id, idx) => id === formCatIds[idx]);
+        const countrySpecificSame = Boolean(form.allowCountrySpecific) === Boolean(currentSite.allowCountrySpecific);
 
-        if (nameSame && urlSame && categoriesSame) {
+        if (nameSame && urlSame && categoriesSame && countrySpecificSame) {
           toast.error("No changes made.");
           setShowModal(false);
           return;
@@ -376,7 +380,7 @@ export default function SitesPage() {
                 </div>
 
                 {/* Product Type Pills */}
-                <div className="mb-4 flex flex-wrap gap-1.5">
+                <div className="mb-2 flex flex-wrap gap-1.5">
                   {site.categories && site.categories.length > 0 ? (
                     site.categories.map((c) => (
                       <span
@@ -390,6 +394,16 @@ export default function SitesPage() {
                     <span className="text-[10px] font-medium text-[#737373] italic">No product types assigned</span>
                   )}
                 </div>
+
+                {/* Country-Specific Articles Badge */}
+                {site.allowCountrySpecific && (
+                  <div className="mb-4">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                      <Globe className="w-3 h-3 text-emerald-600" />
+                      Country Selection Enabled
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Stats Footer & View Articles Button */}
@@ -525,6 +539,34 @@ export default function SitesPage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Country-Specific Articles Setting Toggle */}
+              <div className="p-3.5 bg-[#FAF9F5] border border-[#CBCBCB] rounded-xl flex items-center justify-between gap-4 shadow-2xs">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-[#6D8196]" />
+                    <span className="text-xs font-bold text-[#4A4A4A]">Allow Country-Specific Articles</span>
+                  </div>
+                  <p className="text-[11px] text-[#737373] font-medium leading-relaxed">
+                    Allows writers to select target country/geo when writing articles for this site. Products with the same name across different countries will not be flagged as duplicates.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.allowCountrySpecific}
+                  onClick={() => setForm((prev) => ({ ...prev, allowCountrySpecific: !prev.allowCountrySpecific }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    form.allowCountrySpecific ? "bg-[#6D8196]" : "bg-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      form.allowCountrySpecific ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 

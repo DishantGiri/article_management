@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     include: {
       product: {
         include: {
-          site: { select: { id: true, name: true, url: true } },
+          site: { select: { id: true, name: true, url: true, allowCountrySpecific: true } },
           category: { select: { id: true, name: true } },
           addedBy: { select: { id: true, name: true } },
           linkLogs: {

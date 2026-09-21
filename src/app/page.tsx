@@ -63,6 +63,7 @@ import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 import TopHeader from "@/components/TopHeader";
 import AddProductModal from "@/components/AddProductModal";
 import AddLinkModal from "@/components/AddLinkModal";
+import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 interface DashboardData {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
@@ -2000,6 +2001,12 @@ function WriterActiveFocusWorkspace({
   );
   const hasStartConflict = !!(activeRevisionConflict || activeWritingConflict);
 
+  const siteAllowsCountry = Boolean(article.product?.site?.allowCountrySpecific);
+  const [selectedCountry, setSelectedCountry] = useState<string>(
+    article.country || article.product?.country || ""
+  );
+  const [savingCountry, setSavingCountry] = useState(false);
+
   const [reportingLink, setReportingLink] = useState<any>(null);
   const [issueMessage, setIssueMessage] = useState("");
   const [submittingReport, setSubmittingReport] = useState(false);
@@ -2010,11 +2017,33 @@ function WriterActiveFocusWorkspace({
     setArticleLink(article.articleLink || "");
     setArticleLinkError("");
     setWriterNotes("");
+    setSelectedCountry(article.country || article.product?.country || "");
     setStartingRevision(false);
     setSubmitting(false);
     setShowApprovalModal(false);
     setApprovalReason("");
-  }, [article.id, article.articleLink]);
+  }, [article.id, article.articleLink, article.country, article.product?.country]);
+
+  const handleUpdateCountry = async (countryCode: string) => {
+    setSelectedCountry(countryCode);
+    setSavingCountry(true);
+    try {
+      const res = await fetch(`/api/articles/${article.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country: countryCode || null, callerId: currentUserId }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to update country");
+      }
+      toast.success(countryCode ? `Country set to ${countryCode}` : "Set to Default / Global");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update country");
+    } finally {
+      setSavingCountry(false);
+    }
+  };
 
   const handleCopyLink = (url: string, id: string, label: string) => {
     if (!url) return;
@@ -2080,7 +2109,13 @@ function WriterActiveFocusWorkspace({
       const res = await fetch(`/api/articles/${article.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "COMPLETED", articleLink, callerId: currentUserId, notes: writerNotes }),
+        body: JSON.stringify({
+          status: "COMPLETED",
+          articleLink,
+          callerId: currentUserId,
+          notes: writerNotes,
+          country: selectedCountry || null,
+        }),
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -2168,6 +2203,14 @@ function WriterActiveFocusWorkspace({
               {article.priority === "HIGH" && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-1">
                   <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> High Priority
+                </span>
+              )}
+
+              {selectedCountry && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70 flex items-center gap-1 shadow-2xs">
+                  <span>{getCountryFlag(selectedCountry)}</span>
+                  <span className="uppercase">{selectedCountry}</span>
+                  <span className="opacity-75 font-medium">({COUNTRY_NAMES[selectedCountry.toUpperCase()] || selectedCountry})</span>
                 </span>
               )}
             </div>
@@ -2633,6 +2676,52 @@ function WriterActiveFocusWorkspace({
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Submit Finished Article</h3>
               <p className="text-xs text-slate-400 mt-0.5">Paste your Google Docs or WordPress link below.</p>
             </div>
+
+            {/* Country Selection for Article (shown when site allows country-specific articles) */}
+            {siteAllowsCountry && (
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-[#6D8196]" />
+                    Target Country / Geo
+                  </label>
+                  {savingCountry && (
+                    <span className="text-[10px] text-[#6D8196] font-bold animate-pulse">Saving...</span>
+                  )}
+                </div>
+                <select
+                  disabled={!revisionStarted || savingCountry}
+                  value={selectedCountry}
+                  onChange={(e) => handleUpdateCountry(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-[#6D8196] focus:outline-none transition cursor-pointer"
+                >
+                  <option value="">🌐 Default / Global (Worldwide)</option>
+                  <optgroup label="Tier 1 English Geos">
+                    <option value="US">🇺🇸 US - United States</option>
+                    <option value="UK">🇬🇧 UK - United Kingdom</option>
+                    <option value="CA">🇨🇦 CA - Canada</option>
+                    <option value="AU">🇦🇺 AU - Australia</option>
+                  </optgroup>
+                  <optgroup label="Latin America (LATAM)">
+                    <option value="MX">🇲🇽 MX - Mexico</option>
+                    <option value="BR">🇧🇷 BR - Brazil</option>
+                    <option value="AR">🇦🇷 AR - Argentina</option>
+                    <option value="CO">🇨🇴 CO - Colombia</option>
+                    <option value="CL">🇨🇱 CL - Chile</option>
+                    <option value="PE">🇵🇪 PE - Peru</option>
+                    <option value="EC">🇪🇨 EC - Ecuador</option>
+                  </optgroup>
+                  <optgroup label="Europe">
+                    <option value="DE">🇩🇪 DE - Germany</option>
+                    <option value="FR">🇫🇷 FR - France</option>
+                    <option value="ES">🇪🇸 ES - Spain</option>
+                  </optgroup>
+                </select>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Select country to tailor article for regional readers and prevent duplicate product errors.
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">

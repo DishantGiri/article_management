@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     interface IncomingProduct {
       name: string;
       slug?: string | null;
+      country?: string | null;
       productCategory?: string | null;
       affiliateName?: string | null;
       trendLevel?: string | null;
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
         .map((p) => ({
           name: typeof p.name === "string" ? p.name.trim() : "",
           slug: typeof p.slug === "string" ? p.slug.trim() : (typeof body.slug === "string" ? body.slug.trim() : null),
+          country: typeof p.country === "string" && p.country.trim() ? p.country.trim() : (typeof body.country === "string" && body.country.trim() ? body.country.trim() : null),
           productCategory: p.productCategory?.trim() || productCategory?.trim() || null,
           affiliateName: p.affiliateName?.trim() || affiliateName?.trim() || null,
           trendLevel: p.trendLevel || trendLevel || "HIGH",
@@ -63,6 +65,7 @@ export async function POST(req: NextRequest) {
         .map((n) => ({
           name: n,
           slug: typeof body.slug === "string" ? body.slug.trim() : null,
+          country: typeof body.country === "string" && body.country.trim() ? body.country.trim() : null,
           productCategory: productCategory?.trim() || null,
           affiliateName: affiliateName?.trim() || null,
           trendLevel: trendLevel || "HIGH",
@@ -72,12 +75,13 @@ export async function POST(req: NextRequest) {
         }));
     }
 
-    // Deduplicate by name (case-insensitive)
-    const seenNames = new Set<string>();
+    // Deduplicate within the incoming batch (by name + country)
+    const seenBatchItems = new Set<string>();
     productItems = productItems.filter((p) => {
-      const lower = p.name.toLowerCase();
-      if (seenNames.has(lower)) return false;
-      seenNames.add(lower);
+      const countryKey = (p.country || "").trim().toUpperCase();
+      const key = `${p.name.toLowerCase()}:::${countryKey}`;
+      if (seenBatchItems.has(key)) return false;
+      seenBatchItems.add(key);
       return true;
     });
 
@@ -167,10 +171,11 @@ export async function POST(req: NextRequest) {
         ]),
       },
       include: {
-        site: { select: { name: true } },
+        site: { select: { id: true, name: true, allowCountrySpecific: true } },
         addedBy: { select: { name: true } },
         article: {
           select: {
+            country: true,
             writer: { select: { name: true } },
           },
         },
@@ -178,37 +183,57 @@ export async function POST(req: NextRequest) {
       orderBy: { addedAt: "desc" },
     });
 
-    if (existingProducts.length > 0) {
-      const duplicateNames = trimmedNames.filter((tName) =>
-        existingProducts.some((p) => p.name.trim().toLowerCase() === tName.toLowerCase())
-      );
+    // Check duplicate products:
+    // If the site has allowCountrySpecific = true:
+    // Only flag as duplicate if an existing product on that site has the SAME country (or both default).
+    // If the country differs, it is NOT a duplicate ("same name dosenot matter but if diff country then that is no dublitec product").
+    const duplicateConflicts: { item: IncomingProduct; existing: (typeof existingProducts)[0] }[] = [];
 
-      if (duplicateNames.length > 0) {
-        if (trimmedNames.length === 1) {
-          const singleName = trimmedNames[0];
-          const matching = existingProducts.filter((p) => p.name.trim().toLowerCase() === singleName.toLowerCase());
-          const addedBys = Array.from(new Set(matching.map((p) => p.addedBy?.name).filter(Boolean)));
-          const siteNames = Array.from(new Set(matching.map((p) => p.site?.name).filter(Boolean)));
-          const siteSuffix = siteNames.length > 0 ? ` on site ${siteNames.join(", ")}` : " on this site";
-
-          const addedByPart = addedBys.join(", ");
-          const errorMsg = `Already added by linker ${addedByPart || "another linker"}${siteSuffix}.`;
-
-          return NextResponse.json({ error: errorMsg }, { status: 400 });
-        } else {
-          const details = duplicateNames.map((dName) => {
-            const matching = existingProducts.filter((p) => p.name.trim().toLowerCase() === dName.toLowerCase());
-            const addedBys = Array.from(new Set(matching.map((p) => p.addedBy?.name).filter(Boolean)));
-            const siteNames = Array.from(new Set(matching.map((p) => p.site?.name).filter(Boolean)));
-            const siteStr = siteNames.length > 0 ? ` on ${siteNames.join(", ")}` : "";
-            const userStr = addedBys.length > 0 ? `linker ${addedBys.join(", ")}` : "another linker";
-            return `"${dName}" (already added by ${userStr}${siteStr})`;
-          });
-
-          return NextResponse.json({
-            error: `The following ${duplicateNames.length} product(s) already exist: ${details.join("; ")}. Please remove them from the list.`,
-          }, { status: 400 });
+    for (const item of productItems) {
+      const itemCountry = (item.country || "").trim().toUpperCase();
+      for (const ep of existingProducts) {
+        if (ep.name.trim().toLowerCase() === item.name.toLowerCase()) {
+          const siteAllowsCountry = Boolean(ep.site?.allowCountrySpecific);
+          if (siteAllowsCountry) {
+            const epCountry = (ep.country || ep.article?.country || "").trim().toUpperCase();
+            if (epCountry === itemCountry) {
+              duplicateConflicts.push({ item, existing: ep });
+            }
+          } else {
+            duplicateConflicts.push({ item, existing: ep });
+          }
         }
+      }
+    }
+
+    if (duplicateConflicts.length > 0) {
+      if (duplicateConflicts.length === 1) {
+        const conflict = duplicateConflicts[0];
+        const addedByPart = conflict.existing.addedBy?.name || "another linker";
+        const siteName = conflict.existing.site?.name;
+        const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
+        const countryPart = conflict.item.country ? ` for country ${conflict.item.country}` : "";
+
+        const errorMsg = `Already added by linker ${addedByPart}${siteSuffix}${countryPart}.`;
+        return NextResponse.json({ error: errorMsg }, { status: 400 });
+      } else {
+        const conflictDetails = Array.from(
+          new Set(
+            duplicateConflicts.map((c) => {
+              const siteStr = c.existing.site?.name ? ` on ${c.existing.site.name}` : "";
+              const userStr = c.existing.addedBy?.name ? `linker ${c.existing.addedBy.name}` : "another linker";
+              const countryStr = c.item.country ? ` (${c.item.country})` : "";
+              return `"${c.item.name}"${countryStr} (already added by ${userStr}${siteStr})`;
+            })
+          )
+        );
+
+        return NextResponse.json(
+          {
+            error: `The following product(s) already exist: ${conflictDetails.join("; ")}. Please remove them from the list.`,
+          },
+          { status: 400 }
+        );
       }
     }
 
@@ -226,6 +251,7 @@ export async function POST(req: NextRequest) {
           productsToCreate.push({
             name: item.name,
             slug: finalSlug || null,
+            country: item.country || null,
             siteId: site.id,
             categoryId: cat.id,
             productCategory: item.productCategory || null,
@@ -249,7 +275,7 @@ export async function POST(req: NextRequest) {
         prisma.product.create({
           data: p,
           include: {
-            site: { select: { name: true, url: true } },
+            site: { select: { name: true, url: true, allowCountrySpecific: true } },
             category: { select: { name: true } },
             addedBy: { select: { name: true } },
           },
@@ -257,11 +283,11 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    // Auto-create a PENDING article for each product
+    // Auto-create a PENDING article for each product with matching country
     await prisma.$transaction(
       createdProducts.map((p) =>
         prisma.article.create({
-          data: { productId: p.id, status: "PENDING" },
+          data: { productId: p.id, status: "PENDING", country: p.country || null },
         })
       )
     );
@@ -357,10 +383,10 @@ export async function GET(req: NextRequest) {
         : {}),
     },
     include: {
-      site: { select: { id: true, name: true, url: true } },
+      site: { select: { id: true, name: true, url: true, allowCountrySpecific: true } },
       category: { select: { id: true, name: true } },
       addedBy: { select: { id: true, name: true } },
-      article: { select: { id: true, status: true, articleLink: true, writer: { select: { id: true, name: true } } } },
+      article: { select: { id: true, status: true, articleLink: true, country: true, writer: { select: { id: true, name: true } } } },
       linkLogs: { include: { geos: true } },
     },
     orderBy: { addedAt: "desc" },

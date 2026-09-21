@@ -97,7 +97,7 @@ export async function PATCH(
     const { slug: rawSlug } = await params;
     const id = parseInt(rawSlug.split("-")[0]);
     const body = await req.json();
-    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted, suggestion, openToTeam, flagForUpdate } = body;
+    const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted, suggestion, openToTeam, flagForUpdate, country } = body;
 
     const activeUserId = Number(session.user.id);
     const activeUserRole = session.user.role || "";
@@ -107,7 +107,7 @@ export async function PATCH(
       include: {
         product: {
           include: {
-            site: { select: { id: true, name: true } },
+            site: { select: { id: true, name: true, allowCountrySpecific: true } },
           },
         },
         writer: { select: { id: true, name: true } },
@@ -368,27 +368,45 @@ export async function PATCH(
           },
         });
 
-        const duplicateArticle = otherArticles.find(
-          (a) =>
+        const siteAllowsCountry = Boolean(existing.product?.site?.allowCountrySpecific);
+        const currentTargetCountry = (
+          country !== undefined
+            ? (country || "")
+            : (existing.country || existing.product?.country || "")
+        ).trim().toUpperCase();
+
+        const duplicateArticle = otherArticles.find((a) => {
+          const nameMatch =
             a.product?.name?.trim().toLowerCase() === currentProductName.toLowerCase() &&
-            a.product?.siteId === currentSiteId
-        );
+            a.product?.siteId === currentSiteId;
+          if (!nameMatch) return false;
+
+          // If country-specific articles are enabled on this site:
+          // Only conflict if the country matches!
+          if (siteAllowsCountry) {
+            const otherCountry = (a.country || a.product?.country || "").trim().toUpperCase();
+            return otherCountry === currentTargetCountry;
+          }
+
+          return true;
+        });
 
         if (duplicateArticle) {
           const writerName = duplicateArticle.writer?.name;
           const siteName = duplicateArticle.product?.site?.name;
           const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
           const writerDesc = writerName ? `writer ${writerName}` : "another writer";
+          const countrySuffix = currentTargetCountry ? ` for country ${currentTargetCountry}` : "";
 
           let errorMsg = "";
           if (duplicateArticle.status === "IN_PROGRESS") {
-            errorMsg = `This product is currently being written by ${writerDesc}${siteSuffix}.`;
+            errorMsg = `This product is currently being written by ${writerDesc}${siteSuffix}${countrySuffix}.`;
           } else if (duplicateArticle.status === "COMPLETED" || duplicateArticle.status === "APPROVED") {
-            errorMsg = `This article has already been completed by ${writerDesc}${siteSuffix}.`;
+            errorMsg = `This article has already been completed by ${writerDesc}${siteSuffix}${countrySuffix}.`;
           } else if (duplicateArticle.status === "REDO") {
-            errorMsg = `This article is currently under revision by ${writerDesc}${siteSuffix}.`;
+            errorMsg = `This article is currently under revision by ${writerDesc}${siteSuffix}${countrySuffix}.`;
           } else {
-            errorMsg = `This product is currently being worked on by ${writerDesc}${siteSuffix}.`;
+            errorMsg = `This product is currently being worked on by ${writerDesc}${siteSuffix}${countrySuffix}.`;
           }
 
           return NextResponse.json({ error: errorMsg }, { status: 400 });
@@ -431,11 +449,21 @@ export async function PATCH(
       productCreatedAt = completedAt;
     }
 
+    // If country is specified, update product country as well
+    if (country !== undefined && existing.productId) {
+      const sanitizedCountry = country && country.trim() ? country.trim().toUpperCase() : null;
+      await prisma.product.update({
+        where: { id: existing.productId },
+        data: { country: sanitizedCountry },
+      });
+    }
+
     const updated = await prisma.article.update({
       where: { id },
       data: {
         ...(status ? { status } : {}),
         ...(writerId !== undefined ? { writerId: writerId ? parseInt(writerId) : null } : {}),
+        ...(country !== undefined ? { country: country && country.trim() ? country.trim().toUpperCase() : null } : {}),
         ...(articleLink !== undefined ? { articleLink } : {}),
         ...(priority !== undefined ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" } : {}),
         ...(specialApprovalRequested !== undefined ? { specialApprovalRequested } : {}),

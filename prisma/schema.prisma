@@ -129,6 +129,7 @@ model Site {
   id          Int         @id @default(autoincrement())
   name        String
   url         String?
+  allowCountrySpecific Boolean @default(false)
 
   createdAt   DateTime    @default(now())
 
@@ -172,6 +173,7 @@ model Product {
   id            Int         @id @default(autoincrement())
   name          String
   slug          String?
+  country       String?
 
   siteId        Int
   categoryId    Int
@@ -201,6 +203,7 @@ model Article {
   id              Int           @id @default(autoincrement())
   productId       Int           @unique
   writerId        Int?
+  country         String?
   status          ArticleStatus @default(PENDING)
   articleLink     String?
   startedAt       DateTime?     // Set when status → IN_PROGRESS
