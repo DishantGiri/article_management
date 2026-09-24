@@ -14,20 +14,27 @@ export async function GET(req: NextRequest) {
 
     const currentUserId = Number(session.user.id);
 
-    // Fetch user from DB to ensure most up-to-date role
+    // Fetch user from DB to ensure most up-to-date role and join date
     const dbUser = await prisma.user.findUnique({
       where: { id: currentUserId },
-      select: { id: true, role: true },
+      select: { id: true, role: true, createdAt: true },
     });
 
-    const currentUserRole = dbUser?.role || session.user.role;
+    if (!dbUser) {
+      return NextResponse.json([]);
+    }
+
+    const currentUserRole = dbUser.role || session.user.role;
     if (!currentUserRole) {
       return NextResponse.json([]);
     }
 
-    // Find all notices where current user has NOT acknowledged yet
+    // Find all notices created after or at the time user joined where current user has NOT acknowledged yet
     const pendingNotices = await prisma.notice.findMany({
       where: {
+        createdAt: {
+          gte: dbUser.createdAt,
+        },
         acknowledgments: {
           none: {
             userId: currentUserId,
