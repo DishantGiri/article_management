@@ -28,11 +28,13 @@ import {
   Info,
   Sun,
   Moon,
+  Cloud,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useTheme } from "@/context/ThemeContext";
+import GoogleDriveBackupSettings from "@/components/GoogleDriveBackupSettings";
 
 const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-purple-100 text-purple-800 border-purple-200",
@@ -62,7 +64,16 @@ const PRESET_AVATARS = [
 export default function SettingsPage() {
   const { data: session } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<"profile" | "appearance" | "notifications" | "workspace" | "security">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "appearance" | "notifications" | "workspace" | "security" | "backup">("profile");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("tab") === "backup") {
+        setActiveTab("backup");
+      }
+    }
+  }, []);
 
   // User Profile
   const [userData, setUserData] = useState<any>(null);
@@ -484,6 +495,9 @@ export default function SettingsPage() {
             { id: "notifications", label: "Notification Alerts", icon: Bell, badge: soundEnabled ? "Active" : "Muted" },
             { id: "workspace", label: "Workspace & Display", icon: Sliders },
             { id: "security", label: "Security & Session", icon: Shield },
+            ...(session?.user?.role === "SUPER_ADMIN"
+              ? [{ id: "backup", label: "Google Drive & Backups", icon: Cloud, badge: "Super Admin" }]
+              : []),
           ].map((t) => {
             const Icon = t.icon;
             const isActive = activeTab === t.id;
@@ -1356,6 +1370,13 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ─── TAB 6: GOOGLE DRIVE & BACKUPS (SUPER ADMIN) ────────────────── */}
+      {activeTab === "backup" && session?.user?.role === "SUPER_ADMIN" && (
+        <div className="animate-fadeIn">
+          <GoogleDriveBackupSettings />
         </div>
       )}
     </div>

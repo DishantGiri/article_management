@@ -7,6 +7,11 @@
     "build": "prisma generate && next build",
     "start": "NODE_ENV=production tsx server.ts",
     "lint": "eslint",
+    "backup": "bash ./scripts/backup-to-gdrive.sh --daily",
+    "backup:hourly": "bash ./scripts/backup-to-gdrive.sh --hourly",
+    "backup:daily": "bash ./scripts/backup-to-gdrive.sh --daily",
+    "restore": "bash ./scripts/restore-from-backup.sh",
+    "restore:latest": "bash ./scripts/restore-from-backup.sh --latest --yes",
     "seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },
