@@ -657,12 +657,14 @@ function ProductsPageContent() {
             </button>
           )}
 
-          <Link
-            href="/product-types"
-            className="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition"
-          >
-            Product Types and Categories
-          </Link>
+          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER" || session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "ADMIN" || session?.user?.role === "LINKER") && (
+            <Link
+              href="/product-types"
+              className="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition"
+            >
+              Product Types and Categories
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-3 pb-3 sm:pb-0">

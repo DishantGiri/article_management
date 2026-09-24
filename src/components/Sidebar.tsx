@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, Layers, Tag, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText } from "lucide-react";
+import { LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
@@ -75,18 +75,6 @@ const NAV_ITEMS: NavItem[] = [
     label: "Sites",
     roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
     icon: Globe,
-  },
-  {
-    href: "/categories",
-    label: "Product Types",
-    roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
-    icon: Layers,
-  },
-  {
-    href: "/product-categories",
-    label: "Product Categories",
-    roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
-    icon: Tag,
   },
   {
     href: "/reports",
@@ -410,6 +398,9 @@ export default function Sidebar() {
     : [];
 
   const activeHref = visibleNavItems.reduce((best, item) => {
+    if (item.href === "/products" && (pathname === "/product-types" || pathname.startsWith("/product-types/"))) {
+      return item.href;
+    }
     if (pathname.startsWith(item.href) && item.href.length > best.length) {
       if (item.href === "/" && pathname !== "/") return best;
       return item.href;
