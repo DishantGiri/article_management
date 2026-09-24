@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
 
     const host = req.headers.get("host") || "localhost:3022";
     const protocol = req.headers.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
-    const redirectUri = `${protocol}://${host}/api/backup/google/callback`;
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    const redirectUri = `${baseUrl.replace(/\/$/, "")}/api/backup/google/callback`;
 
     // Exchange code for token
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {

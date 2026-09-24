@@ -14,10 +14,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "GDRIVE_CLIENT_ID not found in .env" }, { status: 400 });
     }
 
-    // Determine base URL dynamically from request host or env
+    // Determine base URL from NEXTAUTH_URL, NEXT_PUBLIC_APP_URL, or request headers
     const host = req.headers.get("host") || "localhost:3022";
     const protocol = req.headers.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
-    const redirectUri = `${protocol}://${host}/api/backup/google/callback`;
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    const redirectUri = `${baseUrl.replace(/\/$/, "")}/api/backup/google/callback`;
 
     const scope = [
       "https://www.googleapis.com/auth/drive",
