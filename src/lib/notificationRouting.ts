@@ -1,6 +1,20 @@
 /**
- * Utility to parse notifications and resolve accurate target URLs with search and status filters.
+ * Utility to parse notifications and resolve accurate target URLs with search, exact match, and status filters.
  */
+
+function buildTargetUrl(basePath: string, searchItem: string | null, extraParams: Record<string, string> = {}): string {
+  if (!searchItem) {
+    const params = new URLSearchParams(extraParams);
+    const qs = params.toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  }
+  const params = new URLSearchParams({
+    search: searchItem,
+    exact: "true",
+    ...extraParams,
+  });
+  return `${basePath}?${params.toString()}`;
+}
 
 export function getNotificationTargetUrl(
   notification: { type?: string; message: string },
@@ -51,28 +65,18 @@ export function getNotificationTargetUrl(
   ) {
     // Writers cannot access /links due to route middleware restrictions
     if (role === "WRITER") {
-      return primaryItem
-        ? `/products?search=${encodeURIComponent(primaryItem)}`
-        : `/products`;
+      return buildTargetUrl("/products", primaryItem);
     }
-    const params = new URLSearchParams();
-    if (primaryItem) {
-      params.set("search", primaryItem);
-    }
-    params.set("status", "ISSUE");
-    return `/links?${params.toString()}`;
+    return buildTargetUrl("/links", primaryItem, { status: "ISSUE" });
   }
 
-  // 3. PRODUCT ADDED / IMPORTED (routes to /products with product search)
+  // 3. PRODUCT ADDED / IMPORTED (routes to /products with exact product search)
   if (
     type === "PRODUCT_ADDED" ||
     lowerMsg.includes("product added") ||
     lowerMsg.includes("new product")
   ) {
-    if (primaryItem) {
-      return `/products?search=${encodeURIComponent(primaryItem)}`;
-    }
-    return `/products`;
+    return buildTargetUrl("/products", primaryItem);
   }
 
   // 4. ARTICLE: SPECIAL APPROVAL GRANTED (UNLOCKED FOR EDITING)
@@ -82,14 +86,12 @@ export function getNotificationTargetUrl(
     (lowerMsg.includes("request to update") && lowerMsg.includes("was approved"))
   ) {
     if (role === "LINKER") {
-      return primaryItem ? `/links?search=${encodeURIComponent(primaryItem)}` : `/links`;
+      return buildTargetUrl("/links", primaryItem);
     }
     if (role === "WRITER") {
-      return primaryItem
-        ? `/articles?search=${encodeURIComponent(primaryItem)}`
-        : `/?tab=write`;
+      return primaryItem ? buildTargetUrl("/articles", primaryItem) : "/?tab=write";
     }
-    return primaryItem ? `/articles?search=${encodeURIComponent(primaryItem)}` : `/articles`;
+    return buildTargetUrl("/articles", primaryItem);
   }
 
   // 5. ARTICLE: REDO / CHANGES REQUESTED
@@ -100,12 +102,9 @@ export function getNotificationTargetUrl(
     lowerMsg.includes("needs changes")
   ) {
     if (role === "LINKER") {
-      return primaryItem ? `/links?search=${encodeURIComponent(primaryItem)}` : `/links`;
+      return buildTargetUrl("/links", primaryItem);
     }
-    const params = new URLSearchParams();
-    if (primaryItem) params.set("search", primaryItem);
-    params.set("status", "REDO");
-    return `/articles?${params.toString()}`;
+    return buildTargetUrl("/articles", primaryItem, { status: "REDO" });
   }
 
   // 6. ARTICLE: COMPLETED / SUBMITTED (Ready for review by Team Lead / Admin)
@@ -117,12 +116,9 @@ export function getNotificationTargetUrl(
     lowerMsg.includes("please review it")
   ) {
     if (role === "LINKER") {
-      return primaryItem ? `/links?search=${encodeURIComponent(primaryItem)}` : `/links`;
+      return buildTargetUrl("/links", primaryItem);
     }
-    const params = new URLSearchParams();
-    if (primaryItem) params.set("search", primaryItem);
-    params.set("status", "COMPLETED");
-    return `/articles?${params.toString()}`;
+    return buildTargetUrl("/articles", primaryItem, { status: "COMPLETED" });
   }
 
   // 7. ARTICLE: APPROVED (Initial article approval)
@@ -132,12 +128,9 @@ export function getNotificationTargetUrl(
     type === "APPROVAL_GRANTED"
   ) {
     if (role === "LINKER") {
-      return primaryItem ? `/links?search=${encodeURIComponent(primaryItem)}` : `/links`;
+      return buildTargetUrl("/links", primaryItem);
     }
-    const params = new URLSearchParams();
-    if (primaryItem) params.set("search", primaryItem);
-    params.set("status", "APPROVED");
-    return `/articles?${params.toString()}`;
+    return buildTargetUrl("/articles", primaryItem, { status: "APPROVED" });
   }
 
   // 8. ARTICLE: STARTED WRITING
@@ -146,12 +139,9 @@ export function getNotificationTargetUrl(
     lowerMsg.includes("started writing")
   ) {
     if (role === "LINKER") {
-      return primaryItem ? `/links?search=${encodeURIComponent(primaryItem)}` : `/links`;
+      return buildTargetUrl("/links", primaryItem);
     }
-    const params = new URLSearchParams();
-    if (primaryItem) params.set("search", primaryItem);
-    params.set("status", "IN_PROGRESS");
-    return `/articles?${params.toString()}`;
+    return buildTargetUrl("/articles", primaryItem, { status: "IN_PROGRESS" });
   }
 
   // 9. ARTICLE: ASSIGNED TO WRITER / NEW ARTICLE AVAILABLE
@@ -162,12 +152,9 @@ export function getNotificationTargetUrl(
     lowerMsg.includes("opened the article")
   ) {
     if (role === "LINKER") {
-      return primaryItem ? `/links?search=${encodeURIComponent(primaryItem)}` : `/links`;
+      return buildTargetUrl("/links", primaryItem);
     }
-    if (primaryItem) {
-      return `/articles?search=${encodeURIComponent(primaryItem)}`;
-    }
-    return `/articles`;
+    return buildTargetUrl("/articles", primaryItem);
   }
 
   // 10. ARTICLE: UPDATE REQUEST / SPECIAL APPROVAL / FLAG RAISED / DECLINED
@@ -180,29 +167,26 @@ export function getNotificationTargetUrl(
     lowerMsg.includes("declined by")
   ) {
     if (role === "LINKER") {
-      return primaryItem ? `/links?search=${encodeURIComponent(primaryItem)}` : `/links`;
+      return buildTargetUrl("/links", primaryItem);
     }
-    if (primaryItem) {
-      return `/articles?search=${encodeURIComponent(primaryItem)}`;
-    }
-    return `/articles`;
+    return buildTargetUrl("/articles", primaryItem);
   }
 
   // 11. Role-safe fallbacks based on role and keywords
   if (primaryItem) {
     if (role === "LINKER") {
-      return `/links?search=${encodeURIComponent(primaryItem)}`;
+      return buildTargetUrl("/links", primaryItem);
     }
     if (role === "WRITER") {
-      return `/articles?search=${encodeURIComponent(primaryItem)}`;
+      return buildTargetUrl("/articles", primaryItem);
     }
     if (lowerMsg.includes("link")) {
-      return `/links?search=${encodeURIComponent(primaryItem)}`;
+      return buildTargetUrl("/links", primaryItem);
     }
     if (lowerMsg.includes("product")) {
-      return `/products?search=${encodeURIComponent(primaryItem)}`;
+      return buildTargetUrl("/products", primaryItem);
     }
-    return `/articles?search=${encodeURIComponent(primaryItem)}`;
+    return buildTargetUrl("/articles", primaryItem);
   }
 
   if (role === "LINKER") return "/links";

@@ -73,7 +73,9 @@ function ArticlesContent() {
   const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const urlExact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
   const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [isExact, setIsExact] = useState(urlExact);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -114,14 +116,17 @@ function ArticlesContent() {
     const st = searchParams.get("status");
     const w = searchParams.get("writer");
     const site = searchParams.get("site");
+    const exact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
 
     if (s !== null) {
       setSearch(s);
+      setIsExact(exact);
       setStatusFilter(st || "");
       setWriterFilter(w || "");
       setSiteFilter(site || "");
       setCurrentPage(1);
     } else {
+      setIsExact(false);
       if (st !== null) setStatusFilter(st);
       if (w !== null) setWriterFilter(w);
       if (site !== null) setSiteFilter(site);
@@ -382,9 +387,28 @@ function ArticlesContent() {
   const uniqueSites = Array.from(new Set(articles.map((a) => a.product.site.name).filter(Boolean))) as string[];
 
   const filtered = articles.filter((a) => {
-    const matchSearch =
-      !search ||
-      fuzzyMatchAny(
+    const cleanQuery = (search || "").trim().toLowerCase();
+    const cleanProductName = (a.product?.name || "").trim().toLowerCase();
+    const cleanProductSlug = (a.product?.slug || "").trim().toLowerCase();
+
+    let matchSearch = false;
+    if (!search) {
+      matchSearch = true;
+    } else if (isExact) {
+      const hasExactAny = articles.some(
+        (art) =>
+          (art.product?.name || "").trim().toLowerCase() === cleanQuery ||
+          (art.product?.slug || "").trim().toLowerCase() === cleanQuery
+      );
+      if (hasExactAny) {
+        matchSearch =
+          cleanProductName === cleanQuery ||
+          cleanProductSlug === cleanQuery;
+      } else {
+        matchSearch = cleanProductName.includes(cleanQuery);
+      }
+    } else {
+      matchSearch = fuzzyMatchAny(
         [
           a.product?.name,
           a.product?.slug,
@@ -395,6 +419,7 @@ function ArticlesContent() {
         ],
         search
       );
+    }
 
     const matchStatus = !statusFilter
       ? true
@@ -823,13 +848,14 @@ function ArticlesContent() {
             type="text"
             placeholder="Search articles..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => { setSearch(e.target.value); setIsExact(false); setCurrentPage(1); }}
             className="w-full pl-9 pr-8 py-2 border-none text-sm focus:outline-none focus:ring-0 bg-transparent placeholder-slate-400 font-medium text-slate-700"
           />
           {search && (
             <button
               onClick={() => {
                 setSearch("");
+                setIsExact(false);
                 router.replace("/articles");
                 setCurrentPage(1);
               }}
@@ -840,6 +866,19 @@ function ArticlesContent() {
             </button>
           )}
         </div>
+
+        {isExact && search && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800 rounded-xl text-xs font-semibold shrink-0 shadow-2xs">
+            <span>Exact Product Match</span>
+            <button
+              type="button"
+              onClick={() => { setIsExact(false); router.replace(`/articles?search=${encodeURIComponent(search)}`); }}
+              className="text-teal-600 hover:text-teal-900 dark:hover:text-teal-100 text-[11px] underline ml-1 cursor-pointer"
+            >
+              Show all related
+            </button>
+          </div>
+        )}
 
         {/* Status Filter */}
         <CustomSelect

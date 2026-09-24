@@ -73,10 +73,12 @@ function LinksPageContent() {
   const urlProductId = searchParams.get("productId");
   const urlSearch = searchParams.get("search");
   const urlStatus = searchParams.get("status");
+  const urlExact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
 
   const [links, setLinks] = useState<LinkLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(urlSearch || "");
+  const [isExact, setIsExact] = useState(urlExact);
   const [statusFilter, setStatusFilter] = useState(urlStatus || "");
   const [showOnlyDeadLinks, setShowOnlyDeadLinks] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -129,17 +131,22 @@ function LinksPageContent() {
   useEffect(() => {
     const s = searchParams.get("search");
     const st = searchParams.get("status");
+    const exact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
     if (s !== null) {
       setSearch(s);
+      setIsExact(exact);
       setStatusFilter(st || "");
       setUserFilter("");
       setShowOnlyDeadLinks(false);
       setStartDate("");
       setEndDate("");
       setCurrentPage(1);
-    } else if (st !== null) {
-      setStatusFilter(st);
-      setCurrentPage(1);
+    } else {
+      setIsExact(false);
+      if (st !== null) {
+        setStatusFilter(st);
+        setCurrentPage(1);
+      }
     }
   }, [searchParams]);
 
@@ -304,9 +311,28 @@ function LinksPageContent() {
   const uniqueAdders = Array.from(new Set(links.map((l) => l.addedBy?.name).filter(Boolean))) as string[];
 
   const filtered = links.filter((l) => {
-    const matchSearch =
-      !search ||
-      fuzzyMatchAny(
+    const cleanQuery = (search || "").trim().toLowerCase();
+    const cleanProductName = (l.product?.name || "").trim().toLowerCase();
+    const cleanProductSlug = (l.product?.slug || "").trim().toLowerCase();
+
+    let matchSearch = false;
+    if (!search) {
+      matchSearch = true;
+    } else if (isExact) {
+      const hasExactAny = links.some(
+        (item) =>
+          (item.product?.name || "").trim().toLowerCase() === cleanQuery ||
+          (item.product?.slug || "").trim().toLowerCase() === cleanQuery
+      );
+      if (hasExactAny) {
+        matchSearch =
+          cleanProductName === cleanQuery ||
+          cleanProductSlug === cleanQuery;
+      } else {
+        matchSearch = cleanProductName.includes(cleanQuery);
+      }
+    } else {
+      matchSearch = fuzzyMatchAny(
         [
           l.product?.name,
           l.product?.slug,
@@ -318,6 +344,7 @@ function LinksPageContent() {
         ],
         search
       );
+    }
 
     const matchStatus = !statusFilter || (
       statusFilter === "ISSUE"
@@ -692,19 +719,32 @@ function LinksPageContent() {
               type="text"
               placeholder="Search link logs, products, networks..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
+              onChange={(e) => { setSearch(e.target.value); setIsExact(false); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
               className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#6D8196] focus:border-transparent bg-slate-50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-800 transition"
             />
             {search && (
               <button
                 type="button"
-                onClick={() => { setSearch(""); router.replace("/links"); setCurrentPage(1); }}
+                onClick={() => { setSearch(""); setIsExact(false); router.replace("/links"); setCurrentPage(1); }}
                 className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
+
+          {isExact && search && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800 rounded-xl text-xs font-semibold shrink-0 shadow-2xs">
+              <span>Exact Product Match</span>
+              <button
+                type="button"
+                onClick={() => { setIsExact(false); router.replace(`/links?search=${encodeURIComponent(search)}`); }}
+                className="text-teal-600 hover:text-teal-900 dark:hover:text-teal-100 text-[11px] underline ml-1 cursor-pointer"
+              >
+                Show all related
+              </button>
+            </div>
+          )}
 
           {/* Status Filter */}
           <CustomSelect

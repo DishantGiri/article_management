@@ -62,12 +62,14 @@ function ProductsPageContent() {
   const urlStatus = searchParams.get("status");
   const urlSite = searchParams.get("site");
   const urlCategory = searchParams.get("category");
+  const urlExact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
 
   const [mounted, setMounted] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(urlSearch || "");
+  const [isExact, setIsExact] = useState(urlExact);
   const [siteFilter, setSiteFilter] = useState(urlSite || "");
   const [categoryFilter, setCategoryFilter] = useState(urlCategory || "");
   const [statusFilter, setStatusFilter] = useState(urlStatus || "");
@@ -88,9 +90,11 @@ function ProductsPageContent() {
     const st = searchParams.get("status");
     const site = searchParams.get("site");
     const cat = searchParams.get("category");
+    const exact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
 
     if (s !== null) {
       setSearch(s);
+      setIsExact(exact);
       setStatusFilter(st || "");
       setSiteFilter(site || "");
       setCategoryFilter(cat || "");
@@ -98,7 +102,9 @@ function ProductsPageContent() {
       setStartDate("");
       setEndDate("");
       setCurrentPage(1);
+      setActiveTab("products");
     } else {
+      setIsExact(false);
       if (st !== null) setStatusFilter(st);
       if (site !== null) setSiteFilter(site);
       if (cat !== null) setCategoryFilter(cat);
@@ -309,9 +315,28 @@ function ProductsPageContent() {
   ) as string[];
 
   const filtered = products.filter((p) => {
-    const matchSearch =
-      !search ||
-      fuzzyMatchAny(
+    const cleanQuery = (search || "").trim().toLowerCase();
+    const cleanProductName = (p.name || "").trim().toLowerCase();
+    const cleanProductSlug = (p.slug || "").trim().toLowerCase();
+
+    let matchSearch = false;
+    if (!search) {
+      matchSearch = true;
+    } else if (isExact) {
+      const hasExactAny = products.some(
+        (prod) =>
+          (prod.name || "").trim().toLowerCase() === cleanQuery ||
+          (prod.slug || "").trim().toLowerCase() === cleanQuery
+      );
+      if (hasExactAny) {
+        matchSearch =
+          cleanProductName === cleanQuery ||
+          cleanProductSlug === cleanQuery;
+      } else {
+        matchSearch = cleanProductName.includes(cleanQuery);
+      }
+    } else {
+      matchSearch = fuzzyMatchAny(
         [
           p.name,
           p.slug,
@@ -323,6 +348,7 @@ function ProductsPageContent() {
         ],
         search
       );
+    }
 
     const matchSite =
       !siteFilter ||
@@ -408,9 +434,28 @@ function ProductsPageContent() {
   };
 
   const filteredMyArticles = myArticles.filter((a: any) => {
-    const matchSearch =
-      !search ||
-      fuzzyMatchAny(
+    const cleanQuery = (search || "").trim().toLowerCase();
+    const cleanProductName = (a.product?.name || "").trim().toLowerCase();
+    const cleanProductSlug = (a.product?.slug || "").trim().toLowerCase();
+
+    let matchSearch = false;
+    if (!search) {
+      matchSearch = true;
+    } else if (isExact) {
+      const hasExactAny = myArticles.some(
+        (art: any) =>
+          (art.product?.name || "").trim().toLowerCase() === cleanQuery ||
+          (art.product?.slug || "").trim().toLowerCase() === cleanQuery
+      );
+      if (hasExactAny) {
+        matchSearch =
+          cleanProductName === cleanQuery ||
+          cleanProductSlug === cleanQuery;
+      } else {
+        matchSearch = cleanProductName.includes(cleanQuery);
+      }
+    } else {
+      matchSearch = fuzzyMatchAny(
         [
           a.product?.name,
           a.product?.slug,
@@ -421,6 +466,7 @@ function ProductsPageContent() {
         ],
         search
       );
+    }
 
     const matchSite =
       !siteFilter ||
@@ -828,19 +874,32 @@ function ProductsPageContent() {
               type="text"
               placeholder="Search"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => { setSearch(e.target.value); setIsExact(false); setCurrentPage(1); }}
               className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/90 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white dark:bg-slate-900 shadow-2xs transition"
             />
             {search && (
               <button
                 type="button"
-                onClick={() => { setSearch(""); router.replace("/products"); setCurrentPage(1); }}
+                onClick={() => { setSearch(""); setIsExact(false); router.replace("/products"); setCurrentPage(1); }}
                 className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
+
+          {isExact && search && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800 rounded-xl text-xs font-semibold shrink-0 shadow-2xs animate-fadeIn">
+              <span>Exact Product Match</span>
+              <button
+                type="button"
+                onClick={() => { setIsExact(false); router.replace(`/products?search=${encodeURIComponent(search)}`); }}
+                className="text-teal-600 hover:text-teal-900 dark:hover:text-teal-100 text-[11px] underline ml-1 cursor-pointer"
+              >
+                Show all related
+              </button>
+            </div>
+          )}
 
           {/* Filter Date */}
           <DateRangePicker
@@ -901,11 +960,20 @@ function ProductsPageContent() {
                     const hasLinks = p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
                     const isPublishedWithoutLinks = isPublished && !hasLinks;
 
+                    const isTargetExactMatch = Boolean(isExact && search && (
+                      (p.name && p.name.trim().toLowerCase() === search.trim().toLowerCase()) ||
+                      (p.slug && p.slug.trim().toLowerCase() === search.trim().toLowerCase())
+                    ));
+
                     return (
                       <tr
                         key={p.id}
                         className={`group relative hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${
-                          isPublishedWithoutLinks ? "bg-rose-50/20 dark:bg-rose-950/20" : ""
+                          isTargetExactMatch
+                            ? "bg-teal-50/70 dark:bg-teal-950/40 ring-1 ring-teal-500/50"
+                            : isPublishedWithoutLinks
+                            ? "bg-rose-50/20 dark:bg-rose-950/20"
+                            : ""
                         }`}
                       >
                         {/* Product Name */}
@@ -919,6 +987,11 @@ function ProductsPageContent() {
                             >
                               {p.name}
                             </button>
+                            {isTargetExactMatch && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 border border-teal-300 dark:border-teal-700">
+                                Exact Match
+                              </span>
+                            )}
                             {(p.country || p.article?.country) && (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs"
@@ -1168,21 +1241,36 @@ function ProductsPageContent() {
                     const isPublished = Boolean(a.articleLink || status === "APPROVED" || status === "COMPLETED");
                     const hasLinks = prodLinkLogs.length > 0 && prodLinkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
                     const isPublishedWithoutLinks = isPublished && !hasLinks;
+                    const isTargetExactMatch = Boolean(isExact && search && (
+                      (a.product?.name && a.product.name.trim().toLowerCase() === search.trim().toLowerCase()) ||
+                      (a.product?.slug && a.product.slug.trim().toLowerCase() === search.trim().toLowerCase())
+                    ));
                     return (
                       <tr
                         key={a.id}
                         className={`group relative hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${
-                          isPublishedWithoutLinks ? "bg-rose-50/20 dark:bg-rose-950/20" : ""
+                          isTargetExactMatch
+                            ? "bg-teal-50/70 dark:bg-teal-950/40 ring-1 ring-teal-500/50"
+                            : isPublishedWithoutLinks
+                            ? "bg-rose-50/20 dark:bg-rose-950/20"
+                            : ""
                         }`}
                       >
                         <td className="px-4 py-3.5">
-                          <button
-                            type="button"
-                            onClick={() => handleViewProductDetails(a)}
-                            className="text-xs font-semibold text-slate-900 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-400 transition text-left cursor-pointer"
-                          >
-                            {a.product?.name}
-                          </button>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => handleViewProductDetails(a)}
+                              className="text-xs font-semibold text-slate-900 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-400 transition text-left cursor-pointer"
+                            >
+                              {a.product?.name}
+                            </button>
+                            {isTargetExactMatch && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 border border-teal-300 dark:border-teal-700">
+                                Exact Match
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3.5">
                           {a.product?.site?.url ? (
