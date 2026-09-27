@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Product "${p.name}": Category is required.` }, { status: 400 });
       }
       if (!p.affiliateName || !p.affiliateName.trim()) {
-        return NextResponse.json({ error: `Product "${p.name}": Affiliate Network is required.` }, { status: 400 });
+        return NextResponse.json({ error: `Product "${p.name}": Affiliate Network is required (select at least one or 'No Affiliate').` }, { status: 400 });
       }
       if (!p.trendLevel || !p.trendLevel.trim()) {
         return NextResponse.json({ error: `Product "${p.name}": Trend Level is required.` }, { status: 400 });
@@ -119,8 +119,8 @@ export async function POST(req: NextRequest) {
       if (p.trendLink && p.trendLink.trim() && !isValidUrl(p.trendLink)) {
         return NextResponse.json({ error: `Product "${p.name}": Valid Trend Link URL is required (must start with http:// or https://).` }, { status: 400 });
       }
-      if (!p.previewLink || !p.previewLink.trim() || !isValidUrl(p.previewLink)) {
-        return NextResponse.json({ error: `Product "${p.name}": Valid Preview Link URL is required (must start with http:// or https://).` }, { status: 400 });
+      if (p.previewLink && p.previewLink.trim() && !isValidUrl(p.previewLink)) {
+        return NextResponse.json({ error: `Product "${p.name}": Preview Link must start with http:// or https:// and be a valid URL.` }, { status: 400 });
       }
     }
 

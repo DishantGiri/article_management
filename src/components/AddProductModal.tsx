@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
+import AffiliateMultiSelect from "@/components/AffiliateMultiSelect";
 import { generateSlug } from "@/lib/utils";
 import {
   Package,
@@ -337,6 +338,27 @@ export default function AddProductModal({
   // Deselected/excluded sites state
   const [excludedSiteIds, setExcludedSiteIds] = useState<number[]>([]);
 
+  // Real-time Database Duplicate Check States
+  const [singleCheckStatus, setSingleCheckStatus] = useState<{
+    checking: boolean;
+    exists?: boolean;
+    message?: string;
+    conflicts?: Array<{ siteName: string; addedBy: string; country?: string | null }>;
+  }>({ checking: false });
+
+  const [bulkCheckResults, setBulkCheckResults] = useState<
+    Record<
+      number,
+      {
+        checking?: boolean;
+        exists?: boolean;
+        message?: string;
+        conflicts?: Array<{ siteName: string; addedBy: string; country?: string | null }>;
+      }
+    >
+  >({});
+  const [isBulkChecking, setIsBulkChecking] = useState(false);
+
   // Inline creation states
   const [showAddCat, setShowAddCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -465,6 +487,138 @@ export default function AddProductModal({
     }
   }, [isOpen]);
 
+  // Real-time database check for Single Product mode
+  useEffect(() => {
+    if (!isOpen || entryMode !== "single" || step !== 3) return;
+    const trimmedName = form.name.trim();
+    if (trimmedName.length < 2) {
+      setSingleCheckStatus({ checking: false });
+      return;
+    }
+
+    setSingleCheckStatus({ checking: true });
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/products/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: [{ name: trimmedName, country: form.country, key: "single" }],
+            categoryIds: form.categoryIds,
+            excludedSiteIds,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const result = data.results?.["single"];
+          if (result) {
+            setSingleCheckStatus({
+              checking: false,
+              exists: result.exists,
+              message: result.message,
+              conflicts: result.conflicts,
+            });
+            return;
+          }
+        }
+        setSingleCheckStatus({ checking: false });
+      } catch (err) {
+        console.error("Single product check failed:", err);
+        setSingleCheckStatus({ checking: false });
+      }
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, entryMode, step, form.name, form.country, form.categoryIds, excludedSiteIds]);
+
+  // Real-time database check for Bulk Spreadsheet mode
+  useEffect(() => {
+    if (!isOpen || entryMode !== "bulk" || step !== 2) return;
+
+    const itemsToCheck: Array<{ name: string; country?: string | null; key: string }> = [];
+    const internalDuplicates: Record<number, { exists: boolean; message: string }> = {};
+
+    // Check duplicate rows inside the table itself
+    const seenMap = new Map<string, number>();
+
+    spreadsheetRows.forEach((row, idx) => {
+      const trimmed = row.name.trim();
+      if (trimmed.length >= 2) {
+        const key = `${trimmed.toLowerCase()}_${(row.country || "").toUpperCase()}`;
+        if (seenMap.has(key)) {
+          const firstIdx = seenMap.get(key)!;
+          internalDuplicates[idx] = {
+            exists: true,
+            message: `Duplicate in row #${firstIdx + 1}`,
+          };
+        } else {
+          seenMap.set(key, idx);
+          itemsToCheck.push({
+            name: trimmed,
+            country: row.country,
+            key: String(idx),
+          });
+        }
+      }
+    });
+
+    if (itemsToCheck.length === 0 && Object.keys(internalDuplicates).length === 0) {
+      setBulkCheckResults({});
+      setIsBulkChecking(false);
+      return;
+    }
+
+    setIsBulkChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        let dbResults: Record<string, any> = {};
+        if (itemsToCheck.length > 0) {
+          const res = await fetch("/api/products/check", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              items: itemsToCheck,
+              categoryIds: form.categoryIds,
+              excludedSiteIds,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            dbResults = data.results || {};
+          }
+        }
+
+        const newResults: Record<number, any> = {};
+        spreadsheetRows.forEach((row, idx) => {
+          if (row.name.trim().length < 2) return;
+
+          if (internalDuplicates[idx]) {
+            newResults[idx] = {
+              checking: false,
+              exists: true,
+              message: internalDuplicates[idx].message,
+            };
+          } else if (dbResults[String(idx)]) {
+            newResults[idx] = {
+              checking: false,
+              exists: dbResults[String(idx)].exists,
+              message: dbResults[String(idx)].message,
+              conflicts: dbResults[String(idx)].conflicts,
+            };
+          }
+        });
+
+        setBulkCheckResults(newResults);
+      } catch (err) {
+        console.error("Bulk check failed:", err);
+      } finally {
+        setIsBulkChecking(false);
+      }
+    }, 320);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, entryMode, step, spreadsheetRows, form.categoryIds, excludedSiteIds]);
+
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const update = useCallback((field: keyof FormData, value: string) => {
@@ -513,6 +667,15 @@ export default function AddProductModal({
         return;
       }
 
+      const hasConflict = Object.values(bulkCheckResults).some((r) => r.exists);
+      if (hasConflict) {
+        const firstConflict = Object.values(bulkCheckResults).find((r) => r.exists);
+        const msg = `Cannot submit: duplicate product found. ${firstConflict?.message || "Please fix conflicting products."}`;
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+
       for (let i = 0; i < validRows.length; i++) {
         const r = validRows[i];
         const rowNum = i + 1;
@@ -537,7 +700,7 @@ export default function AddProductModal({
           return;
         }
         if (!r.affiliateName.trim()) {
-          const msg = `Row #${rowNum} ("${r.name}"): Affiliate Network is compulsory.`;
+          const msg = `Row #${rowNum} ("${r.name}"): Affiliate Network is compulsory (choose at least one or 'No Affiliate').`;
           setError(msg);
           toast.error(msg);
           return;
@@ -554,13 +717,7 @@ export default function AddProductModal({
           toast.error(msg);
           return;
         }
-        if (!r.previewLink.trim()) {
-          const msg = `Row #${rowNum} ("${r.name}"): Preview Link URL is compulsory.`;
-          setError(msg);
-          toast.error(msg);
-          return;
-        }
-        if (!isValidUrl(r.previewLink)) {
+        if (r.previewLink.trim() && !isValidUrl(r.previewLink)) {
           const msg = `Row #${rowNum} ("${r.name}"): Preview Link must start with http:// or https:// and be a valid URL.`;
           setError(msg);
           toast.error(msg);
@@ -622,28 +779,22 @@ export default function AddProductModal({
       toast.error("Product name must be at least 2 characters.");
       return;
     }
+    if (singleCheckStatus.exists) {
+      const msg = `Cannot submit: ${singleCheckStatus.message}`;
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
     if (!form.category.trim()) {
       setError("Category is compulsory.");
       toast.error("Category is compulsory.");
       return;
     }
-    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim().replace(/\s+/g, " ") : form.affiliateName.trim();
+    const finalAffiliate = form.affiliateName.trim();
     if (!finalAffiliate) {
-      setError("Affiliate Network is compulsory.");
+      setError("Affiliate Network is compulsory (choose at least one or 'No Affiliate').");
       toast.error("Affiliate Network is compulsory.");
       return;
-    }
-    if (showCustomAffiliate) {
-      if (!/^[a-zA-Z0-9 ]+$/.test(finalAffiliate)) {
-        setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names.");
-        toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names.");
-        return;
-      }
-      if (finalAffiliate.length < 2 || finalAffiliate.length > 50) {
-        setError("Affiliate name must be between 2 and 50 characters.");
-        toast.error("Affiliate name must be between 2 and 50 characters.");
-        return;
-      }
     }
     if (!form.trendLevel || !form.trendLevel.trim()) {
       setError("Trend Level is compulsory.");
@@ -655,12 +806,7 @@ export default function AddProductModal({
       toast.error("Invalid Trend Link URL.");
       return;
     }
-    if (!form.previewLink.trim()) {
-      setError("Preview Link URL is compulsory.");
-      toast.error("Preview Link URL is compulsory.");
-      return;
-    }
-    if (!isValidUrl(form.previewLink)) {
+    if (form.previewLink.trim() && !isValidUrl(form.previewLink)) {
       setError("Please enter a valid Preview Link URL (must start with http:// or https://)");
       toast.error("Invalid Preview Link URL.");
       return;
@@ -673,14 +819,6 @@ export default function AddProductModal({
     setError("");
 
     try {
-      if (showCustomAffiliate && customAffiliate.trim()) {
-        fetch("/api/affiliates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: customAffiliate.trim() }),
-        }).catch(() => { });
-      }
-
       const res = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -694,7 +832,7 @@ export default function AddProductModal({
           trendLink: form.trendLink || null,
           trendLevel: form.trendLevel || "HIGH",
           affiliateName: finalAffiliate || null,
-          previewLink: form.previewLink || null,
+          previewLink: form.previewLink.trim() || null,
           remarks: form.remarks || null,
           addedById: session?.user?.id || 1,
         }),
@@ -1065,17 +1203,27 @@ export default function AddProductModal({
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">AFFILIATE NETWORK</label>
-                          <CustomSelect
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                            <span>AFFILIATE NETWORK</span>
+                            <span className="text-[9px] text-slate-400 lowercase font-normal">(multi / none)</span>
+                          </label>
+                          <AffiliateMultiSelect
                             value={batchAffiliate}
                             onChange={(val) => setBatchAffiliate(val)}
-                            placeholder="Select network..."
-                            searchable={true}
-                            searchPlaceholder="Search affiliate..."
-                            allowCustom={true}
-                            className="w-full"
+                            affiliates={affiliates}
+                            placeholder="Select network(s)..."
                             triggerClassName="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
-                            options={affiliates.map((aff) => ({ value: aff.name, label: aff.name }))}
+                            onAddCustomAffiliate={async (name) => {
+                              const res = await fetch("/api/affiliates", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ name }),
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                setAffiliates((prev) => [...prev, data]);
+                              }
+                            }}
                           />
                         </div>
 
@@ -1139,17 +1287,27 @@ export default function AddProductModal({
                     </div>
                   )}
 
-                  {/* Section Divider & Title */}
-                  <div className="flex items-center gap-3 pt-1">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 shrink-0">
-                      <Table className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      <span>Product Table</span>
+                    {/* Section Divider & Title */}
+                    <div className="flex items-center gap-3 pt-1">
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 shrink-0">
+                        <Table className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span>Product Table</span>
+                      </div>
+                      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                      <div className="text-xs text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-2">
+                        <span>{spreadsheetRows.filter((r) => r.name.trim()).length} products · {activeSites.length} preview site{activeSites.length !== 1 ? "s" : ""}</span>
+                        {Object.values(bulkCheckResults).filter((r) => r.exists === false).length > 0 && (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1">
+                            <Check className="w-3 h-3" /> {Object.values(bulkCheckResults).filter((r) => r.exists === false).length} Available
+                          </span>
+                        )}
+                        {Object.values(bulkCheckResults).filter((r) => r.exists === true).length > 0 && (
+                          <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold flex items-center gap-1 animate-pulse">
+                            <AlertCircle className="w-3 h-3" /> {Object.values(bulkCheckResults).filter((r) => r.exists === true).length} Already in DB
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                    <div className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
-                      {spreadsheetRows.filter((r) => r.name.trim()).length} products · {activeSites.length} preview site{activeSites.length !== 1 ? "s" : ""}
-                    </div>
-                  </div>
 
                   {/* 3. The Google Sheets Style Table */}
                   <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-[#0b1120] flex-1 flex flex-col min-h-0">
@@ -1164,7 +1322,7 @@ export default function AddProductModal({
                             <th className="w-[14%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Affiliate Network <span className="text-rose-500">*</span></th>
                             <th className="w-[10%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend <span className="text-rose-500">*</span></th>
                             <th className="w-[13%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend Link</th>
-                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Preview Link <span className="text-rose-500">*</span></th>
+                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Preview Link <span className="text-slate-400 font-normal text-[9px] lowercase">(optional)</span></th>
                             <th className="w-[10%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Notes</th>
                             <th className="w-10 py-2.5 px-1 text-center"></th>
                           </tr>
@@ -1176,21 +1334,52 @@ export default function AddProductModal({
                                 {idx + 1}
                               </td>
                               <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
-                                <input
-                                  type="text"
-                                  value={row.name}
-                                  onChange={(e) => updateSpreadsheetRow(idx, "name", e.target.value)}
-                                  placeholder={`Product name *`}
-                                  className={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg focus:outline-none transition-colors ${row.name.trim().length > 0 && row.name.trim().length < 2
-                                      ? "border border-rose-400 bg-rose-50/40 text-rose-900 focus:border-rose-500 focus:bg-rose-50/60 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-200"
-                                      : "text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
-                                    }`}
-                                />
-                                {row.name.trim().length > 0 && row.name.trim().length < 2 && (
-                                  <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5">
-                                    Min 2 characters
-                                  </p>
-                                )}
+                                {(() => {
+                                  const rowResult = bulkCheckResults[idx];
+                                  return (
+                                    <>
+                                      <div className="relative">
+                                        <input
+                                          type="text"
+                                          value={row.name}
+                                          onChange={(e) => updateSpreadsheetRow(idx, "name", e.target.value)}
+                                          placeholder={`Product name *`}
+                                          className={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg focus:outline-none transition-colors ${
+                                            row.name.trim().length > 0 && row.name.trim().length < 2
+                                              ? "border border-rose-400 bg-rose-50/40 text-rose-900 focus:border-rose-500 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-200"
+                                              : rowResult?.exists
+                                              ? "border border-rose-500 bg-rose-50/40 text-rose-900 focus:border-rose-600 dark:bg-rose-950/30 dark:border-rose-700 dark:text-rose-200"
+                                              : rowResult?.exists === false && row.name.trim().length >= 2
+                                              ? "border border-emerald-400/80 bg-emerald-50/20 text-emerald-900 focus:border-emerald-500 dark:bg-emerald-950/20 dark:border-emerald-700/60 dark:text-emerald-200"
+                                              : "text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
+                                          }`}
+                                        />
+                                      </div>
+                                      {row.name.trim().length > 0 && row.name.trim().length < 2 ? (
+                                        <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5">
+                                          Min 2 characters
+                                        </p>
+                                      ) : isBulkChecking && !rowResult && row.name.trim().length >= 2 ? (
+                                        <p className="text-[10px] text-blue-500 font-medium mt-0.5 px-0.5 animate-pulse">
+                                          Checking database...
+                                        </p>
+                                      ) : rowResult?.exists ? (
+                                        <p
+                                          className="text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5 px-0.5 flex items-center gap-1 leading-tight animate-fadeIn"
+                                          title={rowResult.message}
+                                        >
+                                          <AlertCircle className="w-3 h-3 shrink-0" />
+                                          <span className="truncate">❌ {rowResult.message}</span>
+                                        </p>
+                                      ) : rowResult?.exists === false && row.name.trim().length >= 2 ? (
+                                        <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 px-0.5 flex items-center gap-1 leading-tight animate-fadeIn">
+                                          <Check className="w-3 h-3 shrink-0" />
+                                          <span>✓ Available</span>
+                                        </p>
+                                      ) : null}
+                                    </>
+                                  );
+                                })()}
                               </td>
                               <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
                                 <input
@@ -1214,19 +1403,26 @@ export default function AddProductModal({
                                   options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                                 />
                               </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
-                                <CustomSelect
+                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[140px]">
+                                <AffiliateMultiSelect
                                   value={row.affiliateName}
                                   onChange={(val) => updateSpreadsheetRow(idx, "affiliateName", val)}
-                                  placeholder="Affiliate *"
-                                  searchable={true}
-                                  searchPlaceholder="Search affiliate..."
-                                  allowCustom={true}
+                                  affiliates={affiliates}
+                                  placeholder="Affiliate * (or None)"
+                                  compact={true}
                                   portal={true}
-                                  minWidth={200}
-                                  className="w-full"
-                                  triggerClassName="w-full px-2 py-1.5 text-xs text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-lg"
-                                  options={affiliates.map((aff) => ({ value: aff.name, label: aff.name }))}
+                                  minWidth={240}
+                                  onAddCustomAffiliate={async (name) => {
+                                    const res = await fetch("/api/affiliates", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ name }),
+                                    });
+                                    if (res.ok) {
+                                      const data = await res.json();
+                                      setAffiliates((prev) => [...prev, data]);
+                                    }
+                                  }}
                                 />
                               </td>
                               <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
@@ -1258,7 +1454,7 @@ export default function AddProductModal({
                                   type="url"
                                   value={row.previewLink}
                                   onChange={(e) => updateSpreadsheetRow(idx, "previewLink", e.target.value)}
-                                  placeholder="https://... *"
+                                  placeholder="https://... (optional)"
                                   className="w-full px-2 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238] rounded-lg focus:outline-none"
                                 />
                               </td>
@@ -1504,21 +1700,48 @@ export default function AddProductModal({
                         <Package className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                         Product Name <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        value={form.name}
-                        onChange={(e) => update("name", e.target.value)}
-                        placeholder="e.g. Alpha Whey Protein"
-                        className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${form.name.trim().length > 0 && form.name.trim().length < 2
-                            ? "border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30"
-                            : "border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={form.name}
+                          onChange={(e) => update("name", e.target.value)}
+                          placeholder="e.g. Alpha Whey Protein"
+                          className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${
+                            form.name.trim().length > 0 && form.name.trim().length < 2
+                              ? "border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30"
+                              : singleCheckStatus.exists
+                              ? "border-rose-500 bg-rose-50/20 text-rose-900 dark:text-rose-200 focus:border-rose-600 focus:ring-1 focus:ring-rose-500/30"
+                              : singleCheckStatus.exists === false && form.name.trim().length >= 2
+                              ? "border-emerald-500 bg-emerald-50/20 text-emerald-900 dark:text-emerald-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/30"
+                              : "border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
                           }`}
-                      />
-                      {form.name.trim().length > 0 && form.name.trim().length < 2 && (
+                        />
+                        {singleCheckStatus.checking && (
+                          <span className="absolute right-3 top-3 text-[10px] font-bold text-blue-500 flex items-center gap-1 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
+                            Checking...
+                          </span>
+                        )}
+                      </div>
+                      {form.name.trim().length > 0 && form.name.trim().length < 2 ? (
                         <p className="text-xs font-semibold text-rose-500">
                           Product name must be at least 2 characters.
                         </p>
-                      )}
+                      ) : singleCheckStatus.checking ? (
+                        <p className="text-xs font-medium text-blue-500 flex items-center gap-1 animate-pulse">
+                          <span>Checking database availability...</span>
+                        </p>
+                      ) : singleCheckStatus.exists ? (
+                        <p className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 animate-fadeIn">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>❌ {singleCheckStatus.message}</span>
+                        </p>
+                      ) : singleCheckStatus.exists === false && form.name.trim().length >= 2 ? (
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 animate-fadeIn">
+                          <Check className="w-3.5 h-3.5 shrink-0" />
+                          <span>✓ Available to add on all target sites</span>
+                        </p>
+                      ) : null}
                     </div>
 
                     {/* Product Slug (Auto-generated & Editable) */}
@@ -1613,55 +1836,34 @@ export default function AddProductModal({
                       />
                     </div>
 
-                    {/* Affiliate Network Dropdown */}
+                    {/* Affiliate Network Multi-Select */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        Affiliate Network / Name <span className="text-rose-500">*</span>
+                      <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          Affiliate Network <span className="text-rose-500">*</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-normal normal-case">
+                          Select multiple or No Affiliate
+                        </span>
                       </label>
-                      {!showCustomAffiliate ? (
-                        <CustomSelect
-                          value={form.affiliateName}
-                          onChange={(val) => {
-                            if (val === "__NEW__") {
-                              setShowCustomAffiliate(true);
-                              setForm((prev) => ({ ...prev, affiliateName: "" }));
-                            } else {
-                              setForm((prev) => ({ ...prev, affiliateName: val }));
-                            }
-                          }}
-                          placeholder="Select Affiliate..."
-                          triggerClassName="w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
-                          options={[
-                            ...affiliates.map((aff) => ({ value: aff.name, label: aff.name })),
-                            { value: "__NEW__", label: "+ Add Custom Affiliate...", isAction: true }
-                          ]}
-                        />
-                      ) : (
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={customAffiliate}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (/[^a-zA-Z0-9 ]/.test(val)) {
-                                toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "affiliate-char-error" });
-                              }
-                              setCustomAffiliate(val.replace(/[^a-zA-Z0-9 ]/g, ""));
-                            }}
-                            maxLength={50}
-                            placeholder="Enter affiliate name..."
-                            className="flex-1 px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowCustomAffiliate(false)}
-                            className="px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
+                      <AffiliateMultiSelect
+                        value={form.affiliateName}
+                        onChange={(val) => setForm((prev) => ({ ...prev, affiliateName: val }))}
+                        affiliates={affiliates}
+                        placeholder="Select Affiliate Network(s)... *"
+                        onAddCustomAffiliate={async (name) => {
+                          const res = await fetch("/api/affiliates", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setAffiliates((prev) => [...prev, data]);
+                          }
+                        }}
+                      />
                     </div>
                   </div>
 
@@ -1714,13 +1916,14 @@ export default function AddProductModal({
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        Preview Link URL <span className="text-rose-500">*</span>
+                        Preview Link URL <span className="text-slate-400 font-normal text-[10px] normal-case">(Optional)</span>
                       </label>
                       <input
+                        id="input-preview-link"
                         type="url"
                         value={form.previewLink}
                         onChange={(e) => update("previewLink", e.target.value)}
-                        placeholder="https://..."
+                        placeholder="https://... (optional)"
                         className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${fieldErrors.previewLink
                             ? "border-rose-500/60 focus:ring-1 focus:ring-rose-500"
                             : "border-slate-200 dark:border-slate-800 focus:border-blue-500"

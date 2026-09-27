@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import { generateSlug } from "@/lib/utils";
+import AffiliateMultiSelect from "@/components/AffiliateMultiSelect";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ interface FormData {
   name: string;
   slug: string;
   category: string;
+  affiliateName: string;
   trendLink: string;
   previewLink: string;
   remarks: string;
@@ -86,6 +88,7 @@ export default function AddProductPage() {
   const [step, setStep] = useState(1);
   const [sites, setSites] = useState<Site[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [affiliates, setAffiliates] = useState<Array<{ id: number; name: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -97,12 +100,21 @@ export default function AddProductPage() {
     name: "",
     slug: "",
     category: "",
+    affiliateName: "",
     trendLink: "",
     previewLink: "",
     remarks: "",
   });
 
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+
+  // Real-time Database Duplicate Check State
+  const [nameCheckStatus, setNameCheckStatus] = useState<{
+    checking: boolean;
+    exists?: boolean;
+    message?: string;
+    conflicts?: Array<{ siteName: string; addedBy: string; country?: string | null }>;
+  }>({ checking: false });
 
   // Restrict access: only SUPER_ADMIN, ADMIN, LINKER can access this page
   useEffect(() => {
@@ -114,13 +126,18 @@ export default function AddProductPage() {
     }
   }, [session, router]);
 
-  // Fetch categories on load
+  // Fetch categories and affiliates on load
   useEffect(() => {
     setLoading(true);
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((data) => setCategories(Array.isArray(data) ? data : []))
-      .catch(() => setError("Failed to load categories"))
+    Promise.all([
+      fetch("/api/categories").then((r) => r.json()),
+      fetch("/api/affiliates").then((r) => r.json()),
+    ])
+      .then(([catsData, affsData]) => {
+        setCategories(Array.isArray(catsData) ? catsData : []);
+        setAffiliates(Array.isArray(affsData) ? affsData : []);
+      })
+      .catch(() => setError("Failed to load initial data"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -134,6 +151,50 @@ export default function AddProductPage() {
       .catch(() => setError("Failed to load sites"))
       .finally(() => setLoading(false));
   }, [form.categoryId]);
+
+  // Real-time Database Duplicate Check
+  useEffect(() => {
+    const trimmed = form.name.trim();
+    if (step !== 3 || trimmed.length < 2) {
+      setNameCheckStatus({ checking: false });
+      return;
+    }
+
+    setNameCheckStatus({ checking: true });
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/products/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: [{ name: trimmed, key: "single" }],
+            siteId: form.siteId || undefined,
+            categoryIds: form.categoryId ? [parseInt(form.categoryId)] : undefined,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const result = data.results?.["single"];
+          if (result) {
+            setNameCheckStatus({
+              checking: false,
+              exists: result.exists,
+              message: result.message,
+              conflicts: result.conflicts,
+            });
+            return;
+          }
+        }
+        setNameCheckStatus({ checking: false });
+      } catch (err) {
+        console.error("Check failed:", err);
+        setNameCheckStatus({ checking: false });
+      }
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [step, form.name, form.siteId, form.categoryId]);
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -183,6 +244,15 @@ export default function AddProductPage() {
       setError("Product name must be at least 2 characters.");
       return;
     }
+    if (nameCheckStatus.exists) {
+      setError(`Cannot add product: ${nameCheckStatus.message}`);
+      return;
+    }
+    const finalAffiliate = form.affiliateName.trim();
+    if (!finalAffiliate) {
+      setError("Affiliate Network is compulsory (choose at least one or 'No Affiliate').");
+      return;
+    }
     if (Object.keys(fieldErrors).length > 0) {
       setError("Please fix the link validation errors before submitting.");
       return;
@@ -207,8 +277,9 @@ export default function AddProductPage() {
           slug: form.slug?.trim() ? generateSlug(form.slug) : generateSlug(form.name),
           categoryIds: [parseInt(form.categoryId)],
           productCategory: form.category.trim() || null,
+          affiliateName: finalAffiliate || null,
           trendLink: form.trendLink || null,
-          previewLink: form.previewLink || null,
+          previewLink: form.previewLink.trim() || null,
           remarks: form.remarks || null,
           addedById: session?.user?.id || 1,
         }),
@@ -249,8 +320,9 @@ export default function AddProductPage() {
             <button
               id="btn-add-another"
               onClick={() => {
-                setForm({ categoryId: "", siteId: "", name: "", slug: "", category: "", trendLink: "", previewLink: "", remarks: "" });
+                setForm({ categoryId: "", siteId: "", name: "", slug: "", category: "", affiliateName: "", trendLink: "", previewLink: "", remarks: "" });
                 setIsSlugManuallyEdited(false);
+                setNameCheckStatus({ checking: false });
                 setStep(1);
                 setSuccess(false);
               }}
@@ -420,22 +492,46 @@ export default function AddProductPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Product Name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  id="input-product-name"
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => update("name", e.target.value)}
-                  placeholder="e.g. Alpha Whey Protein"
-                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${form.name.trim().length > 0 && form.name.trim().length < 2
-                      ? "border-rose-400 focus:ring-2 focus:ring-rose-300"
-                      : "border-gray-300 focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+                <div className="relative">
+                  <input
+                    id="input-product-name"
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => update("name", e.target.value)}
+                    placeholder="e.g. Alpha Whey Protein"
+                    className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${
+                      form.name.trim().length > 0 && form.name.trim().length < 2
+                        ? "border-rose-400 focus:ring-2 focus:ring-rose-300"
+                        : nameCheckStatus.exists
+                        ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                        : nameCheckStatus.exists === false && form.name.trim().length >= 2
+                        ? "border-emerald-500 focus:ring-2 focus:ring-emerald-400"
+                        : "border-gray-300 focus:ring-2 focus:ring-violet-400 focus:border-transparent"
                     }`}
-                />
-                {form.name.trim().length > 0 && form.name.trim().length < 2 && (
+                  />
+                  {nameCheckStatus.checking && (
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs text-gray-400">
+                      <div className="w-3.5 h-3.5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                {form.name.trim().length > 0 && form.name.trim().length < 2 ? (
                   <p className="text-xs font-semibold text-rose-500 mt-1">
                     Product name must be at least 2 characters.
                   </p>
-                )}
+                ) : nameCheckStatus.checking ? (
+                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                    <span>Checking product availability...</span>
+                  </p>
+                ) : nameCheckStatus.exists ? (
+                  <p className="text-xs font-semibold text-red-600 mt-1 flex items-center gap-1">
+                    <span>❌ {nameCheckStatus.message}</span>
+                  </p>
+                ) : nameCheckStatus.exists === false && form.name.trim().length >= 2 ? (
+                  <p className="text-xs font-semibold text-emerald-600 mt-1 flex items-center gap-1">
+                    <span>✓ Available to add</span>
+                  </p>
+                ) : null}
               </div>
 
               {/* Product Slug (Auto-generated & Editable) */}
@@ -492,16 +588,48 @@ export default function AddProductPage() {
                 )}
               </div>
 
+              {/* Affiliate Network Multi-Select */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
+                  <span>
+                    Affiliate Network <span className="text-red-500">*</span>
+                  </span>
+                  <span className="text-xs text-gray-400 font-normal">
+                    Select multiple or No Affiliate
+                  </span>
+                </label>
+                <AffiliateMultiSelect
+                  value={form.affiliateName}
+                  onChange={(val) => update("affiliateName", val)}
+                  affiliates={affiliates}
+                  placeholder="Select Affiliate Network(s)... *"
+                  triggerClassName="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent flex items-center justify-between transition"
+                  onAddCustomAffiliate={async (name) => {
+                    const res = await fetch("/api/affiliates", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setAffiliates((prev) => [...prev, data]);
+                    }
+                  }}
+                />
+              </div>
+
               {/* Preview Link & Category Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Preview Link</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Preview Link <span className="text-xs text-gray-400 font-normal">(optional)</span>
+                  </label>
                   <input
                     id="input-preview-link"
                     type="url"
                     value={form.previewLink}
                     onChange={(e) => update("previewLink", e.target.value)}
-                    placeholder="https://..."
+                    placeholder="https://... (optional)"
                     className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none transition ${fieldErrors.previewLink
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-400"
                         : "border-gray-300 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
@@ -556,7 +684,7 @@ export default function AddProductPage() {
                 </button>
                 <button
                   id="btn-submit-product"
-                  disabled={submitting}
+                  disabled={submitting || nameCheckStatus.exists}
                   onClick={handleSubmit}
                   className="flex-1 py-3 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
                 >
