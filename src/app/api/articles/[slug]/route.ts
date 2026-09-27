@@ -42,7 +42,7 @@ export async function GET(
       },
       history: {
         include: { updatedBy: { select: { id: true, name: true } } },
-        orderBy: { updatedAt: "desc" },
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       },
     },
   });
@@ -846,13 +846,47 @@ export async function PATCH(
       }
     }
 
+    // Notify Writer if Document Link was updated by Team Lead or Admin
+    const isArticleLinkChanged =
+      articleLink !== undefined &&
+      (existing.articleLink || "").trim() !== (updated.articleLink || "").trim();
+
+    if (isArticleLinkChanged) {
+      try {
+        const targetWriterId = updated.writerId || existing.writerId;
+        if (targetWriterId && targetWriterId !== activeUserId) {
+          const senderRole =
+            session.user.role === "SUPER_ADMIN"
+              ? "Super Admin"
+              : session.user.role === "ADMIN"
+              ? "Admin"
+              : session.user.role === "TEAM_LEAD"
+              ? "Team Lead"
+              : (session.user.role || "User").replace("_", " ");
+          const senderName = session.user.name || senderRole;
+          const newLinkMsg = updated.articleLink ? ` New link: ${updated.articleLink}` : "";
+          const notif = await prisma.notification.create({
+            data: {
+              recipientId: targetWriterId,
+              senderId: activeUserId,
+              type: "ARTICLE_SUGGESTION",
+              message: `Document link updated: ${senderRole} ${senderName} updated the document link for "${updated.product.name}".${newLinkMsg}`,
+            },
+          });
+          await sendRealtimeNotification(targetWriterId, notif);
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify writer on document link update:", notifErr);
+      }
+    }
+
     // Record to Article History
     try {
       const changeNotes: string[] = [];
       if (existing.status !== updated.status) {
         changeNotes.push(`Status changed from ${existing.status} to ${updated.status}`);
       }
-      if (existing.articleLink !== updated.articleLink) {
+      if ((existing.articleLink || "").trim() !== (updated.articleLink || "").trim()) {
         changeNotes.push(`Article Link updated to ${updated.articleLink || "none"}`);
       }
       if (existing.writerId !== updated.writerId) {

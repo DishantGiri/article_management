@@ -133,6 +133,24 @@ export async function POST(req: NextRequest) {
 
     // 4. Log to ArticleHistory
     try {
+      const priorityChanged = Boolean(
+        priority &&
+        ["LOW", "MEDIUM", "HIGH"].includes(priority) &&
+        article.priority !== priority
+      );
+
+      if (priorityChanged) {
+        await prisma.articleHistory.create({
+          data: {
+            articleId: Number(articleId),
+            updatedById: Number(reviewedById),
+            oldStatus: article.status,
+            newStatus: newStatus,
+            notes: `Priority changed from ${article.priority} to ${priority}`,
+          },
+        });
+      }
+
       await prisma.articleHistory.create({
         data: {
           articleId: Number(articleId),

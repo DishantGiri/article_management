@@ -203,6 +203,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   }, [article?.priority]);
 
   const handleSetRedoPriority = async (newPriority: "LOW" | "MEDIUM" | "HIGH") => {
+    if (newPriority === redoPriority) return;
     setRedoPriority(newPriority);
     try {
       const res = await fetch(`/api/articles/${id}`, {
@@ -551,6 +552,13 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                 <button
                   disabled={updatingLink || !newLinkValue.trim()}
                   onClick={async () => {
+                    const currentTrimmed = (article.articleLink || "").trim();
+                    const nextTrimmed = newLinkValue.trim();
+                    if (currentTrimmed === nextTrimmed) {
+                      toast("No changes made to the document link.", { icon: "ℹ️" });
+                      setEditLinkMode(false);
+                      return;
+                    }
                     if (!article.writer?.id) {
                       toast.error("Cannot edit document link for an article that has not been assigned to a writer.");
                       return;
@@ -561,7 +569,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                          articleLink: newLinkValue,
+                          articleLink: nextTrimmed,
                           callerId: currentUserId,
                         }),
                       });
@@ -571,7 +579,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                       }
                       toast.success("Document link updated!");
                       setEditLinkMode(false);
-                      setArticle((prev) => (prev ? { ...prev, articleLink: newLinkValue } : prev));
+                      setArticle((prev) => (prev ? { ...prev, articleLink: nextTrimmed } : prev));
                     } catch (e: any) {
                       toast.error(e.message || "Failed to update link");
                     } finally {
@@ -786,7 +794,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                         <button
                           key={p}
                           type="button"
-                          onClick={() => handleSetRedoPriority(p)}
+                          onClick={() => setRedoPriority(p)}
                           className={`flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${redoPriority === p
                               ? p === "HIGH"
                                 ? "bg-rose-500 text-white border-rose-600 shadow-2xs font-extrabold"

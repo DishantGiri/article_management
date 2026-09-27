@@ -269,17 +269,16 @@ export default function CommissionsPage() {
     product?: ProductCommissionRow | null,
     defaultType: "FIRST_SALE" | "RESALE" = "FIRST_SALE"
   ) => {
-    if (product) {
-      setSelectedProductForSale(product);
-      setModalProductId(String(product.id));
-      setModalWriterLeftCompany(Boolean(product.writerHasLeft));
-    } else {
-      const first = products[0] || null;
-      setSelectedProductForSale(first);
-      setModalProductId(first ? String(first.id) : "");
-      setModalWriterLeftCompany(Boolean(first?.writerHasLeft));
-    }
-    setModalSaleType(defaultType);
+    const targetProduct = product || (products[0] || null);
+    setSelectedProductForSale(targetProduct);
+    setModalProductId(targetProduct ? String(targetProduct.id) : "");
+    setModalWriterLeftCompany(Boolean(targetProduct?.writerHasLeft));
+
+    // A product can only have ONE genuine first sale.
+    // If it already has a first sale, force RESALE.
+    const alreadyHasFirst = (targetProduct?.firstSalesCount || 0) >= 1;
+    setModalSaleType(alreadyHasFirst ? "RESALE" : defaultType);
+
     setModalSaleDate(new Date().toISOString().split("T")[0]);
     setModalPaymentStatus("PENDING");
     setModalNotes("");
@@ -295,6 +294,10 @@ export default function CommissionsPage() {
       return;
     }
 
+    const currentProd = selectedProductForSale || products.find((p) => p.id === prodId);
+    const alreadyHasFirst = (currentProd?.firstSalesCount || 0) >= 1;
+    const effectiveSaleType = alreadyHasFirst ? "RESALE" : modalSaleType;
+
     setSubmittingSale(true);
     try {
       const res = await fetch("/api/commissions", {
@@ -302,7 +305,7 @@ export default function CommissionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId: prodId,
-          saleType: modalSaleType,
+          saleType: effectiveSaleType,
           saleDate: modalSaleDate,
           paymentStatus: modalPaymentStatus,
           notes: modalNotes,
@@ -315,8 +318,10 @@ export default function CommissionsPage() {
         throw new Error(errData.error || "Failed to record sale");
       }
 
+      const resData = await res.json().catch(() => ({}));
       toast.success(
-        `${modalSaleType === "FIRST_SALE" ? "1st Sale" : "Resale"} logged successfully!`
+        resData.message ||
+          `${effectiveSaleType === "FIRST_SALE" ? "1st Sale" : "Resale"} logged successfully!`
       );
       setIsRecordSaleModalOpen(false);
       setSelectedProductForSale(null);
@@ -1529,13 +1534,22 @@ export default function CommissionsPage() {
                             >
                               {prod.firstSalesCount}
                             </span>
-                            <button
-                              onClick={() => handleOpenRecordSale(prod, "FIRST_SALE")}
-                              className="p-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
-                              title="Log 1st Sale"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
+                            {prod.firstSalesCount === 0 ? (
+                              <button
+                                onClick={() => handleOpenRecordSale(prod, "FIRST_SALE")}
+                                className="p-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
+                                title="Log 1st Sale"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <span
+                                className="p-1 text-emerald-600 dark:text-emerald-400"
+                                title="1st sale already recorded. Additional sales must be logged as Resale."
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </span>
+                            )}
                           </div>
                         </td>
 
@@ -1697,6 +1711,9 @@ export default function CommissionsPage() {
                     const found = products.find((p) => p.id === parseInt(val));
                     setSelectedProductForSale(found || null);
                     setModalWriterLeftCompany(Boolean(found?.writerHasLeft));
+                    if ((found?.firstSalesCount || 0) >= 1) {
+                      setModalSaleType("RESALE");
+                    }
                   }}
                   options={products.map((p) => ({
                     value: String(p.id),
@@ -1718,11 +1735,15 @@ export default function CommissionsPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
+                    disabled={(selectedProductForSale?.firstSalesCount || 0) >= 1}
                     onClick={() => setModalSaleType("FIRST_SALE")}
-                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${modalSaleType === "FIRST_SALE"
-                        ? "bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-700 dark:text-blue-300 shadow-2xs"
-                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50"
-                      }`}
+                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 border transition ${
+                      (selectedProductForSale?.firstSalesCount || 0) >= 1
+                        ? "opacity-40 cursor-not-allowed bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
+                        : modalSaleType === "FIRST_SALE"
+                        ? "bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-700 dark:text-blue-300 shadow-2xs cursor-pointer"
+                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 cursor-pointer"
+                    }`}
                   >
                     <span className="w-2 h-2 rounded-full bg-blue-500" />
                     <span>1st Sale</span>
@@ -1740,6 +1761,11 @@ export default function CommissionsPage() {
                     <span>Resale</span>
                   </button>
                 </div>
+                {(selectedProductForSale?.firstSalesCount || 0) >= 1 && (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold mt-1">
+                    ℹ️ 1st sale is already recorded for this product. Additional sales are classified as Resales.
+                  </p>
+                )}
               </div>
 
               {/* Rate & Pool Preview */}

@@ -49,6 +49,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Plus,
+  GitCompare,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
@@ -1446,16 +1447,25 @@ function LinkerOperationsStudio({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (Approx 68%): Pending Links Logs Table */}
         <div className="lg:col-span-8 space-y-3.5">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              Product Pending Links Logs
-            </h2>
-            <div
-              className="w-4 h-4 rounded-full border border-amber-400/90 text-amber-500 flex items-center justify-center text-[11px] font-bold font-serif"
-              title="Products waiting for affiliate configuration"
-            >
-              i
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                Product Pending Links Logs
+              </h2>
+              <div
+                className="w-4 h-4 rounded-full border border-amber-400/90 text-amber-500 flex items-center justify-center text-[11px] font-bold font-serif"
+                title="Products waiting for affiliate configuration"
+              >
+                i
+              </div>
             </div>
+            <button
+              onClick={() => router.push("/links?tab=compare")}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+            >
+              <GitCompare className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Cross-Site Compare</span>
+            </button>
           </div>
 
           {/* Filters Bar */}

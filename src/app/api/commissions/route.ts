@@ -13,6 +13,80 @@ export function resolveCategoryKey(catName?: string | null): "NUTRA" | "ECOM" {
   return "NUTRA";
 }
 
+// Enforce single FIRST_SALE per product across the database:
+// If any product has multiple sales marked FIRST_SALE, keep the earliest one as FIRST_SALE
+// and convert subsequent sales to RESALE with appropriate RESALE rates.
+export async function normalizeProductFirstSales() {
+  try {
+    const duplicates = await prisma.commissionSale.groupBy({
+      by: ["productId"],
+      where: { saleType: "FIRST_SALE" },
+      _count: { id: true },
+      having: { id: { _count: { gt: 1 } } },
+    });
+
+    if (!duplicates || duplicates.length === 0) return;
+
+    const settings = await prisma.commissionSetting.findMany();
+    const settingsMap = new Map<string, any>();
+    settings.forEach((s) => {
+      settingsMap.set(`${s.category}_${s.saleType}`, s);
+    });
+
+    for (const item of duplicates) {
+      const sales = await prisma.commissionSale.findMany({
+        where: { productId: item.productId, saleType: "FIRST_SALE" },
+        include: {
+          product: { include: { category: true } },
+        },
+        orderBy: [{ saleDate: "asc" }, { id: "asc" }],
+      });
+
+      if (sales.length <= 1) continue;
+
+      // The earliest sale (index 0) remains FIRST_SALE.
+      // Sales #2, #3, ... must be converted to RESALE.
+      for (let i = 1; i < sales.length; i++) {
+        const sale = sales[i];
+        const catKey = resolveCategoryKey(sale.product?.category?.name);
+        const resaleSetting = settingsMap.get(`${catKey}_RESALE`);
+
+        const amount = resaleSetting?.total ?? sale.amount;
+        const baseLinker = resaleSetting?.linker ?? sale.linkerAmount;
+        const baseWriter = resaleSetting?.writer ?? sale.writerAmount;
+        const baseTl = resaleSetting?.tl ?? sale.tlAmount;
+        const seoAmount = resaleSetting?.seo ?? sale.seoAmount;
+        const bonusAmount = resaleSetting?.bonusPool ?? sale.bonusAmount;
+        const baseParty = resaleSetting?.partyFund ?? 0;
+
+        const isWriterToParty =
+          Boolean(sale.writerLeftCompany) ||
+          Boolean(sale.writerTransferredToParty > 0 && sale.writerAmount === 0);
+        const writerAmount = isWriterToParty ? 0 : baseWriter;
+        const writerTransferredToParty = isWriterToParty ? baseWriter : 0;
+        const partyAmount = baseParty + writerTransferredToParty;
+
+        await prisma.commissionSale.update({
+          where: { id: sale.id },
+          data: {
+            saleType: "RESALE",
+            amount,
+            linkerAmount: baseLinker,
+            writerAmount,
+            tlAmount: baseTl,
+            seoAmount,
+            bonusAmount,
+            partyAmount,
+            writerTransferredToParty,
+          },
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Error normalizing product first sales:", err);
+  }
+}
+
 // GET /api/commissions - list products by site with commission tracking & settings
 export async function GET(req: NextRequest) {
   try {
@@ -23,6 +97,9 @@ export async function GET(req: NextRequest) {
     if (session.user.role !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Forbidden: Super Admin access required" }, { status: 403 });
     }
+
+    // Auto-normalize any legacy duplicate first sales across database
+    await normalizeProductFirstSales();
 
     const { searchParams } = new URL(req.url);
     const siteIdParam = searchParams.get("siteId");
@@ -177,10 +254,13 @@ export async function GET(req: NextRequest) {
       );
       const writerToPartyFund = Boolean(prod.article?.writer?.commissionToPartyFund);
 
-      const firstSales = prod.commissionSales.filter((s) => s.saleType === "FIRST_SALE");
-      const resales = prod.commissionSales.filter((s) => s.saleType === "RESALE");
-
       const totalSalesCount = prod.commissionSales.length;
+      // A product can only have at most ONE genuine first sale.
+      // Every sale after that is classified and counted as a resale.
+      const hasFirstSale = prod.commissionSales.some((s) => s.saleType === "FIRST_SALE");
+      const firstSalesCount = hasFirstSale ? 1 : 0;
+      const resalesCount = Math.max(0, totalSalesCount - firstSalesCount);
+
       const totalCommissionAmount = prod.commissionSales.reduce((acc, s) => acc + (s.amount || 0), 0);
       const paidCommissionAmount = prod.commissionSales
         .filter((s) => s.paymentStatus === "PAID")
@@ -229,8 +309,8 @@ export async function GET(req: NextRequest) {
         writerToPartyFund,
         articleStatus: prod.article?.status || "PENDING",
         articleLink: prod.article?.articleLink || null,
-        firstSalesCount: firstSales.length,
-        resalesCount: resales.length,
+        firstSalesCount,
+        resalesCount,
         totalSalesCount,
         totalCommissionAmount: parseFloat(totalCommissionAmount.toFixed(2)),
         paidCommissionAmount: parseFloat(paidCommissionAmount.toFixed(2)),
@@ -365,9 +445,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Product ID is required" }, { status: 400 });
     }
 
-    const type: "FIRST_SALE" | "RESALE" =
-      saleType === "RESALE" ? "RESALE" : "FIRST_SALE";
-
     // 1. Fetch product with site, category, writer, linker
     const product = await prisma.product.findUnique({
       where: { id: parseInt(productId) },
@@ -383,6 +460,22 @@ export async function POST(req: NextRequest) {
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
+
+    // Enforce: A product can only have ONE genuine first sale.
+    // Every sale after that MUST be classified as a RESALE.
+    const existingFirstSale = await prisma.commissionSale.findFirst({
+      where: {
+        productId: product.id,
+        saleType: "FIRST_SALE",
+      },
+    });
+
+    const isAlreadyFirstSold = Boolean(existingFirstSale);
+    const type: "FIRST_SALE" | "RESALE" = isAlreadyFirstSold
+      ? "RESALE"
+      : saleType === "RESALE"
+      ? "RESALE"
+      : "FIRST_SALE";
 
     // 2. Resolve category key
     const catKey = resolveCategoryKey(product.category?.name);
@@ -493,8 +586,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const successMsg =
+      isAlreadyFirstSold && saleType === "FIRST_SALE"
+        ? "Resale recorded! (Product already has a 1st Sale, so this sale was automatically classified as a Resale)"
+        : `${type === "FIRST_SALE" ? "1st Sale" : "Resale"} recorded successfully!`;
+
     return NextResponse.json({
-      message: `${type === "FIRST_SALE" ? "1st Sale" : "Resale"} recorded successfully!`,
+      message: successMsg,
       sale: createdSale,
     });
   } catch (err: any) {

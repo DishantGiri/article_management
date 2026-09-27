@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { normalizeProductFirstSales } from "@/app/api/commissions/route";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,6 +10,9 @@ export async function GET(req: NextRequest) {
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Auto-normalize any duplicate first sales in database
+    await normalizeProductFirstSales();
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search")?.toLowerCase().trim();

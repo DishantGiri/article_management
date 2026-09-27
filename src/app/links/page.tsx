@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useState, useMemo, Suspense } from "react";
-import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check } from "lucide-react";
+import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check, GitCompare } from "lucide-react";
+import SiteProductComparison from "@/components/SiteProductComparison";
 import { toast } from "react-hot-toast";
 import AddLinkModal from "@/components/AddLinkModal";
 import FormattedRemarks from "@/components/FormattedRemarks";
@@ -73,8 +74,12 @@ function LinksPageContent() {
   const urlProductId = searchParams.get("productId");
   const urlSearch = searchParams.get("search");
   const urlStatus = searchParams.get("status");
+  const urlTab = searchParams.get("tab");
   const urlExact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
 
+  const [activeMainTab, setActiveMainTab] = useState<"links" | "compare">(
+    urlTab === "compare" ? "compare" : "links"
+  );
   const [links, setLinks] = useState<LinkLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(urlSearch || "");
@@ -131,7 +136,13 @@ function LinksPageContent() {
   useEffect(() => {
     const s = searchParams.get("search");
     const st = searchParams.get("status");
+    const t = searchParams.get("tab");
     const exact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
+    if (t === "compare") {
+      setActiveMainTab("compare");
+    } else if (t === "links") {
+      setActiveMainTab("links");
+    }
     if (s !== null) {
       setSearch(s);
       setIsExact(exact);
@@ -515,46 +526,54 @@ function LinksPageContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">Link Logs</h1>
-          <p className="text-[#737373] text-sm mt-0.5 font-medium">{links.length} link entries</p>
+          <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">
+            {activeMainTab === "compare" ? "Product Comparison" : "Link Logs"}
+          </h1>
+          <p className="text-[#737373] text-sm mt-0.5 font-medium">
+            {activeMainTab === "compare"
+              ? "Cross-site product comparison & synchronization"
+              : `${links.length} link entries`}
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
-            <>
-              <button
-                onClick={() => setIsGeoModalOpen(true)}
-                className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#4A4A4A] dark:text-slate-200 rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] dark:hover:bg-slate-750 shadow-xs transition flex items-center gap-2 cursor-pointer"
-              >
-                <Globe className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
-                GEOs
-              </button>
-              <button
-                onClick={() => setIsAffiliateModalOpen(true)}
-                className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#4A4A4A] dark:text-slate-200 rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] dark:hover:bg-slate-750 shadow-xs transition flex items-center gap-2 cursor-pointer"
-              >
-                <Tag className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
-                Affiliates
-              </button>
-              <button
-                onClick={() => setIsAddLinkOpen(true)}
-                className="px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white rounded-lg text-sm font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                Add Link
-              </button>
-            </>
-          )}
-          <button
-            onClick={handleExportCSV}
-            className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-750 shadow-sm transition flex items-center gap-2 cursor-pointer">
-            <Download className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-            Export
-          </button>
-        </div>
+        {activeMainTab === "links" && (
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+              <>
+                <button
+                  onClick={() => setIsGeoModalOpen(true)}
+                  className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#4A4A4A] dark:text-slate-200 rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] dark:hover:bg-slate-750 shadow-xs transition flex items-center gap-2 cursor-pointer"
+                >
+                  <Globe className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
+                  GEOs
+                </button>
+                <button
+                  onClick={() => setIsAffiliateModalOpen(true)}
+                  className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#4A4A4A] dark:text-slate-200 rounded-lg text-sm font-semibold hover:bg-[#FAF9F5] dark:hover:bg-slate-750 shadow-xs transition flex items-center gap-2 cursor-pointer"
+                >
+                  <Tag className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
+                  Affiliates
+                </button>
+                <button
+                  onClick={() => setIsAddLinkOpen(true)}
+                  className="px-4 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white rounded-lg text-sm font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Link
+                </button>
+              </>
+            )}
+            <button
+              onClick={handleExportCSV}
+              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-750 shadow-sm transition flex items-center gap-2 cursor-pointer">
+              <Download className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              Export
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Metric Cards Row */}
-      {stats && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "LINKER") && (
+      {activeMainTab === "links" && stats && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "LINKER") && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div
             onClick={() => {
@@ -622,7 +641,7 @@ function LinksPageContent() {
       )}
 
       {/* Alert Banner */}
-      {missingBridgeCount > 0 && (!statusFilter || statusFilter === "REQUESTED") && (
+      {activeMainTab === "links" && missingBridgeCount > 0 && (!statusFilter || statusFilter === "REQUESTED") && (
         <div className="mb-6 bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
           <p className="text-sm font-medium text-amber-700">
@@ -634,21 +653,21 @@ function LinksPageContent() {
       {/* Tabs Selector for Links */}
       <div className="flex border-b border-[#CBCBCB]/60 dark:border-slate-800 mb-6 gap-2">
         <button
-          onClick={() => { setStatusFilter(""); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${!statusFilter && !showOnlyDeadLinks
+          onClick={() => { setActiveMainTab("links"); setStatusFilter(""); setShowOnlyDeadLinks(false); setCurrentPage(1); router.replace("/links"); }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${activeMainTab === "links" && !statusFilter && !showOnlyDeadLinks
               ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400 font-bold"
               : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
         >
           <span>All Links</span>
-          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${!statusFilter && !showOnlyDeadLinks ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${activeMainTab === "links" && !statusFilter && !showOnlyDeadLinks ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
             }`}>
             {links.length}
           </span>
         </button>
         <button
-          onClick={() => { setStatusFilter("ISSUE"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === "ISSUE"
+          onClick={() => { setActiveMainTab("links"); setStatusFilter("ISSUE"); setShowOnlyDeadLinks(false); setCurrentPage(1); router.replace("/links?status=ISSUE"); }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${activeMainTab === "links" && statusFilter === "ISSUE"
               ? "border-rose-500 text-rose-600 dark:text-rose-400 font-bold"
               : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
@@ -661,37 +680,58 @@ function LinksPageContent() {
           )}
         </button>
         <button
-          onClick={() => { setStatusFilter("REQUESTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === "REQUESTED"
+          onClick={() => { setActiveMainTab("links"); setStatusFilter("REQUESTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); router.replace("/links?status=REQUESTED"); }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${activeMainTab === "links" && statusFilter === "REQUESTED"
               ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400 font-bold"
               : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
         >
           <span>Pending Requests</span>
           {pendingRequestsCount > 0 && (
-            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${statusFilter === "REQUESTED" ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${activeMainTab === "links" && statusFilter === "REQUESTED" ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
               }`}>
               {pendingRequestsCount}
             </span>
           )}
         </button>
         <button
-          onClick={() => { setStatusFilter("ACCEPTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === "ACCEPTED"
+          onClick={() => { setActiveMainTab("links"); setStatusFilter("ACCEPTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); router.replace("/links?status=ACCEPTED"); }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${activeMainTab === "links" && statusFilter === "ACCEPTED"
               ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400 font-bold"
               : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
         >
           <span>Accepted Links</span>
           {acceptedLinksCount > 0 && (
-            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${statusFilter === "ACCEPTED" ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${activeMainTab === "links" && statusFilter === "ACCEPTED" ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
               }`}>
               {acceptedLinksCount}
             </span>
           )}
         </button>
+        <button
+          onClick={() => {
+            setActiveMainTab("compare");
+            router.replace("/links?tab=compare");
+          }}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeMainTab === "compare"
+              ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
+          }`}
+        >
+          <GitCompare className="w-4 h-4 text-indigo-500" />
+          <span>Compare</span>
+          <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+            Cross-Site
+          </span>
+        </button>
       </div>
 
+      {activeMainTab === "compare" ? (
+        <SiteProductComparison currentUserRole={currentUserRole} />
+      ) : (
+        <>
       {/* Unlinked Products Section (Only on All Links or Pending Requests tabs) */}
       {(!statusFilter || statusFilter === "REQUESTED") && !showOnlyDeadLinks && (
         <PendingLinkLogsSection
@@ -1176,6 +1216,8 @@ function LinksPageContent() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       <GeoManageModal
         isOpen={isGeoModalOpen}
