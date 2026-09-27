@@ -12,6 +12,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
 import { isUserTargeted } from "@/lib/noticeUtils";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
+import { getActiveWorkspace, setActiveWorkspace } from "@/lib/workspace";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
 
@@ -391,9 +392,54 @@ export default function Sidebar() {
   };
 
   const userRole = (currentUser?.role || session?.user?.role || "").toUpperCase();
-  const visibleNavItems = userRole
+  const sessionRoles: string[] = (session?.user as any)?.roles || [];
+  const [currentWorkspaceRole, setCurrentWorkspaceRole] = useState<string>(() =>
+    getActiveWorkspace(userRole, sessionRoles)
+  );
+
+  useEffect(() => {
+    if (session?.user) {
+      const uRole = session.user.role || "";
+      const sRoles: string[] = (session.user as any)?.roles || (uRole ? [uRole] : []);
+      if (sRoles.length > 0) {
+        document.cookie = `user_roles=${sRoles.join(",")}; path=/; max-age=31536000; SameSite=Lax`;
+      }
+      const initial = getActiveWorkspace(uRole, sRoles);
+      setCurrentWorkspaceRole(initial);
+      document.cookie = `active_workspace_role=${initial}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+  }, [session?.user]);
+
+  useEffect(() => {
+    const handleWorkspaceChanged = (e: any) => {
+      if (e.detail?.role) {
+        setCurrentWorkspaceRole(e.detail.role);
+      }
+    };
+    window.addEventListener("workspace-changed", handleWorkspaceChanged);
+    return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+  }, []);
+
+  const handleSwitchWorkspace = (newRole: string) => {
+    setActiveWorkspace(newRole, sessionRoles);
+    setCurrentWorkspaceRole(newRole);
+    const allowed = NAV_ITEMS.some((item) => {
+      if (item.href === "/" && pathname === "/") return true;
+      if (pathname.startsWith(item.href) && item.href !== "/") {
+        return item.roles.some((r) => r.toUpperCase() === newRole.toUpperCase());
+      }
+      return false;
+    });
+    if (!allowed && pathname !== "/") {
+      router.push("/");
+    }
+  };
+
+  const effectiveWorkspace = currentWorkspaceRole || userRole || "WRITER";
+
+  const visibleNavItems = effectiveWorkspace
     ? NAV_ITEMS.filter((item) =>
-      item.roles.some((r) => r.toUpperCase() === userRole)
+      item.roles.some((r) => r.toUpperCase() === effectiveWorkspace.toUpperCase())
     )
     : [];
 
@@ -504,6 +550,61 @@ export default function Sidebar() {
           </button>
         </div>
 
+        {/* Multi-Role Workspace Selector in Sidebar */}
+        {sessionRoles.length > 1 && !sessionRoles.includes("SUPER_ADMIN") && !sessionRoles.includes("ADMIN") && (
+          <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/50 dark:border-slate-700/60">
+              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-0.5">
+                <span>Active Workspace</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {sessionRoles.includes("TEAM_LEAD") && (
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchWorkspace("TEAM_LEAD")}
+                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition text-center cursor-pointer ${
+                      effectiveWorkspace === "TEAM_LEAD"
+                        ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-2xs border border-emerald-300 dark:border-emerald-700"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                    title="Switch to Team Lead Workspace"
+                  >
+                    👑 TL
+                  </button>
+                )}
+                {sessionRoles.includes("WRITER") && (
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchWorkspace("WRITER")}
+                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition text-center cursor-pointer ${
+                      effectiveWorkspace === "WRITER"
+                        ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 shadow-2xs border border-amber-300 dark:border-amber-700"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                    title="Switch to Writer Workspace"
+                  >
+                    ✍️ Writer
+                  </button>
+                )}
+                {sessionRoles.includes("LINKER") && (
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchWorkspace("LINKER")}
+                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition text-center cursor-pointer ${
+                      effectiveWorkspace === "LINKER"
+                        ? "bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 shadow-2xs border border-rose-300 dark:border-rose-700"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                    title="Switch to Linker Workspace"
+                  >
+                    🔗 Linker
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Navigation */}
         <nav className="flex-1 py-5 space-y-1 overflow-y-auto pr-1">
           {status === "loading" || !isMounted ? (
@@ -603,8 +704,14 @@ export default function Sidebar() {
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <p className="text-slate-800 dark:text-slate-100 text-xs font-bold truncate">{currentUser.name}</p>
-                  {currentUser.role ? (
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${ROLE_COLORS[currentUser.role]}`}>
+                  {sessionRoles.length > 1 ? (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                        {effectiveWorkspace === "TEAM_LEAD" ? "👑 TL Workspace" : effectiveWorkspace === "LINKER" ? "🔗 Linker Workspace" : "✍️ Writer Workspace"}
+                      </span>
+                    </div>
+                  ) : currentUser.role ? (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${ROLE_COLORS[currentUser.role as Role]}`}>
                       {currentUser.role.replace("_", " ")}
                     </span>
                   ) : (

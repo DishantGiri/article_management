@@ -6,6 +6,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { getActiveWorkspace, setActiveWorkspace } from "@/lib/workspace";
 import {
   Package,
   Clock,
@@ -187,6 +188,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string>("");
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [activeRoleView, setActiveRoleView] = useState<string>("");
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showBellDropdown, setShowBellDropdown] = useState(false);
@@ -205,15 +208,35 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (session?.user?.role) {
-      setCurrentUserRole(session.user.role);
-    }
-    if (session?.user?.id) {
-      setCurrentUserId(session.user.id);
-    }
-  }, [session?.user?.role, session?.user?.id]);
+    if (session?.user) {
+      if (session.user.role) {
+        setCurrentUserRole(session.user.role);
+      }
+      if (session.user.id) {
+        setCurrentUserId(session.user.id);
+      }
+      const uRole = session.user.role || "";
+      const sRoles: string[] = (session.user as any)?.roles || (uRole ? [uRole] : []);
+      const distinctRoles = Array.from(new Set([uRole, ...sRoles].filter(Boolean).map((r) => r.toUpperCase())));
+      setAvailableRoles(distinctRoles);
 
-  const fetchDashboardData = (showLoading = false) => {
+      const active = getActiveWorkspace(uRole, distinctRoles);
+      setActiveRoleView(active);
+    }
+  }, [session?.user]);
+
+  useEffect(() => {
+    const handleWorkspaceChanged = (e: any) => {
+      if (e.detail?.role) {
+        setActiveRoleView(e.detail.role);
+        fetchDashboardData(false, e.detail.role);
+      }
+    };
+    window.addEventListener("workspace-changed", handleWorkspaceChanged);
+    return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+  }, []);
+
+  const fetchDashboardData = (showLoading = false, roleOverride?: string) => {
     if (!session?.user?.id) return;
     const uId = session.user.id;
     setCurrentUserId(uId);
@@ -221,19 +244,18 @@ export default function DashboardPage() {
       setCurrentUserRole(session.user.role);
     }
 
+    const targetRole = roleOverride || activeRoleView || session.user.role;
+
     if (showLoading) setLoading(true);
     else setRefreshing(true);
 
-    fetch(`/api/dashboard?userId=${uId}`)
+    fetch(`/api/dashboard?userId=${uId}${targetRole ? `&role=${targetRole}` : ""}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to fetch dashboard");
         return r.json();
       })
       .then((resData) => {
         setData(resData);
-        if (resData.role) {
-          setCurrentUserRole(resData.role);
-        }
       })
       .catch((e) => console.error("Failed to load dashboard data", e))
       .finally(() => {
@@ -381,6 +403,7 @@ export default function DashboardPage() {
   }
 
   const unreadNotificationsCount = notifications.filter((n) => !n.isRead).length;
+  const effectiveRole = activeRoleView || currentUserRole;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-8 animate-fadeIn" suppressHydrationWarning>
@@ -450,13 +473,96 @@ export default function DashboardPage() {
         }
       />
 
+      {/* ─── MULTI-ROLE WORKSPACE SELECTOR ───────────────────────── */}
+      {availableRoles.length > 1 && !availableRoles.includes("SUPER_ADMIN") && !availableRoles.includes("ADMIN") && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs mb-6 animate-fadeIn">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pl-1 pr-1">
+              Active Workspace:
+            </span>
+            {availableRoles.includes("TEAM_LEAD") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveWorkspace("TEAM_LEAD", availableRoles);
+                  setActiveRoleView("TEAM_LEAD");
+                  fetchDashboardData(false, "TEAM_LEAD");
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  effectiveRole === "TEAM_LEAD"
+                    ? "bg-[#6D8196] text-white shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
+              >
+                <ClipboardList className="w-4 h-4" />
+                <span>Team Lead Hub</span>
+                {(data?.teamLead?.reviewQueue?.length ?? 0) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-900">
+                    {data?.teamLead?.reviewQueue?.length}
+                  </span>
+                )}
+              </button>
+            )}
+            {availableRoles.includes("WRITER") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveWorkspace("WRITER", availableRoles);
+                  setActiveRoleView("WRITER");
+                  fetchDashboardData(false, "WRITER");
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  effectiveRole === "WRITER"
+                    ? "bg-[#6D8196] text-white shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Writer Studio</span>
+                {(data?.writerPendingArticles?.length ?? 0) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    {data?.writerPendingArticles?.length}
+                  </span>
+                )}
+              </button>
+            )}
+            {availableRoles.includes("LINKER") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveWorkspace("LINKER", availableRoles);
+                  setActiveRoleView("LINKER");
+                  fetchDashboardData(false, "LINKER");
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  effectiveRole === "LINKER"
+                    ? "bg-[#6D8196] text-white shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
+              >
+                <LinkIcon className="w-4 h-4" />
+                <span>Linker Operations</span>
+                {(data?.linkerProducts?.length ?? 0) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200">
+                    {data?.linkerProducts?.length}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+          <div className="text-[11px] font-medium text-slate-400 px-2 hidden sm:block">
+            Switch views to manage your site-specific responsibilities
+          </div>
+        </div>
+      )}
+
       {/* ─── ROLE: SUPER_ADMIN & ADMIN VIEW ────────────────────────── */}
-      {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN") && (
-        <ExecutiveCommandCenter data={data} role={currentUserRole} />
+      {(effectiveRole === "SUPER_ADMIN" || effectiveRole === "ADMIN") && (
+        <ExecutiveCommandCenter data={data} role={effectiveRole} />
       )}
 
       {/* ─── ROLE: TEAM_LEAD VIEW ──────────────────────────────────── */}
-      {currentUserRole === "TEAM_LEAD" && (
+      {effectiveRole === "TEAM_LEAD" && (
         <div className="space-y-6 animate-fadeIn">
           {/* Dual Perspective Tabs for Team Lead */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-2 bg-white rounded-2xl border border-[#CBCBCB]/60 shadow-xs">
@@ -535,12 +641,12 @@ export default function DashboardPage() {
       )}
 
       {/* ─── ROLE: LINKER VIEW ─────────────────────────────────────── */}
-      {currentUserRole === "LINKER" && (
+      {effectiveRole === "LINKER" && (
         <LinkerOperationsStudio data={data} router={router} onRefresh={() => fetchDashboardData(false)} />
       )}
 
       {/* ─── ROLE: WRITER VIEW ─────────────────────────────────────── */}
-      {currentUserRole === "WRITER" && (
+      {effectiveRole === "WRITER" && (
         <WriterFocusStudio
           data={data}
           currentUserId={currentUserId}

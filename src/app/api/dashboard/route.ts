@@ -11,12 +11,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = session.user.role || "ADMIN";
+    const userRole = session.user.role || "ADMIN";
+    const userRoles: string[] = (session.user as any)?.roles || (userRole ? [userRole] : []);
+    const requestedRole = req.nextUrl.searchParams.get("role") || req.nextUrl.searchParams.get("viewRole");
+    const role = (requestedRole && userRoles.includes(requestedRole.toUpperCase()))
+      ? requestedRole.toUpperCase()
+      : userRole;
+
     let allowedSiteIds: number[] = [];
     const userId = session.user.id;
 
-    // Fetch writer & team lead site access
-    if (role === "WRITER" || role === "TEAM_LEAD") {
+    // Fetch site access
+    if (role === "WRITER" || role === "TEAM_LEAD" || role === "LINKER") {
       const accesses = await prisma.siteAccess.findMany({
         where: { userId },
         select: { siteId: true },

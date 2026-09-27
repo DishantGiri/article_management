@@ -107,13 +107,37 @@ export const authOptions: NextAuthOptions = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: token.email },
-            select: { id: true, role: true, approved: true, image: true },
+            select: {
+              id: true,
+              role: true,
+              approved: true,
+              image: true,
+              siteAccess: {
+                select: {
+                  role: true,
+                  roles: true,
+                },
+              },
+            },
           });
           if (dbUser) {
             token.id = dbUser.id;
             token.approved = dbUser.approved;
             token.image = dbUser.image;
             token.role = dbUser.role; // Always authoritative from DB
+
+            const roleSet = new Set<string>();
+            if (dbUser.role) roleSet.add(dbUser.role.toUpperCase());
+            (dbUser.siteAccess || []).forEach((sa) => {
+              if (sa.role) roleSet.add(sa.role.toUpperCase());
+              if (sa.roles) {
+                sa.roles.split(",").forEach((r) => {
+                  const trimmed = r.trim().toUpperCase();
+                  if (trimmed) roleSet.add(trimmed);
+                });
+              }
+            });
+            token.roles = Array.from(roleSet);
           }
         } catch (err) {
           console.error("Error in jwt callback fetching user:", err);
@@ -125,6 +149,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.roles = token.roles || (token.role ? [token.role] : []);
         session.user.approved = token.approved;
         session.user.image = token.image as string | null | undefined;
       }

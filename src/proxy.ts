@@ -9,16 +9,27 @@ const ROLE_ROUTES: Record<string, string[]> = {
   WRITER: ["/", "/products", "/articles", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
 };
 
-function isRouteAllowed(pathname: string, role: string | null | undefined): boolean {
-  if (!role || !ROLE_ROUTES[role]) return false;
-  
-  const allowedParents = ROLE_ROUTES[role];
-  return allowedParents.some(route => {
-    if (route === "/") {
-      return pathname === "/";
+function isRouteAllowed(pathname: string, role: string | null | undefined, roles?: string[]): boolean {
+  const activeRoles = new Set<string>();
+  if (role) activeRoles.add(role.toUpperCase());
+  if (roles && Array.isArray(roles)) {
+    roles.forEach(r => activeRoles.add(r.toUpperCase()));
+  }
+  if (activeRoles.size === 0) return false;
+  if (activeRoles.has("SUPER_ADMIN") || activeRoles.has("ADMIN")) return true;
+
+  for (const r of activeRoles) {
+    const allowedParents = ROLE_ROUTES[r];
+    if (allowedParents && allowedParents.some(route => {
+      if (route === "/") {
+        return pathname === "/";
+      }
+      return pathname === route || pathname.startsWith(route + "/");
+    })) {
+      return true;
     }
-    return pathname === route || pathname.startsWith(route + "/");
-  });
+  }
+  return false;
 }
 
 export default withAuth(
@@ -43,7 +54,7 @@ export default withAuth(
 
     // 3. Check if user is approved and has an assigned role
     const isApproved = token && token.approved === true;
-    const hasRole = token && !!token.role;
+    const hasRole = token && (!!token.role || (Array.isArray(token.roles) && token.roles.length > 0));
 
     if (token && (!isApproved || !hasRole)) {
       if (pathname !== "/auth/pending") {
@@ -65,8 +76,20 @@ export default withAuth(
 
     // 5. Enforce role-based path authorization (pages only, bypass api paths and websocket)
     if (token && isApproved && hasRole && !pathname.startsWith("/api/") && pathname !== "/ws") {
-      if (!isRouteAllowed(pathname, token.role)) {
-        console.log(`Access Denied: Role ${token.role} cannot access route ${pathname}`);
+      const activeWorkspace = req.cookies.get("active_workspace_role")?.value;
+      const userRolesCookie = req.cookies.get("user_roles")?.value;
+      const parsedRoles = userRolesCookie ? userRolesCookie.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean) : [];
+
+      const candidateRoles = new Set<string>();
+      if (token.role) candidateRoles.add(token.role.toUpperCase());
+      if (activeWorkspace) candidateRoles.add(activeWorkspace.toUpperCase());
+      if (Array.isArray(token.roles)) {
+        token.roles.forEach((r: string) => candidateRoles.add(r.toUpperCase()));
+      }
+      parsedRoles.forEach((r) => candidateRoles.add(r));
+
+      if (!isRouteAllowed(pathname, token.role, Array.from(candidateRoles))) {
+        console.log(`Access Denied: Roles ${JSON.stringify(Array.from(candidateRoles))} cannot access route ${pathname}`);
         return NextResponse.redirect(new URL("/", req.url));
       }
     }
