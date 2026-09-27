@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { canUserAddLinkOnSite, getUserAuthorizedSiteIds, isAdmin } from "@/lib/permissions";
 
 // GET /api/links?productId=X
 export async function GET(req: NextRequest) {
@@ -29,13 +30,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
   }
 
-  // Team lead restrictions
-  if (dbUser?.role === "TEAM_LEAD") {
-    const accesses = await prisma.siteAccess.findMany({
-      where: { userId },
-      select: { siteId: true },
-    });
-    allowedSiteIds = accesses.map((a) => a.siteId);
+  // Restrict to authorized sites if user has site-specific roles or team lead restrictions
+  if (!isAdmin(dbUser?.role)) {
+    const authorizedSites = await getUserAuthorizedSiteIds(userId, dbUser?.role, "ADD_LINK");
+    if (authorizedSites !== null) {
+      allowedSiteIds = authorizedSites;
+    }
   }
 
   const links = await prisma.linkLog.findMany({
@@ -71,6 +71,26 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { productId, bridgePageLink, buyLink, affiliateName, affiliateLink, affiliateEntries, countryLinks, geos, status, linkerRemarks } = body;
+
+    if (!productId) {
+      return NextResponse.json({ error: "productId is required" }, { status: 400 });
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: parseInt(productId) },
+      select: { siteId: true },
+    });
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    const canAddLink = await canUserAddLinkOnSite(Number(session.user.id), session.user.role, product.siteId);
+    if (!canAddLink) {
+      return NextResponse.json(
+        { error: "Access Denied: You do not have Linker permissions to add links for this site." },
+        { status: 403 }
+      );
+    }
 
     const VALID_LINK_STATUSES = [
       "REQUESTED",

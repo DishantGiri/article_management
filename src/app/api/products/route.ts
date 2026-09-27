@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getUserAuthorizedSiteIds, isAdmin } from "@/lib/permissions";
 
 function isValidUrl(url?: string | null): boolean {
   if (!url || typeof url !== "string") return false;
@@ -127,13 +128,11 @@ export async function POST(req: NextRequest) {
     const activeUserId = session.user.id;
     const activeUserRole = session.user.role;
 
-    if (
-      activeUserRole !== "LINKER" &&
-      activeUserRole !== "ADMIN" &&
-      activeUserRole !== "SUPER_ADMIN"
-    ) {
+    // Check if user has permission to add products (either globally or site-specific)
+    const authorizedSites = await getUserAuthorizedSiteIds(activeUserId, activeUserRole, "ADD_PRODUCT");
+    if (authorizedSites !== null && authorizedSites.length === 0) {
       return NextResponse.json(
-        { error: "Access Denied: Only Linkers, Admins, and Super Admins can add products." },
+        { error: "Access Denied: You do not have Linker permissions to add products on any site." },
         { status: 403 }
       );
     }
@@ -151,13 +150,19 @@ export async function POST(req: NextRequest) {
     for (const cat of categoriesWithSites) {
       for (const site of cat.sites) {
         if (!excludedSet.has(site.id)) {
-          targetSiteIds.add(site.id);
+          // If user is restricted to specific sites, only include authorized ones
+          if (authorizedSites === null || authorizedSites.includes(site.id)) {
+            targetSiteIds.add(site.id);
+          }
         }
       }
     }
 
     if (targetSiteIds.size === 0) {
-      return NextResponse.json({ error: "No sites associated with the selected categories" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Access Denied: You do not have Linker permissions to add products to the selected site(s)." },
+        { status: 403 }
+      );
     }
 
     // Check if any product with the same name already exists on any of the target sites
@@ -358,13 +363,18 @@ export async function GET(req: NextRequest) {
   const userId = session.user.id;
   const userRole = session.user.role;
 
-  if (userRole === "WRITER") {
-    excludeCompletedForWriter = true;
+  if (!isAdmin(userRole)) {
     const accesses = await prisma.siteAccess.findMany({
       where: { userId },
       select: { siteId: true },
     });
-    allowedSiteIds = accesses.map((a) => a.siteId);
+    if (accesses.length > 0) {
+      allowedSiteIds = accesses.map((a) => a.siteId);
+      if (userRole === "WRITER") excludeCompletedForWriter = true;
+    } else if (userRole === "WRITER") {
+      excludeCompletedForWriter = true;
+      allowedSiteIds = [];
+    }
   }
 
   const products = await prisma.product.findMany({

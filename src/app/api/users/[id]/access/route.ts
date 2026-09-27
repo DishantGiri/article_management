@@ -20,11 +20,29 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { siteId } = await req.json();
+    const body = await req.json();
+    const { siteId, role, roles, canAddProduct, canAddLink, canWrite, canReview } = body;
 
     if (!siteId) {
       return NextResponse.json({ error: "siteId is required" }, { status: 400 });
     }
+
+    const rolesArr = Array.isArray(roles)
+      ? roles
+      : typeof roles === "string"
+      ? roles.split(",").map((s: string) => s.trim()).filter(Boolean)
+      : [];
+    const primaryRole = role || rolesArr[0] || "WRITER";
+    const rolesStr = rolesArr.length > 0 ? rolesArr.join(",") : primaryRole;
+
+    const accessData = {
+      role: primaryRole,
+      roles: rolesStr,
+      canAddProduct: Boolean(canAddProduct || rolesArr.includes("LINKER") || primaryRole === "LINKER"),
+      canAddLink: Boolean(canAddLink || rolesArr.includes("LINKER") || primaryRole === "LINKER"),
+      canWrite: Boolean(canWrite || rolesArr.includes("WRITER") || primaryRole === "WRITER"),
+      canReview: Boolean(canReview || rolesArr.includes("TEAM_LEAD") || primaryRole === "TEAM_LEAD"),
+    };
 
     const access = await prisma.siteAccess.upsert({
       where: {
@@ -33,10 +51,11 @@ export async function POST(
           siteId: parseInt(siteId),
         },
       },
-      update: {},
+      update: accessData,
       create: {
         userId: parseInt(id),
         siteId: parseInt(siteId),
+        ...accessData,
       },
       include: { site: true },
     });

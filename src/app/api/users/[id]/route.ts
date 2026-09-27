@@ -35,7 +35,19 @@ export async function GET(
         approved: true,
         hasLeftCompany: true,
         commissionToPartyFund: true,
-        siteAccess: { select: { site: { select: { id: true, name: true } } } },
+        siteAccess: {
+          select: {
+            id: true,
+            siteId: true,
+            role: true,
+            roles: true,
+            canAddProduct: true,
+            canAddLink: true,
+            canWrite: true,
+            canReview: true,
+            site: { select: { id: true, name: true } },
+          },
+        },
       },
     });
 
@@ -116,16 +128,46 @@ export async function PATCH(
       }
     }
 
-    // Handle site access sync if siteIds is provided
+    // Handle site access sync if siteAccess or siteIds is provided
     const newRole = role || targetUser.role;
     let siteAccessUpdate = undefined;
-    if (siteIds !== undefined && Array.isArray(siteIds) && (newRole === "WRITER" || newRole === "TEAM_LEAD")) {
+    const incomingSiteAccess = body.siteAccess;
+
+    if (incomingSiteAccess !== undefined && Array.isArray(incomingSiteAccess)) {
       siteAccessUpdate = {
-        deleteMany: {}, // Clear existing
-        create: siteIds.map((siteId: number) => ({ siteId: Number(siteId) })),
+        deleteMany: {},
+        create: incomingSiteAccess.map((sa: any) => {
+          const rolesArr = Array.isArray(sa.roles)
+            ? sa.roles
+            : typeof sa.roles === "string"
+            ? sa.roles.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : [];
+          const primaryRole = sa.role || rolesArr[0] || newRole || "WRITER";
+          const rolesStr = rolesArr.length > 0 ? rolesArr.join(",") : (sa.role || primaryRole);
+          return {
+            siteId: Number(sa.siteId),
+            role: primaryRole,
+            roles: rolesStr,
+            canAddProduct: Boolean(sa.canAddProduct || rolesArr.includes("LINKER") || primaryRole === "LINKER"),
+            canAddLink: Boolean(sa.canAddLink || rolesArr.includes("LINKER") || primaryRole === "LINKER"),
+            canWrite: Boolean(sa.canWrite || rolesArr.includes("WRITER") || primaryRole === "WRITER"),
+            canReview: Boolean(sa.canReview || rolesArr.includes("TEAM_LEAD") || primaryRole === "TEAM_LEAD"),
+          };
+        }),
       };
-    } else if (role && newRole !== "WRITER" && newRole !== "TEAM_LEAD") {
-      siteAccessUpdate = { deleteMany: {} }; // Clear if role changed to non-writer/lead
+    } else if (siteIds !== undefined && Array.isArray(siteIds)) {
+      siteAccessUpdate = {
+        deleteMany: {},
+        create: siteIds.map((siteId: number) => ({
+          siteId: Number(siteId),
+          role: newRole || "WRITER",
+          roles: newRole || "WRITER",
+          canAddProduct: newRole === "LINKER",
+          canAddLink: newRole === "LINKER",
+          canWrite: newRole === "WRITER",
+          canReview: newRole === "TEAM_LEAD",
+        })),
+      };
     }
 
     // Resolve teamLeadId updates cleanly (supports migrating, unassigning, and role transitions)

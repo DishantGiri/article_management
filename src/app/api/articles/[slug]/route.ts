@@ -4,6 +4,7 @@ import moment from "moment";
 import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { canUserReviewOnSite, canUserWriteOnSite } from "@/lib/permissions";
 
 // GET /api/articles/[slug]
 export async function GET(
@@ -55,9 +56,12 @@ export async function GET(
   const userId = Number(session.user.id);
   const userRole = session.user.role;
 
-  if (userRole === "WRITER") {
+  const canReviewSite = await canUserReviewOnSite(userId, userRole, article.product.siteId);
+  const canWriteSite = await canUserWriteOnSite(userId, userRole, article.product.siteId);
+
+  if (userRole === "WRITER" || canWriteSite) {
     const isAssignedWriter = article.writerId === userId;
-    if (!isAssignedWriter) {
+    if (!isAssignedWriter && !canWriteSite) {
       const access = await prisma.siteAccess.findUnique({
         where: {
           userId_siteId: {
@@ -70,11 +74,12 @@ export async function GET(
         return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
       }
     }
-  } else if (userRole === "TEAM_LEAD") {
+  } else if (userRole === "TEAM_LEAD" || canReviewSite) {
     const isUnderTL =
       article.status === "PENDING" ||
       article.writerId === userId ||
-      article.writer?.teamLeadId === userId;
+      article.writer?.teamLeadId === userId ||
+      canReviewSite;
     if (!isUnderTL) {
       return NextResponse.json({ error: "Access denied: This article is not under your team." }, { status: 403 });
     }
@@ -175,13 +180,16 @@ export async function PATCH(
       }
     }
 
-    // Approval / Redo status change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN
-    if ((status === "APPROVED" || status === "REDO") && !["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
+    const canReviewSite = await canUserReviewOnSite(activeUserId, activeUserRole, existing.product.siteId);
+    const canWriteSite = await canUserWriteOnSite(activeUserId, activeUserRole, existing.product.siteId);
+
+    // Approval / Redo status change check: only TEAM_LEAD, ADMIN, or SUPER_ADMIN (or site-level TL)
+    if ((status === "APPROVED" || status === "REDO") && !["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole) && !canReviewSite) {
       return NextResponse.json({ error: "Only Team Leads and Admins can approve or request changes for articles." }, { status: 403 });
     }
 
     if (flagForUpdate) {
-      if (!["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole)) {
+      if (!["TEAM_LEAD", "ADMIN", "SUPER_ADMIN"].includes(activeUserRole) && !canReviewSite) {
         return NextResponse.json({ error: "Only Team Leads and Admins can flag approved articles for update." }, { status: 403 });
       }
       if (existing.status !== "APPROVED") {

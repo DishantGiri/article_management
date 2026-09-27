@@ -139,11 +139,17 @@ model Site {
   commissionSales CommissionSale[]
 }
 
-// Writer access to specific sites (assigned by Admin)
+// Site access and partial roles (assigned by Super Admin / Admin)
 model SiteAccess {
   id        Int      @id @default(autoincrement())
   userId    Int
   siteId    Int
+  role      Role?    @default(WRITER) // Primary role on this site
+  roles     String?  // Comma-separated roles if multiple (e.g. "LINKER,WRITER,TEAM_LEAD")
+  canAddProduct Boolean @default(false)
+  canAddLink    Boolean @default(false)
+  canWrite      Boolean @default(false)
+  canReview     Boolean @default(false)
   grantedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])

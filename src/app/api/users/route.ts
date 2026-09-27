@@ -90,6 +90,42 @@ export async function POST(req: NextRequest) {
     let finalApproved = finalHasLeft ? false : (typeof approved === 'boolean' ? approved : true);
     let finalCommToParty = finalHasLeft ? false : Boolean(commissionToPartyFund);
 
+    let siteAccessCreate = undefined;
+    if (Array.isArray(body.siteAccess) && body.siteAccess.length > 0) {
+      siteAccessCreate = {
+        create: body.siteAccess.map((sa: any) => {
+          const rolesArr = Array.isArray(sa.roles)
+            ? sa.roles
+            : typeof sa.roles === "string"
+            ? sa.roles.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : [];
+          const primaryRole = sa.role || rolesArr[0] || (role as any) || "WRITER";
+          const rolesStr = rolesArr.length > 0 ? rolesArr.join(",") : (sa.role || primaryRole);
+          return {
+            siteId: Number(sa.siteId),
+            role: primaryRole,
+            roles: rolesStr,
+            canAddProduct: Boolean(sa.canAddProduct || rolesArr.includes("LINKER") || primaryRole === "LINKER"),
+            canAddLink: Boolean(sa.canAddLink || rolesArr.includes("LINKER") || primaryRole === "LINKER"),
+            canWrite: Boolean(sa.canWrite || rolesArr.includes("WRITER") || primaryRole === "WRITER"),
+            canReview: Boolean(sa.canReview || rolesArr.includes("TEAM_LEAD") || primaryRole === "TEAM_LEAD"),
+          };
+        }),
+      };
+    } else if (siteIds && Array.isArray(siteIds) && siteIds.length > 0) {
+      siteAccessCreate = {
+        create: siteIds.map((siteId: number) => ({
+          siteId: Number(siteId),
+          role: (role as any) || "WRITER",
+          roles: (role as any) || "WRITER",
+          canAddProduct: role === "LINKER",
+          canAddLink: role === "LINKER",
+          canWrite: role === "WRITER",
+          canReview: role === "TEAM_LEAD",
+        })),
+      };
+    }
+
     const user = await prisma.user.create({
       data: {
         name: trimmedName,
@@ -102,14 +138,10 @@ export async function POST(req: NextRequest) {
         approved: finalApproved,
         hasLeftCompany: finalHasLeft,
         commissionToPartyFund: finalCommToParty,
-        siteAccess: (role === "WRITER" || role === "TEAM_LEAD") && siteIds && Array.isArray(siteIds)
-          ? {
-            create: siteIds.map((siteId: number) => ({ siteId })),
-          }
-          : undefined,
+        siteAccess: siteAccessCreate,
       },
       include: {
-        siteAccess: { include: { site: { select: { name: true } } } },
+        siteAccess: { include: { site: { select: { id: true, name: true } } } },
       },
     });
 

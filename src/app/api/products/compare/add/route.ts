@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getUserAuthorizedSiteIds } from "@/lib/permissions";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,13 +15,11 @@ export async function POST(req: NextRequest) {
     const activeUserId = Number(session.user.id);
     const activeUserRole = session.user.role;
 
-    if (
-      activeUserRole !== "LINKER" &&
-      activeUserRole !== "ADMIN" &&
-      activeUserRole !== "SUPER_ADMIN"
-    ) {
+    // Check permission to add products on target site(s)
+    const authorizedSites = await getUserAuthorizedSiteIds(activeUserId, activeUserRole, "ADD_PRODUCT");
+    if (authorizedSites !== null && authorizedSites.length === 0) {
       return NextResponse.json(
-        { error: "Access Denied: Only Linkers, Admins, and Super Admins can add products to sites." },
+        { error: "Access Denied: You do not have Linker permissions to add products on any site." },
         { status: 403 }
       );
     }
@@ -67,6 +66,16 @@ export async function POST(req: NextRequest) {
         { error: "Target site ID and product information are required." },
         { status: 400 }
       );
+    }
+
+    if (authorizedSites !== null) {
+      const unauthorized = items.some((it) => !authorizedSites.includes(Number(it.targetSiteId)));
+      if (unauthorized) {
+        return NextResponse.json(
+          { error: "Access Denied: You do not have Linker permissions to add products to one or more selected sites." },
+          { status: 403 }
+        );
+      }
     }
 
     const createdResults: any[] = [];

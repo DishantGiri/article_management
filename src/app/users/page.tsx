@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { parseSiteRoles } from "@/lib/permissions-utils";
 import {
   Users,
   Search,
@@ -56,6 +57,14 @@ interface User {
   hasLeftCompany?: boolean;
   commissionToPartyFund?: boolean;
   siteAccess: {
+    id?: number;
+    siteId?: number;
+    role?: string | null;
+    roles?: string | null;
+    canAddProduct?: boolean;
+    canAddLink?: boolean;
+    canWrite?: boolean;
+    canReview?: boolean;
     site: {
       id: number;
       name: string;
@@ -144,6 +153,7 @@ export default function UsersPage() {
   // 2. Migrate / Manage Sites Modal
   const [migrateSitesUser, setMigrateSitesUser] = useState<User | null>(null);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [selectedSiteRolesMap, setSelectedSiteRolesMap] = useState<Record<number, string[]>>({});
   const [migratingSites, setMigratingSites] = useState(false);
 
   // 3. Promote / Change Role Modal
@@ -162,6 +172,7 @@ export default function UsersPage() {
     email: "",
     role: "WRITER",
     siteIds: [] as number[],
+    siteRolesMap: {} as Record<number, string[]>,
     teamLeadId: "",
     allowLinkLogAccess: false,
     approved: true,
@@ -283,23 +294,63 @@ export default function UsersPage() {
   // 2. Sites Migration
   const handleOpenMigrateSites = (u: User) => {
     setMigrateSitesUser(u);
-    setSelectedSiteIds(u.siteAccess ? u.siteAccess.map((sa) => sa.site.id) : []);
+    const initialSiteIds = u.siteAccess ? u.siteAccess.map((sa) => sa.site.id) : [];
+    setSelectedSiteIds(initialSiteIds);
+    const rolesMap: Record<number, string[]> = {};
+    (u.siteAccess || []).forEach((sa) => {
+      const roles = parseSiteRoles(sa.roles, sa.role);
+      rolesMap[sa.site.id] = roles.length > 0 ? roles : [u.role || "WRITER"];
+    });
+    setSelectedSiteRolesMap(rolesMap);
   };
 
   const handleToggleSiteSelection = (siteId: number) => {
-    setSelectedSiteIds((prev) =>
-      prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]
-    );
+    setSelectedSiteIds((prev) => {
+      if (prev.includes(siteId)) {
+        return prev.filter((id) => id !== siteId);
+      } else {
+        if (!selectedSiteRolesMap[siteId] || selectedSiteRolesMap[siteId].length === 0) {
+          setSelectedSiteRolesMap((rMap) => ({
+            ...rMap,
+            [siteId]: [migrateSitesUser?.role || "WRITER"],
+          }));
+        }
+        return [...prev, siteId];
+      }
+    });
+  };
+
+  const handleToggleMigrateSiteRole = (siteId: number, roleToToggle: string) => {
+    setSelectedSiteRolesMap((prev) => {
+      const currentRoles = prev[siteId] || [migrateSitesUser?.role || "WRITER"];
+      let updatedRoles: string[];
+      if (currentRoles.includes(roleToToggle)) {
+        if (currentRoles.length === 1) {
+          toast.error("A site must have at least one assigned role");
+          return prev;
+        }
+        updatedRoles = currentRoles.filter((r) => r !== roleToToggle);
+      } else {
+        updatedRoles = [...currentRoles, roleToToggle];
+      }
+      return { ...prev, [siteId]: updatedRoles };
+    });
   };
 
   const handleExecuteMigrateSites = async () => {
     if (!migrateSitesUser) return;
     setMigratingSites(true);
     try {
+      const siteAccess = selectedSiteIds.map((siteId) => ({
+        siteId,
+        roles: selectedSiteRolesMap[siteId] || [migrateSitesUser.role || "WRITER"],
+      }));
+
       const res = await fetch(`/api/users/${migrateSitesUser.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          siteAccess,
           siteIds: selectedSiteIds,
         }),
       });
@@ -309,7 +360,7 @@ export default function UsersPage() {
       }
       const updatedUser = await res.json();
       setUsers((prev) => prev.map((u) => (u.id === migrateSitesUser.id ? updatedUser : u)));
-      toast.success(`Updated site access for ${migrateSitesUser.name}!`);
+      toast.success(`Updated site access & roles for ${migrateSitesUser.name}!`);
       setMigrateSitesUser(null);
     } catch (e: any) {
       toast.error(e.message || "Site migration failed");
@@ -459,6 +510,7 @@ export default function UsersPage() {
       email: "",
       role: "WRITER",
       siteIds: [],
+      siteRolesMap: {},
       teamLeadId: "",
       allowLinkLogAccess: false,
       approved: true,
@@ -474,11 +526,17 @@ export default function UsersPage() {
   const openEditModal = (u: User) => {
     setEditingUserId(u.id);
     const hasLeft = Boolean(u.hasLeftCompany);
+    const sRolesMap: Record<number, string[]> = {};
+    (u.siteAccess || []).forEach((sa) => {
+      const roles = parseSiteRoles(sa.roles, sa.role);
+      sRolesMap[sa.site.id] = roles.length > 0 ? roles : [u.role || "WRITER"];
+    });
     setForm({
       name: u.name,
       email: u.email,
       role: u.role || "WRITER",
       siteIds: u.siteAccess ? u.siteAccess.map((sa) => sa.site.id) : [],
+      siteRolesMap: sRolesMap,
       teamLeadId: u.teamLead ? String(u.teamLead.id) : "",
       allowLinkLogAccess: u.allowLinkLogAccess,
       approved: hasLeft ? false : Boolean(u.approved),
@@ -550,11 +608,17 @@ export default function UsersPage() {
     try {
       const url = editingUserId ? `/api/users/${editingUserId}` : "/api/users";
       const method = editingUserId ? "PATCH" : "POST";
+      const siteAccess = form.siteIds.map((siteId) => ({
+        siteId,
+        roles: form.siteRolesMap[siteId] || [form.role || "WRITER"],
+      }));
+
       const payload: any = {
         ...form,
         name: trimmedName,
         email: form.email.trim().toLowerCase(),
         creatorId: currentUserId,
+        siteAccess,
       };
 
       if (payload.hasLeftCompany) {
@@ -1111,15 +1175,35 @@ export default function UsersPage() {
                       </div>
 
                       {u.siteAccess && u.siteAccess.length > 0 ? (
-                        <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto pr-1">
-                          {u.siteAccess.map((sa) => (
-                            <span
-                              key={sa.site.id}
-                              className="px-2 py-0.5 rounded-lg bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-bold whitespace-nowrap"
-                            >
-                              {sa.site.name}
-                            </span>
-                          ))}
+                        <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
+                          {u.siteAccess.map((sa) => {
+                            const roles = parseSiteRoles(sa.roles, sa.role);
+                            return (
+                              <span
+                                key={sa.site.id}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-bold whitespace-nowrap shadow-2xs"
+                              >
+                                <span>{sa.site.name}</span>
+                                <span className="flex items-center gap-0.5 ml-0.5">
+                                  {roles.map((r) => (
+                                    <span
+                                      key={r}
+                                      title={r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "Team Lead"}
+                                      className={`px-1 py-0.2 rounded text-[8px] font-extrabold ${
+                                        r === "LINKER"
+                                          ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                                          : r === "WRITER"
+                                          ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                                          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                                      }`}
+                                    >
+                                      {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "TL"}
+                                    </span>
+                                  ))}
+                                </span>
+                              </span>
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-[11px] text-slate-400 italic">No sites assigned</p>
@@ -1331,16 +1415,35 @@ export default function UsersPage() {
 
                       {/* Working Sites */}
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5 flex-wrap max-w-xs">
+                        <div className="flex items-center gap-1.5 flex-wrap max-w-sm">
                           {u.siteAccess && u.siteAccess.length > 0 ? (
-                            u.siteAccess.map((sa) => (
-                              <span
-                                key={sa.site.id}
-                                className="px-2 py-0.5 rounded-md bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold"
-                              >
-                                {sa.site.name}
-                              </span>
-                            ))
+                            u.siteAccess.map((sa) => {
+                              const roles = parseSiteRoles(sa.roles, sa.role);
+                              return (
+                                <span
+                                  key={sa.site.id}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold"
+                                >
+                                  <span>{sa.site.name}</span>
+                                  <span className="flex items-center gap-0.5 ml-0.5">
+                                    {roles.map((r) => (
+                                      <span
+                                        key={r}
+                                        className={`px-1 py-0.2 rounded text-[8px] font-extrabold ${
+                                          r === "LINKER"
+                                            ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                                            : r === "WRITER"
+                                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                                        }`}
+                                      >
+                                        {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "TL"}
+                                      </span>
+                                    ))}
+                                  </span>
+                                </span>
+                              );
+                            })
                           ) : (
                             <span className="text-[11px] text-slate-400 italic">None</span>
                           )}
@@ -1665,34 +1768,73 @@ export default function UsersPage() {
               </div>
 
               {/* Site Pills Grid */}
-              <div className="grid grid-cols-2 gap-2.5 max-h-64 overflow-y-auto p-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto p-1">
                 {sites.map((site) => {
                   const isSelected = selectedSiteIds.includes(site.id);
+                  const activeRoles = selectedSiteRolesMap[site.id] || [migrateSitesUser?.role || "WRITER"];
                   return (
-                    <button
+                    <div
                       key={site.id}
-                      type="button"
-                      onClick={() => handleToggleSiteSelection(site.id)}
-                      className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${isSelected
+                      className={`p-3 rounded-2xl border text-left transition-all ${
+                        isSelected
                           ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-200 shadow-2xs"
-                          : "bg-[#FAF9F5] dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300"
-                        }`}
+                          : "bg-[#FAF9F5] dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"
+                      }`}
                     >
-                      <div className="min-w-0 pr-2">
-                        <span className="font-bold text-xs block truncate">{site.name}</span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">
-                          {isSelected ? "Active Coverage" : "No Access"}
-                        </span>
-                      </div>
                       <div
-                        className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isSelected
-                            ? "bg-blue-600 text-white"
-                            : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                          }`}
+                        onClick={() => handleToggleSiteSelection(site.id)}
+                        className="flex items-center justify-between cursor-pointer"
                       >
-                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        <div className="min-w-0 pr-2">
+                          <span className="font-bold text-xs block truncate">{site.name}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">
+                            {isSelected ? "Active Coverage" : "No Access"}
+                          </span>
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${
+                            isSelected
+                              ? "bg-blue-600 text-white"
+                              : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </div>
                       </div>
-                    </button>
+
+                      {isSelected && (
+                        <div className="mt-2 pt-2 border-t border-blue-200/60 dark:border-blue-800/60 flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                            Role:
+                          </span>
+                          {(["LINKER", "WRITER", "TEAM_LEAD"] as const).map((r) => {
+                            const hasRole = activeRoles.includes(r);
+                            return (
+                              <button
+                                key={r}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleMigrateSiteRole(site.id, r);
+                                }}
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition cursor-pointer ${
+                                  hasRole
+                                    ? r === "LINKER"
+                                      ? "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                                      : r === "WRITER"
+                                      ? "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                                      : "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                                    : "bg-white/80 dark:bg-slate-800/60 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-700"
+                                }`}
+                              >
+                                {hasRole && "✓ "}
+                                {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "TL"}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -2086,17 +2228,28 @@ export default function UsersPage() {
                 )}
               </div>
 
-              {/* Assign Websites */}
-              {(form.role === "WRITER" || form.role === "TEAM_LEAD") && (
+              {/* Assign Websites & Partial Site Roles */}
+              {form.role !== "SUPER_ADMIN" && form.role !== "ADMIN" && (
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Assign Websites ({form.siteIds.length} Selected)
-                    </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        Assigned Websites & Site-Specific Roles ({form.siteIds.length} Selected)
+                      </label>
+                      <p className="text-[10px] text-slate-400">
+                        Assign specific permissions per site (e.g. Linker to add links/products, Writer to write, Team Lead to approve)
+                      </p>
+                    </div>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setForm({ ...form, siteIds: sites.map((s) => s.id) })}
+                        onClick={() => {
+                          const nextRolesMap: Record<number, string[]> = {};
+                          sites.forEach((s) => {
+                            nextRolesMap[s.id] = form.siteRolesMap[s.id] || [form.role || "WRITER"];
+                          });
+                          setForm({ ...form, siteIds: sites.map((s) => s.id), siteRolesMap: nextRolesMap });
+                        }}
                         className="text-[10px] font-bold text-[#6D8196] hover:underline cursor-pointer"
                       >
                         Select All
@@ -2104,31 +2257,147 @@ export default function UsersPage() {
                       <span className="text-slate-300 dark:text-slate-700">•</span>
                       <button
                         type="button"
-                        onClick={() => setForm({ ...form, siteIds: [] })}
+                        onClick={() => setForm({ ...form, siteIds: [], siteRolesMap: {} })}
                         className="text-[10px] font-bold text-slate-400 hover:underline cursor-pointer"
                       >
                         Clear All
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-3.5 bg-[#FAF9F5] dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    {sites.map((site) => (
-                      <Toggle
-                        key={site.id}
-                        checked={form.siteIds.includes(site.id)}
-                        onChange={(checked) => {
-                          if (checked) {
-                            setForm({ ...form, siteIds: [...form.siteIds, site.id] });
-                          } else {
-                            setForm({
-                              ...form,
-                              siteIds: form.siteIds.filter((id) => id !== site.id),
-                            });
-                          }
-                        }}
-                        label={site.name}
-                      />
-                    ))}
+
+                  {/* Quick Presets Toolbar */}
+                  {form.siteIds.length > 0 && (
+                    <div className="mb-2 p-2 bg-slate-100/80 dark:bg-slate-800/60 rounded-xl flex items-center justify-between gap-2 text-[10px]">
+                      <span className="font-bold text-slate-500 uppercase tracking-wider">Set All Selected:</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextMap: Record<number, string[]> = {};
+                            form.siteIds.forEach((id) => (nextMap[id] = ["LINKER"]));
+                            setForm({ ...form, siteRolesMap: nextMap });
+                            toast.success("Set all selected sites to Linker");
+                          }}
+                          className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 rounded font-bold border border-rose-200 dark:border-rose-800 cursor-pointer"
+                        >
+                          All Linker
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextMap: Record<number, string[]> = {};
+                            form.siteIds.forEach((id) => (nextMap[id] = ["WRITER"]));
+                            setForm({ ...form, siteRolesMap: nextMap });
+                            toast.success("Set all selected sites to Writer");
+                          }}
+                          className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 rounded font-bold border border-amber-200 dark:border-amber-800 cursor-pointer"
+                        >
+                          All Writer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextMap: Record<number, string[]> = {};
+                            form.siteIds.forEach((id) => (nextMap[id] = ["TEAM_LEAD"]));
+                            setForm({ ...form, siteRolesMap: nextMap });
+                            toast.success("Set all selected sites to Team Lead");
+                          }}
+                          className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded font-bold border border-emerald-200 dark:border-emerald-800 cursor-pointer"
+                        >
+                          All Team Lead
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto p-3 bg-[#FAF9F5] dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    {sites.map((site) => {
+                      const isSelected = form.siteIds.includes(site.id);
+                      const activeRoles = form.siteRolesMap[site.id] || [form.role || "WRITER"];
+                      return (
+                        <div
+                          key={site.id}
+                          className={`p-2.5 rounded-xl border transition ${
+                            isSelected
+                              ? "bg-white dark:bg-slate-900 border-blue-400 dark:border-blue-600 shadow-2xs"
+                              : "bg-white/60 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-80"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <Toggle
+                              checked={isSelected}
+                              onChange={(checked) => {
+                                if (checked) {
+                                  const nextRolesMap = { ...form.siteRolesMap };
+                                  if (!nextRolesMap[site.id] || nextRolesMap[site.id].length === 0) {
+                                    nextRolesMap[site.id] = [form.role || "WRITER"];
+                                  }
+                                  setForm({
+                                    ...form,
+                                    siteIds: [...form.siteIds, site.id],
+                                    siteRolesMap: nextRolesMap,
+                                  });
+                                } else {
+                                  const nextRolesMap = { ...form.siteRolesMap };
+                                  delete nextRolesMap[site.id];
+                                  setForm({
+                                    ...form,
+                                    siteIds: form.siteIds.filter((id) => id !== site.id),
+                                    siteRolesMap: nextRolesMap,
+                                  });
+                                }
+                              }}
+                              label={site.name}
+                            />
+                          </div>
+
+                          {isSelected && (
+                            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">
+                                Roles:
+                              </span>
+                              {(["LINKER", "WRITER", "TEAM_LEAD"] as const).map((r) => {
+                                const hasRole = activeRoles.includes(r);
+                                return (
+                                  <button
+                                    key={r}
+                                    type="button"
+                                    onClick={() => {
+                                      let updated: string[];
+                                      if (hasRole) {
+                                        if (activeRoles.length === 1) {
+                                          toast.error("Site must have at least one role assigned");
+                                          return;
+                                        }
+                                        updated = activeRoles.filter((item) => item !== r);
+                                      } else {
+                                        updated = [...activeRoles, r];
+                                      }
+                                      setForm({
+                                        ...form,
+                                        siteRolesMap: { ...form.siteRolesMap, [site.id]: updated },
+                                      });
+                                    }}
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition cursor-pointer ${
+                                      hasRole
+                                        ? r === "LINKER"
+                                          ? "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
+                                          : r === "WRITER"
+                                          ? "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                                          : "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                                        : "bg-slate-50 dark:bg-slate-800/50 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-600"
+                                    }`}
+                                  >
+                                    {hasRole && "✓ "}
+                                    {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "Team Lead"}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
