@@ -398,11 +398,7 @@ export default function AddLinkModal({
         return { ...entry, affiliateLink: "" };
       });
     });
-
-    if (allGeos.length > 0 && geos.length === 0) {
-      setGeos(allGeos.slice(0, 4)); // Default to Tier 1 GEOs (e.g. US, UK, CA, AU)
-    }
-  }, [selectedProduct, allAffiliates, allGeos]);
+  }, [selectedProduct, allAffiliates]);
 
   // Synchronize countryLinks whenever geos change - do NOT auto-fill fake links
   useEffect(() => {
