@@ -20,9 +20,14 @@ import {
   ChevronRight,
   ArrowUpRight,
   Award,
+  Calendar,
+  CalendarDays,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+
+type TimePeriod = "all" | "today" | "yesterday" | "this_week" | "this_month" | "last_month" | "custom";
 
 export interface AffiliateItem {
   id: number;
@@ -80,6 +85,15 @@ export default function AffiliateSettingsTab() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
+  // Date Filter States (Daily & Monthly)
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [customStart, setCustomStart] = useState<string>("");
+  const [customEnd, setCustomEnd] = useState<string>("");
+
   // New Affiliate Form State
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
@@ -113,12 +127,129 @@ export default function AffiliateSettingsTab() {
   const canManage =
     userRole === "SUPER_ADMIN" || userRole === "ADMIN" || userRole === "LINKER";
 
+  const formatYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const handlePeriodChange = (period: TimePeriod) => {
+    setTimePeriod(period);
+    const now = new Date();
+
+    if (period === "all") {
+      setStartDate("");
+      setEndDate("");
+      setSelectedDay("");
+      setSelectedMonth("");
+    } else if (period === "today") {
+      const todayStr = formatYMD(now);
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+      setSelectedDay(todayStr);
+    } else if (period === "yesterday") {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yStr = formatYMD(yesterday);
+      setStartDate(yStr);
+      setEndDate(yStr);
+      setSelectedDay(yStr);
+    } else if (period === "this_week") {
+      const day = now.getDay();
+      const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(now);
+      monday.setDate(diffToMonday);
+      setStartDate(formatYMD(monday));
+      setEndDate(formatYMD(now));
+    } else if (period === "this_month") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setStartDate(formatYMD(firstDay));
+      setEndDate(formatYMD(lastDay));
+      setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+    } else if (period === "last_month") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+      setStartDate(formatYMD(firstDay));
+      setEndDate(formatYMD(lastDay));
+      setSelectedMonth(`${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, "0")}`);
+    } else if (period === "custom") {
+      if (customStart && customEnd) {
+        setStartDate(customStart);
+        setEndDate(customEnd);
+      }
+    }
+  };
+
+  const handleSpecificDayChange = (dayStr: string) => {
+    setSelectedDay(dayStr);
+    if (dayStr) {
+      setStartDate(dayStr);
+      setEndDate(dayStr);
+    }
+  };
+
+  const handleSpecificMonthChange = (monthStr: string) => {
+    setSelectedMonth(monthStr);
+    if (monthStr) {
+      const [year, month] = monthStr.split("-").map(Number);
+      const firstDay = new Date(year, month - 1, 1);
+      const lastDay = new Date(year, month, 0);
+      setStartDate(formatYMD(firstDay));
+      setEndDate(formatYMD(lastDay));
+    }
+  };
+
+  const handleApplyCustomDates = () => {
+    if (!customStart) {
+      toast.error("Please pick a start date");
+      return;
+    }
+    if (customEnd && customStart > customEnd) {
+      toast.error("Start date cannot be after end date");
+      return;
+    }
+    setStartDate(customStart);
+    setEndDate(customEnd || customStart);
+  };
+
+  const activePeriodLabel = useMemo(() => {
+    if (timePeriod === "today") {
+      if (selectedDay) {
+        const [y, m, d] = selectedDay.split("-").map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        return `Daily (${dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})`;
+      }
+      return "Daily (Today)";
+    }
+    if (timePeriod === "yesterday") return "Yesterday";
+    if (timePeriod === "this_week") return "This Week";
+    if (timePeriod === "this_month") {
+      if (selectedMonth) {
+        const [y, m] = selectedMonth.split("-").map(Number);
+        const d = new Date(y, m - 1, 1);
+        return `Monthly (${d.toLocaleDateString("en-US", { month: "long", year: "numeric" })})`;
+      }
+      return "Monthly (This Month)";
+    }
+    if (timePeriod === "last_month") return "Monthly (Last Month)";
+    if (timePeriod === "custom") {
+      return `Custom: ${startDate || "Start"} to ${endDate || "End"}`;
+    }
+    return null;
+  }, [timePeriod, selectedDay, selectedMonth, startDate, endDate]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
+      const statsUrl = new URL("/api/affiliates/stats", window.location.origin);
+      if (startDate) statsUrl.searchParams.set("startDate", startDate);
+      if (endDate) statsUrl.searchParams.set("endDate", endDate);
+
       const [affRes, statsRes] = await Promise.all([
         fetch("/api/affiliates"),
-        fetch("/api/affiliates/stats"),
+        fetch(statsUrl.toString()),
       ]);
 
       const affData = await affRes.json();
@@ -141,7 +272,7 @@ export default function AffiliateSettingsTab() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [startDate, endDate]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -456,6 +587,150 @@ export default function AffiliateSettingsTab() {
               {summary.topAffiliate?.name || "None"}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Filter Controls & Search (Analytics Mode) */}
+      {subTab === "analytics" && (
+        <div className="bg-slate-50/80 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            {/* Quick Period Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+                Period:
+              </span>
+              <button
+                type="button"
+                onClick={() => handlePeriodChange("all")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  timePeriod === "all"
+                    ? "bg-blue-600 text-white shadow-xs font-bold"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                All Time
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePeriodChange("today")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                  timePeriod === "today"
+                    ? "bg-blue-600 text-white shadow-xs font-bold"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                <CalendarDays className="w-3 h-3" />
+                <span>Daily (Today)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePeriodChange("this_month")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                  timePeriod === "this_month"
+                    ? "bg-blue-600 text-white shadow-xs font-bold"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                <Calendar className="w-3 h-3" />
+                <span>Monthly (This Month)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePeriodChange("last_month")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  timePeriod === "last_month"
+                    ? "bg-blue-600 text-white shadow-xs font-bold"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                Last Month
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimePeriod("custom")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  timePeriod === "custom"
+                    ? "bg-blue-600 text-white shadow-xs font-bold"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                Custom Range
+              </button>
+            </div>
+
+            {/* Contextual Date/Month Pickers */}
+            <div className="flex flex-wrap items-center gap-2">
+              {timePeriod === "today" && (
+                <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-lg">
+                  <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">Pick Day:</span>
+                  <input
+                    type="date"
+                    value={selectedDay || formatYMD(new Date())}
+                    onChange={(e) => handleSpecificDayChange(e.target.value)}
+                    className="px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-[11px] font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                  />
+                </div>
+              )}
+
+              {timePeriod === "this_month" && (
+                <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-lg">
+                  <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">Pick Month:</span>
+                  <input
+                    type="month"
+                    value={selectedMonth || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
+                    onChange={(e) => handleSpecificMonthChange(e.target.value)}
+                    className="px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-[11px] font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                  />
+                </div>
+              )}
+
+              {timePeriod === "custom" && (
+                <div className="flex flex-wrap items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1 rounded-lg">
+                  <span className="text-[10px] font-bold text-slate-500 pl-1">From:</span>
+                  <input
+                    type="date"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                    className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[11px] font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                  />
+                  <span className="text-[10px] font-bold text-slate-500">To:</span>
+                  <input
+                    type="date"
+                    value={customEnd}
+                    onChange={(e) => setCustomEnd(e.target.value)}
+                    className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[11px] font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCustomDates}
+                    className="px-2.5 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition shadow-xs cursor-pointer"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Active Period Notification */}
+          {activePeriodLabel && (
+            <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-blue-50/90 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 text-xs">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="text-blue-900 dark:text-blue-200 text-[11px]">
+                  Filtered by: <strong>{activePeriodLabel}</strong> ({summary?.totalAffiliateProducts || 0} products)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handlePeriodChange("all")}
+                className="text-[10px] font-bold text-blue-700 dark:text-blue-300 hover:text-blue-900 flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCcw className="w-2.5 h-2.5" />
+                <span>Clear Filter</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

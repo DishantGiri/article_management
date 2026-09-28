@@ -27,11 +27,25 @@ export async function GET(req: NextRequest) {
     const endDateParam = searchParams.get("endDate");
 
     const dateFilter: { gte?: Date; lte?: Date } = {};
-    if (startDateParam) dateFilter.gte = new Date(startDateParam);
+    if (startDateParam) {
+      const parts = startDateParam.split("-").map(Number);
+      if (parts.length === 3) {
+        dateFilter.gte = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+      } else {
+        const start = new Date(startDateParam);
+        start.setHours(0, 0, 0, 0);
+        dateFilter.gte = start;
+      }
+    }
     if (endDateParam) {
-      const end = new Date(endDateParam);
-      end.setHours(23, 59, 59, 999);
-      dateFilter.lte = end;
+      const parts = endDateParam.split("-").map(Number);
+      if (parts.length === 3) {
+        dateFilter.lte = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+      } else {
+        const end = new Date(endDateParam);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.lte = end;
+      }
     }
 
     const productWhere: any = {};

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -27,6 +27,8 @@ import {
   Trash2,
   ShieldCheck,
   Check,
+  CalendarDays,
+  Clock,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -91,6 +93,8 @@ interface StatsSummary {
   } | null;
 }
 
+type TimePeriod = "all" | "today" | "yesterday" | "this_week" | "this_month" | "last_month" | "custom";
+
 export default function AffiliatesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -112,6 +116,15 @@ export default function AffiliatesPage() {
   const [selectedSiteId, setSelectedSiteId] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"count" | "name">("count");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Date Filter States (Daily & Monthly)
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [customStart, setCustomStart] = useState<string>("");
+  const [customEnd, setCustomEnd] = useState<string>("");
 
   // Product Inspection Modal
   const [inspectModal, setInspectModal] = useState<{
@@ -141,6 +154,93 @@ export default function AffiliatesPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
 
+  const formatYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const handlePeriodChange = (period: TimePeriod) => {
+    setTimePeriod(period);
+    const now = new Date();
+
+    if (period === "all") {
+      setStartDate("");
+      setEndDate("");
+      setSelectedDay("");
+      setSelectedMonth("");
+    } else if (period === "today") {
+      const todayStr = formatYMD(now);
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+      setSelectedDay(todayStr);
+    } else if (period === "yesterday") {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yStr = formatYMD(yesterday);
+      setStartDate(yStr);
+      setEndDate(yStr);
+      setSelectedDay(yStr);
+    } else if (period === "this_week") {
+      const day = now.getDay();
+      const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(now);
+      monday.setDate(diffToMonday);
+      setStartDate(formatYMD(monday));
+      setEndDate(formatYMD(now));
+    } else if (period === "this_month") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setStartDate(formatYMD(firstDay));
+      setEndDate(formatYMD(lastDay));
+      setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+    } else if (period === "last_month") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+      setStartDate(formatYMD(firstDay));
+      setEndDate(formatYMD(lastDay));
+      setSelectedMonth(`${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, "0")}`);
+    } else if (period === "custom") {
+      if (customStart && customEnd) {
+        setStartDate(customStart);
+        setEndDate(customEnd);
+      }
+    }
+  };
+
+  const handleSpecificDayChange = (dayStr: string) => {
+    setSelectedDay(dayStr);
+    if (dayStr) {
+      setStartDate(dayStr);
+      setEndDate(dayStr);
+    }
+  };
+
+  const handleSpecificMonthChange = (monthStr: string) => {
+    setSelectedMonth(monthStr);
+    if (monthStr) {
+      const [year, month] = monthStr.split("-").map(Number);
+      const firstDay = new Date(year, month - 1, 1);
+      const lastDay = new Date(year, month, 0);
+      setStartDate(formatYMD(firstDay));
+      setEndDate(formatYMD(lastDay));
+    }
+  };
+
+  const handleApplyCustomDates = () => {
+    if (!customStart) {
+      toast.error("Please pick a start date");
+      return;
+    }
+    if (customEnd && customStart > customEnd) {
+      toast.error("Start date cannot be after end date");
+      return;
+    }
+    setStartDate(customStart);
+    setEndDate(customEnd || customStart);
+  };
+
   const fetchStats = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     else setRefreshing(true);
@@ -149,6 +249,12 @@ export default function AffiliatesPage() {
       const url = new URL("/api/affiliates/stats", window.location.origin);
       if (selectedSiteId && selectedSiteId !== "all") {
         url.searchParams.set("siteId", selectedSiteId);
+      }
+      if (startDate) {
+        url.searchParams.set("startDate", startDate);
+      }
+      if (endDate) {
+        url.searchParams.set("endDate", endDate);
       }
 
       const res = await fetch(url.toString());
@@ -180,7 +286,7 @@ export default function AffiliatesPage() {
       return;
     }
     fetchStats();
-  }, [status, selectedSiteId]);
+  }, [status, selectedSiteId, startDate, endDate]);
 
   // Filtered & Sorted Affiliates
   const filteredAffiliates = useMemo(() => {
@@ -324,20 +430,21 @@ export default function AffiliatesPage() {
 
   // Export CSV
   const handleExportCSV = () => {
+    const dateSuffix = startDate ? `_${startDate}_to_${endDate || startDate}` : "_all_time";
     if (activeTab === "affiliates") {
       let csv = "Affiliate Name,Total Products,Share (%),Contributing Linkers & Counts\n";
       filteredAffiliates.forEach((a) => {
         const linkersStr = a.linkers.map((l) => `${l.userName} (${l.count})`).join(" | ");
         csv += `"${a.name}",${a.productCount},${a.percentage}%,"${linkersStr}"\n`;
       });
-      downloadCSV(csv, "affiliate_product_volume.csv");
+      downloadCSV(csv, `affiliate_product_volume${dateSuffix}.csv`);
     } else {
       let csv = "Linker Name,Role,Affiliate Products,Total Products,Affiliate Breakdown\n";
       filteredLinkers.forEach((l) => {
         const affStr = l.affiliates.map((aff) => `${aff.name} (${aff.count})`).join(" | ");
         csv += `"${l.userName}","${l.userRole}",${l.affiliateProductsCount},${l.totalProducts},"${affStr}"\n`;
       });
-      downloadCSV(csv, "linker_affiliate_contributions.csv");
+      downloadCSV(csv, `linker_affiliate_contributions${dateSuffix}.csv`);
     }
   };
 
@@ -351,6 +458,31 @@ export default function AffiliatesPage() {
     URL.revokeObjectURL(url);
     toast.success("CSV exported successfully!");
   };
+
+  // Human-readable date period label for active filter display
+  const activePeriodLabel = useMemo(() => {
+    if (timePeriod === "all") return null;
+    if (timePeriod === "today") {
+      return selectedDay
+        ? `Daily (${new Date(selectedDay + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})`
+        : "Daily (Today)";
+    }
+    if (timePeriod === "yesterday") return "Yesterday";
+    if (timePeriod === "this_week") return "This Week";
+    if (timePeriod === "this_month") {
+      if (selectedMonth) {
+        const [y, m] = selectedMonth.split("-").map(Number);
+        const d = new Date(y, m - 1, 1);
+        return `Monthly (${d.toLocaleDateString("en-US", { month: "long", year: "numeric" })})`;
+      }
+      return "Monthly (This Month)";
+    }
+    if (timePeriod === "last_month") return "Monthly (Last Month)";
+    if (timePeriod === "custom") {
+      return `Custom: ${startDate || "Start"} to ${endDate || "End"}`;
+    }
+    return null;
+  }, [timePeriod, selectedDay, selectedMonth, startDate, endDate]);
 
   if (loading) {
     return (
@@ -428,12 +560,12 @@ export default function AffiliatesPage() {
               </span>
               <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                 {summary?.totalAllProducts
-                  ? `${Math.round(((summary.totalAffiliateProducts || 0) / summary.totalAllProducts) * 100)}% of all`
+                  ? `${Math.round(((summary.totalAffiliateProducts || 0) / summary.totalAllProducts) * 100)}% of total`
                   : "Active"}
               </span>
             </div>
             <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 block">
-              Across {summary?.activeAffiliatesCount || 0} active networks
+              {activePeriodLabel ? `In ${activePeriodLabel}` : `Across ${summary?.activeAffiliatesCount || 0} active networks`}
             </span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
@@ -458,7 +590,7 @@ export default function AffiliatesPage() {
               )}
             </div>
             <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 block">
-              {summary?.topAffiliate ? `${summary.topAffiliate.percentage}% of affiliate volume` : "No products mapped"}
+              {summary?.topAffiliate ? `${summary.topAffiliate.percentage}% of volume` : "No products mapped"}
             </span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
@@ -481,7 +613,7 @@ export default function AffiliatesPage() {
               </span>
             </div>
             <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 block">
-              {summary?.activeAffiliatesCount || 0} currently with products
+              {summary?.activeAffiliatesCount || 0} with products in period
             </span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-900 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
@@ -514,10 +646,11 @@ export default function AffiliatesPage() {
       </div>
 
       {/* Navigation Tabs & Controls */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
+        {/* Row 1: Switcher Tabs + Period Filter Dropdown + Site Filter + Sort */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
           {/* Main Switcher Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
             <button
               onClick={() => setActiveTab("affiliates")}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
@@ -543,15 +676,36 @@ export default function AffiliatesPage() {
             </button>
           </div>
 
-          {/* Site Filter & Sort Options */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          {/* Date Filter & Site Filter Controls */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Period Filter Dropdown (Daily / Monthly / All Time) */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                <span>Period:</span>
+              </span>
+              <select
+                value={timePeriod}
+                onChange={(e) => handlePeriodChange(e.target.value as TimePeriod)}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer shadow-2xs"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Daily (Today)</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="this_week">This Week</option>
+                <option value="this_month">Monthly (This Month)</option>
+                <option value="last_month">Last Month</option>
+                <option value="custom">Custom Date Range...</option>
+              </select>
+            </div>
+
             {/* Site selector */}
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">Site:</span>
               <select
                 value={selectedSiteId}
                 onChange={(e) => setSelectedSiteId(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer shadow-2xs"
               >
                 <option value="all">All Sites</option>
                 {sites.map((s) => (
@@ -565,13 +719,159 @@ export default function AffiliatesPage() {
             {/* Sort toggle */}
             <button
               onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition cursor-pointer"
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition cursor-pointer shadow-2xs"
               title={`Sorting ${sortOrder === "desc" ? "Highest to Lowest" : "Lowest to Highest"}`}
             >
               <ArrowUpDown className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
+
+        {/* Row 2: Quick Filter Chips + Day / Month Pickers (When active) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          {/* Quick Preset Buttons */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+              Quick Filter:
+            </span>
+            <button
+              type="button"
+              onClick={() => handlePeriodChange("all")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                timePeriod === "all"
+                  ? "bg-blue-600 text-white shadow-xs font-bold"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              All Time
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePeriodChange("today")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                timePeriod === "today"
+                  ? "bg-blue-600 text-white shadow-xs font-bold"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              <CalendarDays className="w-3 h-3" />
+              <span>Daily (Today)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePeriodChange("this_month")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                timePeriod === "this_month"
+                  ? "bg-blue-600 text-white shadow-xs font-bold"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              <Calendar className="w-3 h-3" />
+              <span>Monthly (This Month)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePeriodChange("last_month")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                timePeriod === "last_month"
+                  ? "bg-blue-600 text-white shadow-xs font-bold"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              Last Month
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimePeriod("custom")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                timePeriod === "custom"
+                  ? "bg-blue-600 text-white shadow-xs font-bold"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              Custom Range
+            </button>
+          </div>
+
+          {/* Contextual Date/Month Pickers */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* If Daily / Today is selected, allow picking any specific day */}
+            {timePeriod === "today" && (
+              <div className="flex items-center gap-1.5 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 px-2.5 py-1 rounded-xl">
+                <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300">Pick Day:</span>
+                <input
+                  type="date"
+                  value={selectedDay || formatYMD(new Date())}
+                  onChange={(e) => handleSpecificDayChange(e.target.value)}
+                  className="px-2 py-0.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                />
+              </div>
+            )}
+
+            {/* If Monthly / This Month is selected, allow picking any specific month */}
+            {timePeriod === "this_month" && (
+              <div className="flex items-center gap-1.5 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 px-2.5 py-1 rounded-xl">
+                <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300">Pick Month:</span>
+                <input
+                  type="month"
+                  value={selectedMonth || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
+                  onChange={(e) => handleSpecificMonthChange(e.target.value)}
+                  className="px-2 py-0.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                />
+              </div>
+            )}
+
+            {/* If Custom is selected, show From and To inputs with Apply button */}
+            {timePeriod === "custom" && (
+              <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 rounded-xl">
+                <span className="text-[11px] font-bold text-slate-500 pl-1">From:</span>
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                />
+                <span className="text-[11px] font-bold text-slate-500">To:</span>
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCustomDates}
+                  className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Active Filter Notification Badge (If date filtered) */}
+        {activePeriodLabel && (
+          <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 text-xs">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="font-semibold text-blue-900 dark:text-blue-200">
+                Filtered by: <strong>{activePeriodLabel}</strong>
+              </span>
+              <span className="text-[11px] text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/80 px-2 py-0.5 rounded-full font-bold">
+                {summary?.totalAffiliateProducts || 0} Products Added
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handlePeriodChange("all")}
+              className="text-xs text-blue-700 dark:text-blue-300 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Clear Date Filter</span>
+            </button>
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="relative">
@@ -606,8 +906,16 @@ export default function AffiliatesPage() {
               <Tag className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
               <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">No Affiliate Networks Found</h3>
               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                No affiliates match your current search criteria. Try clearing filters or add a new affiliate network.
+                No affiliates match your current search or date criteria. Try adjusting the date filter or search term.
               </p>
+              {activePeriodLabel && (
+                <button
+                  onClick={() => handlePeriodChange("all")}
+                  className="mt-3 px-3.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 text-xs font-bold hover:bg-blue-100 transition"
+                >
+                  Clear Date Filter
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -695,7 +1003,7 @@ export default function AffiliatesPage() {
 
                         {aff.linkers.length === 0 ? (
                           <span className="text-[11px] text-slate-400 dark:text-slate-500 italic block">
-                            No products added yet for this affiliate.
+                            No products added in this period.
                           </span>
                         ) : (
                           <div className="flex flex-wrap gap-1.5">
@@ -748,7 +1056,7 @@ export default function AffiliatesPage() {
                           setInspectModal({
                             isOpen: true,
                             title: `Products for ${aff.name}`,
-                            subtitle: `${aff.productCount} total products configured with ${aff.name}`,
+                            subtitle: `${aff.productCount} products added ${activePeriodLabel ? `(${activePeriodLabel})` : ""}`,
                             products: aff.products,
                           });
                           setModalSearch("");
@@ -781,7 +1089,7 @@ export default function AffiliatesPage() {
                 Linker Contributions Across Affiliates
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Shows which team member added products for each affiliate network.
+                Shows which team member added products for each affiliate network {activePeriodLabel ? `during ${activePeriodLabel}` : ""}.
               </p>
             </div>
             <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -793,7 +1101,7 @@ export default function AffiliatesPage() {
             <div className="p-12 text-center">
               <Users className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
               <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">No Linker Contributions Found</h4>
-              <p className="text-xs text-slate-400 mt-1">No products match the selected criteria.</p>
+              <p className="text-xs text-slate-400 mt-1">No products added in the selected period or criteria.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -869,7 +1177,7 @@ export default function AffiliatesPage() {
                       <td className="py-3.5 px-4 text-right">
                         <button
                           onClick={() => {
-                            // Find all products by this linker
+                            // Find all products by this linker in this period
                             const linkerProducts: ProductItem[] = [];
                             affiliates.forEach((a) => {
                               a.products.forEach((p) => {
@@ -882,7 +1190,7 @@ export default function AffiliatesPage() {
                             setInspectModal({
                               isOpen: true,
                               title: `Products Added by ${linker.userName}`,
-                              subtitle: `${linkerProducts.length} affiliate products added by ${linker.userName}`,
+                              subtitle: `${linkerProducts.length} affiliate products added ${activePeriodLabel ? `(${activePeriodLabel})` : ""}`,
                               products: linkerProducts,
                             });
                             setModalSearch("");
