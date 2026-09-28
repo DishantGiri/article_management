@@ -33,6 +33,8 @@ import {
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import CustomDatePicker from "@/components/CustomDatePicker";
+import CustomMonthPicker from "@/components/CustomMonthPicker";
 
 interface LinkerContribution {
   userId: number;
@@ -793,17 +795,16 @@ export default function AffiliatesPage() {
             </button>
           </div>
 
-          {/* Contextual Date/Month Pickers */}
+          {/* Contextual Date/Month Pickers (Custom components) */}
           <div className="flex flex-wrap items-center gap-2">
             {/* If Daily / Today is selected, allow picking any specific day */}
             {timePeriod === "today" && (
               <div className="flex items-center gap-1.5 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 px-2.5 py-1 rounded-xl">
                 <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300">Pick Day:</span>
-                <input
-                  type="date"
+                <CustomDatePicker
                   value={selectedDay || formatYMD(new Date())}
-                  onChange={(e) => handleSpecificDayChange(e.target.value)}
-                  className="px-2 py-0.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                  onChange={(d) => handleSpecificDayChange(d)}
+                  align="right"
                 />
               </div>
             )}
@@ -812,36 +813,38 @@ export default function AffiliatesPage() {
             {timePeriod === "this_month" && (
               <div className="flex items-center gap-1.5 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 px-2.5 py-1 rounded-xl">
                 <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300">Pick Month:</span>
-                <input
-                  type="month"
+                <CustomMonthPicker
                   value={selectedMonth || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
-                  onChange={(e) => handleSpecificMonthChange(e.target.value)}
-                  className="px-2 py-0.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                  onChange={(m) => handleSpecificMonthChange(m)}
+                  align="right"
                 />
               </div>
             )}
 
             {/* If Custom is selected, show From and To inputs with Apply button */}
             {timePeriod === "custom" && (
-              <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 rounded-xl">
-                <span className="text-[11px] font-bold text-slate-500 pl-1">From:</span>
-                <input
-                  type="date"
-                  value={customStart}
-                  onChange={(e) => setCustomStart(e.target.value)}
-                  className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
-                />
-                <span className="text-[11px] font-bold text-slate-500">To:</span>
-                <input
-                  type="date"
-                  value={customEnd}
-                  onChange={(e) => setCustomEnd(e.target.value)}
-                  className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
-                />
+              <div className="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 rounded-xl">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500 pl-1">From:</span>
+                  <CustomDatePicker
+                    value={customStart}
+                    onChange={(d) => setCustomStart(d)}
+                    placeholder="Start Date"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500">To:</span>
+                  <CustomDatePicker
+                    value={customEnd}
+                    onChange={(d) => setCustomEnd(d)}
+                    placeholder="End Date"
+                    align="right"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={handleApplyCustomDates}
-                  className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
                 >
                   Apply
                 </button>
