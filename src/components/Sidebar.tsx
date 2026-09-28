@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText, PenLine, Link2 } from "lucide-react";
+import { LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText, PenLine, Link2, Tag } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
@@ -77,6 +77,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Sites",
     roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
     icon: Globe,
+  },
+  {
+    href: "/affiliates",
+    label: "Affiliates",
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER"],
+    icon: Tag,
   },
   {
     href: "/reports",
