@@ -511,8 +511,8 @@ export default function TeamMembersPage() {
                             {member.name}
                           </h3>
                           {isTopProducer && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 shrink-0">
-                              🏆 #1
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shrink-0">
+                              #1 Top
                             </span>
                           )}
                         </div>
@@ -588,7 +588,7 @@ export default function TeamMembersPage() {
                         isFastest ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"
                       }`}
                     >
-                      {isFastest ? "⚡ Fast pace" : "Turnaround"}
+                      {isFastest ? "Fast pace" : "Turnaround"}
                     </span>
                   </div>
 

@@ -186,7 +186,7 @@ export async function PATCH(
           select: { id: true }
         });
 
-        const notifMessage = `⚠️ ${callerLabel} flagged an issue with link "${existing.affiliateName}": "${issueMessage}"`;
+        const notifMessage = `${callerLabel} flagged an issue with link "${existing.affiliateName}": "${issueMessage}"`;
 
         for (const u of allUsers) {
           try {
@@ -275,7 +275,7 @@ export async function PATCH(
 
           const productName = product?.name || "Product";
           const siteName = product?.site?.name ? ` on site ${product.site.name}` : "";
-          const notifMessage = `✅ Link issue for "${productName}"${siteName} has been resolved by ${callerLabel}. The product is now unblocked.`;
+          const notifMessage = `Link issue for "${productName}"${siteName} has been resolved by ${callerLabel}. The product is now unblocked.`;
 
           const recipientIds = new Set<number>();
           if (product?.article?.writer?.id) {

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
+import { Check, AlertCircle } from "lucide-react";
 import { generateSlug } from "@/lib/utils";
 import AffiliateMultiSelect from "@/components/AffiliateMultiSelect";
 
@@ -29,6 +30,7 @@ interface FormData {
   trendLink: string;
   previewLink: string;
   remarks: string;
+  isNative: boolean;
 }
 
 // ─── Step Indicator ───────────────────────────────────────────────────────────
@@ -46,10 +48,10 @@ function StepIndicator({ step }: { step: number }) {
             <div className="flex flex-col items-center gap-1">
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${done
-                    ? "bg-emerald-500 text-white"
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950"
                     : active
-                      ? "bg-violet-600 text-white ring-4 ring-violet-200"
-                      : "bg-gray-100 text-gray-400 border border-gray-200"
+                      ? "bg-zinc-950 text-white ring-4 ring-zinc-200 dark:bg-white dark:text-zinc-950 dark:ring-zinc-800"
+                      : "bg-zinc-100 text-zinc-400 border border-zinc-200 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-500"
                   }`}
               >
                 {done ? (
@@ -61,7 +63,7 @@ function StepIndicator({ step }: { step: number }) {
                 )}
               </div>
               <span
-                className={`text-xs font-medium whitespace-nowrap ${active ? "text-violet-600" : done ? "text-emerald-600" : "text-gray-400"
+                className={`text-xs font-medium whitespace-nowrap ${active ? "text-zinc-950 dark:text-zinc-100 font-bold" : done ? "text-zinc-700 dark:text-zinc-300" : "text-zinc-400"
                   }`}
               >
                 {label}
@@ -69,7 +71,7 @@ function StepIndicator({ step }: { step: number }) {
             </div>
             {i < steps.length - 1 && (
               <div
-                className={`h-0.5 flex-1 mx-2 mb-4 rounded transition-all duration-500 ${done ? "bg-emerald-400" : "bg-gray-200"
+                className={`h-0.5 flex-1 mx-2 mb-4 rounded transition-all duration-500 ${done ? "bg-zinc-900 dark:bg-white" : "bg-zinc-200 dark:bg-zinc-700"
                   }`}
               />
             )}
@@ -104,6 +106,7 @@ export default function AddProductPage() {
     trendLink: "",
     previewLink: "",
     remarks: "",
+    isNative: false,
   });
 
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
@@ -198,17 +201,17 @@ export default function AddProductPage() {
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const update = useCallback((field: keyof FormData, value: string) => {
+  const update = useCallback((field: keyof FormData, value: string | boolean) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      if (field === "name" && !isSlugManuallyEdited) {
+      if (field === "name" && typeof value === "string" && !isSlugManuallyEdited) {
         next.slug = generateSlug(value);
       }
       return next;
     });
     setError("");
 
-    if (field === "trendLink" || field === "previewLink") {
+    if (typeof value === "string" && (field === "trendLink" || field === "previewLink")) {
       if (value && !isValidUrl(value)) {
         setFieldErrors((prevErrors) => ({
           ...prevErrors,
@@ -222,7 +225,7 @@ export default function AddProductPage() {
         });
       }
     }
-  }, []);
+  }, [isSlugManuallyEdited]);
 
   const isValidUrl = (url: string) => {
     if (!url) return true;
@@ -245,8 +248,11 @@ export default function AddProductPage() {
       return;
     }
     if (nameCheckStatus.exists) {
-      setError(`Cannot add product: ${nameCheckStatus.message}`);
-      return;
+      toast(`Warning: ${nameCheckStatus.message}. Proceeding — the server will confirm.`, {
+        style: { background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" },
+        duration: 4000,
+      });
+      // Don't return — let the server do final validation
     }
     const finalAffiliate = form.affiliateName.trim();
     if (!finalAffiliate) {
@@ -281,6 +287,7 @@ export default function AddProductPage() {
           trendLink: form.trendLink || null,
           previewLink: form.previewLink.trim() || null,
           remarks: form.remarks || null,
+          isNative: form.isNative,
           addedById: session?.user?.id || 1,
         }),
       });
@@ -320,7 +327,7 @@ export default function AddProductPage() {
             <button
               id="btn-add-another"
               onClick={() => {
-                setForm({ categoryId: "", siteId: "", name: "", slug: "", category: "", affiliateName: "", trendLink: "", previewLink: "", remarks: "" });
+                setForm({ categoryId: "", siteId: "", name: "", slug: "", category: "", affiliateName: "", trendLink: "", previewLink: "", remarks: "", isNative: false });
                 setIsSlugManuallyEdited(false);
                 setNameCheckStatus({ checking: false });
                 setStep(1);
@@ -524,12 +531,14 @@ export default function AddProductPage() {
                     <span>Checking product availability...</span>
                   </p>
                 ) : nameCheckStatus.exists ? (
-                  <p className="text-xs font-semibold text-red-600 mt-1 flex items-center gap-1">
-                    <span>❌ {nameCheckStatus.message}</span>
+                  <p className="text-xs font-semibold text-red-600 dark:text-red-400 mt-1 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{nameCheckStatus.message}</span>
                   </p>
                 ) : nameCheckStatus.exists === false && form.name.trim().length >= 2 ? (
-                  <p className="text-xs font-semibold text-emerald-600 mt-1 flex items-center gap-1">
-                    <span>✓ Available to add</span>
+                  <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mt-1 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 shrink-0" />
+                    <span>Available to add</span>
                   </p>
                 ) : null}
               </div>
@@ -567,6 +576,49 @@ export default function AddProductPage() {
                   placeholder="e.g. alpha-whey-protein"
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition"
                 />
+              </div>
+
+              {/* Native Product Toggle */}
+              <div
+                className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer"
+                onClick={() => update("isNative", !form.isNative)}
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Native Product</span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        form.isNative
+                          ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
+                          : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400"
+                      }`}
+                    >
+                      {form.isNative ? "Native" : "Standard"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Toggle whether this product is a native product
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  id="toggle-is-native"
+                  role="switch"
+                  aria-checked={form.isNative}
+                  onClick={(e) => { e.stopPropagation(); update("isNative", !form.isNative); }}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-zinc-950/30 dark:focus:ring-white/30 focus:ring-offset-2 ${
+                    form.isNative ? "bg-zinc-950 dark:bg-white" : "bg-zinc-300 dark:bg-zinc-600"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      form.isNative
+                        ? "translate-x-5 bg-white dark:bg-zinc-950"
+                        : "translate-x-0 bg-white dark:bg-zinc-300"
+                    }`}
+                  />
+                </button>
               </div>
 
               {/* Trend Link */}
@@ -672,6 +724,7 @@ export default function AddProductPage() {
               <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1 border border-slate-100">
                 <span>Product Type: <strong className="text-[#6D8196]">{getCategoryName()}</strong></span>
                 <span>Site: <strong>{sites.find((s) => String(s.id) === form.siteId)?.name ?? "-"}</strong></span>
+                <span>Native: <strong className={form.isNative ? "text-violet-600 font-bold" : "text-gray-600"}>{form.isNative ? "Yes" : "No"}</strong></span>
               </div>
 
               <div className="flex gap-3 mt-2">
@@ -686,7 +739,7 @@ export default function AddProductPage() {
                   id="btn-submit-product"
                   disabled={submitting || nameCheckStatus.exists}
                   onClick={handleSubmit}
-                  className="flex-1 py-3 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+                  className="flex-1 py-3 rounded-xl bg-zinc-950 text-white font-semibold hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
                 >
                   {submitting ? (
                     <>
@@ -694,7 +747,7 @@ export default function AddProductPage() {
                       Saving…
                     </>
                   ) : (
-                    "Add Product ✓"
+                    "Add Product"
                   )}
                 </button>
               </div>

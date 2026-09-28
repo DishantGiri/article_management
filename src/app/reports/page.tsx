@@ -179,7 +179,7 @@ export default function ReportsPage() {
     let text = `Work Report - ${targetUser?.name || "User"} (${(targetRole || "USER").replace("_", " ")})\nPeriod: ${periodLabel}\n\n`;
 
     if (isWriter || (isAdminTarget && reports.writer?.newArticles.length > 0)) {
-      text += `📝 NEW ARTICLES (${reports.writer.newArticles.length}):\n`;
+      text += `NEW ARTICLES (${reports.writer.newArticles.length}):\n`;
       if (reports.writer.newArticles.length === 0) {
         text += `  (No new articles)\n`;
       } else {
@@ -189,7 +189,7 @@ export default function ReportsPage() {
         });
       }
 
-      text += `\n🔄 UPDATES (${reports.writer.updates.length}):\n`;
+      text += `\nUPDATES (${reports.writer.updates.length}):\n`;
       if (reports.writer.updates.length === 0) {
         text += `  (No updates)\n`;
       } else {
@@ -198,7 +198,7 @@ export default function ReportsPage() {
         });
       }
 
-      text += `\n🛠️ FIXES (${reports.writer.fixes.length}):\n`;
+      text += `\nFIXES (${reports.writer.fixes.length}):\n`;
       if (reports.writer.fixes.length === 0) {
         text += `  (No fixes)\n`;
       } else {
@@ -209,7 +209,7 @@ export default function ReportsPage() {
     }
 
     if (isTeamLead) {
-      text += `📝 NEW ARTICLES (${reports.teamLead.newArticles.length}):\n`;
+      text += `NEW ARTICLES (${reports.teamLead.newArticles.length}):\n`;
       if (reports.teamLead.newArticles.length === 0) {
         text += `  (No new articles written)\n`;
       } else {
@@ -218,7 +218,7 @@ export default function ReportsPage() {
         });
       }
 
-      text += `\n🔍 REVIEWS CONDUCTED (${reports.teamLead.reviews.length}):\n`;
+      text += `\nREVIEWS CONDUCTED (${reports.teamLead.reviews.length}):\n`;
       if (reports.teamLead.reviews.length === 0) {
         text += `  (No reviews conducted)\n`;
       } else {
@@ -229,7 +229,7 @@ export default function ReportsPage() {
     }
 
     if (isLinker) {
-      text += `📦 PRODUCTS ADDED (${reports.linker.productsAdded.length}):\n`;
+      text += `PRODUCTS ADDED (${reports.linker.productsAdded.length}):\n`;
       if (reports.linker.productsAdded.length === 0) {
         text += `  (No products added)\n`;
       } else {
@@ -238,7 +238,7 @@ export default function ReportsPage() {
         });
       }
 
-      text += `\n🔗 ADDED LINKS ON PRODUCTS (${reports.linker.linksAdded.length}):\n`;
+      text += `\nADDED LINKS ON PRODUCTS (${reports.linker.linksAdded.length}):\n`;
       if (reports.linker.linksAdded.length === 0) {
         text += `  (No links configured)\n`;
       } else {
@@ -247,7 +247,7 @@ export default function ReportsPage() {
         });
       }
 
-      text += `\n⚙️ OTHER WORK & MODIFICATIONS (${reports.linker.otherWork.length}):\n`;
+      text += `\nOTHER WORK & MODIFICATIONS (${reports.linker.otherWork.length}):\n`;
       if (reports.linker.otherWork.length === 0) {
         text += `  (No modifications)\n`;
       } else {

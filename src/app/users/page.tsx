@@ -34,6 +34,7 @@ import {
   CheckSquare,
   Square,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
@@ -1119,7 +1120,7 @@ export default function UsersPage() {
                             className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border shrink-0 bg-slate-100 dark:bg-slate-850 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed"
                             title="Former employee: Login access revoked"
                           >
-                            ✕ No Access
+                            No Access
                           </span>
                         ) : isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
                           <button
@@ -1130,7 +1131,11 @@ export default function UsersPage() {
                               }`}
                             title="Click to toggle approval status"
                           >
-                            {u.approved ? "✓ Approved" : "⏳ Pending"}
+                            {u.approved ? (
+                              <span className="inline-flex items-center gap-1"><Check className="w-2.5 h-2.5" /> Approved</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> Pending</span>
+                            )}
                           </button>
                         ) : (
                           <span
@@ -1553,7 +1558,7 @@ export default function UsersPage() {
                               className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border bg-slate-100 dark:bg-slate-850 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed"
                               title="Former employee: Login access revoked"
                             >
-                              ✕ No Access
+                              No Access
                             </span>
                           ) : isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
                             <button
@@ -1564,7 +1569,11 @@ export default function UsersPage() {
                                 }`}
                               title="Click to toggle approval status"
                             >
-                              {u.approved ? "✓ Approved" : "⏳ Pending"}
+                              {u.approved ? (
+                                <span className="inline-flex items-center gap-1"><Check className="w-2.5 h-2.5" /> Approved</span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> Pending</span>
+                              )}
                             </button>
                           ) : (
                             <span
@@ -1671,7 +1680,7 @@ export default function UsersPage() {
                   value={selectedNewTlId}
                   onChange={(val) => setSelectedNewTlId(val)}
                   options={[
-                    { value: "", label: "✕ Remove Team Lead (Unassign)" },
+                    { value: "", label: "Remove Team Lead (Unassign)" },
                     ...teamLeads.map((tl) => ({
                       value: String(tl.id),
                       label: `${tl.name} (${tl.teamMembers?.length || 0} writers)`,
@@ -1827,7 +1836,7 @@ export default function UsersPage() {
                                     : "bg-white/80 dark:bg-slate-800/60 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-700"
                                 }`}
                               >
-                                {hasRole && "✓ "}
+                                {hasRole && <Check className="w-2.5 h-2.5 inline mr-1" />}
                                 {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "TL"}
                               </button>
                             );
@@ -2388,7 +2397,7 @@ export default function UsersPage() {
                                         : "bg-slate-50 dark:bg-slate-800/50 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-600"
                                     }`}
                                   >
-                                    {hasRole && "✓ "}
+                                    {hasRole && <Check className="w-2.5 h-2.5 inline mr-1" />}
                                     {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "Team Lead"}
                                   </button>
                                 );

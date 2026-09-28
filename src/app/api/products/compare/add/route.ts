@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       name?: string;
       slug?: string | null;
       country?: string | null;
+      isNative?: boolean;
       productCategory?: string | null;
       affiliateName?: string | null;
       trendLevel?: string | null;
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
             name: body.name,
             slug: body.slug,
             country: body.country,
+            isNative: body.isNative !== undefined ? Boolean(body.isNative) : undefined,
             productCategory: body.productCategory,
             affiliateName: body.affiliateName,
             trendLevel: body.trendLevel,
@@ -212,6 +214,7 @@ export async function POST(req: NextRequest) {
           name: prodName,
           slug: finalSlug || null,
           country: prodCountry,
+          isNative: item.isNative !== undefined ? Boolean(item.isNative) : (source?.isNative ?? false),
           siteId: targetSiteId,
           categoryId: categoryId,
           productCategory: item.productCategory || source?.productCategory || null,

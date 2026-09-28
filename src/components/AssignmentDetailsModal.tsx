@@ -33,6 +33,7 @@ export interface AssignmentProduct {
   name: string;
   slug?: string | null;
   country?: string | null;
+  isNative?: boolean;
   siteId: number;
   categoryId: number;
   productCategory?: string | null;
@@ -351,6 +352,16 @@ export default function AssignmentDetailsModal({
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
                     <Tag className="w-3.5 h-3.5 text-[#6D8196]" />
                     <span>Category: {product.productCategory || "-"}</span>
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border shadow-2xs ${
+                      product.isNative
+                        ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-zinc-950 dark:border-white"
+                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700"
+                    }`}
+                  >
+                    <span>{product.isNative ? "Native Product" : "Standard Product"}</span>
                   </span>
 
                   {product.trendLevel && (

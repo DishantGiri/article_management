@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { getActiveWorkspace } from "@/lib/workspace";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
 import AffiliateMultiSelect from "@/components/AffiliateMultiSelect";
@@ -19,6 +20,7 @@ import {
   Sparkles,
   Check,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   LayoutGrid,
   ListPlus,
@@ -58,6 +60,7 @@ export interface SpreadsheetRow {
   trendLink: string;
   previewLink: string;
   remarks: string;
+  isNative?: boolean;
 }
 
 interface FormData {
@@ -71,17 +74,18 @@ interface FormData {
   affiliateName: string;
   previewLink: string;
   remarks: string;
+  isNative: boolean;
 }
 
 function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | "single" }) {
   if (entryMode === "bulk") {
     return (
       <div className="flex items-center justify-center max-w-lg mx-auto w-full mb-4 px-4">
-        <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
-          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
-            ✓
+        <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100 shrink-0">
+          <div className="w-5 h-5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center text-[10px] font-bold shadow-xs">
+            <Check className="w-3 h-3" />
           </div>
-          <span className="text-slate-700 dark:text-slate-300">Product Type</span>
+          <span className="text-zinc-700 dark:text-zinc-300">Product Type</span>
         </div>
 
         <div className="h-0.5 flex-1 mx-4 bg-blue-600/40 rounded-full" />
@@ -179,6 +183,7 @@ export default function AddProductModal({
   const [batchCategory, setBatchCategory] = useState("");
   const [batchAffiliate, setBatchAffiliate] = useState("");
   const [batchTrendLevel, setBatchTrendLevel] = useState("");
+  const [batchIsNative, setBatchIsNative] = useState("");
   const [showSitesDrawer, setShowSitesDrawer] = useState(false);
 
   // Silently parses text into spreadsheet rows without showing a toast.
@@ -199,7 +204,7 @@ export default function AddProductModal({
 
     const uniqueNames = Array.from(new Set(lines));
     if (uniqueNames.length === 0) {
-      setSpreadsheetRows([{ name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }]);
+      setSpreadsheetRows([{ name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }]);
       return;
     }
 
@@ -209,6 +214,7 @@ export default function AddProductModal({
       category: batchCategory || form.category || "",
       affiliateName: batchAffiliate || form.affiliateName || "",
       trendLevel: batchTrendLevel || form.trendLevel || "HIGH",
+      isNative: batchIsNative ? batchIsNative === "true" : (form.isNative ?? false),
       trendLink: "",
       previewLink: "",
       remarks: "",
@@ -241,6 +247,7 @@ export default function AddProductModal({
       category: batchCategory || form.category || "",
       affiliateName: batchAffiliate || form.affiliateName || "",
       trendLevel: batchTrendLevel || form.trendLevel || "HIGH",
+      isNative: batchIsNative ? batchIsNative === "true" : (form.isNative ?? false),
       trendLink: "",
       previewLink: "",
       remarks: "",
@@ -250,19 +257,19 @@ export default function AddProductModal({
     toast.success(`Imported ${newRows.length} products into spreadsheet table!`);
   };
 
-  const updateSpreadsheetRow = (index: number, field: keyof SpreadsheetRow, value: string) => {
+  const updateSpreadsheetRow = (index: number, field: keyof SpreadsheetRow, value: any) => {
     setSpreadsheetRows((prev) => {
       const next = [...prev];
       const current = next[index];
       const updated = { ...current, [field]: value };
 
       // Auto-generate slug when product name is modified (unless user already customized slug)
-      if (field === "name") {
+      if (field === "name" && typeof value === "string") {
         const prevAutoSlug = generateSlug(current.name);
         if (!current.slug || current.slug === prevAutoSlug) {
           updated.slug = generateSlug(value);
         }
-      } else if (field === "slug") {
+      } else if (field === "slug" && typeof value === "string") {
         updated.slug = value.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-");
       }
 
@@ -280,6 +287,7 @@ export default function AddProductModal({
         category: batchCategory || form.category || "",
         affiliateName: batchAffiliate || form.affiliateName || "",
         trendLevel: batchTrendLevel || "HIGH",
+        isNative: batchIsNative ? batchIsNative === "true" : (form.isNative ?? false),
         trendLink: "",
         previewLink: "",
         remarks: "",
@@ -291,14 +299,14 @@ export default function AddProductModal({
     setSpreadsheetRows((prev) => {
       const next = prev.filter((_, i) => i !== index);
       if (next.length === 0) {
-        return [{ name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" }];
+        return [{ name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }];
       }
       return next;
     });
   };
 
   const applyBatchToAll = () => {
-    if (!batchCategory && !batchAffiliate && !batchTrendLevel) {
+    if (!batchCategory && !batchAffiliate && !batchTrendLevel && !batchIsNative) {
       toast.error("Please select at least one field to apply to all rows.");
       return;
     }
@@ -314,6 +322,7 @@ export default function AddProductModal({
         category: batchCategory ? batchCategory : row.category,
         affiliateName: batchAffiliate ? batchAffiliate : row.affiliateName,
         trendLevel: batchTrendLevel ? batchTrendLevel : row.trendLevel,
+        isNative: batchIsNative ? batchIsNative === "true" : row.isNative,
       }))
     );
     toast.success("Applied batch values to all spreadsheet rows!");
@@ -330,6 +339,7 @@ export default function AddProductModal({
     affiliateName: "",
     previewLink: "",
     remarks: "",
+    isNative: false,
   });
 
   // Track if user manually modified slug in single mode
@@ -443,6 +453,10 @@ export default function AddProductModal({
     if (isOpen) {
       setStep(1);
       setSuccessState(false);
+      setError("");                          // ← clear stale errors
+      setBulkCheckResults({});              // ← clear stale duplicate warnings
+      setSingleCheckStatus({ checking: false }); // ← clear stale check status
+      setFieldErrors({});                   // ← clear stale field errors
       setShowAddCat(false);
       setShowAddSite(false);
       setShowCustomAffiliate(false);
@@ -451,22 +465,25 @@ export default function AddProductModal({
       setEntryMode("bulk");
       setBulkPasteText("");
       setSpreadsheetRows([
-        { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
+        { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false },
       ]);
       setBatchCategory("");
       setBatchAffiliate("");
       setBatchTrendLevel("");
+      setBatchIsNative("");
       setShowSitesDrawer(false);
       setForm({
         categoryIds: [],
         name: "",
         slug: "",
+        country: "",
         category: "",
         trendLink: "",
         trendLevel: "HIGH",
         affiliateName: "",
         previewLink: "",
         remarks: "",
+        isNative: false,
       });
       setIsSlugManuallyEdited(false);
       setLoading(true);
@@ -621,17 +638,17 @@ export default function AddProductModal({
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const update = useCallback((field: keyof FormData, value: string) => {
+  const update = useCallback((field: keyof FormData, value: string | boolean) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      if (field === "name" && !isSlugManuallyEdited) {
+      if (field === "name" && typeof value === "string" && !isSlugManuallyEdited) {
         next.slug = generateSlug(value);
       }
       return next;
     });
     setError("");
 
-    if (field === "trendLink" || field === "previewLink") {
+    if (typeof value === "string" && (field === "trendLink" || field === "previewLink")) {
       if (value && !isValidUrl(value)) {
         setFieldErrors((prevErrors) => ({
           ...prevErrors,
@@ -645,7 +662,7 @@ export default function AddProductModal({
         });
       }
     }
-  }, []);
+  }, [isSlugManuallyEdited]);
 
   const isValidUrl = (url: string) => {
     if (!url) return true;
@@ -669,11 +686,13 @@ export default function AddProductModal({
 
       const hasConflict = Object.values(bulkCheckResults).some((r) => r.exists);
       if (hasConflict) {
-        const firstConflict = Object.values(bulkCheckResults).find((r) => r.exists);
-        const msg = `Cannot submit: duplicate product found. ${firstConflict?.message || "Please fix conflicting products."}`;
-        setError(msg);
-        toast.error(msg);
-        return;
+        const conflictCount = Object.values(bulkCheckResults).filter((r) => r.exists).length;
+        toast(`Warning: ${conflictCount} product(s) may already exist on target sites. Proceeding anyway — the server will confirm.`, {
+          icon: undefined,
+          style: { background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" },
+          duration: 4000,
+        });
+        // Do not return — let the server-side check handle the final decision
       }
 
       for (let i = 0; i < validRows.length; i++) {
@@ -737,6 +756,7 @@ export default function AddProductModal({
               name: r.name.trim(),
               slug: r.slug?.trim() ? generateSlug(r.slug) : generateSlug(r.name),
               country: r.country?.trim() || null,
+              isNative: Boolean(r.isNative),
               productCategory: r.category.trim(),
               affiliateName: r.affiliateName.trim(),
               trendLevel: r.trendLevel || "HIGH",
@@ -780,10 +800,11 @@ export default function AddProductModal({
       return;
     }
     if (singleCheckStatus.exists) {
-      const msg = `Cannot submit: ${singleCheckStatus.message}`;
-      setError(msg);
-      toast.error(msg);
-      return;
+      toast(`Warning: ${singleCheckStatus.message}. Proceeding — the server will confirm.`, {
+        style: { background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" },
+        duration: 4000,
+      });
+      // Don't return — let the server do final validation
     }
     if (!form.category.trim()) {
       setError("Category is compulsory.");
@@ -828,6 +849,7 @@ export default function AddProductModal({
           country: form.country?.trim() || null,
           categoryIds: form.categoryIds,
           excludedSiteIds,
+          isNative: Boolean(form.isNative),
           productCategory: form.category.trim() || null,
           trendLink: form.trendLink || null,
           trendLevel: form.trendLevel || "HIGH",
@@ -869,8 +891,26 @@ export default function AddProductModal({
   const activeSites = previewSites.filter((site: any) => !excludedSiteIds.includes(site.id));
   const hasCountrySpecificSite = activeSites.some((site: any) => Boolean(site.allowCountrySpecific));
 
-  const userRole = session?.user?.role;
-  const canAddProduct = userRole === "SUPER_ADMIN" || userRole === "ADMIN" || userRole === "LINKER";
+  const userRole = (session?.user?.role || "").toUpperCase();
+  const sessionRoles = useMemo(() => {
+    const raw: string[] = (session?.user as any)?.roles || [];
+    return Array.from(new Set([...raw, userRole].filter(Boolean).map((r) => r.toUpperCase())));
+  }, [session?.user, userRole]);
+
+  const activeWorkspace = typeof window !== "undefined"
+    ? (localStorage.getItem("active_workspace_role")?.toUpperCase() || getActiveWorkspace(userRole, sessionRoles))
+    : getActiveWorkspace(userRole, sessionRoles);
+
+  const canAddProduct =
+    userRole === "SUPER_ADMIN" ||
+    userRole === "ADMIN" ||
+    userRole === "LINKER" ||
+    activeWorkspace === "LINKER" ||
+    activeWorkspace === "ADMIN" ||
+    activeWorkspace === "SUPER_ADMIN" ||
+    sessionRoles.includes("LINKER") ||
+    sessionRoles.includes("ADMIN") ||
+    sessionRoles.includes("SUPER_ADMIN");
 
   if (!isOpen || !canAddProduct) return null;
 
@@ -926,17 +966,20 @@ export default function AddProductModal({
                       categoryIds: [],
                       name: "",
                       slug: "",
+                      country: "",
                       category: "",
                       trendLink: "",
                       trendLevel: "HIGH",
                       affiliateName: "",
                       previewLink: "",
                       remarks: "",
+                      isNative: false,
                     });
                     setIsSlugManuallyEdited(false);
                     setSpreadsheetRows([
-                      { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "" },
+                      { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false },
                     ]);
+                    setBatchIsNative("");
                     setBulkPasteText("");
                     setStep(1);
                     setSuccessState(false);
@@ -1179,8 +1222,9 @@ export default function AddProductModal({
                           onClick={() => setShowSitesDrawer(!showSitesDrawer)}
                           className="px-2.5 py-0.5 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition flex items-center gap-1.5 cursor-pointer"
                         >
-                          <Globe className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                          {activeSites.length} Site{activeSites.length !== 1 ? "s" : ""} Included {showSitesDrawer ? "▲" : "▼"}
+                          <Globe className="w-3 h-3 text-zinc-900 dark:text-zinc-100" />
+                          <span>{activeSites.length} Site{activeSites.length !== 1 ? "s" : ""} Included</span>
+                          {showSitesDrawer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-2.5">
@@ -1239,6 +1283,21 @@ export default function AddProductModal({
                               { value: "HIGH", label: "High Trend" },
                               { value: "MODERATE", label: "Moderate Trend" },
                               { value: "LOW", label: "Low / Stable" },
+                            ]}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">NATIVE PRODUCT</label>
+                          <CustomSelect
+                            value={batchIsNative}
+                            onChange={(val) => setBatchIsNative(val)}
+                            placeholder="Select native status..."
+                            className="w-full"
+                            triggerClassName="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
+                            options={[
+                              { value: "true", label: "Yes (Native)" },
+                              { value: "false", label: "No (Standard)" },
                             ]}
                           />
                         </div>
@@ -1312,18 +1371,19 @@ export default function AddProductModal({
                   {/* 3. The Google Sheets Style Table */}
                   <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-[#0b1120] flex-1 flex flex-col min-h-0">
                     <div className="overflow-x-auto max-h-[50vh] overflow-y-auto flex-1">
-                      <table className="w-full text-left border-collapse table-fixed min-w-[1050px]">
+                      <table className="w-full text-left border-collapse table-fixed min-w-[1150px]">
                         <thead className="bg-slate-100 dark:bg-[#162033] sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                           <tr>
                             <th className="w-10 py-2.5 px-2 text-center border-r border-slate-200 dark:border-slate-800/80">#</th>
-                            <th className="w-[18%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Product Name <span className="text-rose-500">*</span></th>
-                            <th className="w-[14%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Slug <span className="text-slate-400 dark:text-slate-500 text-[9px] font-normal lowercase">(auto)</span></th>
+                            <th className="w-[17%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Product Name <span className="text-rose-500">*</span></th>
+                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Slug <span className="text-slate-400 dark:text-slate-500 text-[9px] font-normal lowercase">(auto)</span></th>
                             <th className="w-[11%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Category <span className="text-rose-500">*</span></th>
-                            <th className="w-[14%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Affiliate Network <span className="text-rose-500">*</span></th>
-                            <th className="w-[10%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend <span className="text-rose-500">*</span></th>
-                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend Link</th>
-                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Preview Link <span className="text-slate-400 font-normal text-[9px] lowercase">(optional)</span></th>
-                            <th className="w-[10%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Notes</th>
+                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Affiliate Network <span className="text-rose-500">*</span></th>
+                            <th className="w-[9%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend <span className="text-rose-500">*</span></th>
+                            <th className="w-16 py-2.5 px-2 text-center border-r border-slate-200 dark:border-slate-800/80">Native</th>
+                            <th className="w-[12%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend Link</th>
+                            <th className="w-[12%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Preview Link <span className="text-slate-400 font-normal text-[9px] lowercase">(optional)</span></th>
+                            <th className="w-[9%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Notes</th>
                             <th className="w-10 py-2.5 px-1 text-center"></th>
                           </tr>
                         </thead>
@@ -1369,12 +1429,12 @@ export default function AddProductModal({
                                           title={rowResult.message}
                                         >
                                           <AlertCircle className="w-3 h-3 shrink-0" />
-                                          <span className="truncate">❌ {rowResult.message}</span>
+                                          <span className="truncate">{rowResult.message}</span>
                                         </p>
                                       ) : rowResult?.exists === false && row.name.trim().length >= 2 ? (
-                                        <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 px-0.5 flex items-center gap-1 leading-tight animate-fadeIn">
+                                        <p className="text-[10px] font-bold text-zinc-900 dark:text-zinc-100 mt-0.5 px-0.5 flex items-center gap-1 leading-tight animate-fadeIn">
                                           <Check className="w-3 h-3 shrink-0" />
-                                          <span>✓ Available</span>
+                                          <span>Available</span>
                                         </p>
                                       ) : null}
                                     </>
@@ -1439,6 +1499,20 @@ export default function AddProductModal({
                                     { value: "LOW", label: "Low" },
                                   ]}
                                 />
+                              </td>
+                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => updateSpreadsheetRow(idx, "isNative", !row.isNative)}
+                                  className={`px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer border w-full flex items-center justify-center gap-1 ${
+                                    row.isNative
+                                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                                      : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                  }`}
+                                  title={row.isNative ? "Native Product (Click to toggle)" : "Standard Product (Click to toggle)"}
+                                >
+                                  {row.isNative ? "Yes" : "No"}
+                                </button>
                               </td>
                               <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
                                 <input
@@ -1734,12 +1808,12 @@ export default function AddProductModal({
                       ) : singleCheckStatus.exists ? (
                         <p className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 animate-fadeIn">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                          <span>❌ {singleCheckStatus.message}</span>
+                          <span>{singleCheckStatus.message}</span>
                         </p>
                       ) : singleCheckStatus.exists === false && form.name.trim().length >= 2 ? (
-                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 animate-fadeIn">
+                        <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 animate-fadeIn">
                           <Check className="w-3.5 h-3.5 shrink-0" />
-                          <span>✓ Available to add on all target sites</span>
+                          <span>Available to add on all target sites</span>
                         </p>
                       ) : null}
                     </div>
@@ -1796,10 +1870,10 @@ export default function AddProductModal({
                       <CustomSelect
                         value={form.country || ""}
                         onChange={(val) => update("country", val)}
-                        placeholder="🌐 Default / Global (Worldwide)"
+                        placeholder="Default / Global (Worldwide)"
                         className="w-full"
                         options={[
-                          { value: "", label: "🌐 Default / Global (Worldwide)" },
+                          { value: "", label: "Default / Global (Worldwide)" },
                           ...TIER1_CODES.map((code) => ({
                             value: code,
                             label: `${getCountryFlag(code)} ${COUNTRY_NAMES[code] || code} (${code})`,
@@ -1815,6 +1889,46 @@ export default function AddProductModal({
                       </p>
                     </div>
                   )}
+
+                  {/* Native Product Toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                          Native Product
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            form.isNative
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                          }`}
+                        >
+                          {form.isNative ? "Native" : "Standard"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Specify whether this is a native product or standard/third-party
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      id="modal-toggle-is-native"
+                      role="switch"
+                      aria-checked={form.isNative}
+                      onClick={() => update("isNative", !form.isNative)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        form.isNative ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-700"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          form.isNative ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
 
                   {/* Grid 2-Column: Category & Affiliate Network */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

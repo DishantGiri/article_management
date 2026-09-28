@@ -1378,7 +1378,11 @@ export default function CommissionsPage() {
                               }`}
                             title="Click to toggle Paid / Pending"
                           >
-                            {sale.paymentStatus === "PAID" ? "✓ Paid" : "⏳ Pending"}
+                            {sale.paymentStatus === "PAID" ? (
+                              <span className="inline-flex items-center gap-1"><Check className="w-2.5 h-2.5" /> Paid</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> Pending</span>
+                            )}
                           </button>
                         </td>
 
@@ -1761,11 +1765,10 @@ export default function CommissionsPage() {
                     <span>Resale</span>
                   </button>
                 </div>
-                {(selectedProductForSale?.firstSalesCount || 0) >= 1 && (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold mt-1">
-                    ℹ️ 1st sale is already recorded for this product. Additional sales are classified as Resales.
+                  <p className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <span>1st sale is already recorded for this product. Additional sales are classified as Resales.</span>
                   </p>
-                )}
               </div>
 
               {/* Rate & Pool Preview */}
@@ -1815,8 +1818,8 @@ export default function CommissionsPage() {
                     </div>
 
                     {modalWriterLeftCompany && (
-                      <p className="text-[11px] text-rose-700 dark:text-rose-300 font-medium leading-tight">
-                        ⚡ Writer commission will be transferred directly to the <strong>Office Party Fund</strong>.
+                      <p className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium leading-tight">
+                        Writer commission will be transferred directly to the <strong>Office Party Fund</strong>.
                       </p>
                     )}
                   </div>
@@ -1993,7 +1996,11 @@ export default function CommissionsPage() {
                       : "bg-amber-50 dark:bg-amber-950/60 border-amber-300 text-amber-700 dark:text-amber-300"
                     }`}
                 >
-                  {detailsSale.paymentStatus === "PAID" ? "✓ Paid" : "⏳ Pending"}
+                  {detailsSale.paymentStatus === "PAID" ? (
+                    <span className="inline-flex items-center gap-1"><Check className="w-3 h-3" /> Paid</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> Pending</span>
+                  )}
                 </button>
               </div>
             </div>
@@ -2184,7 +2191,11 @@ export default function CommissionsPage() {
                           }`}
                         title="Click to toggle Paid/Pending"
                       >
-                        {sale.paymentStatus === "PAID" ? "✓ Paid" : "⏳ Pending"}
+                        {sale.paymentStatus === "PAID" ? (
+                          <span className="inline-flex items-center gap-1"><Check className="w-2.5 h-2.5" /> Paid</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> Pending</span>
+                        )}
                       </button>
                     </div>
                   </div>

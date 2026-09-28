@@ -852,7 +852,11 @@ export default function UserCommissionsPage() {
                             }`}
                           title="Click to toggle status"
                         >
-                          {sale.paymentStatus === "PAID" ? "✓ Paid" : "⏳ Pending"}
+                          {sale.paymentStatus === "PAID" ? (
+                            <span className="inline-flex items-center gap-1"><Check className="w-2.5 h-2.5" /> Paid</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> Pending</span>
+                          )}
                         </button>
                       </div>
                     </div>

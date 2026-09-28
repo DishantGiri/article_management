@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Plus, X, Trash2, Edit, AlertCircle } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -9,6 +9,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import TopHeader from "@/components/TopHeader";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
+import { getActiveWorkspace } from "@/lib/workspace";
 
 interface ProductType {
   id: number;
@@ -50,9 +51,26 @@ export default function ProductTypesAndCategoriesPage() {
   const [confirmMsg, setConfirmMsg] = useState("");
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
 
-  const userRole = session?.user?.role;
+  const userRole = (session?.user?.role || "").toUpperCase();
+  const sessionRoles = useMemo(() => {
+    const raw: string[] = (session?.user as any)?.roles || [];
+    return Array.from(new Set([...raw, userRole].filter(Boolean).map((r) => r.toUpperCase())));
+  }, [session?.user, userRole]);
+
+  const activeWorkspace = typeof window !== "undefined"
+    ? (localStorage.getItem("active_workspace_role")?.toUpperCase() || getActiveWorkspace(userRole, sessionRoles))
+    : getActiveWorkspace(userRole, sessionRoles);
+
   const canManage =
-    userRole === "SUPER_ADMIN" || userRole === "ADMIN" || userRole === "LINKER";
+    userRole === "SUPER_ADMIN" ||
+    userRole === "ADMIN" ||
+    userRole === "LINKER" ||
+    activeWorkspace === "LINKER" ||
+    activeWorkspace === "ADMIN" ||
+    activeWorkspace === "SUPER_ADMIN" ||
+    sessionRoles.includes("LINKER") ||
+    sessionRoles.includes("ADMIN") ||
+    sessionRoles.includes("SUPER_ADMIN");
 
   const fetchData = async () => {
     setLoading(true);

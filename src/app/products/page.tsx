@@ -18,6 +18,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import TopHeader from "@/components/TopHeader";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
+import { getActiveWorkspace } from "@/lib/workspace";
 
 interface Category {
   id: number;
@@ -29,6 +30,7 @@ interface Product {
   name: string;
   slug?: string | null;
   country?: string | null;
+  isNative?: boolean;
   siteId: number;
   categoryId: number;
   productCategory?: string | null;
@@ -73,11 +75,41 @@ function ProductsPageContent() {
   const [siteFilter, setSiteFilter] = useState(urlSite || "");
   const [categoryFilter, setCategoryFilter] = useState(urlCategory || "");
   const [statusFilter, setStatusFilter] = useState(urlStatus || "");
+  const [nativeFilter, setNativeFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState("");
+  const userRole = (session?.user?.role || "").toUpperCase();
+  const sessionRoles = useMemo(() => {
+    const raw: string[] = (session?.user as any)?.roles || [];
+    return Array.from(new Set([...raw, userRole].filter(Boolean).map((r) => r.toUpperCase())));
+  }, [session?.user, userRole]);
+
+  const [currentUserRole, setCurrentUserRole] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("active_workspace_role")?.toUpperCase() || "";
+    }
+    return "";
+  });
+
+  const activeRole = useMemo(() => {
+    if (currentUserRole) return currentUserRole.toUpperCase();
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("active_workspace_role")?.toUpperCase();
+      if (stored) return stored;
+    }
+    return getActiveWorkspace(userRole, sessionRoles);
+  }, [currentUserRole, userRole, sessionRoles]);
+
+  const canAddProduct =
+    activeRole === "SUPER_ADMIN" ||
+    activeRole === "ADMIN" ||
+    activeRole === "LINKER" ||
+    sessionRoles.includes("LINKER") ||
+    sessionRoles.includes("ADMIN") ||
+    sessionRoles.includes("SUPER_ADMIN");
+
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeTab, setActiveTab] = useState<"products" | "my-articles">("products");
   const [myArticles, setMyArticles] = useState<any[]>([]);
@@ -217,7 +249,7 @@ function ProductsPageContent() {
   const refreshProductsData = (showLoading = false) => {
     if (!session?.user?.id) return;
     const mockUserId = session.user.id;
-    const uRole = session.user.role || "WRITER";
+    const uRole = getActiveWorkspace(session.user.role, (session.user as any)?.roles);
     setCurrentUserRole(uRole);
 
     if (showLoading) setLoading(true);
@@ -242,8 +274,32 @@ function ProductsPageContent() {
   };
 
   useEffect(() => {
+    if (activeRole === "LINKER" && activeTab === "my-articles") {
+      setActiveTab("products");
+    }
+  }, [activeRole, activeTab]);
+
+  useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const handleWorkspaceChanged = (e: any) => {
+      if (e.detail?.role) {
+        setCurrentUserRole(e.detail.role.toUpperCase());
+        refreshProductsData(false);
+      }
+    };
+    window.addEventListener("workspace-changed", handleWorkspaceChanged);
+    return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+  }, []);
+
+  useEffect(() => {
+    if (session?.user) {
+      const uRole = getActiveWorkspace(session.user.role, (session.user as any)?.roles);
+      setCurrentUserRole(uRole);
+    }
+  }, [session?.user]);
 
   useEffect(() => {
     refreshProductsData(true);
@@ -410,7 +466,13 @@ function ProductsPageContent() {
       if (d > eDate) matchDate = false;
     }
 
-    return matchSearch && matchSite && matchCategory && matchStatus && matchUser && matchDate;
+    // Native Product Filter
+    const matchNative =
+      !nativeFilter ||
+      (nativeFilter === "native" && Boolean(p.isNative)) ||
+      (nativeFilter === "non_native" && !p.isNative);
+
+    return matchSearch && matchSite && matchCategory && matchStatus && matchUser && matchDate && matchNative;
   });
 
   const activeFiltersCount = [
@@ -418,6 +480,7 @@ function ProductsPageContent() {
     Boolean(siteFilter),
     Boolean(categoryFilter),
     Boolean(statusFilter),
+    Boolean(nativeFilter),
     Boolean(userFilter),
     Boolean(startDate || endDate),
   ].filter(Boolean).length;
@@ -427,6 +490,7 @@ function ProductsPageContent() {
     setSiteFilter("");
     setCategoryFilter("");
     setStatusFilter("");
+    setNativeFilter("");
     setUserFilter("");
     setStartDate("");
     setEndDate("");
@@ -681,7 +745,7 @@ function ProductsPageContent() {
             All Products
           </button>
 
-          {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD" || myArticles.length > 0) && (
+          {activeRole !== "LINKER" && (activeRole === "WRITER" || activeRole === "TEAM_LEAD" || myArticles.length > 0) && (
             <button
               type="button"
               onClick={() => {
@@ -703,7 +767,7 @@ function ProductsPageContent() {
             </button>
           )}
 
-          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER" || session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "ADMIN" || session?.user?.role === "LINKER") && (
+          {canAddProduct && (
             <Link
               href="/product-types"
               className="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition"
@@ -714,7 +778,7 @@ function ProductsPageContent() {
         </div>
 
         <div className="flex items-center gap-3 pb-3 sm:pb-0">
-          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+          {canAddProduct && (
             <button
               onClick={() => setIsImportModalOpen(true)}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs transition cursor-pointer"
@@ -732,7 +796,7 @@ function ProductsPageContent() {
             <span>Export</span>
           </button>
 
-          {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+          {canAddProduct && (
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#00A389] hover:bg-[#008f78] text-white rounded-lg text-xs font-semibold shadow-xs transition active:scale-98 cursor-pointer"
@@ -805,7 +869,7 @@ function ProductsPageContent() {
               { value: "COMPLETED", label: "Completed" },
               { value: "APPROVED", label: "Approved" },
               { value: "REDO", label: "Redo / Changes" },
-              { value: "NO_LINKS", label: "⚠️ Published (No Links)" },
+              { value: "NO_LINKS", label: "Published (No Links)" },
             ]}
           />
 
@@ -848,6 +912,21 @@ function ProductsPageContent() {
             options={[
               { value: "", label: "All Users" },
               ...uniqueUsers.map((u) => ({ value: u, label: u })),
+            ]}
+          />
+
+          {/* Native Product Filter */}
+          <CustomSelect
+            value={nativeFilter}
+            onChange={(val) => { setNativeFilter(val); setCurrentPage(1); }}
+            placeholder="All Products"
+            className="w-36 shrink-0"
+            minWidth={150}
+            triggerClassName="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+            options={[
+              { value: "", label: "All Products" },
+              { value: "native", label: "Native Only" },
+              { value: "non_native", label: "Standard Only" },
             ]}
           />
 
@@ -987,8 +1066,16 @@ function ProductsPageContent() {
                             >
                               {p.name}
                             </button>
+                            {p.isNative && (
+                              <span
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border border-zinc-950 dark:border-white shadow-2xs"
+                                title="Native Product"
+                              >
+                                Native
+                              </span>
+                            )}
                             {isTargetExactMatch && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 border border-teal-300 dark:border-teal-700">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700">
                                 Exact Match
                               </span>
                             )}
@@ -1098,7 +1185,7 @@ function ProductsPageContent() {
                             </button>
 
                             {/* Review if article exists for Admin/Team Lead */}
-                            {p.article && (currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD") && (
+                            {p.article && (activeRole === "SUPER_ADMIN" || activeRole === "ADMIN" || activeRole === "TEAM_LEAD") && (
                               <Link
                                 href={`/articles/${p.article.id}`}
                                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition"
@@ -1110,7 +1197,7 @@ function ProductsPageContent() {
                             )}
 
                             {/* Writer: Write / Taken */}
-                            {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD") && (
+                            {(activeRole === "WRITER" || activeRole === "TEAM_LEAD") && (
                               <button
                                 type="button"
                                 disabled={status !== "PENDING"}
@@ -1156,7 +1243,7 @@ function ProductsPageContent() {
                             )}
 
                             {/* Edit */}
-                            {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+                            {canAddProduct && (
                               <button
                                 type="button"
                                 onClick={() => setEditingProduct(p)}
@@ -1169,7 +1256,7 @@ function ProductsPageContent() {
                             )}
 
                             {/* Delete */}
-                            {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
+                            {canAddProduct && (
                               <button
                                 type="button"
                                 onClick={() => handleDeleteProduct(p.id, p.name)}
@@ -1418,7 +1505,7 @@ function ProductsPageContent() {
       {selectedProduct && (
         <AssignmentDetailsModal
           product={selectedProduct as any}
-          currentUserRole={currentUserRole}
+          currentUserRole={activeRole}
           currentUserId={session?.user?.id}
           onClose={() => setSelectedProduct(null)}
           onReportIssue={(prod) => {

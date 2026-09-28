@@ -222,8 +222,8 @@ export default function LinkHistoryModal({ isOpen, onClose, linkLog }: LinkHisto
                         </div>
                       ) : isCreation ? (
                         <div className="space-y-1">
-                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                            🌱 Link Log Created
+                          <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
+                            Link Log Created
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-[11px]">
                             {item.newAffiliateLink && (

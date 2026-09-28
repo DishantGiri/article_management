@@ -5,8 +5,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText, PenLine, Link2 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
@@ -25,11 +25,11 @@ const MOCK_USERS = [
 ];
 
 const ROLE_COLORS: Record<Role, string> = {
-  SUPER_ADMIN: "bg-[#6D8196]/15 text-[#3D4F61] dark:bg-[#6D8196]/30 dark:text-slate-200 border border-[#6D8196]/30 dark:border-[#6D8196]/50",
-  ADMIN: "bg-[#4A4A4A]/10 text-[#4A4A4A] dark:bg-slate-700/60 dark:text-slate-200 border border-[#4A4A4A]/25 dark:border-slate-600",
-  LINKER: "bg-[#6D8196]/10 text-[#4A4A4A] dark:bg-emerald-950/40 dark:text-emerald-300 border border-[#6D8196]/20 dark:border-emerald-700/40",
-  WRITER: "bg-[#EAEAEA] text-[#4A4A4A] dark:bg-slate-700/80 dark:text-slate-200 border border-[#CBCBCB] dark:border-slate-600",
-  TEAM_LEAD: "bg-[#FFFFE3] text-[#4A4A4A] dark:bg-amber-950/40 dark:text-amber-300 border border-[#CBCBCB] dark:border-amber-700/40",
+  SUPER_ADMIN: "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border border-zinc-900 dark:border-zinc-100",
+  ADMIN: "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 border border-zinc-700 dark:border-zinc-300",
+  LINKER: "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700",
+  WRITER: "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700",
+  TEAM_LEAD: "bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-600",
 };
 
 interface NavItem {
@@ -392,46 +392,71 @@ export default function Sidebar() {
   };
 
   const userRole = (currentUser?.role || session?.user?.role || "").toUpperCase();
-  const sessionRoles: string[] = (session?.user as any)?.roles || [];
+  const rawRoles: string[] = (session?.user as any)?.roles || [];
+  const sessionRoles = useMemo(() => {
+    const list = [...rawRoles, userRole].filter(Boolean).map((r) => r.toUpperCase());
+    return Array.from(new Set(list));
+  }, [rawRoles, userRole]);
+
   const [currentWorkspaceRole, setCurrentWorkspaceRole] = useState<string>(() =>
     getActiveWorkspace(userRole, sessionRoles)
   );
 
+  const hasInitializedWorkspace = useRef(false);
+
   useEffect(() => {
     if (session?.user) {
-      const uRole = session.user.role || "";
+      const uRole = (session.user.role || "").toUpperCase();
       const sRoles: string[] = (session.user as any)?.roles || (uRole ? [uRole] : []);
-      if (sRoles.length > 0) {
-        document.cookie = `user_roles=${sRoles.join(",")}; path=/; max-age=31536000; SameSite=Lax`;
+      const distinctRoles = Array.from(new Set([uRole, ...sRoles].filter(Boolean).map((r) => r.toUpperCase())));
+      if (distinctRoles.length > 0) {
+        document.cookie = `user_roles=${distinctRoles.join(",")}; path=/; max-age=31536000; SameSite=Lax`;
       }
-      const initial = getActiveWorkspace(uRole, sRoles);
-      setCurrentWorkspaceRole(initial);
-      document.cookie = `active_workspace_role=${initial}; path=/; max-age=31536000; SameSite=Lax`;
+      const active = getActiveWorkspace(uRole, distinctRoles);
+      if (!hasInitializedWorkspace.current) {
+        hasInitializedWorkspace.current = true;
+        setCurrentWorkspaceRole(active);
+        document.cookie = `active_workspace_role=${active}; path=/; max-age=31536000; SameSite=Lax`;
+      } else if (!distinctRoles.includes(currentWorkspaceRole)) {
+        setCurrentWorkspaceRole(active);
+        document.cookie = `active_workspace_role=${active}; path=/; max-age=31536000; SameSite=Lax`;
+      }
     }
-  }, [session?.user]);
+  }, [session?.user, currentWorkspaceRole]);
 
   useEffect(() => {
     const handleWorkspaceChanged = (e: any) => {
-      if (e.detail?.role) {
+      if (e.detail?.role && e.detail.role !== currentWorkspaceRole) {
         setCurrentWorkspaceRole(e.detail.role);
       }
     };
     window.addEventListener("workspace-changed", handleWorkspaceChanged);
     return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
-  }, []);
+  }, [currentWorkspaceRole]);
 
   const handleSwitchWorkspace = (newRole: string) => {
-    setActiveWorkspace(newRole, sessionRoles);
-    setCurrentWorkspaceRole(newRole);
+    const upperRole = newRole.toUpperCase();
+    if (upperRole === currentWorkspaceRole) return;
+
+    // 1. Immediately update UI state on click
+    setCurrentWorkspaceRole(upperRole);
+
+    // 2. Persist in storage/cookies and broadcast
+    setActiveWorkspace(upperRole, sessionRoles);
+
+    // 3. Route check & refresh
     const allowed = NAV_ITEMS.some((item) => {
       if (item.href === "/" && pathname === "/") return true;
       if (pathname.startsWith(item.href) && item.href !== "/") {
-        return item.roles.some((r) => r.toUpperCase() === newRole.toUpperCase());
+        return item.roles.some((r) => r.toUpperCase() === upperRole);
       }
       return false;
     });
+
     if (!allowed && pathname !== "/") {
       router.push("/");
+    } else {
+      router.refresh();
     }
   };
 
@@ -543,7 +568,7 @@ export default function Sidebar() {
           {/* Mobile close button */}
           <button
             onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-[#737373] hover:text-[#4A4A4A] hover:bg-[#FAF9F5] dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="lg:hidden p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             aria-label="Close navigation menu"
           >
             <X className="w-5 h-5" />
@@ -552,9 +577,9 @@ export default function Sidebar() {
 
         {/* Multi-Role Workspace Selector in Sidebar */}
         {sessionRoles.length > 1 && !sessionRoles.includes("SUPER_ADMIN") && !sessionRoles.includes("ADMIN") && (
-          <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-            <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/50 dark:border-slate-700/60">
-              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-0.5">
+          <div className="px-4 pt-3 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+            <div className="p-2 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/60 dark:border-zinc-800">
+              <div className="flex items-center justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 px-0.5">
                 <span>Active Workspace</span>
               </div>
               <div className="grid grid-cols-3 gap-1">
@@ -562,42 +587,45 @@ export default function Sidebar() {
                   <button
                     type="button"
                     onClick={() => handleSwitchWorkspace("TEAM_LEAD")}
-                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition text-center cursor-pointer ${
+                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                       effectiveWorkspace === "TEAM_LEAD"
-                        ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-2xs border border-emerald-300 dark:border-emerald-700"
-                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                        ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-2xs border border-zinc-950 dark:border-white"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                     }`}
                     title="Switch to Team Lead Workspace"
                   >
-                    👑 TL
+                    <Users className="w-3 h-3" />
+                    <span>TL</span>
                   </button>
                 )}
                 {sessionRoles.includes("WRITER") && (
                   <button
                     type="button"
                     onClick={() => handleSwitchWorkspace("WRITER")}
-                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition text-center cursor-pointer ${
+                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                       effectiveWorkspace === "WRITER"
-                        ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 shadow-2xs border border-amber-300 dark:border-amber-700"
-                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                        ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-2xs border border-zinc-950 dark:border-white"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                     }`}
                     title="Switch to Writer Workspace"
                   >
-                    ✍️ Writer
+                    <PenLine className="w-3 h-3" />
+                    <span>Writer</span>
                   </button>
                 )}
                 {sessionRoles.includes("LINKER") && (
                   <button
                     type="button"
                     onClick={() => handleSwitchWorkspace("LINKER")}
-                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition text-center cursor-pointer ${
+                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                       effectiveWorkspace === "LINKER"
-                        ? "bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 shadow-2xs border border-rose-300 dark:border-rose-700"
-                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                        ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-2xs border border-zinc-950 dark:border-white"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                     }`}
                     title="Switch to Linker Workspace"
                   >
-                    🔗 Linker
+                    <Link2 className="w-3 h-3" />
+                    <span>Linker</span>
                   </button>
                 )}
               </div>
@@ -610,7 +638,7 @@ export default function Sidebar() {
           {status === "loading" || !isMounted ? (
             <div className="space-y-2 px-4">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-9 bg-[#FAF9F5] dark:bg-slate-800/60 rounded-xl animate-pulse" />
+                <div key={i} className="h-9 bg-zinc-100 dark:bg-zinc-800/60 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : visibleNavItems.length > 0 ? (
@@ -622,17 +650,17 @@ export default function Sidebar() {
                   href={item.href}
                   onClick={() => setIsMobileOpen(false)}
                   className={`flex items-center gap-3 mx-3 px-3.5 py-2.5 text-sm transition-all duration-200 group rounded-xl ${active
-                      ? "bg-[#e6f4f1] text-[#0d9488] dark:bg-teal-950/60 dark:text-teal-300 font-semibold shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/70 font-medium"
+                      ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-2xs"
+                      : "text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-900 font-medium"
                     }`}
                 >
-                  <span className={active ? "text-[#0d9488] dark:text-teal-300" : "text-slate-400 group-hover:text-slate-600 dark:text-slate-400 dark:group-hover:text-slate-200 transition-colors"}>
+                  <span className={active ? "text-white dark:text-zinc-950" : "text-zinc-400 group-hover:text-zinc-950 dark:text-zinc-400 dark:group-hover:text-white transition-colors"}>
                     <item.icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
                   </span>
                   <div className="flex-1 flex items-center justify-between">
                     <span>{item.label}</span>
                     {item.label === "Notifications" && unreadCount > 0 && (
-                      <span className="bg-rose-500 text-white font-bold text-[9px] px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm animate-pulse mr-2">
+                      <span className="bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold text-[9px] px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm mr-2">
                         {unreadCount}
                       </span>
                     )}
@@ -641,24 +669,24 @@ export default function Sidebar() {
               );
             })
           ) : (
-            <div className="px-6 py-4 text-xs text-slate-400 dark:text-slate-500">
+            <div className="px-6 py-4 text-xs text-zinc-400 dark:text-zinc-500">
               No navigation items available for this role.
             </div>
           )}
         </nav>
 
         {/* Quick Theme Switcher */}
-        <div className="px-3.5 py-2.5 border-t border-slate-100 flex items-center justify-between text-xs" suppressHydrationWarning>
-          <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
-            {resolvedTheme === "dark" ? <Moon className="w-3.5 h-3.5 text-sky-400" /> : <Sun className="w-3.5 h-3.5 text-amber-500" />}
+        <div className="px-3.5 py-2.5 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs" suppressHydrationWarning>
+          <span className="text-[11px] font-bold text-zinc-500 flex items-center gap-1.5">
+            {resolvedTheme === "dark" ? <Moon className="w-3.5 h-3.5 text-zinc-300" /> : <Sun className="w-3.5 h-3.5 text-zinc-700" />}
             <span>Theme</span>
           </span>
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
+          <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
             <button
               onClick={() => setTheme("light")}
               className={`p-1.5 rounded-md transition cursor-pointer ${theme === "light"
-                  ? "bg-white text-amber-500 shadow-xs"
-                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs"
+                  : "text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                 }`}
               title="Light theme"
             >
@@ -667,8 +695,8 @@ export default function Sidebar() {
             <button
               onClick={() => setTheme("dark")}
               className={`p-1.5 rounded-md transition cursor-pointer ${theme === "dark"
-                  ? "bg-slate-900 text-sky-400 shadow-xs"
-                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs"
+                  : "text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                 }`}
               title="Dark theme"
             >
@@ -677,8 +705,8 @@ export default function Sidebar() {
             <button
               onClick={() => setTheme("system")}
               className={`p-1.5 rounded-md transition cursor-pointer ${theme === "system"
-                  ? "bg-white dark:bg-slate-900 text-indigo-500 shadow-xs"
-                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs"
+                  : "text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                 }`}
               title="System theme"
             >
@@ -688,14 +716,14 @@ export default function Sidebar() {
         </div>
 
         {/* User Switcher (mock auth) */}
-        <div className="px-3 py-4 border-t border-slate-100 dark:border-slate-800 relative bg-slate-50/50 dark:bg-slate-900/50" suppressHydrationWarning>
+        <div className="px-3 py-4 border-t border-zinc-100 dark:border-zinc-800 relative bg-zinc-50/50 dark:bg-zinc-900/50" suppressHydrationWarning>
           {isMounted && status !== "loading" && currentUser ? (
             <>
               <button
                 onClick={() => setShowSwitcher(!showSwitcher)}
-                className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/70 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 border border-slate-200/40 dark:border-slate-700 shadow-sm transition-all cursor-pointer"
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-950 dark:to-indigo-950 text-violet-700 dark:text-violet-300 flex items-center justify-center text-xs font-bold flex-shrink-0 border border-violet-200/30 dark:border-violet-700/50 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center text-xs font-bold flex-shrink-0 border border-zinc-200 dark:border-zinc-800 overflow-hidden">
                   {currentUser.image ? (
                     <img src={currentUser.image} alt={currentUser.name} className="w-full h-full object-cover" />
                   ) : (
@@ -703,11 +731,11 @@ export default function Sidebar() {
                   )}
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <p className="text-slate-800 dark:text-slate-100 text-xs font-bold truncate">{currentUser.name}</p>
+                  <p className="text-zinc-900 dark:text-zinc-100 text-xs font-bold truncate">{currentUser.name}</p>
                   {sessionRoles.length > 1 ? (
                     <div className="flex items-center gap-1 mt-0.5">
-                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                        {effectiveWorkspace === "TEAM_LEAD" ? "👑 TL Workspace" : effectiveWorkspace === "LINKER" ? "🔗 Linker Workspace" : "✍️ Writer Workspace"}
+                      <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400">
+                        {effectiveWorkspace === "TEAM_LEAD" ? "TL Workspace" : effectiveWorkspace === "LINKER" ? "Linker Workspace" : "Writer Workspace"}
                       </span>
                     </div>
                   ) : currentUser.role ? (
@@ -715,7 +743,7 @@ export default function Sidebar() {
                       {currentUser.role.replace("_", " ")}
                     </span>
                   ) : (
-                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                    <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-full inline-block mt-0.5">
                       No Role Assigned
                     </span>
                   )}

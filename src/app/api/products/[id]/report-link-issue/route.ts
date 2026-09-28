@@ -106,7 +106,7 @@ export async function POST(
       select: { id: true },
     });
 
-    const notifMessage = `⚠️ ${callerLabel} reported an issue with link for "${product.name}" (${product.site?.name || "Site"}): "${issueMessage.trim()}"`;
+    const notifMessage = `${callerLabel} reported an issue with link for "${product.name}" (${product.site?.name || "Site"}): "${issueMessage.trim()}"`;
 
     for (const u of allUsers) {
       try {

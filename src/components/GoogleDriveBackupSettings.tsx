@@ -18,6 +18,7 @@ import {
   HelpCircle,
   Key,
   ExternalLink,
+  X,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -530,9 +531,9 @@ export default function GoogleDriveBackupSettings() {
               </h4>
               <button
                 onClick={() => setShowManualModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 

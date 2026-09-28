@@ -413,7 +413,7 @@ function CalendarContent() {
                     {day.dayNumber}
                   </span>
 
-                  {/* 🟢 Green Dot / 🔴 Red Dot Status Indicator */}
+                  {/* Status Indicator */}
                   <div className="flex items-center gap-1">
                     {isPast ? (
                       isWork ? (
@@ -439,8 +439,9 @@ function CalendarContent() {
                   {hasActivities ? (
                     <>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 truncate">
-                          ✓ {day.activityCount} action{day.activityCount > 1 ? "s" : ""}
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 truncate inline-flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+                          {day.activityCount} action{day.activityCount > 1 ? "s" : ""}
                         </span>
                       </div>
                       {/* Short list of first 1-2 items */}

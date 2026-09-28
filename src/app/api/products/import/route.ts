@@ -120,6 +120,7 @@ export async function POST(req: NextRequest) {
             name: row.name,
             siteId: site.id,
             categoryId: category.id,
+            isNative: row.isNative === true || row.isNative === "true" || row.isNative === "yes" || row.native === true || row.native === "true" || row.native === "yes",
             productCategory: productCategory,
             trendLink: row.trendLink || null,
             previewLink: row.previewLink || null,

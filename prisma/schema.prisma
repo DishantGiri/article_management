@@ -180,6 +180,7 @@ model Product {
   name          String
   slug          String?
   country       String?
+  isNative      Boolean     @default(false)
 
   siteId        Int
   categoryId    Int

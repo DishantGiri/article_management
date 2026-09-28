@@ -230,7 +230,7 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
               disabled={adding}
               className="text-xs font-bold text-emerald-600 dark:text-emerald-300 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
             >
-              🌎 Import 27 LATAM Countries
+              Import 27 LATAM Countries
             </button>
           </div>
         </div>

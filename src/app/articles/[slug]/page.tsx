@@ -555,7 +555,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                     const currentTrimmed = (article.articleLink || "").trim();
                     const nextTrimmed = newLinkValue.trim();
                     if (currentTrimmed === nextTrimmed) {
-                      toast("No changes made to the document link.", { icon: "ℹ️" });
+                      toast("No changes made to the document link.");
                       setEditLinkMode(false);
                       return;
                     }
@@ -615,26 +615,26 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                     onChange={(e) => handleCountryChange(e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#6D8196] focus:outline-none transition cursor-pointer"
                   >
-                    <option value="">🌐 Default / Global (Worldwide)</option>
+                    <option value="">Default / Global (Worldwide)</option>
                     <optgroup label="Tier 1 English Geos">
-                      <option value="US">🇺🇸 US - United States</option>
-                      <option value="UK">🇬🇧 UK - United Kingdom</option>
-                      <option value="CA">🇨🇦 CA - Canada</option>
-                      <option value="AU">🇦🇺 AU - Australia</option>
+                      <option value="US">US - United States</option>
+                      <option value="UK">UK - United Kingdom</option>
+                      <option value="CA">CA - Canada</option>
+                      <option value="AU">AU - Australia</option>
                     </optgroup>
                     <optgroup label="Latin America (LATAM)">
-                      <option value="MX">🇲🇽 MX - Mexico</option>
-                      <option value="BR">🇧🇷 BR - Brazil</option>
-                      <option value="AR">🇦🇷 AR - Argentina</option>
-                      <option value="CO">🇨🇴 CO - Colombia</option>
-                      <option value="CL">🇨🇱 CL - Chile</option>
-                      <option value="PE">🇵🇪 PE - Peru</option>
-                      <option value="EC">🇪🇨 EC - Ecuador</option>
+                      <option value="MX">MX - Mexico</option>
+                      <option value="BR">BR - Brazil</option>
+                      <option value="AR">AR - Argentina</option>
+                      <option value="CO">CO - Colombia</option>
+                      <option value="CL">CL - Chile</option>
+                      <option value="PE">PE - Peru</option>
+                      <option value="EC">EC - Ecuador</option>
                     </optgroup>
                     <optgroup label="Europe">
-                      <option value="DE">🇩🇪 DE - Germany</option>
-                      <option value="FR">🇫🇷 FR - France</option>
-                      <option value="ES">🇪🇸 ES - Spain</option>
+                      <option value="DE">DE - Germany</option>
+                      <option value="FR">FR - France</option>
+                      <option value="ES">ES - Spain</option>
                     </optgroup>
                   </select>
                 </div>
@@ -804,7 +804,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                               : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750"
                             }`}
                         >
-                          {p === "HIGH" ? "🔴 High" : p === "MEDIUM" ? "🟡 Medium" : "⚪ Low"}
+                          {p === "HIGH" ? "High" : p === "MEDIUM" ? "Medium" : "Low"}
                         </button>
                       ))}
                     </div>
@@ -870,7 +870,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                                 : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
                               }`}
                           >
-                            {p === "HIGH" ? "🔴 High" : p === "MEDIUM" ? "🟡 Medium" : "⚪ Low"}
+                            {p === "HIGH" ? "High" : p === "MEDIUM" ? "Medium" : "Low"}
                           </button>
                         ))}
                       </div>

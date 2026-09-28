@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -207,6 +207,8 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const hasInitializedWorkspaceView = useRef(false);
+
   useEffect(() => {
     if (session?.user) {
       if (session.user.role) {
@@ -221,15 +223,21 @@ export default function DashboardPage() {
       setAvailableRoles(distinctRoles);
 
       const active = getActiveWorkspace(uRole, distinctRoles);
-      setActiveRoleView(active);
+      if (!hasInitializedWorkspaceView.current) {
+        hasInitializedWorkspaceView.current = true;
+        setActiveRoleView(active);
+      } else if (!distinctRoles.includes(activeRoleView)) {
+        setActiveRoleView(active);
+      }
     }
-  }, [session?.user]);
+  }, [session?.user, activeRoleView]);
 
   useEffect(() => {
     const handleWorkspaceChanged = (e: any) => {
       if (e.detail?.role) {
-        setActiveRoleView(e.detail.role);
-        fetchDashboardData(false, e.detail.role);
+        const newRole = e.detail.role.toUpperCase();
+        setActiveRoleView(newRole);
+        fetchDashboardData(true, newRole);
       }
     };
     window.addEventListener("workspace-changed", handleWorkspaceChanged);
@@ -486,7 +494,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   setActiveWorkspace("TEAM_LEAD", availableRoles);
                   setActiveRoleView("TEAM_LEAD");
-                  fetchDashboardData(false, "TEAM_LEAD");
+                  fetchDashboardData(true, "TEAM_LEAD");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "TEAM_LEAD"
@@ -509,7 +517,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   setActiveWorkspace("WRITER", availableRoles);
                   setActiveRoleView("WRITER");
-                  fetchDashboardData(false, "WRITER");
+                  fetchDashboardData(true, "WRITER");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "WRITER"
@@ -532,7 +540,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   setActiveWorkspace("LINKER", availableRoles);
                   setActiveRoleView("LINKER");
-                  fetchDashboardData(false, "LINKER");
+                  fetchDashboardData(true, "LINKER");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "LINKER"
@@ -2540,7 +2548,7 @@ function WriterActiveFocusWorkspace({
                                   className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-850 border border-slate-200/80 dark:border-slate-700 text-[10px] font-extrabold text-slate-700 dark:text-slate-200 shadow-2xs"
                                   title={`Target country: ${g.geo}`}
                                 >
-                                  🌍 {g.geo}
+                                  {g.geo}
                                 </span>
                               ))}
                             </div>
@@ -2811,26 +2819,26 @@ function WriterActiveFocusWorkspace({
                   onChange={(e) => handleUpdateCountry(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-[#6D8196] focus:outline-none transition cursor-pointer"
                 >
-                  <option value="">🌐 Default / Global (Worldwide)</option>
+                  <option value="">Default / Global (Worldwide)</option>
                   <optgroup label="Tier 1 English Geos">
-                    <option value="US">🇺🇸 US - United States</option>
-                    <option value="UK">🇬🇧 UK - United Kingdom</option>
-                    <option value="CA">🇨🇦 CA - Canada</option>
-                    <option value="AU">🇦🇺 AU - Australia</option>
+                    <option value="US">US - United States</option>
+                    <option value="UK">UK - United Kingdom</option>
+                    <option value="CA">CA - Canada</option>
+                    <option value="AU">AU - Australia</option>
                   </optgroup>
                   <optgroup label="Latin America (LATAM)">
-                    <option value="MX">🇲🇽 MX - Mexico</option>
-                    <option value="BR">🇧🇷 BR - Brazil</option>
-                    <option value="AR">🇦🇷 AR - Argentina</option>
-                    <option value="CO">🇨🇴 CO - Colombia</option>
-                    <option value="CL">🇨🇱 CL - Chile</option>
-                    <option value="PE">🇵🇪 PE - Peru</option>
-                    <option value="EC">🇪🇨 EC - Ecuador</option>
+                    <option value="MX">MX - Mexico</option>
+                    <option value="BR">BR - Brazil</option>
+                    <option value="AR">AR - Argentina</option>
+                    <option value="CO">CO - Colombia</option>
+                    <option value="CL">CL - Chile</option>
+                    <option value="PE">PE - Peru</option>
+                    <option value="EC">EC - Ecuador</option>
                   </optgroup>
                   <optgroup label="Europe">
-                    <option value="DE">🇩🇪 DE - Germany</option>
-                    <option value="FR">🇫🇷 FR - France</option>
-                    <option value="ES">🇪🇸 ES - Spain</option>
+                    <option value="DE">DE - Germany</option>
+                    <option value="FR">FR - France</option>
+                    <option value="ES">ES - Spain</option>
                   </optgroup>
                 </select>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">
@@ -3247,7 +3255,7 @@ function WriterAvailableAssignments({
                       )}
                       {geos.length > 0 && (
                         <span className="text-[10px] text-slate-400 font-mono ml-auto">
-                          🌍 {geos.slice(0, 3).join(", ")}
+                          {geos.slice(0, 3).join(", ")}
                         </span>
                       )}
                     </div>

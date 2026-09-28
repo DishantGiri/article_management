@@ -59,18 +59,6 @@ export function getGeoDisplayName(code: string): string {
 }
 
 export function getCountryFlag(countryCode: string): string {
-  if (!countryCode) return "🌐";
-  const upper = countryCode.toUpperCase();
-  if (upper === "GLOBAL") return "🌐";
-  const code = upper === "UK" ? "GB" : upper;
-  if (code.length !== 2) return "🌐";
-  try {
-    const codePoints = code
-      .split("")
-      .map((char) => 127397 + char.charCodeAt(0));
-    return String.fromCodePoint(...codePoints);
-  } catch {
-    return "🌐";
-  }
+  return "";
 }
 

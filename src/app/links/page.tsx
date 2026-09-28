@@ -20,6 +20,7 @@ import { fuzzyMatchAny } from "@/lib/fuzzy";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getCountryFlag } from "@/lib/geo-constants";
+import { getActiveWorkspace } from "@/lib/workspace";
 
 const ensureExternalUrl = (url: string | null | undefined) => {
   if (!url) return "";
@@ -225,7 +226,7 @@ function LinksPageContent() {
   const refreshLinksData = (showLoading = false) => {
     if (!session?.user?.id) return;
     const uId = session.user.id;
-    const uRole = session.user.role || "WRITER";
+    const uRole = getActiveWorkspace(session.user.role, (session.user as any)?.roles);
     setCurrentUserRole(uRole);
 
     if (showLoading) setLoading(true);
@@ -314,6 +315,17 @@ function LinksPageContent() {
   useEffect(() => {
     refreshLinksData(true);
   }, [session?.user?.id, searchParams]);
+
+  useEffect(() => {
+    const handleWorkspaceChanged = (e: any) => {
+      if (e.detail?.role) {
+        setCurrentUserRole(e.detail.role.toUpperCase());
+        refreshLinksData(false);
+      }
+    };
+    window.addEventListener("workspace-changed", handleWorkspaceChanged);
+    return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+  }, []);
 
   const [userFilter, setUserFilter] = useState("");
   const [startDate, setStartDate] = useState("");

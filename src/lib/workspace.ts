@@ -34,11 +34,15 @@ export const WORKSPACE_LABELS: Record<string, { label: string; iconName: string;
  * Retrieves the currently active workspace role, validating against user's permitted roles.
  */
 export function getActiveWorkspace(userRole?: string | null, userRoles?: string[]): string {
-  const available = (userRoles && userRoles.length > 0)
-    ? userRoles.map((r) => r.toUpperCase())
-    : userRole
-    ? [userRole.toUpperCase()]
-    : ["WRITER"];
+  const roleSet = new Set<string>();
+  if (userRole) roleSet.add(userRole.toUpperCase());
+  if (userRoles && Array.isArray(userRoles)) {
+    userRoles.forEach((r) => {
+      if (r) roleSet.add(r.toUpperCase());
+    });
+  }
+  const available = Array.from(roleSet);
+  if (available.length === 0) available.push("WRITER");
 
   if (typeof window === "undefined") {
     return available[0] || "WRITER";
@@ -67,11 +71,16 @@ export function getActiveWorkspace(userRole?: string | null, userRoles?: string[
 export function setActiveWorkspace(role: string, allRoles?: string[]) {
   if (typeof window === "undefined") return;
   const upper = role.toUpperCase();
-  localStorage.setItem(WORKSPACE_STORAGE_KEY, upper);
+  try {
+    localStorage.setItem(WORKSPACE_STORAGE_KEY, upper);
+  } catch (err) {
+    console.error("Failed to set workspace in localStorage:", err);
+  }
   document.cookie = `${WORKSPACE_STORAGE_KEY}=${upper}; path=/; max-age=31536000; SameSite=Lax`;
 
   if (allRoles && allRoles.length > 0) {
-    document.cookie = `user_roles=${allRoles.join(",")}; path=/; max-age=31536000; SameSite=Lax`;
+    const cleanRoles = Array.from(new Set(allRoles.filter(Boolean).map((r) => r.toUpperCase())));
+    document.cookie = `user_roles=${cleanRoles.join(",")}; path=/; max-age=31536000; SameSite=Lax`;
   }
 
   window.dispatchEvent(new CustomEvent("workspace-changed", { detail: { role: upper } }));

@@ -445,7 +445,7 @@ export default function HistoryPage() {
             { value: "", label: "All Activity Types" },
             { value: "ARTICLE", label: "Article Events" },
             { value: "LINK", label: "Link Log Events" },
-            { value: "LINK_ISSUE", label: "⚠️ Flagged Issues" },
+            { value: "LINK_ISSUE", label: "Flagged Issues" },
           ]}
         />
 

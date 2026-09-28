@@ -11,10 +11,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userRole = session.user.role || "ADMIN";
-    const userRoles: string[] = (session.user as any)?.roles || (userRole ? [userRole] : []);
+    const userRole = (session.user.role || "ADMIN").toUpperCase();
+    const rawRoles: string[] = (session.user as any)?.roles || [];
+    const normalizedUserRoles = Array.from(new Set([...rawRoles, userRole].filter(Boolean).map((r) => r.toUpperCase())));
     const requestedRole = req.nextUrl.searchParams.get("role") || req.nextUrl.searchParams.get("viewRole");
-    const role = (requestedRole && userRoles.includes(requestedRole.toUpperCase()))
+    const role = (requestedRole && normalizedUserRoles.includes(requestedRole.toUpperCase()))
       ? requestedRole.toUpperCase()
       : userRole;
 

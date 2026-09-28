@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
+import AffiliateMultiSelect from "@/components/AffiliateMultiSelect";
 import {
   Package,
   X,
@@ -14,7 +15,6 @@ import {
   AlertCircle,
   Building2,
   Layers,
-  ChevronDown,
 } from "lucide-react";
 
 import { generateSlug } from "@/lib/utils";
@@ -42,6 +42,7 @@ interface EditProductModalProps {
     id: number;
     name: string;
     slug?: string | null;
+    isNative?: boolean;
     productCategory?: string | null;
     trendLink?: string | null;
     trendLevel?: string | null;
@@ -83,14 +84,13 @@ export default function EditProductModal({
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [isSlugEdited, setIsSlugEdited] = useState(false);
+  const [isNative, setIsNative] = useState(false);
   const [siteId, setSiteId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [category, setCategory] = useState("");
   const [trendLink, setTrendLink] = useState("");
   const [trendLevel, setTrendLevel] = useState("HIGH");
   const [affiliateName, setAffiliateName] = useState("");
-  const [customAffiliate, setCustomAffiliate] = useState("");
-  const [showCustomAffiliate, setShowCustomAffiliate] = useState(false);
 
   const [previewLink, setPreviewLink] = useState("");
   const [remarks, setRemarks] = useState("");
@@ -104,14 +104,13 @@ export default function EditProductModal({
       const initialSlug = product.slug || generateSlug(product.name || "");
       setSlug(initialSlug);
       setIsSlugEdited(Boolean(product.slug && product.slug !== generateSlug(product.name || "")));
+      setIsNative(Boolean(product.isNative));
       setSiteId(product.siteId?.toString() || "");
       setCategoryId(product.categoryId?.toString() || "");
       setCategory(product.productCategory || "");
       setTrendLink(product.trendLink || "");
       setTrendLevel(product.trendLevel || "HIGH");
       setAffiliateName(product.affiliateName || "");
-      setShowCustomAffiliate(false);
-      setCustomAffiliate("");
       setPreviewLink(product.previewLink || "");
       setRemarks(product.remarks || "");
       setError("");
@@ -164,34 +163,10 @@ export default function EditProductModal({
       return;
     }
 
-    const finalAffiliate = showCustomAffiliate ? customAffiliate.trim().replace(/\s+/g, " ") : affiliateName;
-    if (showCustomAffiliate) {
-      if (!finalAffiliate) {
-        setError("Affiliate Network is compulsory.");
-        return;
-      }
-      if (!/^[a-zA-Z0-9 ]+$/.test(finalAffiliate)) {
-        setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for affiliate names.");
-        return;
-      }
-      if (finalAffiliate.length < 2 || finalAffiliate.length > 50) {
-        setError("Affiliate name must be between 2 and 50 characters.");
-        return;
-      }
-    }
-
     setSubmitting(true);
     setError("");
 
     try {
-      if (showCustomAffiliate && customAffiliate.trim()) {
-        fetch("/api/affiliates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: customAffiliate.trim() }),
-        }).catch(() => {});
-      }
-
       const mockUserId = session?.user?.id || 1;
       const res = await fetch(`/api/products/${product.id}`, {
         method: "PATCH",
@@ -202,9 +177,10 @@ export default function EditProductModal({
           siteId: parseInt(siteId),
           categoryId: parseInt(categoryId),
           productCategory: category.trim() || null,
+          isNative: Boolean(isNative),
           trendLink: trendLink || null,
           trendLevel: trendLevel || "HIGH",
-          affiliateName: finalAffiliate || null,
+          affiliateName: affiliateName.trim() || null,
           previewLink: previewLink || null,
           remarks: remarks || null,
           callerId: mockUserId,
@@ -216,6 +192,7 @@ export default function EditProductModal({
         throw new Error(err.error || "Failed to update product");
       }
 
+      toast.success("Product updated successfully!");
       if (onSuccess) onSuccess();
       onClose();
     } catch (e: any) {
@@ -228,22 +205,22 @@ export default function EditProductModal({
   if (!isOpen || !product) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col border border-slate-100 dark:border-slate-800 animate-scaleIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-md animate-fadeIn">
+      <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col border border-zinc-100 dark:border-zinc-800 animate-scaleIn">
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-[#4A4A4A] dark:bg-slate-850 text-white flex items-center justify-between shrink-0 border-b border-transparent dark:border-slate-800">
+        <div className="px-6 py-4 bg-zinc-950 dark:bg-zinc-900 text-white flex items-center justify-between shrink-0 border-b border-transparent dark:border-zinc-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#6D8196]/30 border border-[#6D8196]/40 flex items-center justify-center text-white shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white shadow-inner">
               <Package className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">Edit Product</h2>
-              <p className="text-xs text-[#EAEAEA] dark:text-slate-400 font-medium">Update details, product type, category & link settings</p>
+              <p className="text-xs text-zinc-300 font-medium">Update product details, affiliate networks &amp; settings</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-[#EAEAEA] hover:text-white flex items-center justify-center transition cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-200 hover:text-white flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -260,15 +237,15 @@ export default function EditProductModal({
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="w-8 h-8 border-4 border-[#CBCBCB] border-t-[#6D8196] rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-zinc-200 dark:border-zinc-700 border-t-zinc-950 dark:border-t-white rounded-full animate-spin" />
             </div>
           ) : (
             <>
               {/* Product Name & Product Slug */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Package className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-zinc-500" />
                     Product Name <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -282,10 +259,10 @@ export default function EditProductModal({
                       }
                     }}
                     placeholder="Product Name"
-                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 transition-all shadow-2xs ${
+                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border rounded-xl text-sm font-semibold text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-950/20 dark:focus:ring-white/20 transition-all shadow-2xs ${
                       name.trim().length > 0 && name.trim().length < 2
                         ? "border-rose-400 focus:border-rose-500"
-                        : "border-slate-200 dark:border-slate-700 focus:border-[#6D8196]"
+                        : "border-zinc-200 dark:border-zinc-700 focus:border-zinc-950 dark:focus:border-white"
                     }`}
                   />
                   {name.trim().length > 0 && name.trim().length < 2 && (
@@ -297,9 +274,9 @@ export default function EditProductModal({
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <Link2 className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
-                      Product Slug <span className="text-slate-400 font-normal text-[10px] normal-case">(Auto-generated)</span>
+                    <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-zinc-500" />
+                      Slug <span className="text-zinc-400 font-normal text-[10px] normal-case">(Auto-generated)</span>
                     </label>
                     {isSlugEdited && (
                       <button
@@ -308,7 +285,7 @@ export default function EditProductModal({
                           setIsSlugEdited(false);
                           setSlug(generateSlug(name));
                         }}
-                        className="text-[10px] font-bold text-[#6D8196] dark:text-sky-400 hover:underline"
+                        className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:underline"
                         title="Reset slug to match product name"
                       >
                         Reset to Auto
@@ -323,84 +300,103 @@ export default function EditProductModal({
                       setSlug(e.target.value.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-"));
                     }}
                     placeholder="e.g. product-slug"
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs text-xs"
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-950/20 dark:focus:ring-white/20 focus:border-zinc-950 dark:focus:border-white transition-all shadow-2xs text-xs"
                   />
                 </div>
               </div>
 
-              {/* Affiliate & Product Category */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
-                    Affiliate Network / Name
-                  </label>
-                  {!showCustomAffiliate ? (
-                    <CustomSelect
-                      value={affiliateName}
-                      onChange={(val) => {
-                        if (val === "__NEW__") {
-                          setShowCustomAffiliate(true);
-                          setAffiliateName("");
-                        } else {
-                          setAffiliateName(val);
-                        }
-                      }}
-                      placeholder="Select Affiliate..."
-                      options={[
-                        ...affiliates.map((aff) => ({ value: aff.name, label: aff.name })),
-                        { value: "__NEW__", label: "+ Add Custom Affiliate...", isAction: true }
-                      ]}
-                    />
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={customAffiliate}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (/[^a-zA-Z0-9 ]/.test(val)) {
-                            toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "affiliate-char-error" });
-                          }
-                          setCustomAffiliate(val.replace(/[^a-zA-Z0-9 ]/g, ""));
-                        }}
-                        maxLength={50}
-                        placeholder="Enter affiliate name..."
-                        className="flex-1 px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-[#6D8196] dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCustomAffiliate(false)}
-                        className="px-3 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
+              {/* Native Product Toggle */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer" onClick={() => setIsNative(!isNative)}>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
+                      Native Product
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        isNative
+                          ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
+                          : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400"
+                      }`}
+                    >
+                      {isNative ? "Native" : "Standard"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Toggle whether this product is a native product
+                  </p>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
-                    Product Category
-                  </label>
-                  <CustomSelect
-                    value={category}
-                    onChange={(val) => setCategory(val)}
-                    placeholder="Select Product Category..."
-                    searchable={true}
-                    searchPlaceholder="Search category..."
-                    className="w-full"
-                    options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
+                <button
+                  type="button"
+                  id="edit-toggle-is-native"
+                  role="switch"
+                  aria-checked={isNative}
+                  onClick={(e) => { e.stopPropagation(); setIsNative(!isNative); }}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-zinc-950/30 dark:focus:ring-white/30 focus:ring-offset-2 ${
+                    isNative ? "bg-zinc-950 dark:bg-white" : "bg-zinc-300 dark:bg-zinc-600"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      isNative
+                        ? "translate-x-5 bg-white dark:bg-zinc-950"
+                        : "translate-x-0 bg-white dark:bg-zinc-300"
+                    }`}
                   />
-                </div>
+                </button>
+              </div>
+
+              {/* Affiliate Network — Multi-select */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-zinc-500" />
+                  Affiliate Network / Name
+                  <span className="text-[10px] text-zinc-400 lowercase font-normal">(multi-select)</span>
+                </label>
+                <AffiliateMultiSelect
+                  value={affiliateName}
+                  onChange={(val) => setAffiliateName(val)}
+                  affiliates={affiliates}
+                  placeholder="Select affiliate network(s)..."
+                  triggerClassName="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-950 dark:hover:border-white rounded-xl text-sm font-medium text-zinc-900 dark:text-white focus:outline-none transition-all"
+                  onAddCustomAffiliate={async (newName) => {
+                    const res = await fetch("/api/affiliates", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: newName }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setAffiliates((prev) => [...prev, data]);
+                      toast.success(`Affiliate "${newName}" added!`);
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Product Category */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-zinc-500" />
+                  Product Category
+                </label>
+                <CustomSelect
+                  value={category}
+                  onChange={(val) => setCategory(val)}
+                  placeholder="Select Product Category..."
+                  searchable={true}
+                  searchPlaceholder="Search category..."
+                  className="w-full"
+                  options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
+                />
               </div>
 
               {/* Site & Product Type */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-zinc-500" />
                     Site <span className="text-rose-500">*</span>
                   </label>
                   <CustomSelect
@@ -412,8 +408,8 @@ export default function EditProductModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-zinc-500" />
                     Product Type <span className="text-rose-500">*</span>
                   </label>
                   <CustomSelect
@@ -428,8 +424,8 @@ export default function EditProductModal({
               {/* Trend Level & Trend Link */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-zinc-500" />
                     Trend Level
                   </label>
                   <CustomSelect
@@ -437,16 +433,16 @@ export default function EditProductModal({
                     onChange={(val) => setTrendLevel(val)}
                     placeholder="Select Trend Level..."
                     options={[
-                      { value: "HIGH", label: "🔥 High Trend" },
-                      { value: "MODERATE", label: "📈 Moderate Trend" },
-                      { value: "LOW", label: "📉 Low / Stable" },
+                      { value: "HIGH", label: "High Trend" },
+                      { value: "MODERATE", label: "Moderate Trend" },
+                      { value: "LOW", label: "Low / Stable" },
                     ]}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Link2 className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Link2 className="w-3.5 h-3.5 text-zinc-500" />
                     Trend Link URL
                   </label>
                   <input
@@ -462,10 +458,10 @@ export default function EditProductModal({
                       }
                     }}
                     placeholder="https://..."
-                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none transition-all shadow-2xs ${
+                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border rounded-xl text-sm font-medium text-zinc-900 dark:text-white focus:outline-none transition-all shadow-2xs ${
                       trendLinkError
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                        : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                        : "border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-zinc-950/20 dark:focus:ring-white/20 focus:border-zinc-950 dark:focus:border-white"
                     }`}
                   />
                   {trendLinkError && (
@@ -477,8 +473,8 @@ export default function EditProductModal({
               {/* Preview Link & Remarks */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-zinc-500" />
                     Preview Link URL
                   </label>
                   <input
@@ -494,10 +490,10 @@ export default function EditProductModal({
                       }
                     }}
                     placeholder="https://..."
-                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none transition-all shadow-2xs ${
+                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border rounded-xl text-sm font-medium text-zinc-900 dark:text-white focus:outline-none transition-all shadow-2xs ${
                       previewLinkError
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
-                        : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                        : "border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-zinc-950/20 dark:focus:ring-white/20 focus:border-zinc-950 dark:focus:border-white"
                     }`}
                   />
                   {previewLinkError && (
@@ -506,22 +502,22 @@ export default function EditProductModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Remarks</label>
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">Remarks</label>
                   <input
                     type="text"
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
                     placeholder="Optional notes or instructions..."
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196] transition-all shadow-2xs"
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-medium text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-950/20 dark:focus:ring-white/20 focus:border-zinc-950 dark:focus:border-white transition-all shadow-2xs"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 justify-end">
+              <div className="flex items-center gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800 justify-end">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition text-xs cursor-pointer shadow-2xs"
+                  className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition text-xs cursor-pointer shadow-2xs"
                 >
                   Cancel
                 </button>
@@ -529,9 +525,16 @@ export default function EditProductModal({
                   type="button"
                   disabled={!name.trim() || submitting}
                   onClick={handleSubmit}
-                  className="px-5 py-2.5 bg-[#6D8196] hover:bg-[#5A6D81] active:scale-[0.98] text-white rounded-xl text-xs font-bold shadow-xs disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="px-5 py-2.5 bg-zinc-950 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-[0.98] text-white dark:text-zinc-950 rounded-xl text-xs font-bold shadow-xs disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  {submitting ? "Saving..." : "Save Changes"}
+                  {submitting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 dark:border-zinc-950/30 border-t-white dark:border-t-zinc-950 rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
             </>

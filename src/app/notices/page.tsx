@@ -746,8 +746,8 @@ function NoticeBoardContent() {
                 </div>
                 <p className="text-[11px] text-[#737373] dark:text-slate-400 mt-1.5 font-medium">
                   {formSelectedRoles.includes("ALL")
-                    ? "✨ This notice will appear for all users on login and in real-time."
-                    : `🎯 This notice will only be sent to: ${formSelectedRoles
+                    ? "This notice will appear for all users on login and in real-time."
+                    : `This notice will only be sent to: ${formSelectedRoles
                         .map((r) => TARGET_ROLES.find((t) => t.value === r)?.label || r)
                         .join(", ")}.`}
                 </p>

@@ -25,13 +25,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, names, products, categoryIds, excludedSiteIds, trendLink, trendLevel, affiliateName, previewLink, remarks, productCategory } = body;
+    const { name, names, products, categoryIds, excludedSiteIds, trendLink, trendLevel, affiliateName, previewLink, remarks, productCategory, isNative } = body;
     const excludedSet = new Set(Array.isArray(excludedSiteIds) ? excludedSiteIds.map(Number) : []);
 
     interface IncomingProduct {
       name: string;
       slug?: string | null;
       country?: string | null;
+      isNative?: boolean;
       productCategory?: string | null;
       affiliateName?: string | null;
       trendLevel?: string | null;
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
           name: typeof p.name === "string" ? p.name.trim() : "",
           slug: typeof p.slug === "string" ? p.slug.trim() : (typeof body.slug === "string" ? body.slug.trim() : null),
           country: typeof p.country === "string" && p.country.trim() ? p.country.trim() : (typeof body.country === "string" && body.country.trim() ? body.country.trim() : null),
+          isNative: typeof p.isNative === "boolean" ? p.isNative : (typeof isNative === "boolean" ? isNative : false),
           productCategory: p.productCategory?.trim() || productCategory?.trim() || null,
           affiliateName: p.affiliateName?.trim() || affiliateName?.trim() || null,
           trendLevel: p.trendLevel || trendLevel || "HIGH",
@@ -67,6 +69,7 @@ export async function POST(req: NextRequest) {
           name: n,
           slug: typeof body.slug === "string" ? body.slug.trim() : null,
           country: typeof body.country === "string" && body.country.trim() ? body.country.trim() : null,
+          isNative: typeof isNative === "boolean" ? isNative : false,
           productCategory: productCategory?.trim() || null,
           affiliateName: affiliateName?.trim() || null,
           trendLevel: trendLevel || "HIGH",
@@ -257,6 +260,7 @@ export async function POST(req: NextRequest) {
             name: item.name,
             slug: finalSlug || null,
             country: item.country || null,
+            isNative: Boolean(item.isNative),
             siteId: site.id,
             categoryId: cat.id,
             productCategory: item.productCategory || null,

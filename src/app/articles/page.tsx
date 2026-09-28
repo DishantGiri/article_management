@@ -14,6 +14,7 @@ import { fuzzyMatchAny } from "@/lib/fuzzy";
 import { formatRemarkDate } from "@/components/FormattedRemarks";
 import AssignmentDetailsModal from "@/components/AssignmentDetailsModal";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
+import { getActiveWorkspace } from "@/lib/workspace";
 
 interface Article {
   id: number;
@@ -348,7 +349,7 @@ function ArticlesContent() {
   useEffect(() => {
     if (!session?.user?.id) return;
     const stored = session.user.id;
-    const uRole = session.user.role || "WRITER";
+    const uRole = getActiveWorkspace(session.user.role, (session.user as any)?.roles);
     setCurrentUserRole(uRole);
     setCurrentUserId(Number(stored));
 
@@ -382,6 +383,18 @@ function ArticlesContent() {
       setStats(dashboardData);
     }).finally(() => setLoading(false));
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    const handleWorkspaceChanged = (e: any) => {
+      if (e.detail?.role) {
+        const newRole = e.detail.role.toUpperCase();
+        setCurrentUserRole(newRole);
+        fetchArticlesList();
+      }
+    };
+    window.addEventListener("workspace-changed", handleWorkspaceChanged);
+    return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+  }, []);
 
   const uniqueWriters = Array.from(new Set(articles.map((a) => a.writer?.name).filter(Boolean))) as string[];
   const uniqueSites = Array.from(new Set(articles.map((a) => a.product.site.name).filter(Boolean))) as string[];
@@ -888,7 +901,7 @@ function ArticlesContent() {
           className="w-44 shrink-0"
           options={[
             { value: "", label: "All Statuses" },
-            { value: "NO_LINKS", label: "⚠️ Published (No Links)" },
+            { value: "NO_LINKS", label: "Published (No Links)" },
             { value: "PENDING", label: "Pending" },
             { value: "IN_PROGRESS", label: "In Progress" },
             { value: "COMPLETED", label: "Completed" },
@@ -1068,7 +1081,9 @@ function ArticlesContent() {
                               title="Select article to approve"
                             />
                           ) : a.status === "APPROVED" ? (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs" title="Already Approved">✓</span>
+                            <span className="text-zinc-900 dark:text-zinc-100 font-bold text-xs flex items-center justify-center" title="Already Approved">
+                              <Check className="w-3.5 h-3.5" />
+                            </span>
                           ) : a.status === "IN_PROGRESS" ? (
                             <span
                               className="text-slate-300 dark:text-slate-600 text-xs font-bold select-none cursor-not-allowed"

@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
 import Providers from "@/components/Providers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "ArticleMgmt - Workflow System",
@@ -20,14 +25,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#4f46e5",
+  themeColor: "#000000",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
 
   return (
-    <html lang="en" className={`${inter.variable} font-sans h-full`} suppressHydrationWarning>
+    <html lang="en" className={`${plusJakartaSans.variable} font-sans h-full`} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -101,7 +106,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
       </head>
-      <body className={`${inter.className} h-full bg-[#FAF9F5] text-[#4A4A4A] dark:bg-[#0f172a] dark:text-[#f1f5f9] antialiased`} suppressHydrationWarning>
+      <body className={`${plusJakartaSans.className} h-full bg-white text-zinc-950 dark:bg-[#09090B] dark:text-zinc-50 antialiased selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black`} suppressHydrationWarning>
         <Providers session={session}>
           <AppShell initialSession={session}>
             {children}
