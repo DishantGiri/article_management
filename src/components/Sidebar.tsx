@@ -14,7 +14,7 @@ import { isUserTargeted } from "@/lib/noticeUtils";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 import { getActiveWorkspace, setActiveWorkspace } from "@/lib/workspace";
 
-type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
+type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER";
 
 const MOCK_USERS = [
   { id: 5, name: "Super Admin", role: "SUPER_ADMIN" as Role, email: "superadmin@articlemgmt.com" },
@@ -30,6 +30,7 @@ const ROLE_COLORS: Record<Role, string> = {
   LINKER: "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700",
   WRITER: "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700",
   TEAM_LEAD: "bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-600",
+  PRODUCT_RESEARCHER: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700",
 };
 
 interface NavItem {
@@ -43,19 +44,19 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/",
     label: "Overview",
-    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"],
     icon: LayoutGrid,
   },
   {
     href: "/calendar",
     label: "Work Calendar",
-    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"],
     icon: CalendarIcon,
   },
   {
     href: "/products",
     label: "Products",
-    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"],
     icon: Package,
   },
 
@@ -104,13 +105,13 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/notifications",
     label: "Notifications",
-    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"],
     icon: Bell,
   },
   {
     href: "/notices",
     label: "Notice Board",
-    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"],
     icon: Megaphone,
   },
   {
@@ -134,7 +135,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/settings",
     label: "Settings",
-    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD"],
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"],
     icon: Settings,
   },
 ];

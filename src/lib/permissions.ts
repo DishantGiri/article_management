@@ -23,8 +23,8 @@ export async function canUserAddProductOnSite(
     if (siteRoles.includes("LINKER")) return true;
   }
 
-  // If user is globally a LINKER and has NO siteAccess restrictions configured, allow
-  if (userGlobalRole === "LINKER") {
+  // If user is globally a LINKER or PRODUCT_RESEARCHER and has NO siteAccess restrictions configured, allow
+  if (userGlobalRole === "LINKER" || userGlobalRole === "PRODUCT_RESEARCHER") {
     const totalAccesses = await prisma.siteAccess.count({ where: { userId } });
     if (totalAccesses === 0) return true;
   }
@@ -142,7 +142,7 @@ export async function getUserAuthorizedSiteIds(
 
   if (accesses.length === 0) {
     if (action === "ADD_PRODUCT" || action === "ADD_LINK") {
-      if (userGlobalRole === "LINKER") return null; // all sites
+      if (userGlobalRole === "LINKER" || userGlobalRole === "PRODUCT_RESEARCHER") return null; // all sites
     }
     if (action === "WRITE" && userGlobalRole === "WRITER") return null;
     if (action === "REVIEW" && userGlobalRole === "TEAM_LEAD") return null;

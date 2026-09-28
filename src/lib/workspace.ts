@@ -28,6 +28,11 @@ export const WORKSPACE_LABELS: Record<string, { label: string; iconName: string;
     iconName: "ShieldCheck",
     badgeColor: "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300 dark:border-purple-800",
   },
+  PRODUCT_RESEARCHER: {
+    label: "Research Hub",
+    iconName: "Search",
+    badgeColor: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800",
+  },
 };
 
 /**
@@ -57,10 +62,11 @@ export function getActiveWorkspace(userRole?: string | null, userRoles?: string[
     return stored;
   }
 
-  // Priority fallback: TEAM_LEAD -> LINKER -> WRITER
+  // Priority fallback: TEAM_LEAD -> LINKER -> WRITER -> PRODUCT_RESEARCHER
   if (available.includes("TEAM_LEAD")) return "TEAM_LEAD";
   if (available.includes("LINKER")) return "LINKER";
   if (available.includes("WRITER")) return "WRITER";
+  if (available.includes("PRODUCT_RESEARCHER")) return "PRODUCT_RESEARCHER";
 
   return available[0] || "WRITER";
 }

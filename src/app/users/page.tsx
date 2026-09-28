@@ -52,7 +52,7 @@ interface User {
   id: number;
   name: string;
   email: string;
-  role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | null;
+  role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | null;
   allowLinkLogAccess: boolean;
   approved: boolean;
   hasLeftCompany?: boolean;
@@ -88,6 +88,7 @@ const ROLE_LABELS: Record<string, string> = {
   LINKER: "Linker",
   WRITER: "Writer",
   TEAM_LEAD: "Team Lead",
+  PRODUCT_RESEARCHER: "Product Researcher",
 };
 
 const ROLE_STYLES: Record<string, { badge: string; avatar: string; border: string }> = {
@@ -115,6 +116,11 @@ const ROLE_STYLES: Record<string, { badge: string; avatar: string; border: strin
     badge: "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800",
     avatar: "from-rose-500 to-pink-600 text-white shadow-rose-500/20",
     border: "border-rose-200 dark:border-rose-900/60",
+  },
+  PRODUCT_RESEARCHER: {
+    badge: "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+    avatar: "from-amber-500 to-yellow-600 text-white shadow-amber-500/20",
+    border: "border-amber-200 dark:border-amber-900/60",
   },
 };
 
@@ -963,6 +969,7 @@ export default function UsersPage() {
                   { value: "TEAM_LEAD", label: "Team Lead" },
                   { value: "WRITER", label: "Writer" },
                   { value: "LINKER", label: "Linker" },
+                  { value: "PRODUCT_RESEARCHER", label: "Product Researcher" },
                 ]}
                 className="w-auto"
                 triggerClassName="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196] shadow-2xs whitespace-nowrap min-w-[130px]"
@@ -1939,6 +1946,12 @@ export default function UsersPage() {
                       label: "Team Lead",
                       desc: "Reviews articles, manages writers, earns TL override commissions",
                       color: "text-emerald-600",
+                    },
+                    {
+                      role: "PRODUCT_RESEARCHER",
+                      label: "Product Researcher",
+                      desc: "Can add, edit, and manage products across all sites. No link management, articles, or commission access.",
+                      color: "text-amber-500",
                     },
                     ...(isSuperAdmin
                       ? [

@@ -20,6 +20,7 @@ enum Role {
   LINKER
   WRITER
   TEAM_LEAD
+  PRODUCT_RESEARCHER
 }
 
 

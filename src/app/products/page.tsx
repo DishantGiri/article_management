@@ -102,13 +102,20 @@ function ProductsPageContent() {
     return getActiveWorkspace(userRole, sessionRoles);
   }, [currentUserRole, userRole, sessionRoles]);
 
+  // PRODUCT_RESEARCHER = can add, edit, and view products (like LINKER for products only)
+  const isProductResearcher =
+    activeRole === "PRODUCT_RESEARCHER" ||
+    sessionRoles.includes("PRODUCT_RESEARCHER");
+
   const canAddProduct =
     activeRole === "SUPER_ADMIN" ||
     activeRole === "ADMIN" ||
     activeRole === "LINKER" ||
+    activeRole === "PRODUCT_RESEARCHER" ||
     sessionRoles.includes("LINKER") ||
     sessionRoles.includes("ADMIN") ||
-    sessionRoles.includes("SUPER_ADMIN");
+    sessionRoles.includes("SUPER_ADMIN") ||
+    sessionRoles.includes("PRODUCT_RESEARCHER");
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeTab, setActiveTab] = useState<"products" | "my-articles">("products");
@@ -726,6 +733,21 @@ function ProductsPageContent() {
         onMarkAllAsRead={handleMarkAllAsRead}
         onNotificationClick={handleNotificationClick}
       />
+
+      {/* ─── PRODUCT RESEARCHER READ-ONLY NOTICE ────────────────── */}
+      {isProductResearcher && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
+            <Search className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide">Product Researcher</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+              You can add, edit, and research products. Link management, articles, and commission features are not available for this role.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ─── NAVIGATION TABS & ACTIONS ROW ─────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800">

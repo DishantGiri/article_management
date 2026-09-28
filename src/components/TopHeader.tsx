@@ -78,6 +78,8 @@ export default function TopHeader({
         return "Affiliate Gateway & Link Log Operations.";
       case "WRITER":
         return "Focused Writing Station & Assignment Delivery.";
+      case "PRODUCT_RESEARCHER":
+        return "Research Hub — Browse and analyze products across all sites.";
       default:
         return "Affiliate Gateway & Link Log Operations.";
     }

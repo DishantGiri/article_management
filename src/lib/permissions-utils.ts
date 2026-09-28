@@ -1,4 +1,4 @@
-export type RoleType = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
+export type RoleType = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER";
 
 export interface UserSitePermission {
   siteId: number;
