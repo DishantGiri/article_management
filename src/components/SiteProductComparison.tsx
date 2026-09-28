@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   GitCompare,
   Search,
@@ -26,7 +26,10 @@ import {
   FileText,
   Link as LinkIcon,
   Tag,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Hand,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useSession } from "next-auth/react";
@@ -151,6 +154,115 @@ export default function SiteProductComparison({
     setConfirmMsg(msg);
     setConfirmAction(() => action);
     setConfirmOpen(true);
+  };
+
+  // Buttery-smooth, 60fps/120fps frictionless drag-to-scroll with momentum and zero re-renders
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [grabMode, setGrabMode] = useState(true);
+
+  const isDownRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const velXRef = useRef(0);
+  const lastXRef = useRef(0);
+  const rafIdRef = useRef<number | null>(null);
+  const momentumRafIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    // Apply initial cursor style
+    el.style.cursor = grabMode ? "grab" : "auto";
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (!grabMode || e.button !== 0) return;
+
+      const target = e.target as HTMLElement;
+      if (target.closest("button, a, input, select, textarea, [role='button']")) {
+        return;
+      }
+
+      // Stop any active momentum
+      if (momentumRafIdRef.current) {
+        cancelAnimationFrame(momentumRafIdRef.current);
+        momentumRafIdRef.current = null;
+      }
+
+      isDownRef.current = true;
+      startXRef.current = e.pageX - el.offsetLeft;
+      scrollLeftRef.current = el.scrollLeft;
+      lastXRef.current = e.pageX;
+      velXRef.current = 0;
+
+      el.style.cursor = "grabbing";
+      el.style.userSelect = "none";
+      el.style.scrollBehavior = "auto";
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDownRef.current || !el) return;
+      e.preventDefault();
+
+      const currentX = e.pageX;
+      velXRef.current = currentX - lastXRef.current;
+      lastXRef.current = currentX;
+
+      const x = currentX - el.offsetLeft;
+      const walk = (x - startXRef.current) * 1.25;
+
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        el.scrollLeft = scrollLeftRef.current - walk;
+      });
+    };
+
+    const onMouseUp = () => {
+      if (!isDownRef.current || !el) return;
+      isDownRef.current = false;
+
+      el.style.cursor = grabMode ? "grab" : "auto";
+      el.style.userSelect = "";
+
+      // Momentum / inertial glide
+      let velocity = velXRef.current;
+      if (Math.abs(velocity) > 1.5) {
+        const stepMomentum = () => {
+          if (Math.abs(velocity) < 0.3 || isDownRef.current) {
+            momentumRafIdRef.current = null;
+            return;
+          }
+          el.scrollLeft -= velocity * 1.4;
+          velocity *= 0.92; // Friction damping
+          momentumRafIdRef.current = requestAnimationFrame(stepMomentum);
+        };
+        momentumRafIdRef.current = requestAnimationFrame(stepMomentum);
+      }
+    };
+
+    el.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove, { passive: false });
+    window.addEventListener("mouseup", onMouseUp);
+
+    return () => {
+      el.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      if (momentumRafIdRef.current) cancelAnimationFrame(momentumRafIdRef.current);
+    };
+  }, [grabMode]);
+
+  const scrollTable = (direction: "left" | "right") => {
+    if (!scrollContainerRef.current) return;
+    const scrollAmount = 450;
+    scrollContainerRef.current.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
   };
 
   // Fetch comparison data
@@ -1137,7 +1249,64 @@ export default function SiteProductComparison({
           ) : (
             /* ─── MATRIX TABLE VIEW (DEFAULT) ────────────────────────── */
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-              <div className="overflow-x-auto">
+              {/* Matrix Table Control Bar: Grab to Pan & Scroll Arrows */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <GitCompare className="w-4 h-4 text-indigo-500" />
+                    <span>Cross-Site Matrix</span>
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    ({selectedSitesList.length} sites, {filteredProducts.length} products)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Grab mode status / toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setGrabMode(!grabMode)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                      grabMode
+                        ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                        : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                    }`}
+                    title="Click and drag anywhere on the table to move it horizontally"
+                  >
+                    <Hand className={`w-3.5 h-3.5 ${grabMode ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"}`} />
+                    <span>Grab to Scroll: {grabMode ? "ON" : "OFF"}</span>
+                  </button>
+
+                  {/* Quick Scroll Left/Right arrow buttons */}
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => scrollTable("left")}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                      title="Scroll table left"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="w-px h-3.5 bg-slate-200 dark:bg-slate-700" />
+                    <button
+                      type="button"
+                      onClick={() => scrollTable("right")}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                      title="Scroll table right"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                ref={scrollContainerRef}
+                className="overflow-x-auto will-change-scroll"
+                style={{
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
                 <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
                     <tr className="bg-slate-50/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
