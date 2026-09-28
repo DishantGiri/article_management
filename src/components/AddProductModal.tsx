@@ -1147,10 +1147,10 @@ export default function AddProductModal({
                     </div>
                   </div>
 
-                  {/* Control Center: Stacked Direct Paste & Batch Fill Cards */}
-                  <div className="grid grid-cols-1 gap-3 shrink-0">
-                    {/* Card 1: Direct Paste Box (full width) */}
-                    <div className="bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                  {/* Control Center: Side-by-Side Direct Paste & Batch Fill */}
+                  <div className="grid grid-cols-2 gap-3 shrink-0">
+                    {/* LEFT — Direct Paste Box */}
+                    <div className="bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col shadow-xs">
                       <div className="flex items-center justify-between mb-2">
                         <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 tracking-wide">
                           <ClipboardList className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -1188,7 +1188,7 @@ export default function AddProductModal({
                       </div>
 
                       <textarea
-                        rows={6}
+                        rows={8}
                         value={bulkPasteText}
                         onChange={(e) => updateRowsFromText(e.target.value)}
                         onPaste={(e) => {
@@ -1202,7 +1202,7 @@ export default function AddProductModal({
                           if (e.key === "Enter") e.stopPropagation();
                         }}
                         placeholder={"Paste 10+ product names (one per line)...\nExample:\nAlpha Whey Protein\nCreatine Monohydrate 500g\nPre-Workout Booster"}
-                        className="w-full px-3 py-2.5 text-xs font-mono bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 resize-none leading-relaxed"
+                        className="w-full flex-1 px-3 py-2.5 text-xs font-mono bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 resize-none leading-relaxed"
                       />
 
                       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
@@ -1211,8 +1211,8 @@ export default function AddProductModal({
                       </div>
                     </div>
 
-                    {/* Card 2: Batch Fill & Sites Toolbar (full width) */}
-                    <div className="bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                    {/* RIGHT — Fill All Rows */}
+                    <div className="bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col shadow-xs">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
                           Fill All Rows
@@ -1231,7 +1231,7 @@ export default function AddProductModal({
                         Choose values once and apply them to every row in the table at once.
                       </p>
 
-                      <div className="space-y-2.5 my-1">
+                      <div className="space-y-2.5 flex-1">
                         <div>
                           <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">CATEGORY</label>
                           <CustomSelect
@@ -1306,7 +1306,7 @@ export default function AddProductModal({
                       <button
                         type="button"
                         onClick={applyBatchToAll}
-                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs mt-2 cursor-pointer"
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs mt-3 cursor-pointer"
                       >
                         Apply to All Rows →
                       </button>
