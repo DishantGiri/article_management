@@ -904,7 +904,14 @@ function LinksPageContent() {
                           <div className="flex items-center gap-1.5">
                             <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 break-words block">{l.product.name}</span>
                             {l.status === "ISSUE" && (
-                              <span className="inline-flex items-center text-rose-500 hover:text-rose-700 cursor-pointer" title="Flagged Link Issue">
+                              <span
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingLink(l);
+                                }}
+                                className="inline-flex items-center text-rose-500 hover:text-rose-700 cursor-pointer animate-pulse"
+                                title="Flagged Link Issue - Click to resolve"
+                              >
                                 <AlertTriangle className="w-3.5 h-3.5" />
                               </span>
                             )}
@@ -1192,16 +1199,29 @@ function LinksPageContent() {
                             </button>
                           )}
 
-                          {/* Edit */}
+                          {/* Edit / Resolve */}
                           {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "LINKER") && (
                             <button
                               type="button"
                               onClick={() => setEditingLink(l)}
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition cursor-pointer"
-                              title="Edit Link"
+                              className={`inline-flex items-center gap-1 text-xs font-semibold transition cursor-pointer ${
+                                l.status === "ISSUE"
+                                  ? "text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-bold"
+                                  : "text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+                              }`}
+                              title={l.status === "ISSUE" ? "Fix & Resolve Link Issue" : "Edit Link"}
                             >
-                              <Edit className="w-3.5 h-3.5 text-indigo-500" />
-                              <span>Edit</span>
+                              {l.status === "ISSUE" ? (
+                                <>
+                                  <AlertTriangle className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                                  <span>Resolve Issue</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Edit className="w-3.5 h-3.5 text-indigo-500" />
+                                  <span>Edit</span>
+                                </>
+                              )}
                             </button>
                           )}
 

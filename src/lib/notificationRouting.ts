@@ -63,10 +63,20 @@ export function getNotificationTargetUrl(
     lowerMsg.includes("dead link") ||
     lowerMsg.includes("link issue")
   ) {
+    const isResolved =
+      lowerMsg.includes("resolved") ||
+      lowerMsg.includes("fixed") ||
+      lowerMsg.includes("unblocked");
+
     // Writers cannot access /links due to route middleware restrictions
     if (role === "WRITER") {
-      return buildTargetUrl("/products", primaryItem);
+      return buildTargetUrl(isResolved ? "/articles" : "/products", primaryItem);
     }
+
+    if (isResolved) {
+      return buildTargetUrl("/links", primaryItem);
+    }
+
     return buildTargetUrl("/links", primaryItem, { status: "ISSUE" });
   }
 

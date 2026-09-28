@@ -31,21 +31,28 @@ export async function PATCH(
       geos,
     } = body;
 
-    if (activeUserRole === "TEAM_LEAD") {
-      const isReportingIssue = status === "ISSUE" && body.issueMessage;
-      if (!isReportingIssue) {
-        return NextResponse.json({ error: "Access Denied: Team Leads cannot modify links. Only Linkers can manage links." }, { status: 403 });
-      }
+    const { countryLinks, issueMessage } = body;
+
+    const isReportingIssue = Boolean(
+      issueMessage ||
+      (status === "ISSUE" && !buyLink && !bridgePageLink && !affiliateLink && (!countryLinks || countryLinks.length === 0) && (!geos || geos.length === 0)) ||
+      (status === "ISSUE" && (activeUserRole === "TEAM_LEAD" || activeUserRole === "WRITER" || activeUserRole === "PRODUCT_RESEARCHER"))
+    );
+
+    if (activeUserRole === "TEAM_LEAD" && !isReportingIssue) {
+      return NextResponse.json({ error: "Access Denied: Team Leads cannot modify links. Only Linkers can manage links." }, { status: 403 });
     }
-    if (activeUserRole === "WRITER") {
+    if (activeUserRole === "WRITER" && !isReportingIssue) {
       const dbUser = await prisma.user.findUnique({
         where: { id: activeUserId },
         select: { allowLinkLogAccess: true },
       });
-      const isReportingIssue = status === "ISSUE" && body.issueMessage;
-      if (!dbUser?.allowLinkLogAccess && !isReportingIssue) {
+      if (!dbUser?.allowLinkLogAccess) {
         return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
       }
+    }
+    if (activeUserRole === "PRODUCT_RESEARCHER" && !isReportingIssue) {
+      return NextResponse.json({ error: "Access Denied: Product Researchers cannot modify links." }, { status: 403 });
     }
 
     const VALID_LINK_STATUSES = [
@@ -74,27 +81,39 @@ export async function PATCH(
       );
     }
 
-    const existing = await prisma.linkLog.findUnique({ where: { id: parseInt(id) } });
+    const existing = await prisma.linkLog.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            site: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
     if (!existing) return NextResponse.json({ error: "Link not found" }, { status: 404 });
 
     const updatedBridge = bridgePageLink !== undefined ? (bridgePageLink ? String(bridgePageLink).trim() : null) : existing.bridgePageLink;
     const updatedBuy = buyLink !== undefined ? (buyLink ? String(buyLink).trim() : null) : existing.buyLink;
 
-    if (!updatedBridge) {
-      return NextResponse.json(
-        { error: "Bridge Page Link is required before saving changes." },
-        { status: 400 }
-      );
+    if (!isReportingIssue) {
+      if (!updatedBridge) {
+        return NextResponse.json(
+          { error: "Bridge Page Link is required before saving changes." },
+          { status: 400 }
+        );
+      }
+
+      if (!updatedBuy) {
+        return NextResponse.json(
+          { error: "Buy Link is required before saving changes." },
+          { status: 400 }
+        );
+      }
     }
 
-    if (!updatedBuy) {
-      return NextResponse.json(
-        { error: "Buy Link is required before saving changes." },
-        { status: 400 }
-      );
-    }
-
-    const { countryLinks } = body;
     let geosToSet: Array<{ geo: string; affiliateLink?: string; affiliateName?: string }> | null = null;
     if (countryLinks && Array.isArray(countryLinks)) {
       geosToSet = countryLinks.map((c: any) => ({
@@ -125,19 +144,36 @@ export async function PATCH(
       }
     }
 
-    const isReportingIssue = Boolean(
-      body.issueMessage ||
-      (targetStatus === "ISSUE" && !buyLink && !bridgePageLink && !affiliateLink && geosToSet === null)
-    );
+    // Determine if issue is being raised or resolved
+    const isRaisingIssue = Boolean(issueMessage) || (targetStatus === "ISSUE" && existing.status !== "ISSUE");
+    const isResolvingIssue = existing.status === "ISSUE" && targetStatus !== undefined && targetStatus !== "ISSUE";
+
+    const caller = await prisma.user.findUnique({
+      where: { id: Number(activeUserId) },
+      select: { name: true, role: true },
+    });
+    const callerLabel = caller
+      ? `${caller.name} (${caller.role ? caller.role.replace("_", " ") : "USER"})`
+      : "User";
+
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    // Format remarks if issue is reported
+    let formattedRemarks = linkerRemarks !== undefined ? (linkerRemarks ? linkerRemarks.trim() : null) : existing.linkerRemarks;
+    if (isRaisingIssue) {
+      const issueText = (issueMessage || linkerRemarks || "Link issue reported").trim();
+      const currentRemarks = existing.linkerRemarks || "";
+      formattedRemarks = `[Flagged by ${callerLabel} • ${dateStr}]: ${issueText}${currentRemarks ? `\n${currentRemarks}` : ""}`;
+    }
 
     const updated = await prisma.linkLog.update({
       where: { id: parseInt(id) },
       data: {
         ...(activeUserId && !isReportingIssue ? { updatedById: Number(activeUserId) } : {}),
-        ...(targetStatus !== undefined ? { status: targetStatus as any } : {}),
+        ...(targetStatus !== undefined ? { status: targetStatus as any } : isRaisingIssue ? { status: "ISSUE" } : {}),
         ...(bridgePageLink !== undefined ? { bridgePageLink: updatedBridge } : {}),
         ...(buyLink !== undefined ? { buyLink: updatedBuy } : {}),
-        ...(linkerRemarks !== undefined ? { linkerRemarks: linkerRemarks || null } : {}),
+        ...(formattedRemarks !== undefined ? { linkerRemarks: formattedRemarks } : {}),
         ...(productId !== undefined ? { productId: Number(productId) } : {}),
         ...(targetAffiliateName !== undefined ? { affiliateName: targetAffiliateName } : {}),
         ...(affiliateLink !== undefined ? { affiliateLink } : {}),
@@ -153,40 +189,96 @@ export async function PATCH(
           }
           : {}),
       },
-      include: { geos: true },
+      include: {
+        geos: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+            site: { select: { id: true, name: true } },
+          },
+        },
+      },
     });
 
-    const { issueMessage } = body;
-    if (issueMessage && activeUserId) {
+    // Record History Log
+    const hasChanges =
+      updated.bridgePageLink !== existing.bridgePageLink ||
+      updated.buyLink !== existing.buyLink ||
+      updated.affiliateName !== existing.affiliateName ||
+      updated.affiliateLink !== existing.affiliateLink ||
+      updated.status !== existing.status ||
+      updated.linkerRemarks !== existing.linkerRemarks ||
+      geosToSet !== null ||
+      isRaisingIssue;
+
+    if (hasChanges && activeUserId) {
+      await prisma.linkHistory.create({
+        data: {
+          linkLogId: updated.id,
+          updatedById: Number(activeUserId),
+          oldBridgeLink: existing.bridgePageLink,
+          newBridgeLink: updated.bridgePageLink,
+          oldBuyLink: existing.buyLink,
+          newBuyLink: updated.buyLink,
+          oldAffiliateLink: existing.affiliateLink,
+          newAffiliateLink: updated.affiliateLink,
+          oldStatus: existing.status,
+          newStatus: updated.status,
+          oldRemarks: existing.linkerRemarks,
+          newRemarks: updated.linkerRemarks,
+        },
+      });
+    }
+
+    const productName = updated.product?.name || existing.product?.name || "Product";
+    const siteName = (updated.product?.site?.name || existing.product?.site?.name)
+      ? ` (${updated.product?.site?.name || existing.product?.site?.name})`
+      : "";
+
+    // 1. NOTIFICATIONS FOR LINK ISSUE RAISED
+    if (isRaisingIssue) {
       try {
-        const caller = await prisma.user.findUnique({
-          where: { id: Number(activeUserId) },
-          select: { name: true, role: true },
+        const issueReason = (issueMessage || linkerRemarks || "Flagged issue with link").trim();
+        const notifMessage = `${callerLabel} reported an issue with link for "${productName}"${siteName}: "${issueReason}"`;
+
+        const allUsers = await prisma.user.findMany({ select: { id: true } });
+        for (const u of allUsers) {
+          try {
+            const notif = await prisma.notification.create({
+              data: {
+                recipientId: u.id,
+                senderId: Number(activeUserId),
+                type: "LINK_ISSUE",
+                message: notifMessage,
+              },
+            });
+            await sendRealtimeNotification(u.id, notif);
+          } catch (e) {
+            console.error("Failed to notify user for link issue:", u.id, e);
+          }
+        }
+
+        await broadcastRealtimeNotification({
+          senderId: Number(activeUserId),
+          message: notifMessage,
+          type: "LINK_ISSUE",
+          data: { linkLogId: existing.id, productId: existing.productId },
         });
+      } catch (notifErr) {
+        console.error("Failed to send link issue notifications:", notifErr);
+      }
+    }
 
-        const callerLabel = caller
-          ? `${caller.name} (${caller.role ? caller.role.replace("_", " ") : "USER"})`
-          : "Someone";
+    // 2. NOTIFICATIONS FOR LINK ISSUE FIXED / RESOLVED
+    if (isResolvingIssue) {
+      try {
+        const notifMessage = `Link issue for "${productName}"${siteName} has been resolved by ${callerLabel}. The product link is now updated and active.`;
 
-        const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const currentRemarks = updated.linkerRemarks || "";
-        const formattedRemark = `[Flagged by ${callerLabel} • ${dateStr}]: ${issueMessage}${currentRemarks ? ` \n${currentRemarks}` : ""
-          }`;
-
-        // Set status to ISSUE and append remarks
-        await prisma.linkLog.update({
-          where: { id: parseInt(id) },
-          data: {
-            status: "ISSUE",
-            linkerRemarks: formattedRemark,
-          },
-        });
-
+        // Notify ALL users in the system so everyone knows the link is unblocked
         const allUsers = await prisma.user.findMany({
-          select: { id: true }
+          select: { id: true },
         });
-
-        const notifMessage = `${callerLabel} flagged an issue with link "${existing.affiliateName}": "${issueMessage}"`;
 
         for (const u of allUsers) {
           try {
@@ -200,7 +292,7 @@ export async function PATCH(
             });
             await sendRealtimeNotification(u.id, notif);
           } catch (e) {
-            console.error("Failed to notify user", u.id, e);
+            console.error("Failed to notify user of link resolution:", u.id, e);
           }
         }
 
@@ -208,119 +300,18 @@ export async function PATCH(
           senderId: Number(activeUserId),
           message: notifMessage,
           type: "LINK_ISSUE",
-          data: { linkLogId: existing.id },
-        });
-      } catch (notifErr) {
-        console.error("Failed to process link issue flagging:", notifErr);
-      }
-    }
-
-    // Fetch final updated link log and log history
-    const finalLinkLog = await prisma.linkLog.findUnique({
-      where: { id: parseInt(id) },
-      include: { geos: true },
-    });
-
-    if (finalLinkLog && activeUserId) {
-      const hasChanges =
-        finalLinkLog.bridgePageLink !== existing.bridgePageLink ||
-        finalLinkLog.buyLink !== existing.buyLink ||
-        finalLinkLog.affiliateName !== existing.affiliateName ||
-        finalLinkLog.affiliateLink !== existing.affiliateLink ||
-        finalLinkLog.status !== existing.status ||
-        finalLinkLog.linkerRemarks !== existing.linkerRemarks ||
-        geosToSet !== null;
-
-      if (hasChanges) {
-        await prisma.linkHistory.create({
           data: {
-            linkLogId: finalLinkLog.id,
-            updatedById: Number(activeUserId),
-            oldBridgeLink: existing.bridgePageLink,
-            newBridgeLink: finalLinkLog.bridgePageLink,
-            oldBuyLink: existing.buyLink,
-            newBuyLink: finalLinkLog.buyLink,
-            oldAffiliateLink: existing.affiliateLink,
-            newAffiliateLink: finalLinkLog.affiliateLink,
-            oldStatus: existing.status,
-            newStatus: finalLinkLog.status,
-            oldRemarks: existing.linkerRemarks,
-            newRemarks: finalLinkLog.linkerRemarks,
+            linkLogId: existing.id,
+            resolved: true,
+            productId: existing.productId,
           },
         });
-      }
-
-      // If a previously reported issue was resolved (status changed away from ISSUE)
-      if (existing.status === "ISSUE" && finalLinkLog.status !== "ISSUE") {
-        try {
-          const caller = await prisma.user.findUnique({
-            where: { id: Number(activeUserId) },
-            select: { name: true, role: true },
-          });
-          const callerLabel = caller
-            ? `${caller.name} (${caller.role ? caller.role.replace("_", " ") : "USER"})`
-            : "Admin / Linker";
-
-          const product = await prisma.product.findUnique({
-            where: { id: existing.productId },
-            include: {
-              site: { select: { name: true } },
-              article: {
-                include: {
-                  writer: { select: { id: true, name: true, teamLeadId: true } },
-                },
-              },
-            },
-          });
-
-          const productName = product?.name || "Product";
-          const siteName = product?.site?.name ? ` on site ${product.site.name}` : "";
-          const notifMessage = `Link issue for "${productName}"${siteName} has been resolved by ${callerLabel}. The product is now unblocked.`;
-
-          const recipientIds = new Set<number>();
-          if (product?.article?.writer?.id) {
-            recipientIds.add(product.article.writer.id);
-            if (product.article.writer.teamLeadId) {
-              recipientIds.add(product.article.writer.teamLeadId);
-            }
-          }
-
-          const admins = await prisma.user.findMany({
-            where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
-            select: { id: true },
-          });
-          admins.forEach((a) => recipientIds.add(a.id));
-          recipientIds.delete(Number(activeUserId));
-
-          for (const recipientId of recipientIds) {
-            try {
-              const notif = await prisma.notification.create({
-                data: {
-                  recipientId,
-                  senderId: Number(activeUserId),
-                  type: "LINK_ISSUE",
-                  message: notifMessage,
-                },
-              });
-              await sendRealtimeNotification(recipientId, notif);
-            } catch (e) {
-              console.error("Failed to notify user of link resolution", recipientId, e);
-            }
-          }
-
-          await broadcastRealtimeNotification({
-            senderId: Number(activeUserId),
-            message: notifMessage,
-            type: "LINK_ISSUE",
-            data: { linkLogId: existing.id, resolved: true, productId: existing.productId },
-          });
-        } catch (resErr) {
-          console.error("Failed to process link resolution notification:", resErr);
-        }
+      } catch (resErr) {
+        console.error("Failed to process link resolution notification:", resErr);
       }
     }
 
-    return NextResponse.json(finalLinkLog || updated);
+    return NextResponse.json(updated);
   } catch (err) {
     console.error("[PATCH /api/links/:id]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

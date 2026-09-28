@@ -10,6 +10,7 @@ import {
   Building2,
   Tag,
   AlertCircle,
+  AlertTriangle,
   Check,
   X,
   Globe,
@@ -1354,6 +1355,53 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Issue Resolution Helper Banner */}
+          {link.status === "ISSUE" && (
+            <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-900/60 flex items-center justify-center shrink-0 text-rose-600 dark:text-rose-400 mt-0.5 sm:mt-0">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
+                    <span>Reported Issue on Link</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-200/60 dark:bg-rose-900/80 text-rose-800 dark:text-rose-200 uppercase tracking-wide">
+                      Active Issue
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-0.5 line-clamp-2">
+                    {link.linkerRemarks ? link.linkerRemarks.split("\n")[0] : "This link was flagged with an issue. Update the link URLs and mark it as resolved."}
+                  </p>
+                </div>
+              </div>
+
+              {status === "ISSUE" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatus("ACCEPTED");
+                    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    setLinkerRemarks((prev) =>
+                      prev
+                        ? `[Resolved • ${dateStr}]: Issue resolved & links verified.\n${prev}`
+                        : `[Resolved • ${dateStr}]: Issue resolved & links verified.`
+                    );
+                    toast.success("Status switched to ACCEPTED. Click 'Update Link Log' to save and notify the team!");
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Mark Resolved & Set Accepted</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold shrink-0">
+                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Ready to resolve as {status}</span>
+                </div>
+              )}
             </div>
           )}
 
