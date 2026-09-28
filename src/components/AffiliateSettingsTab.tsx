@@ -664,10 +664,21 @@ export default function AffiliateSettingsTab() {
             <div className="flex flex-wrap items-center gap-2">
               {timePeriod === "today" && (
                 <div className="flex items-center gap-1.5 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-xl">
-                  <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">Pick Day:</span>
+                  <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">Date Range:</span>
                   <CustomDatePicker
-                    value={selectedDay || formatYMD(new Date())}
-                    onChange={(d) => handleSpecificDayChange(d)}
+                    startDate={startDate}
+                    endDate={endDate}
+                    onRangeChange={(s, e) => {
+                      setStartDate(s);
+                      setEndDate(e);
+                      if (s && e && s !== e) {
+                        setTimePeriod("custom");
+                      } else if (s) {
+                        setSelectedDay(s);
+                      } else {
+                        setTimePeriod("all");
+                      }
+                    }}
                     align="right"
                   />
                 </div>
@@ -685,31 +696,19 @@ export default function AffiliateSettingsTab() {
               )}
 
               {timePeriod === "custom" && (
-                <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1.5 rounded-xl">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold text-slate-500 pl-1">From:</span>
-                    <CustomDatePicker
-                      value={customStart}
-                      onChange={(d) => setCustomStart(d)}
-                      placeholder="Start Date"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold text-slate-500">To:</span>
-                    <CustomDatePicker
-                      value={customEnd}
-                      onChange={(d) => setCustomEnd(d)}
-                      placeholder="End Date"
-                      align="right"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleApplyCustomDates}
-                    className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition shadow-xs cursor-pointer"
-                  >
-                    Apply
-                  </button>
+                <div className="flex items-center gap-1.5 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-xl">
+                  <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">Select Range:</span>
+                  <CustomDatePicker
+                    startDate={startDate}
+                    endDate={endDate}
+                    onRangeChange={(s, e) => {
+                      setStartDate(s);
+                      setEndDate(e);
+                      if (!s && !e) setTimePeriod("all");
+                    }}
+                    placeholder="Click to pick date range"
+                    align="right"
+                  />
                 </div>
               )}
             </div>
