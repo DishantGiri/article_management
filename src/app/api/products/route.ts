@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, names, products, categoryIds, excludedSiteIds, trendLink, trendLevel, affiliateName, previewLink, remarks, productCategory, isNative } = body;
+    const { name, names, products, categoryIds, excludedSiteIds, trendLink, trendLevel, affiliateName, previewLink, remarks, productCategory, isNative, source } = body;
     const excludedSet = new Set(Array.isArray(excludedSiteIds) ? excludedSiteIds.map(Number) : []);
 
     interface IncomingProduct {
@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       country?: string | null;
       isNative?: boolean;
       productCategory?: string | null;
+      source?: string | null;
       affiliateName?: string | null;
       trendLevel?: string | null;
       trendLink?: string | null;
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
           country: typeof p.country === "string" && p.country.trim() ? p.country.trim() : (typeof body.country === "string" && body.country.trim() ? body.country.trim() : null),
           isNative: typeof p.isNative === "boolean" ? p.isNative : (typeof isNative === "boolean" ? isNative : false),
           productCategory: p.productCategory?.trim() || productCategory?.trim() || null,
+          source: p.source?.trim() || source?.trim() || null,
           affiliateName: p.affiliateName?.trim() || affiliateName?.trim() || null,
           trendLevel: p.trendLevel || trendLevel || "HIGH",
           trendLink: p.trendLink?.trim() || trendLink?.trim() || null,
@@ -71,6 +73,7 @@ export async function POST(req: NextRequest) {
           country: typeof body.country === "string" && body.country.trim() ? body.country.trim() : null,
           isNative: typeof isNative === "boolean" ? isNative : false,
           productCategory: productCategory?.trim() || null,
+          source: typeof body.source === "string" && body.source.trim() ? body.source.trim() : null,
           affiliateName: affiliateName?.trim() || null,
           trendLevel: trendLevel || "HIGH",
           trendLink: trendLink?.trim() || null,
@@ -265,6 +268,7 @@ export async function POST(req: NextRequest) {
             siteId: site.id,
             categoryId: cat.id,
             productCategory: item.productCategory || null,
+            source: item.source || null,
             trendLink: item.trendLink || null,
             trendLevel: item.trendLevel || "HIGH",
             affiliateName: item.affiliateName || null,

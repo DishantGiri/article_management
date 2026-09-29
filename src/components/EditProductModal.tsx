@@ -15,9 +15,11 @@ import {
   AlertCircle,
   Building2,
   Layers,
+  Check,
 } from "lucide-react";
 
 import { generateSlug } from "@/lib/utils";
+import { PRODUCT_SOURCE_OPTIONS } from "@/components/AddProductModal";
 
 interface Site {
   id: number;
@@ -44,6 +46,7 @@ interface EditProductModalProps {
     slug?: string | null;
     isNative?: boolean;
     productCategory?: string | null;
+    source?: string | null;
     trendLink?: string | null;
     trendLevel?: string | null;
     affiliateName?: string | null;
@@ -88,6 +91,7 @@ export default function EditProductModal({
   const [siteId, setSiteId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [category, setCategory] = useState("");
+  const [source, setSource] = useState("");
   const [trendLink, setTrendLink] = useState("");
   const [trendLevel, setTrendLevel] = useState("HIGH");
   const [affiliateName, setAffiliateName] = useState("");
@@ -108,6 +112,7 @@ export default function EditProductModal({
       setSiteId(product.siteId?.toString() || "");
       setCategoryId(product.categoryId?.toString() || "");
       setCategory(product.productCategory || "");
+      setSource(product.source || "");
       setTrendLink(product.trendLink || "");
       setTrendLevel(product.trendLevel || "HIGH");
       setAffiliateName(product.affiliateName || "");
@@ -177,6 +182,7 @@ export default function EditProductModal({
           siteId: parseInt(siteId),
           categoryId: parseInt(categoryId),
           productCategory: category.trim() || null,
+          source: source.trim() || null,
           isNative: Boolean(isNative),
           trendLink: trendLink || null,
           trendLevel: trendLevel || "HIGH",
@@ -390,6 +396,46 @@ export default function EditProductModal({
                   className="w-full"
                   options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                 />
+              </div>
+
+              {/* Product Source */}
+              <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-zinc-500" />
+                    Source
+                    <span className="text-zinc-400 font-normal text-[10px] normal-case">(Product source)</span>
+                  </label>
+                  {source && (
+                    <button
+                      type="button"
+                      onClick={() => setSource("")}
+                      className="text-[10px] font-semibold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {PRODUCT_SOURCE_OPTIONS.map((opt) => {
+                    const isSelected = source === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSource(isSelected ? "" : opt.value)}
+                        className={`py-2 px-3 rounded-xl text-xs font-semibold border text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
+                          isSelected
+                            ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 dark:border-white ring-2 ring-zinc-900/20 dark:ring-white/20 font-bold"
+                            : "bg-white dark:bg-[#0b1120] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 shrink-0" />}
+                        <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Site & Product Type */}

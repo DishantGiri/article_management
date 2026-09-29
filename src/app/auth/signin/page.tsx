@@ -19,10 +19,8 @@ import {
 import LoadingScreen from "@/components/LoadingScreen";
 
 const DEMO_USERS = [
-  { name: "Admin (Shiridhar)", role: "ADMIN", email: "shiridhar@fishtailinfosolutions.com", color: "bg-slate-100 text-slate-800 border-slate-300" },
-  { name: "Team Lead (Sujata)", role: "TEAM_LEAD", email: "sujata@fishtailinfosolutions.com", color: "bg-violet-50 text-violet-700 border-violet-200" },
-  { name: "Linker (Anjali)", role: "LINKER", email: "anjali@fishtailinfosolutions.com", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  { name: "Writer (Nirajan)", role: "WRITER", email: "nirajan@fishtailinfosolutions.com", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { name: "Super Admin", role: "SUPER_ADMIN", email: "superadmin@fishtailinfosolutions.com", color: "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-zinc-900" },
+  { name: "User (Admin)", role: "ADMIN", email: "user@fishtailinfosolutions.com", color: "bg-slate-100 text-slate-800 border-slate-300" },
 ];
 
 function SignInContent() {

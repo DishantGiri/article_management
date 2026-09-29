@@ -182,6 +182,7 @@ model Product {
   slug          String?
   country       String?
   isNative      Boolean     @default(false)
+  source        String?     // Affiliate, Competitor, Social Media/Native, Source
 
   siteId        Int
   categoryId    Int

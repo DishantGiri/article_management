@@ -50,11 +50,19 @@ interface Affiliate {
   name: string;
 }
 
+export const PRODUCT_SOURCE_OPTIONS = [
+  { value: "Affiliate", label: "Affiliate" },
+  { value: "Competitor", label: "Competitor" },
+  { value: "Social Media/Native", label: "Social Media/Native" },
+  { value: "Source", label: "Source" },
+];
+
 export interface SpreadsheetRow {
   name: string;
   slug: string;
   country?: string;
   category: string;
+  source?: string;
   affiliateName: string;
   trendLevel: string;
   trendLink: string;
@@ -69,6 +77,7 @@ interface FormData {
   slug: string;
   country?: string;
   category: string;
+  source: string;
   trendLink: string;
   trendLevel: string;
   affiliateName: string;
@@ -115,10 +124,10 @@ function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | 
             <div className="flex flex-col items-center gap-1">
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${done
-                    ? "bg-blue-600 text-white"
-                    : active
-                      ? "bg-blue-600 text-white ring-4 ring-blue-500/20 shadow-xs"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                  ? "bg-blue-600 text-white"
+                  : active
+                    ? "bg-blue-600 text-white ring-4 ring-blue-500/20 shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
                   }`}
               >
                 {done ? (
@@ -181,6 +190,7 @@ export default function AddProductModal({
 
   // Batch Fill Helpers
   const [batchCategory, setBatchCategory] = useState("");
+  const [batchSource, setBatchSource] = useState("");
   const [batchAffiliate, setBatchAffiliate] = useState("");
   const [batchTrendLevel, setBatchTrendLevel] = useState("");
   const [batchIsNative, setBatchIsNative] = useState("");
@@ -204,7 +214,7 @@ export default function AddProductModal({
 
     const uniqueNames = Array.from(new Set(lines));
     if (uniqueNames.length === 0) {
-      setSpreadsheetRows([{ name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }]);
+      setSpreadsheetRows([{ name: "", slug: "", category: "", source: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }]);
       return;
     }
 
@@ -212,6 +222,7 @@ export default function AddProductModal({
       name: n,
       slug: generateSlug(n),
       category: batchCategory || form.category || "",
+      source: batchSource || form.source || "",
       affiliateName: batchAffiliate || form.affiliateName || "",
       trendLevel: batchTrendLevel || form.trendLevel || "HIGH",
       isNative: batchIsNative ? batchIsNative === "true" : (form.isNative ?? false),
@@ -245,6 +256,7 @@ export default function AddProductModal({
       name: n,
       slug: generateSlug(n),
       category: batchCategory || form.category || "",
+      source: batchSource || form.source || "",
       affiliateName: batchAffiliate || form.affiliateName || "",
       trendLevel: batchTrendLevel || form.trendLevel || "HIGH",
       isNative: batchIsNative ? batchIsNative === "true" : (form.isNative ?? false),
@@ -285,6 +297,7 @@ export default function AddProductModal({
         name: "",
         slug: "",
         category: batchCategory || form.category || "",
+        source: batchSource || form.source || "",
         affiliateName: batchAffiliate || form.affiliateName || "",
         trendLevel: batchTrendLevel || "HIGH",
         isNative: batchIsNative ? batchIsNative === "true" : (form.isNative ?? false),
@@ -299,14 +312,14 @@ export default function AddProductModal({
     setSpreadsheetRows((prev) => {
       const next = prev.filter((_, i) => i !== index);
       if (next.length === 0) {
-        return [{ name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }];
+        return [{ name: "", slug: "", category: "", source: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }];
       }
       return next;
     });
   };
 
   const applyBatchToAll = () => {
-    if (!batchCategory && !batchAffiliate && !batchTrendLevel && !batchIsNative) {
+    if (!batchCategory && !batchSource && !batchAffiliate && !batchTrendLevel && !batchIsNative) {
       toast.error("Please select at least one field to apply to all rows.");
       return;
     }
@@ -320,6 +333,7 @@ export default function AddProductModal({
       prev.map((row) => ({
         ...row,
         category: batchCategory ? batchCategory : row.category,
+        source: batchSource ? batchSource : row.source,
         affiliateName: batchAffiliate ? batchAffiliate : row.affiliateName,
         trendLevel: batchTrendLevel ? batchTrendLevel : row.trendLevel,
         isNative: batchIsNative ? batchIsNative === "true" : row.isNative,
@@ -334,6 +348,7 @@ export default function AddProductModal({
     slug: "",
     country: "",
     category: "",
+    source: "",
     trendLink: "",
     trendLevel: "HIGH",
     affiliateName: "",
@@ -468,6 +483,7 @@ export default function AddProductModal({
         { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false },
       ]);
       setBatchCategory("");
+      setBatchSource("");
       setBatchAffiliate("");
       setBatchTrendLevel("");
       setBatchIsNative("");
@@ -478,6 +494,7 @@ export default function AddProductModal({
         slug: "",
         country: "",
         category: "",
+        source: "",
         trendLink: "",
         trendLevel: "HIGH",
         affiliateName: "",
@@ -758,6 +775,7 @@ export default function AddProductModal({
               country: r.country?.trim() || null,
               isNative: Boolean(r.isNative),
               productCategory: r.category.trim(),
+              source: r.source?.trim() || null,
               affiliateName: r.affiliateName.trim(),
               trendLevel: r.trendLevel || "HIGH",
               trendLink: r.trendLink.trim(),
@@ -851,6 +869,7 @@ export default function AddProductModal({
           excludedSiteIds,
           isNative: Boolean(form.isNative),
           productCategory: form.category.trim() || null,
+          source: form.source?.trim() || null,
           trendLink: form.trendLink || null,
           trendLevel: form.trendLevel || "HIGH",
           affiliateName: finalAffiliate || null,
@@ -920,8 +939,8 @@ export default function AddProductModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/60 dark:bg-black/75 backdrop-blur-sm animate-fadeIn">
       <div className={`bg-white dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 transition-all duration-300 ${entryMode === "bulk" && step === 2
-          ? "w-[98vw] max-w-[1550px] h-[95vh] max-h-[96vh]"
-          : "w-[96vw] max-w-4xl max-h-[92vh]"
+        ? "w-[98vw] max-w-[1550px] h-[95vh] max-h-[96vh]"
+        : "w-[96vw] max-w-4xl max-h-[92vh]"
         }`}>
         {/* Modal Header */}
         <div className="px-5 sm:px-6 py-3.5 bg-slate-50 dark:bg-[#0f172a] border-b border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white flex items-center justify-between shrink-0">
@@ -971,6 +990,7 @@ export default function AddProductModal({
                       slug: "",
                       country: "",
                       category: "",
+                      source: "",
                       trendLink: "",
                       trendLevel: "HIGH",
                       affiliateName: "",
@@ -980,8 +1000,12 @@ export default function AddProductModal({
                     });
                     setIsSlugManuallyEdited(false);
                     setSpreadsheetRows([
-                      { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false },
+                      { name: "", slug: "", category: "", source: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false },
                     ]);
+                    setBatchCategory("");
+                    setBatchSource("");
+                    setBatchAffiliate("");
+                    setBatchTrendLevel("");
                     setBatchIsNative("");
                     setBulkPasteText("");
                     setStep(1);
@@ -1081,8 +1105,8 @@ export default function AddProductModal({
                               }));
                             }}
                             className={`p-3.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${selected
-                                ? "bg-blue-50 dark:bg-blue-600/20 border-blue-500 text-blue-950 dark:text-white font-bold shadow-sm ring-1 ring-blue-500/40"
-                                : "bg-slate-50 dark:bg-[#131d31] border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-medium hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/50"
+                              ? "bg-blue-50 dark:bg-blue-600/20 border-blue-500 text-blue-950 dark:text-white font-bold shadow-sm ring-1 ring-blue-500/40"
+                              : "bg-slate-50 dark:bg-[#131d31] border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-medium hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/50"
                               }`}
                           >
                             <span className="text-xs truncate">{c.name}</span>
@@ -1250,6 +1274,21 @@ export default function AddProductModal({
                         </div>
 
                         <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">SOURCE</label>
+                          <CustomSelect
+                            value={batchSource}
+                            onChange={(val) => setBatchSource(val)}
+                            placeholder="Select source..."
+                            className="w-full"
+                            triggerClassName="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
+                            options={[
+                              { value: "", label: "- None / Clear -" },
+                              ...PRODUCT_SOURCE_OPTIONS,
+                            ]}
+                          />
+                        </div>
+
+                        <div>
                           <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
                             <span>AFFILIATE NETWORK</span>
                             <span className="text-[9px] text-slate-400 lowercase font-normal">(multi / none)</span>
@@ -1336,8 +1375,8 @@ export default function AddProductModal({
                                 );
                               }}
                               className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${isExcluded
-                                  ? "bg-slate-200/70 dark:bg-slate-900/60 text-slate-400 dark:text-slate-500 border-slate-300 dark:border-slate-800 line-through opacity-60"
-                                  : "bg-white dark:bg-[#0b1120] text-slate-800 dark:text-slate-200 border-blue-500/50 font-bold shadow-xs"
+                                ? "bg-slate-200/70 dark:bg-slate-900/60 text-slate-400 dark:text-slate-500 border-slate-300 dark:border-slate-800 line-through opacity-60"
+                                : "bg-white dark:bg-[#0b1120] text-slate-800 dark:text-slate-200 border-blue-500/50 font-bold shadow-xs"
                                 }`}
                             >
                               <span>{site.name}</span>
@@ -1349,27 +1388,27 @@ export default function AddProductModal({
                     </div>
                   )}
 
-                    {/* Section Divider & Title */}
-                    <div className="flex items-center gap-3 pt-1">
-                      <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 shrink-0">
-                        <Table className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span>Product Table</span>
-                      </div>
-                      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                      <div className="text-xs text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-2">
-                        <span>{spreadsheetRows.filter((r) => r.name.trim()).length} products · {activeSites.length} preview site{activeSites.length !== 1 ? "s" : ""}</span>
-                        {Object.values(bulkCheckResults).filter((r) => r.exists === false).length > 0 && (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1">
-                            <Check className="w-3 h-3" /> {Object.values(bulkCheckResults).filter((r) => r.exists === false).length} Available
-                          </span>
-                        )}
-                        {Object.values(bulkCheckResults).filter((r) => r.exists === true).length > 0 && (
-                          <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold flex items-center gap-1 animate-pulse">
-                            <AlertCircle className="w-3 h-3" /> {Object.values(bulkCheckResults).filter((r) => r.exists === true).length} Already in DB
-                          </span>
-                        )}
-                      </div>
+                  {/* Section Divider & Title */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 shrink-0">
+                      <Table className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span>Product Table</span>
                     </div>
+                    <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                    <div className="text-xs text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-2">
+                      <span>{spreadsheetRows.filter((r) => r.name.trim()).length} products · {activeSites.length} preview site{activeSites.length !== 1 ? "s" : ""}</span>
+                      {Object.values(bulkCheckResults).filter((r) => r.exists === false).length > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1">
+                          <Check className="w-3 h-3" /> {Object.values(bulkCheckResults).filter((r) => r.exists === false).length} Available
+                        </span>
+                      )}
+                      {Object.values(bulkCheckResults).filter((r) => r.exists === true).length > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold flex items-center gap-1 animate-pulse">
+                          <AlertCircle className="w-3 h-3" /> {Object.values(bulkCheckResults).filter((r) => r.exists === true).length} Already in DB
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                   {/* 3. The Google Sheets Style Table */}
                   <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-[#0b1120] flex-1 flex flex-col min-h-0">
@@ -1378,15 +1417,16 @@ export default function AddProductModal({
                         <thead className="bg-slate-100 dark:bg-[#162033] sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                           <tr>
                             <th className="w-10 py-2.5 px-2 text-center border-r border-slate-200 dark:border-slate-800/80">#</th>
-                            <th className="w-[17%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Product Name <span className="text-rose-500">*</span></th>
-                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Slug <span className="text-slate-400 dark:text-slate-500 text-[9px] font-normal lowercase">(auto)</span></th>
-                            <th className="w-[11%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Category <span className="text-rose-500">*</span></th>
-                            <th className="w-[13%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Affiliate Network <span className="text-rose-500">*</span></th>
-                            <th className="w-[9%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend <span className="text-rose-500">*</span></th>
+                            <th className="w-[16%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Product Name <span className="text-rose-500">*</span></th>
+                            <th className="w-[11%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Slug <span className="text-slate-400 dark:text-slate-500 text-[9px] font-normal lowercase">(auto)</span></th>
+                            <th className="w-[10%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Category <span className="text-rose-500">*</span></th>
+                            <th className="w-[10%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Source</th>
+                            <th className="w-[12%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Affiliate Network <span className="text-rose-500">*</span></th>
+                            <th className="w-[8%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend <span className="text-rose-500">*</span></th>
                             <th className="w-16 py-2.5 px-2 text-center border-r border-slate-200 dark:border-slate-800/80">Native</th>
-                            <th className="w-[12%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend Link</th>
-                            <th className="w-[12%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Preview Link <span className="text-slate-400 font-normal text-[9px] lowercase">(optional)</span></th>
-                            <th className="w-[9%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Notes</th>
+                            <th className="w-[11%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend Link</th>
+                            <th className="w-[11%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Preview Link <span className="text-slate-400 font-normal text-[9px] lowercase">(optional)</span></th>
+                            <th className="w-[8%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Notes</th>
                             <th className="w-10 py-2.5 px-1 text-center"></th>
                           </tr>
                         </thead>
@@ -1407,15 +1447,14 @@ export default function AddProductModal({
                                           value={row.name}
                                           onChange={(e) => updateSpreadsheetRow(idx, "name", e.target.value)}
                                           placeholder={`Product name *`}
-                                          className={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg focus:outline-none transition-colors ${
-                                            row.name.trim().length > 0 && row.name.trim().length < 2
+                                          className={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg focus:outline-none transition-colors ${row.name.trim().length > 0 && row.name.trim().length < 2
                                               ? "border border-rose-400 bg-rose-50/40 text-rose-900 focus:border-rose-500 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-200"
                                               : rowResult?.exists
-                                              ? "border border-rose-500 bg-rose-50/40 text-rose-900 focus:border-rose-600 dark:bg-rose-950/30 dark:border-rose-700 dark:text-rose-200"
-                                              : rowResult?.exists === false && row.name.trim().length >= 2
-                                              ? "border border-emerald-400/80 bg-emerald-50/20 text-emerald-900 focus:border-emerald-500 dark:bg-emerald-950/20 dark:border-emerald-700/60 dark:text-emerald-200"
-                                              : "text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
-                                          }`}
+                                                ? "border border-rose-500 bg-rose-50/40 text-rose-900 focus:border-rose-600 dark:bg-rose-950/30 dark:border-rose-700 dark:text-rose-200"
+                                                : rowResult?.exists === false && row.name.trim().length >= 2
+                                                  ? "border border-emerald-400/80 bg-emerald-50/20 text-emerald-900 focus:border-emerald-500 dark:bg-emerald-950/20 dark:border-emerald-700/60 dark:text-emerald-200"
+                                                  : "text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
+                                            }`}
                                         />
                                       </div>
                                       {row.name.trim().length > 0 && row.name.trim().length < 2 ? (
@@ -1466,6 +1505,21 @@ export default function AddProductModal({
                                   options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                                 />
                               </td>
+                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[130px]">
+                                <CustomSelect
+                                  value={row.source || ""}
+                                  onChange={(val) => updateSpreadsheetRow(idx, "source", val)}
+                                  placeholder="Source..."
+                                  portal={true}
+                                  minWidth={130}
+                                  className="w-full"
+                                  triggerClassName="w-full px-2 py-1.5 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
+                                  options={[
+                                    { value: "", label: "- None -" },
+                                    ...PRODUCT_SOURCE_OPTIONS,
+                                  ]}
+                                />
+                              </td>
                               <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[140px]">
                                 <AffiliateMultiSelect
                                   value={row.affiliateName}
@@ -1507,11 +1561,10 @@ export default function AddProductModal({
                                 <button
                                   type="button"
                                   onClick={() => updateSpreadsheetRow(idx, "isNative", !row.isNative)}
-                                  className={`px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer border w-full flex items-center justify-center gap-1 ${
-                                    row.isNative
+                                  className={`px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer border w-full flex items-center justify-center gap-1 ${row.isNative
                                       ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                                       : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
-                                  }`}
+                                    }`}
                                   title={row.isNative ? "Native Product (Click to toggle)" : "Standard Product (Click to toggle)"}
                                 >
                                   {row.isNative ? "Yes" : "No"}
@@ -1696,8 +1749,8 @@ export default function AddProductModal({
                           <div
                             key={site.id}
                             className={`w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all ${isExcluded
-                                ? "bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60"
-                                : "bg-white dark:bg-[#131d31] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 shadow-2xs"
+                              ? "bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60"
+                              : "bg-white dark:bg-[#131d31] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 shadow-2xs"
                               }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -1725,8 +1778,8 @@ export default function AddProductModal({
                                 );
                               }}
                               className={`p-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 shrink-0 ${isExcluded
-                                  ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-600/10"
-                                  : "text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                                ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-600/10"
+                                : "text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                                 }`}
                               title={isExcluded ? "Re-include this site" : "Remove/Deselect this site"}
                             >
@@ -1783,15 +1836,14 @@ export default function AddProductModal({
                           value={form.name}
                           onChange={(e) => update("name", e.target.value)}
                           placeholder="e.g. Alpha Whey Protein"
-                          className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${
-                            form.name.trim().length > 0 && form.name.trim().length < 2
+                          className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${form.name.trim().length > 0 && form.name.trim().length < 2
                               ? "border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30"
                               : singleCheckStatus.exists
-                              ? "border-rose-500 bg-rose-50/20 text-rose-900 dark:text-rose-200 focus:border-rose-600 focus:ring-1 focus:ring-rose-500/30"
-                              : singleCheckStatus.exists === false && form.name.trim().length >= 2
-                              ? "border-emerald-500 bg-emerald-50/20 text-emerald-900 dark:text-emerald-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/30"
-                              : "border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-                          }`}
+                                ? "border-rose-500 bg-rose-50/20 text-rose-900 dark:text-rose-200 focus:border-rose-600 focus:ring-1 focus:ring-rose-500/30"
+                                : singleCheckStatus.exists === false && form.name.trim().length >= 2
+                                  ? "border-emerald-500 bg-emerald-50/20 text-emerald-900 dark:text-emerald-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/30"
+                                  : "border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                            }`}
                         />
                         {singleCheckStatus.checking && (
                           <span className="absolute right-3 top-3 text-[10px] font-bold text-blue-500 flex items-center gap-1 animate-pulse">
@@ -1901,11 +1953,10 @@ export default function AddProductModal({
                           Native Product
                         </span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                            form.isNative
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${form.isNative
                               ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
                               : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
-                          }`}
+                            }`}
                         >
                           {form.isNative ? "Native" : "Standard"}
                         </span>
@@ -1920,17 +1971,54 @@ export default function AddProductModal({
                       role="switch"
                       aria-checked={form.isNative}
                       onClick={() => update("isNative", !form.isNative)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        form.isNative ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-700"
-                      }`}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${form.isNative ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-700"
+                        }`}
                     >
                       <span
                         aria-hidden="true"
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                          form.isNative ? "translate-x-5" : "translate-x-0"
-                        }`}
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${form.isNative ? "translate-x-5" : "translate-x-0"
+                          }`}
                       />
                     </button>
+                  </div>
+
+                  {/* Product Source Field */}
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        Source
+                        <span className="text-slate-400 font-normal text-[10px] normal-case">(Select product source)</span>
+                      </label>
+                      {form.source && (
+                        <button
+                          type="button"
+                          onClick={() => update("source", "")}
+                          className="text-[10px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {PRODUCT_SOURCE_OPTIONS.map((opt) => {
+                        const isSelected = form.source === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => update("source", isSelected ? "" : opt.value)}
+                            className={`py-2 px-3 rounded-xl text-xs font-semibold border text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${isSelected
+                                ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 dark:border-white ring-2 ring-zinc-900/20 dark:ring-white/20 font-bold"
+                                : "bg-white dark:bg-[#0b1120] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                              }`}
+                          >
+                            {isSelected && <Check className="w-3 h-3 shrink-0" />}
+                            <span>{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Grid 2-Column: Category & Affiliate Network */}
@@ -2017,8 +2105,8 @@ export default function AddProductModal({
                         onChange={(e) => update("trendLink", e.target.value)}
                         placeholder="https://... (optional)"
                         className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${fieldErrors.trendLink
-                            ? "border-rose-500/60 focus:ring-1 focus:ring-rose-500"
-                            : "border-slate-200 dark:border-slate-800 focus:border-blue-500"
+                          ? "border-rose-500/60 focus:ring-1 focus:ring-rose-500"
+                          : "border-slate-200 dark:border-slate-800 focus:border-blue-500"
                           }`}
                       />
                       {fieldErrors.trendLink && (
@@ -2042,8 +2130,8 @@ export default function AddProductModal({
                         onChange={(e) => update("previewLink", e.target.value)}
                         placeholder="https://... (optional)"
                         className={`w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all shadow-xs ${fieldErrors.previewLink
-                            ? "border-rose-500/60 focus:ring-1 focus:ring-rose-500"
-                            : "border-slate-200 dark:border-slate-800 focus:border-blue-500"
+                          ? "border-rose-500/60 focus:ring-1 focus:ring-rose-500"
+                          : "border-slate-200 dark:border-slate-800 focus:border-blue-500"
                           }`}
                       />
                       {fieldErrors.previewLink && (

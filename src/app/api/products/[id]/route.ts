@@ -62,7 +62,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, slug, siteId, categoryId, productCategory, trendLink, trendLevel, affiliateName, previewLink, remarks, isNative } = body;
+    const { name, slug, siteId, categoryId, productCategory, trendLink, trendLevel, affiliateName, previewLink, remarks, isNative, source } = body;
 
     const existing = await prisma.product.findUnique({ where: { id: parseInt(id) } });
     if (!existing) {
@@ -129,6 +129,7 @@ export async function PATCH(
         ...(siteId !== undefined ? { siteId: Number(siteId) } : {}),
         ...(categoryId !== undefined ? { categoryId: Number(categoryId) } : {}),
         ...(productCategory !== undefined ? { productCategory: productCategory ? productCategory.trim() : null } : {}),
+        ...(source !== undefined ? { source: source ? source.trim() : null } : {}),
         ...(isNative !== undefined ? { isNative: Boolean(isNative) } : {}),
         ...(trendLink !== undefined ? { trendLink: trendLink || null } : {}),
         ...(trendLevel !== undefined ? { trendLevel: trendLevel || "HIGH" } : {}),

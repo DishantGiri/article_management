@@ -2275,6 +2275,11 @@ function ProductResearcherHubStudio({
                                 Native
                               </span>
                             )}
+                            {p.source && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border border-teal-200/50">
+                                {p.source}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="py-3 px-4">

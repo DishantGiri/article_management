@@ -34,6 +34,7 @@ interface Product {
   siteId: number;
   categoryId: number;
   productCategory?: string | null;
+  source?: string | null;
   trendLink?: string;
   trendLevel?: string;
   affiliateName?: string | null;
@@ -406,6 +407,7 @@ function ProductsPageContent() {
           p.site?.name,
           p.category?.name,
           p.productCategory,
+          p.source,
           p.affiliateName,
           p.addedBy?.name,
         ],
@@ -1108,6 +1110,14 @@ function ProductsPageContent() {
                               >
                                 <span>{getCountryFlag(p.country || p.article?.country || "")}</span>
                                 <span className="uppercase">{p.country || p.article?.country}</span>
+                              </span>
+                            )}
+                            {p.source && (
+                              <span
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60 shadow-2xs"
+                                title={`Source: ${p.source}`}
+                              >
+                                {p.source}
                               </span>
                             )}
                             {isPublishedWithoutLinks && (

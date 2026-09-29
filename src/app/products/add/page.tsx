@@ -7,6 +7,7 @@ import { toast } from "react-hot-toast";
 import { Check, AlertCircle } from "lucide-react";
 import { generateSlug } from "@/lib/utils";
 import AffiliateMultiSelect from "@/components/AffiliateMultiSelect";
+import { PRODUCT_SOURCE_OPTIONS } from "@/components/AddProductModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ interface FormData {
   name: string;
   slug: string;
   category: string;
+  source: string;
   affiliateName: string;
   trendLink: string;
   previewLink: string;
@@ -102,6 +104,7 @@ export default function AddProductPage() {
     name: "",
     slug: "",
     category: "",
+    source: "",
     affiliateName: "",
     trendLink: "",
     previewLink: "",
@@ -294,6 +297,7 @@ export default function AddProductPage() {
           slug: form.slug?.trim() ? generateSlug(form.slug) : generateSlug(form.name),
           categoryIds: [parseInt(form.categoryId)],
           productCategory: form.category.trim() || null,
+          source: form.source?.trim() || null,
           affiliateName: finalAffiliate || null,
           trendLink: form.trendLink || null,
           previewLink: form.previewLink.trim() || null,
@@ -338,7 +342,7 @@ export default function AddProductPage() {
             <button
               id="btn-add-another"
               onClick={() => {
-                setForm({ categoryId: "", siteId: "", name: "", slug: "", category: "", affiliateName: "", trendLink: "", previewLink: "", remarks: "", isNative: false });
+                setForm({ categoryId: "", siteId: "", name: "", slug: "", category: "", source: "", affiliateName: "", trendLink: "", previewLink: "", remarks: "", isNative: false });
                 setIsSlugManuallyEdited(false);
                 setNameCheckStatus({ checking: false });
                 setStep(1);
@@ -630,6 +634,45 @@ export default function AddProductPage() {
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Product Source */}
+              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                    Product Source
+                    <span className="text-zinc-400 font-normal text-xs ml-2">(Optional)</span>
+                  </label>
+                  {form.source && (
+                    <button
+                      type="button"
+                      onClick={() => update("source", "")}
+                      className="text-xs font-semibold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {PRODUCT_SOURCE_OPTIONS.map((opt) => {
+                    const isSelected = form.source === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => update("source", isSelected ? "" : opt.value)}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-semibold border text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
+                          isSelected
+                            ? "bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-zinc-950 dark:border-white ring-2 ring-zinc-950/20 dark:ring-white/20 font-bold"
+                            : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                        <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Trend Link */}
