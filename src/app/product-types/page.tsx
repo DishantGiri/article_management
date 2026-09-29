@@ -65,12 +65,15 @@ export default function ProductTypesAndCategoriesPage() {
     userRole === "SUPER_ADMIN" ||
     userRole === "ADMIN" ||
     userRole === "LINKER" ||
+    userRole === "PRODUCT_RESEARCHER" ||
     activeWorkspace === "LINKER" ||
     activeWorkspace === "ADMIN" ||
     activeWorkspace === "SUPER_ADMIN" ||
+    activeWorkspace === "PRODUCT_RESEARCHER" ||
     sessionRoles.includes("LINKER") ||
     sessionRoles.includes("ADMIN") ||
-    sessionRoles.includes("SUPER_ADMIN");
+    sessionRoles.includes("SUPER_ADMIN") ||
+    sessionRoles.includes("PRODUCT_RESEARCHER");
 
   const fetchData = async () => {
     setLoading(true);

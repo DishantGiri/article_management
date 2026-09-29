@@ -119,11 +119,22 @@ export default function AddProductPage() {
     conflicts?: Array<{ siteName: string; addedBy: string; country?: string | null }>;
   }>({ checking: false });
 
-  // Restrict access: only SUPER_ADMIN, ADMIN, LINKER can access this page
+  // Restrict access: only SUPER_ADMIN, ADMIN, LINKER, PRODUCT_RESEARCHER can access this page
   useEffect(() => {
     if (session && session.user) {
       const r = session.user.role;
-      if (r !== "SUPER_ADMIN" && r !== "ADMIN" && r !== "LINKER") {
+      const roles: string[] = (session.user as any)?.roles || (r ? [r] : []);
+      const canAccess =
+        r === "SUPER_ADMIN" ||
+        r === "ADMIN" ||
+        r === "LINKER" ||
+        r === "PRODUCT_RESEARCHER" ||
+        roles.includes("SUPER_ADMIN") ||
+        roles.includes("ADMIN") ||
+        roles.includes("LINKER") ||
+        roles.includes("PRODUCT_RESEARCHER");
+
+      if (!canAccess) {
         router.replace("/products");
       }
     }

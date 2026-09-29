@@ -12,9 +12,20 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const role = session.user.role;
-    if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "LINKER") {
+    const userRoles: string[] = (session.user as any)?.roles || (role ? [role] : []);
+    const canManage =
+      role === "SUPER_ADMIN" ||
+      role === "ADMIN" ||
+      role === "LINKER" ||
+      role === "PRODUCT_RESEARCHER" ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("ADMIN") ||
+      userRoles.includes("LINKER") ||
+      userRoles.includes("PRODUCT_RESEARCHER");
+
+    if (!canManage) {
       return NextResponse.json(
-        { error: "Forbidden: Restricted to Super Admin, Admin, and Linker" },
+        { error: "Forbidden: Restricted to Super Admin, Admin, Linker, and Product Researcher" },
         { status: 403 }
       );
     }
@@ -70,9 +81,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
 
     const role = session.user.role;
-    if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "LINKER") {
+    const userRoles: string[] = (session.user as any)?.roles || (role ? [role] : []);
+    const canManage =
+      role === "SUPER_ADMIN" ||
+      role === "ADMIN" ||
+      role === "LINKER" ||
+      role === "PRODUCT_RESEARCHER" ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("ADMIN") ||
+      userRoles.includes("LINKER") ||
+      userRoles.includes("PRODUCT_RESEARCHER");
+
+    if (!canManage) {
       return NextResponse.json(
-        { error: "Forbidden: Restricted to Super Admin, Admin, and Linker" },
+        { error: "Forbidden: Restricted to Super Admin, Admin, Linker, and Product Researcher" },
         { status: 403 }
       );
     }

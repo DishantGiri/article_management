@@ -42,9 +42,20 @@ export async function PATCH(
     }
 
     const role = session.user.role;
-    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+    const userRoles: string[] = (session.user as any)?.roles || (role ? [role] : []);
+    const canUpdate =
+      role === "LINKER" ||
+      role === "ADMIN" ||
+      role === "SUPER_ADMIN" ||
+      role === "PRODUCT_RESEARCHER" ||
+      userRoles.includes("LINKER") ||
+      userRoles.includes("ADMIN") ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("PRODUCT_RESEARCHER");
+
+    if (!canUpdate) {
       return NextResponse.json(
-        { error: "Access Denied: Only Linkers, Admins, and Super Admins can update products." },
+        { error: "Access Denied: Only Linkers, Product Researchers, Admins, and Super Admins can update products." },
         { status: 403 }
       );
     }
@@ -150,9 +161,20 @@ export async function DELETE(
     }
 
     const role = session.user.role;
-    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+    const userRoles: string[] = (session.user as any)?.roles || (role ? [role] : []);
+    const canDelete =
+      role === "LINKER" ||
+      role === "ADMIN" ||
+      role === "SUPER_ADMIN" ||
+      role === "PRODUCT_RESEARCHER" ||
+      userRoles.includes("LINKER") ||
+      userRoles.includes("ADMIN") ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("PRODUCT_RESEARCHER");
+
+    if (!canDelete) {
       return NextResponse.json(
-        { error: "Access Denied: Only Linkers, Admins, and Super Admins can delete products." },
+        { error: "Access Denied: Only Linkers, Product Researchers, Admins, and Super Admins can delete products." },
         { status: 403 }
       );
     }

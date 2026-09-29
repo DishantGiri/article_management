@@ -130,12 +130,13 @@ export async function POST(req: NextRequest) {
 
     const activeUserId = session.user.id;
     const activeUserRole = session.user.role;
+    const activeUserRoles: string[] = (session.user as any)?.roles || (activeUserRole ? [activeUserRole] : []);
 
     // Check if user has permission to add products (either globally or site-specific)
-    const authorizedSites = await getUserAuthorizedSiteIds(activeUserId, activeUserRole, "ADD_PRODUCT");
+    const authorizedSites = await getUserAuthorizedSiteIds(activeUserId, activeUserRole, "ADD_PRODUCT", activeUserRoles);
     if (authorizedSites !== null && authorizedSites.length === 0) {
       return NextResponse.json(
-        { error: "Access Denied: You do not have Linker permissions to add products on any site." },
+        { error: "Access Denied: You do not have Linker or Product Researcher permissions to add products on any site." },
         { status: 403 }
       );
     }
@@ -163,7 +164,7 @@ export async function POST(req: NextRequest) {
 
     if (targetSiteIds.size === 0) {
       return NextResponse.json(
-        { error: "Access Denied: You do not have Linker permissions to add products to the selected site(s)." },
+        { error: "Access Denied: You do not have Linker or Product Researcher permissions to add products to the selected site(s)." },
         { status: 403 }
       );
     }

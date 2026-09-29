@@ -8,9 +8,11 @@ import { isAdmin, parseSiteRoles } from "./permissions-utils";
 export async function canUserAddProductOnSite(
   userId: number,
   userGlobalRole: string | null | undefined,
-  siteId: number
+  siteId: number,
+  userRoles?: string[]
 ): Promise<boolean> {
   if (isAdmin(userGlobalRole)) return true;
+  if (userRoles && (userRoles.includes("SUPER_ADMIN") || userRoles.includes("ADMIN"))) return true;
 
   // Check site-specific access
   const access = await prisma.siteAccess.findUnique({
@@ -20,11 +22,17 @@ export async function canUserAddProductOnSite(
   if (access) {
     if (access.canAddProduct) return true;
     const siteRoles = parseSiteRoles(access.roles, access.role);
-    if (siteRoles.includes("LINKER")) return true;
+    if (siteRoles.includes("LINKER") || siteRoles.includes("PRODUCT_RESEARCHER")) return true;
+    if (userGlobalRole === "LINKER" || userGlobalRole === "PRODUCT_RESEARCHER") return true;
+    if (userRoles && (userRoles.includes("LINKER") || userRoles.includes("PRODUCT_RESEARCHER"))) return true;
   }
 
   // If user is globally a LINKER or PRODUCT_RESEARCHER and has NO siteAccess restrictions configured, allow
-  if (userGlobalRole === "LINKER" || userGlobalRole === "PRODUCT_RESEARCHER") {
+  if (
+    userGlobalRole === "LINKER" ||
+    userGlobalRole === "PRODUCT_RESEARCHER" ||
+    (userRoles && (userRoles.includes("LINKER") || userRoles.includes("PRODUCT_RESEARCHER")))
+  ) {
     const totalAccesses = await prisma.siteAccess.count({ where: { userId } });
     if (totalAccesses === 0) return true;
   }
@@ -122,10 +130,12 @@ export async function canUserReviewOnSite(
 export async function getUserAuthorizedSiteIds(
   userId: number,
   userGlobalRole: string | null | undefined,
-  action: "ADD_PRODUCT" | "ADD_LINK" | "WRITE" | "REVIEW"
+  action: "ADD_PRODUCT" | "ADD_LINK" | "WRITE" | "REVIEW",
+  userRoles?: string[]
 ): Promise<number[] | null> {
   // Returns null if user has unrestricted global access to all sites
   if (isAdmin(userGlobalRole)) return null;
+  if (userRoles && (userRoles.includes("SUPER_ADMIN") || userRoles.includes("ADMIN"))) return null;
 
   const accesses = await prisma.siteAccess.findMany({
     where: { userId },
@@ -140,12 +150,20 @@ export async function getUserAuthorizedSiteIds(
     },
   });
 
+  const isGlobalLinkerOrPR =
+    userGlobalRole === "LINKER" ||
+    userGlobalRole === "PRODUCT_RESEARCHER" ||
+    (userRoles && (userRoles.includes("LINKER") || userRoles.includes("PRODUCT_RESEARCHER")));
+
   if (accesses.length === 0) {
-    if (action === "ADD_PRODUCT" || action === "ADD_LINK") {
-      if (userGlobalRole === "LINKER" || userGlobalRole === "PRODUCT_RESEARCHER") return null; // all sites
+    if (action === "ADD_PRODUCT") {
+      if (isGlobalLinkerOrPR) return null; // all sites
     }
-    if (action === "WRITE" && userGlobalRole === "WRITER") return null;
-    if (action === "REVIEW" && userGlobalRole === "TEAM_LEAD") return null;
+    if (action === "ADD_LINK") {
+      if (userGlobalRole === "LINKER" || (userRoles && userRoles.includes("LINKER"))) return null; // all sites
+    }
+    if (action === "WRITE" && (userGlobalRole === "WRITER" || (userRoles && userRoles.includes("WRITER")))) return null;
+    if (action === "REVIEW" && (userGlobalRole === "TEAM_LEAD" || (userRoles && userRoles.includes("TEAM_LEAD")))) return null;
     return [];
   }
 
@@ -154,7 +172,7 @@ export async function getUserAuthorizedSiteIds(
   for (const acc of accesses) {
     const siteRoles = parseSiteRoles(acc.roles, acc.role);
     if (action === "ADD_PRODUCT") {
-      if (acc.canAddProduct || siteRoles.includes("LINKER")) authorizedSiteIds.push(acc.siteId);
+      if (acc.canAddProduct || siteRoles.includes("LINKER") || siteRoles.includes("PRODUCT_RESEARCHER") || isGlobalLinkerOrPR) authorizedSiteIds.push(acc.siteId);
     } else if (action === "ADD_LINK") {
       if (acc.canAddLink || siteRoles.includes("LINKER")) authorizedSiteIds.push(acc.siteId);
     } else if (action === "WRITE") {

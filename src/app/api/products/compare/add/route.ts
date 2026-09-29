@@ -14,12 +14,13 @@ export async function POST(req: NextRequest) {
 
     const activeUserId = Number(session.user.id);
     const activeUserRole = session.user.role;
+    const activeUserRoles: string[] = (session.user as any)?.roles || (activeUserRole ? [activeUserRole] : []);
 
     // Check permission to add products on target site(s)
-    const authorizedSites = await getUserAuthorizedSiteIds(activeUserId, activeUserRole, "ADD_PRODUCT");
+    const authorizedSites = await getUserAuthorizedSiteIds(activeUserId, activeUserRole, "ADD_PRODUCT", activeUserRoles);
     if (authorizedSites !== null && authorizedSites.length === 0) {
       return NextResponse.json(
-        { error: "Access Denied: You do not have Linker permissions to add products on any site." },
+        { error: "Access Denied: You do not have Linker or Product Researcher permissions to add products on any site." },
         { status: 403 }
       );
     }

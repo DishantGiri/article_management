@@ -26,9 +26,20 @@ export async function POST(req: Request) {
     }
 
     const role = session.user.role;
-    if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "LINKER") {
+    const userRoles: string[] = (session.user as any)?.roles || (role ? [role] : []);
+    const canCreate =
+      role === "SUPER_ADMIN" ||
+      role === "ADMIN" ||
+      role === "LINKER" ||
+      role === "PRODUCT_RESEARCHER" ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("ADMIN") ||
+      userRoles.includes("LINKER") ||
+      userRoles.includes("PRODUCT_RESEARCHER");
+
+    if (!canCreate) {
       return NextResponse.json(
-        { error: "Forbidden: Category creation is restricted to Super Admin, Admin, and Linker roles" },
+        { error: "Forbidden: Category creation is restricted to Super Admin, Admin, Linker, and Product Researcher roles" },
         { status: 403 }
       );
     }

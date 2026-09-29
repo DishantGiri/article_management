@@ -13,9 +13,20 @@ export async function POST(req: NextRequest) {
     }
 
     const userRole = session.user.role;
-    if (userRole !== "LINKER" && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
+    const userRoles: string[] = (session.user as any)?.roles || (userRole ? [userRole] : []);
+    const canImport =
+      userRole === "LINKER" ||
+      userRole === "ADMIN" ||
+      userRole === "SUPER_ADMIN" ||
+      userRole === "PRODUCT_RESEARCHER" ||
+      userRoles.includes("LINKER") ||
+      userRoles.includes("ADMIN") ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("PRODUCT_RESEARCHER");
+
+    if (!canImport) {
       return NextResponse.json(
-        { error: "Access Denied: Only Linkers, Admins, and Super Admins can import products." },
+        { error: "Access Denied: Only Linkers, Product Researchers, Admins, and Super Admins can import products." },
         { status: 403 }
       );
     }
