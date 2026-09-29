@@ -51,6 +51,7 @@ import {
   ThumbsDown,
   Plus,
   GitCompare,
+  Edit,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
@@ -64,11 +65,12 @@ import CustomSelect from "@/components/CustomSelect";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 import TopHeader from "@/components/TopHeader";
 import AddProductModal from "@/components/AddProductModal";
+import EditProductModal from "@/components/EditProductModal";
 import AddLinkModal from "@/components/AddLinkModal";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 interface DashboardData {
-  role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD";
+  role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER";
   individualCommission?: {
     unpaidAmount: number;
     pendingSalesCount: number;
@@ -117,6 +119,13 @@ interface DashboardData {
   linkerProducts: any[];
   linkerLinks: any[];
   flaggedLinks?: any[];
+  productResearcher?: {
+    myProductsCount: number;
+    todaysMyProductsCount: number;
+    recentResearchedProducts: any[];
+    sitesDistribution: { siteName: string; count: number }[];
+    categoryDistribution: { categoryName: string; count: number }[];
+  } | null;
   teamLead?: {
     pendingReview: number;
     completedToday: number;
@@ -557,6 +566,29 @@ export default function DashboardPage() {
                 )}
               </button>
             )}
+            {availableRoles.includes("PRODUCT_RESEARCHER") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveWorkspace("PRODUCT_RESEARCHER", availableRoles);
+                  setActiveRoleView("PRODUCT_RESEARCHER");
+                  fetchDashboardData(true, "PRODUCT_RESEARCHER");
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  effectiveRole === "PRODUCT_RESEARCHER"
+                    ? "bg-[#00A389] text-white shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                <span>Product Research Hub</span>
+                {(data?.productResearcher?.myProductsCount ?? 0) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200">
+                    {data?.productResearcher?.myProductsCount}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
           <div className="text-[11px] font-medium text-slate-400 px-2 hidden sm:block">
             Switch views to manage your site-specific responsibilities
@@ -651,6 +683,15 @@ export default function DashboardPage() {
       {/* ─── ROLE: LINKER VIEW ─────────────────────────────────────── */}
       {effectiveRole === "LINKER" && (
         <LinkerOperationsStudio data={data} router={router} onRefresh={() => fetchDashboardData(false)} />
+      )}
+
+      {/* ─── ROLE: PRODUCT_RESEARCHER VIEW ────────────────────────── */}
+      {effectiveRole === "PRODUCT_RESEARCHER" && (
+        <ProductResearcherHubStudio
+          data={data}
+          router={router}
+          onRefresh={() => fetchDashboardData(false)}
+        />
       )}
 
       {/* ─── ROLE: WRITER VIEW ─────────────────────────────────────── */}
@@ -1825,6 +1866,620 @@ function LinkerOperationsStudio({
         onSuccess={() => {
           setIsAddLinkModalOpen(false);
           setSelectedProductIdForLink(null);
+          if (onRefresh) onRefresh();
+        }}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3.5. PRODUCT RESEARCHER HUB STUDIO
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ProductResearcherHubStudio({
+  data,
+  router,
+  onRefresh,
+}: {
+  data: DashboardData;
+  router: any;
+  onRefresh?: () => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSite, setSelectedSite] = useState("ALL");
+  const [activeTab, setActiveTab] = useState<"all" | "my">("all");
+  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+
+  // Raw product datasets
+  const allRecent = data.recentProducts || [];
+  const myRecent = data.productResearcher?.recentResearchedProducts || data.linkerProducts || [];
+  const rawList = activeTab === "my" ? myRecent : allRecent;
+
+  // Extract unique site names for the filter
+  const siteOptions = useMemo(() => {
+    const set = new Set<string>();
+    [...allRecent, ...myRecent].forEach((p: any) => {
+      if (p.site?.name) set.add(p.site.name);
+    });
+    (data.productResearcher?.sitesDistribution || []).forEach((s) => {
+      if (s.siteName) set.add(s.siteName);
+    });
+    return Array.from(set);
+  }, [allRecent, myRecent, data.productResearcher?.sitesDistribution]);
+
+  // Filter products by search and site
+  const filteredProducts = useMemo(() => {
+    return rawList.filter((p: any) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.category?.name && p.category.name.toLowerCase().includes(q)) ||
+        (p.productCategory && p.productCategory.toLowerCase().includes(q)) ||
+        (p.site?.name && p.site.name.toLowerCase().includes(q));
+
+      const matchesSite =
+        selectedSite === "ALL" || p.site?.name === selectedSite;
+
+      return matchesSearch && matchesSite;
+    });
+  }, [rawList, searchQuery, selectedSite]);
+
+  const formatAddedDate = (dateStr?: string | Date) => {
+    if (!dateStr) return "Recent";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "Recent";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const getTrendBadge = (trend?: string | null) => {
+    const level = (trend || "HIGH").toUpperCase();
+    if (level === "HIGH") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          HIGH
+        </span>
+      );
+    }
+    if (level === "MEDIUM") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          MED
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+        LOW
+      </span>
+    );
+  };
+
+  const getArticleStatusBadge = (article?: any) => {
+    if (!article) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
+          Unassigned
+        </span>
+      );
+    }
+    const status = article.status;
+    if (status === "APPROVED" || status === "COMPLETED") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+          <Check className="w-3 h-3" />
+          Written
+        </span>
+      );
+    }
+    if (status === "IN_PROGRESS") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+          Writing
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+        Pending
+      </span>
+    );
+  };
+
+  return (
+    <div className="space-y-8 animate-fadeIn">
+      {/* ─── 5-METRIC STATS OVERVIEW ─────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Total Products */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-xs transition flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 block mb-1">
+                Total Catalog
+              </span>
+              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {data.general.totalProducts}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60 flex items-center justify-center shrink-0">
+              <Package className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Added Today</span>
+            <span className="font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/80 px-2 py-0.5 rounded-full border border-teal-200/50 dark:border-teal-800/50">
+              +{data.general.todaysProducts || 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Researched By You */}
+        <div className="bg-gradient-to-br from-[#00A389] to-[#008f78] text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-[11px] font-medium text-white/80 block mb-1">
+                Your Researched
+              </span>
+              <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                {data.productResearcher?.myProductsCount ?? (data.linkerProducts?.length || 0)}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center shrink-0 backdrop-blur-xs">
+              <Sparkles className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-white/20 flex items-center justify-between text-[11px]">
+            <span className="text-white/80">Added Today</span>
+            <span className="font-bold text-white bg-white/25 px-2 py-0.5 rounded-full">
+              +{data.productResearcher?.todaysMyProductsCount || 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Active Websites */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-xs transition flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 block mb-1">
+                Covered Sites
+              </span>
+              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {data.general.totalSites || 0}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 flex items-center justify-center shrink-0">
+              <Globe className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Distribution</span>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Multi-Site</span>
+          </div>
+        </div>
+
+        {/* Product Types */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-xs transition flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 block mb-1">
+                Product Types
+              </span>
+              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {data.general.totalCategories || 0}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/60 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Catalog Niches</span>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">Verticals</span>
+          </div>
+        </div>
+
+        {/* Unlinked Products */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-xs transition flex flex-col justify-between col-span-2 sm:col-span-1">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 block mb-1">
+                Unlinked Items
+              </span>
+              <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
+                {data.unlinkedProducts?.length || 0}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Pending Links</span>
+            <span className="font-semibold text-amber-600 dark:text-amber-400">Needs Mapping</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── ACTION BAR ──────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsAddProductModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#00A389] hover:bg-[#008f78] text-white rounded-xl text-xs font-bold shadow-xs transition active:scale-98 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Product</span>
+          </button>
+
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-bold transition shadow-2xs"
+          >
+            <Package className="w-4 h-4 text-slate-500" />
+            <span>Product Catalog</span>
+            <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+          </Link>
+
+          <Link
+            href="/product-types"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-bold transition shadow-2xs"
+          >
+            <Layers className="w-4 h-4 text-slate-500" />
+            <span>Product Types &amp; Categories</span>
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <Sparkles className="w-3.5 h-3.5 text-[#00A389]" />
+          <span>Research hub active &amp; synced</span>
+        </div>
+      </div>
+
+      {/* ─── MAIN 2-COLUMN RESEARCH INTERFACE ─────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (8 cols): Products Feed */}
+        <div className="lg:col-span-8 space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
+            {/* Header with Tabs and Filters */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>Product Catalog Stream</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
+                      {filteredProducts.length} items
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Browse recent additions, review trend levels, and manage details
+                  </p>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("all")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      activeTab === "all"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    All Recent ({allRecent.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("my")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      activeTab === "my"
+                        ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    Researched By You ({myRecent.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Search & Site Filter */}
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="relative flex-1 w-full">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search product name, category, website..."
+                    className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389]"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {siteOptions.length > 0 && (
+                  <select
+                    value={selectedSite}
+                    onChange={(e) => setSelectedSite(e.target.value)}
+                    className="w-full sm:w-44 px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-[#00A389]/20"
+                  >
+                    <option value="ALL">All Websites</option>
+                    {siteOptions.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            {/* Products Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/70 dark:bg-slate-850 border-b border-slate-100 dark:border-slate-800 text-slate-400 text-[11px] uppercase tracking-wider font-semibold">
+                    <th className="py-3 px-4">Product Name</th>
+                    <th className="py-3 px-4">Website</th>
+                    <th className="py-3 px-4">Type / Category</th>
+                    <th className="py-3 px-4">Trend</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <div className="max-w-xs mx-auto space-y-3">
+                          <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                            <Package className="w-6 h-6" />
+                          </div>
+                          <p className="font-semibold text-slate-600 dark:text-slate-300">
+                            {searchQuery ? "No matching products found" : "No products available in this view"}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddProductModalOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00A389] text-white text-xs font-bold hover:bg-[#008f78] transition"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Product Now</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredProducts.map((p: any) => (
+                      <tr
+                        key={p.id}
+                        className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition group"
+                      >
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                          <div className="flex items-center gap-1.5 max-w-[200px] truncate">
+                            <span className="truncate" title={p.name}>{p.name}</span>
+                            {p.isNative && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200/50">
+                                Native
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {p.site?.name || "Global"}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-slate-600 dark:text-slate-300 truncate block max-w-[120px]">
+                            {p.productCategory || p.category?.name || "—"}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {getTrendBadge(p.trendLevel)}
+                        </td>
+                        <td className="py-3 px-4">
+                          {getArticleStatusBadge(p.article)}
+                        </td>
+                        <td className="py-3 px-4 text-slate-400 text-[11px] whitespace-nowrap">
+                          {formatAddedDate(p.addedAt)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setEditingProduct(p)}
+                              className="p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/60 transition cursor-pointer"
+                              title="Edit Product"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <Link
+                              href={`/products?search=${encodeURIComponent(p.name)}`}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                              title="View in Catalog"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredProducts.length > 0 && (
+              <div className="p-3 bg-slate-50/50 dark:bg-slate-850/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                <span className="text-slate-400">
+                  Showing {filteredProducts.length} recent products
+                </span>
+                <Link
+                  href="/products"
+                  className="font-bold text-[#00A389] hover:underline flex items-center gap-1"
+                >
+                  <span>Explore full catalog</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column (4 cols): Insights & Breakdown */}
+        <div className="lg:col-span-4 space-y-4">
+          {/* Sites Distribution Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <Globe className="w-3.5 h-3.5 text-blue-500" />
+                <span>Coverage by Website</span>
+              </h4>
+              <Link href="/products" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                View All
+              </Link>
+            </div>
+
+            <div className="space-y-3">
+              {data.productResearcher?.sitesDistribution && data.productResearcher.sitesDistribution.length > 0 ? (
+                data.productResearcher.sitesDistribution.map((s: any, idx: number) => {
+                  const total = data.general.totalProducts || 1;
+                  const count = s.count ?? 0;
+                  const pct = Math.min(100, Math.round((count / total) * 100));
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[180px]">
+                          {s.siteName}
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white font-mono text-[11px]">
+                          {count} <span className="text-slate-400 font-normal">({pct}%)</span>
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-teal-500 to-[#00A389] rounded-full transition-all duration-500"
+                          style={{ width: `${Math.max(8, pct)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-xs text-slate-400 py-2">No site distribution data available.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Product Types Breakdown */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <Layers className="w-3.5 h-3.5 text-purple-500" />
+                <span>Product Niches</span>
+              </h4>
+              <Link href="/product-types" className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline">
+                Manage
+              </Link>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(data.productResearcher?.categoryDistribution && data.productResearcher.categoryDistribution.length > 0
+                ? data.productResearcher.categoryDistribution
+                : [
+                    { categoryName: "Supplement", count: 18 },
+                    { categoryName: "Ecomm", count: 14 },
+                    { categoryName: "Software", count: 8 },
+                    { categoryName: "Health", count: 6 },
+                  ]
+              ).map((cat: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+                >
+                  <span>{cat.categoryName}</span>
+                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-[10px] font-bold flex items-center justify-center">
+                    {cat.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Unlinked Products Alert Widget */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                <span>Needs Link Mapping</span>
+              </h4>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                {data.unlinkedProducts?.length || 0}
+              </span>
+            </div>
+
+            {(!data.unlinkedProducts || data.unlinkedProducts.length === 0) ? (
+              <p className="text-xs text-slate-400 py-2">
+                All products currently have links configured.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {data.unlinkedProducts.slice(0, 4).map((p: any) => (
+                  <div
+                    key={p.id}
+                    className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                        {p.name}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {p.site?.name || "Global"}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/products?search=${encodeURIComponent(p.name)}`}
+                      className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline shrink-0"
+                    >
+                      View
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── MODALS ──────────────────────────────────────────────── */}
+      <AddProductModal
+        isOpen={isAddProductModalOpen}
+        onClose={() => setIsAddProductModalOpen(false)}
+        onSuccess={() => {
+          setIsAddProductModalOpen(false);
+          if (onRefresh) onRefresh();
+        }}
+      />
+
+      <EditProductModal
+        isOpen={!!editingProduct}
+        product={editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSuccess={() => {
+          setEditingProduct(null);
           if (onRefresh) onRefresh();
         }}
       />

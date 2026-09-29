@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     const userId = session.user.id;
 
     // Fetch site access
-    if (role === "WRITER" || role === "TEAM_LEAD" || role === "LINKER") {
+    if (role === "WRITER" || role === "TEAM_LEAD" || role === "LINKER" || role === "PRODUCT_RESEARCHER") {
       const accesses = await prisma.siteAccess.findMany({
         where: { userId },
         select: { siteId: true },
@@ -165,8 +165,8 @@ export async function GET(req: NextRequest) {
         take: 10,
       }),
 
-      // LINKER: Products added by this linker
-      role === "LINKER"
+      // LINKER or PRODUCT_RESEARCHER: Products added by this user
+      role === "LINKER" || role === "PRODUCT_RESEARCHER"
         ? prisma.product.findMany({
           where: { addedById: userId },
           include: {
@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
             category: { select: { id: true, name: true } },
             article: { select: { status: true } },
           },
-          take: 5,
+          take: 10,
         })
         : Promise.resolve([]),
 
@@ -620,6 +620,80 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // ─── PRODUCT_RESEARCHER METRICS & BREAKDOWN ───
+    let productResearcherData = null;
+    try {
+      const targetResearcherId = Number(userId);
+      const [
+        myProductsCount,
+        todaysMyProductsCount,
+        recentResearched,
+        siteGroup,
+        catGroup,
+      ] = await Promise.all([
+        prisma.product.count({ where: { addedById: targetResearcherId } }),
+        prisma.product.count({
+          where: {
+            addedById: targetResearcherId,
+            addedAt: { gte: startOfToday },
+          },
+        }),
+        prisma.product.findMany({
+          where: { addedById: targetResearcherId },
+          orderBy: { addedAt: "desc" },
+          take: 8,
+          include: {
+            site: { select: { id: true, name: true } },
+            category: { select: { id: true, name: true } },
+            article: { select: { id: true, status: true } },
+            linkLogs: { select: { id: true, status: true } },
+          },
+        }),
+        prisma.product.groupBy({
+          by: ["siteId"],
+          _count: { id: true },
+          orderBy: { _count: { id: "desc" } },
+          take: 6,
+        }),
+        prisma.product.groupBy({
+          by: ["categoryId"],
+          _count: { id: true },
+          orderBy: { _count: { id: "desc" } },
+          take: 6,
+        }),
+      ]);
+
+      const siteIds = siteGroup.map((s) => s.siteId).filter(Boolean);
+      const sitesList = await prisma.site.findMany({
+        where: { id: { in: siteIds } },
+        select: { id: true, name: true },
+      });
+      const siteNameMap = new Map(sitesList.map((s) => [s.id, s.name]));
+
+      const catIds = catGroup.map((c) => c.categoryId).filter(Boolean);
+      const catsList = await prisma.category.findMany({
+        where: { id: { in: catIds } },
+        select: { id: true, name: true },
+      });
+      const catNameMap = new Map(catsList.map((c) => [c.id, c.name]));
+
+      productResearcherData = {
+        myProductsCount,
+        todaysMyProductsCount,
+        recentResearchedProducts: recentResearched,
+        sitesDistribution: siteGroup.map((s) => ({
+          siteName: siteNameMap.get(s.siteId) || `Site #${s.siteId}`,
+          count: s._count.id,
+        })),
+        categoryDistribution: catGroup.map((c) => ({
+          categoryName: catNameMap.get(c.categoryId) || `Category #${c.categoryId}`,
+          count: c._count.id,
+        })),
+      };
+    } catch (err) {
+      console.error("Failed to compute productResearcherData:", err);
+    }
+
     return NextResponse.json({
       role,
       general: {
@@ -643,6 +717,7 @@ export async function GET(req: NextRequest) {
       superAdmin: superAdminData,
       superAdminError,
       teamLead: teamLeadData,
+      productResearcher: productResearcherData,
       recentProducts,
       recentArticles,
       unlinkedProducts,
