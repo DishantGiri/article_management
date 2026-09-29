@@ -12,7 +12,16 @@ interface ImportProductModalProps {
   userId: number;
 }
 
-function parseCSVLine(line: string): string[] {
+function detectDelimiter(firstLine: string): string {
+  const tabs = (firstLine.match(/\t/g) || []).length;
+  const semicolons = (firstLine.match(/;/g) || []).length;
+  const commas = (firstLine.match(/,/g) || []).length;
+  if (tabs > commas && tabs > semicolons) return "\t";
+  if (semicolons > commas && semicolons > tabs) return ";";
+  return ",";
+}
+
+function parseCSVLine(line: string, delimiter = ","): string[] {
   const result: string[] = [];
   let current = "";
   let inQuotes = false;
@@ -20,8 +29,13 @@ function parseCSVLine(line: string): string[] {
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === delimiter && !inQuotes) {
       result.push(current);
       current = "";
     } else {
@@ -29,32 +43,78 @@ function parseCSVLine(line: string): string[] {
     }
   }
   result.push(current);
-  return result.map((val) => val.replace(/^"|"$/g, "").replace(/""/g, '"'));
+  return result.map((val) => val.replace(/^"|"$/g, "").trim());
 }
 
-function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter((line) => line.length > 0);
+const KNOWN_SITE_CODES = ["dhs", "smg", "tbr", "grc", "sc", "sv", "sd", "st", "sp", "jir", "rbr", "hsb"];
+
+function isPositive(val: string): boolean {
+  const s = val.trim().toLowerCase();
+  if (!s) return false;
+  return !["0", "false", "no", "n", "-", "--", "none", "nil", "null", "na", "n/a"].includes(s);
+}
+
+function parseCSV(text: string): Record<string, any>[] {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((line) => line.length > 0);
   if (lines.length < 2) return [];
 
-  const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
-  const results: Record<string, string>[] = [];
+  const delimiter = detectDelimiter(lines[0]);
+  const rawHeaders = parseCSVLine(lines[0], delimiter);
+  const results: Record<string, any>[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const values = parseCSVLine(lines[i]);
-    const obj: Record<string, string> = {};
-    headers.forEach((header, index) => {
-      // normalize column header names
-      let key = header;
-      const h = header.replace(/[\s_-]+/g, "");
-      if (h === "name" || h === "productname" || h === "product" || h === "title") key = "name";
-      if (h === "site" || h === "sitename" || h === "siteurl" || h === "website") key = "siteName";
-      if (h === "category" || h === "categoryname" || h === "producttype" || h === "type") key = "categoryName";
-      if (h === "trendlink" || h === "trend") key = "trendLink";
-      if (h === "previewlink" || h === "preview") key = "previewLink";
-      if (h === "remarks" || h === "remark" || h === "description") key = "remarks";
+    const values = parseCSVLine(lines[i], delimiter);
+    const obj: Record<string, any> = {};
+    const selectedSites: string[] = [];
 
-      obj[key] = (values[index] || "").trim();
+    rawHeaders.forEach((rawHeader, index) => {
+      const val = (values[index] || "").trim();
+      const h = rawHeader.toLowerCase().replace(/[\s_-]+/g, "");
+
+      // Always store raw header & clean header
+      obj[rawHeader.trim()] = val;
+      obj[h] = val;
+
+      if (h === "name" || h === "productname" || h === "product" || h === "title") {
+        obj.name = val;
+      } else if (h === "category" || h === "categoryname" || h === "producttype" || h === "type") {
+        obj.categoryName = val;
+      } else if (h === "source" || h === "productsource") {
+        obj.source = val;
+      } else if (h === "trend" || h === "trendlevel") {
+        if (val.startsWith("http")) {
+          obj.trendLink = val;
+        } else {
+          obj.trendLevel = val.toUpperCase();
+        }
+      } else if (h === "trendlink") {
+        obj.trendLink = val;
+      } else if (h === "productavailability" || h === "availability") {
+        obj.productAvailability = val;
+      } else if (h === "affiliatenetwork" || h === "affiliate" || h === "network") {
+        obj.affiliateName = val;
+      } else if (h === "researchedby" || h === "researcher" || h === "addedby") {
+        obj.researchedBy = val;
+      } else if (h === "date" || h === "addedat") {
+        obj.date = val;
+      } else if (h === "previewlink" || h === "preview") {
+        obj.previewLink = val;
+      } else if (h === "remarks" || h === "remark" || h === "description" || h === "notes") {
+        obj.remarks = val;
+      } else if (h === "site" || h === "sitename" || h === "website") {
+        obj.siteName = val;
+      }
+
+      // Check if this column is a site abbreviation (e.g. DHS, SMG, JiR, etc.)
+      if (KNOWN_SITE_CODES.includes(h) && isPositive(val)) {
+        selectedSites.push(rawHeader.trim());
+      }
     });
+
+    if (selectedSites.length > 0) {
+      obj.selectedSites = selectedSites;
+    }
+
     results.push(obj);
   }
   return results;
@@ -72,8 +132,8 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (!selectedFile.name.endsWith(".csv")) {
-      toast.error("Please upload a valid .csv file.");
+    if (!selectedFile.name.endsWith(".csv") && !selectedFile.name.endsWith(".tsv") && !selectedFile.name.endsWith(".txt")) {
+      toast.error("Please upload a valid .csv or .tsv file.");
       return;
     }
 
@@ -97,7 +157,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
 
     const shortNames = parsedData.filter((r) => !r.name || r.name.trim().length < 2);
     if (shortNames.length > 0) {
-      toast.error(`Found ${shortNames.length} product(s) with names shorter than 2 characters. Minimum 2 characters required.`);
+      toast.error(`Found ${shortNames.length} product(s) with missing or short names. Minimum 2 characters required.`);
       return;
     }
 
@@ -133,10 +193,73 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
   };
 
   const downloadTemplate = () => {
-    const headers = ["Name", "Site", "Category", "Trend Link", "Preview Link", "Remarks"];
+    const headers = [
+      "Product Name",
+      "Type",
+      "Source",
+      "Trend",
+      "Product Availability",
+      "Affiliate Network",
+      "Researched By",
+      "Date",
+      "DHS",
+      "SMG",
+      "TBR",
+      "GRC",
+      "SC",
+      "SV",
+      "SD",
+      "ST",
+      "SP",
+      "JiR",
+      "RBR",
+      "HSB",
+    ];
     const sample = [
-      ["Super Strength Protein", "NutraVital", "Protein", "https://trends.google.com", "https://amazon.com/protein", "Best seller in sports nutrition"],
-      ["Ultimate MultiVitamins", "NutraVital", "Vitamins", "", "https://amazon.com/vitamins", "High margin product"],
+      [
+        "Super Strength Protein",
+        "Supplements",
+        "Affiliate",
+        "HIGH",
+        "Available",
+        "BuyGoods",
+        "John",
+        "2026-09-29",
+        "x",
+        "x",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ],
+      [
+        "Ultimate MultiVitamins",
+        "Supplements",
+        "Competitor",
+        "MODERATE",
+        "Available",
+        "ClickBank",
+        "Sarah",
+        "2026-09-29",
+        "x",
+        "",
+        "x",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ],
     ];
     const csvContent = [
       headers.join(","),
@@ -156,7 +279,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -174,11 +297,11 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
             <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-10 bg-slate-50/50 hover:bg-slate-50 transition-colors group relative">
               <Upload className="w-12 h-12 text-slate-400 group-hover:text-indigo-500 transition-colors mb-4" />
               <p className="text-sm font-semibold text-slate-700">Drag & drop your CSV file here, or click to upload</p>
-              <p className="text-xs text-slate-400 mt-1">Accepts .csv files (max 10MB)</p>
+              <p className="text-xs text-slate-400 mt-1">Accepts .csv or .tsv files (max 10MB)</p>
               
               <input
                 type="file"
-                accept=".csv"
+                accept=".csv,.tsv,.txt"
                 onChange={handleFileChange}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
@@ -213,32 +336,40 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
               {parsedData.length > 0 && (
                 <div>
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Parsed Preview ({parsedData.length} entries)</h3>
-                  <div className="border border-slate-100 rounded-xl overflow-hidden max-h-[250px] overflow-y-auto">
+                  <div className="border border-slate-100 rounded-xl overflow-hidden max-h-[280px] overflow-y-auto">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
                         <tr>
                           <th className="px-3 py-2 font-bold text-slate-500">Name</th>
-                          <th className="px-3 py-2 font-bold text-slate-500">Site</th>
-                          <th className="px-3 py-2 font-bold text-slate-500">Category</th>
+                          <th className="px-3 py-2 font-bold text-slate-500">Type</th>
+                          <th className="px-3 py-2 font-bold text-slate-500">Source</th>
                           <th className="px-3 py-2 font-bold text-slate-500">Trend</th>
-                          <th className="px-3 py-2 font-bold text-slate-500">Preview</th>
+                          <th className="px-3 py-2 font-bold text-slate-500">Affiliate</th>
+                          <th className="px-3 py-2 font-bold text-slate-500">Sites</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
-                        {parsedData.slice(0, 10).map((row, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/50">
-                            <td className="px-3 py-2 font-semibold text-slate-700">{row.name || "--"}</td>
-                            <td className="px-3 py-2 text-slate-500">{row.siteName || "--"}</td>
-                            <td className="px-3 py-2 text-slate-500">{row.categoryName || "--"}</td>
-                            <td className="px-3 py-2 text-slate-500 truncate max-w-[120px]">{row.trendLink || "--"}</td>
-                            <td className="px-3 py-2 text-slate-500 truncate max-w-[120px]">{row.previewLink || "--"}</td>
-                          </tr>
-                        ))}
+                        {parsedData.slice(0, 15).map((row, idx) => {
+                          const sitesDisplay = row.selectedSites && row.selectedSites.length > 0
+                            ? row.selectedSites.join(", ")
+                            : (row.siteName || "All Sites");
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/50">
+                              <td className="px-3 py-2 font-semibold text-slate-700">{row.name || "--"}</td>
+                              <td className="px-3 py-2 text-slate-500">{row.categoryName || row.type || "--"}</td>
+                              <td className="px-3 py-2 text-slate-500">{row.source || "--"}</td>
+                              <td className="px-3 py-2 text-slate-500">{row.trendLevel || "--"}</td>
+                              <td className="px-3 py-2 text-slate-500">{row.affiliateName || "--"}</td>
+                              <td className="px-3 py-2 text-indigo-600 font-semibold">{sitesDisplay}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
-                  {parsedData.length > 10 && (
-                    <p className="text-[10px] text-slate-400 italic mt-1.5 text-right">Showing first 10 rows</p>
+                  {parsedData.length > 15 && (
+                    <p className="text-[10px] text-slate-400 italic mt-1.5 text-right">Showing first 15 rows</p>
                   )}
                 </div>
               )}
