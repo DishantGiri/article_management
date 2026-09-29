@@ -15,9 +15,20 @@ export async function PATCH(
     }
 
     const role = session.user.role;
-    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+    const userRoles: string[] = (session.user as any)?.roles || (role ? [role] : []);
+    const canManage =
+      role === "LINKER" ||
+      role === "ADMIN" ||
+      role === "SUPER_ADMIN" ||
+      role === "PRODUCT_RESEARCHER" ||
+      userRoles.includes("LINKER") ||
+      userRoles.includes("ADMIN") ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("PRODUCT_RESEARCHER");
+
+    if (!canManage) {
       return NextResponse.json(
-        { error: "Access Denied: Only Admins, Super Admins, and Linkers can manage affiliates." },
+        { error: "Access Denied: Only Admins, Super Admins, Linkers, and Product Researchers can manage affiliates." },
         { status: 403 }
       );
     }
@@ -107,9 +118,20 @@ export async function DELETE(
     }
 
     const role = session.user.role;
-    if (role !== "LINKER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+    const userRoles: string[] = (session.user as any)?.roles || (role ? [role] : []);
+    const canManage =
+      role === "LINKER" ||
+      role === "ADMIN" ||
+      role === "SUPER_ADMIN" ||
+      role === "PRODUCT_RESEARCHER" ||
+      userRoles.includes("LINKER") ||
+      userRoles.includes("ADMIN") ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("PRODUCT_RESEARCHER");
+
+    if (!canManage) {
       return NextResponse.json(
-        { error: "Access Denied: Only Admins, Super Admins, and Linkers can manage affiliates." },
+        { error: "Access Denied: Only Admins, Super Admins, Linkers, and Product Researchers can manage affiliates." },
         { status: 403 }
       );
     }

@@ -38,7 +38,7 @@ export async function POST(
     const accessData = {
       role: primaryRole,
       roles: rolesStr,
-      canAddProduct: Boolean(canAddProduct || rolesArr.includes("LINKER") || primaryRole === "LINKER"),
+      canAddProduct: Boolean(canAddProduct || rolesArr.includes("LINKER") || rolesArr.includes("PRODUCT_RESEARCHER") || primaryRole === "LINKER" || primaryRole === "PRODUCT_RESEARCHER"),
       canAddLink: Boolean(canAddLink || rolesArr.includes("LINKER") || primaryRole === "LINKER"),
       canWrite: Boolean(canWrite || rolesArr.includes("WRITER") || primaryRole === "WRITER"),
       canReview: Boolean(canReview || rolesArr.includes("TEAM_LEAD") || primaryRole === "TEAM_LEAD"),
