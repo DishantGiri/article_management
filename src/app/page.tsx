@@ -1936,13 +1936,22 @@ function ProductResearcherHubStudio({
     for (const p of matched) {
       const key = (p.name || "").trim().toLowerCase() || `id-${p.id}`;
       if (!map.has(key)) {
-        map.set(key, { ...p });
+        map.set(key, { ...p, allProductIds: [p.id] });
       } else {
         const existing = map.get(key)!;
+        const mergedProductIds = Array.from(new Set([...(existing.allProductIds || [existing.id]), p.id]));
+        const prevMissing = existing.missingCount;
+        const currMissing = p.missingCount;
+        const resolvedMissing =
+          prevMissing !== undefined && currMissing !== undefined
+            ? Math.min(prevMissing, currMissing)
+            : (prevMissing ?? currMissing ?? 0);
+
         map.set(key, {
           ...existing,
+          allProductIds: mergedProductIds,
           availableCount: Math.max(existing.availableCount ?? 0, p.availableCount ?? 0),
-          missingCount: Math.min(existing.missingCount ?? 999, p.missingCount ?? 999),
+          missingCount: resolvedMissing,
         });
       }
     }
@@ -2340,22 +2349,25 @@ function ProductResearcherHubStudio({
                         <td className="py-3 px-4 text-slate-400 text-[11px] whitespace-nowrap">
                           {formatAddedDate(p.addedAt)}
                         </td>
+                        {/* Actions: hidden by default, revealed on row hover */}
                         <td className="py-3 px-4 text-right">
-                          <div className="inline-flex items-center gap-1.5">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all duration-200">
                             <button
                               type="button"
                               onClick={() => setEditingProduct(p)}
-                              className="p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/60 transition cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200/60 dark:border-purple-800/50 transition cursor-pointer shadow-xs"
                               title="Edit Product"
                             >
-                              <Edit className="w-3.5 h-3.5" />
+                              <Edit className="w-3 h-3" />
+                              <span>Edit</span>
                             </button>
                             <Link
                               href={`/products?search=${encodeURIComponent(p.name)}`}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700/50 transition shadow-xs"
                               title="View in Catalog"
                             >
-                              <ExternalLink className="w-3.5 h-3.5" />
+                              <ExternalLink className="w-3 h-3" />
+                              <span>View</span>
                             </Link>
                           </div>
                         </td>

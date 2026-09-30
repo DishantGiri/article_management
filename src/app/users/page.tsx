@@ -651,6 +651,7 @@ export default function UsersPage() {
         toast.success("User created successfully!");
       }
       setShowModal(false);
+      fetchData(false);
     } catch (e: any) {
       setError(e.message || "Failed to save user");
     } finally {

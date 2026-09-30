@@ -160,10 +160,12 @@ export default function AddProductModal({
   isOpen,
   onClose,
   onSuccess,
+  isProductResearch: isProductResearchProp,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  isProductResearch?: boolean;
 }) {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "ADMIN";
@@ -360,8 +362,23 @@ export default function AddProductModal({
   // Track if user manually modified slug in single mode
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
 
-  // Site assignment mode: single site (research mode) vs distribute to all
-  const isProductResearcherRole = session?.user?.role === "PRODUCT_RESEARCHER";
+  // User role & workspace detection
+  const userRole = (session?.user?.role || "").toUpperCase();
+  const sessionRoles = useMemo(() => {
+    const raw: string[] = (session?.user as any)?.roles || [];
+    return Array.from(new Set([...raw, userRole].filter(Boolean).map((r) => r.toUpperCase())));
+  }, [session?.user, userRole]);
+
+  const activeWorkspace = typeof window !== "undefined"
+    ? (localStorage.getItem("active_workspace_role")?.toUpperCase() || getActiveWorkspace(userRole, sessionRoles))
+    : getActiveWorkspace(userRole, sessionRoles);
+
+  const isProductResearcherRole =
+    Boolean(isProductResearchProp) ||
+    activeWorkspace === "PRODUCT_RESEARCHER" ||
+    userRole === "PRODUCT_RESEARCHER" ||
+    sessionRoles.includes("PRODUCT_RESEARCHER");
+
   const [distributeToAllSites, setDistributeToAllSites] = useState<boolean>(false);
   const [selectedSingleSiteId, setSelectedSingleSiteId] = useState<number | null>(null);
 
@@ -480,8 +497,11 @@ export default function AddProductModal({
       setShowAddCat(false);
       setShowAddSite(false);
       setShowCustomAffiliate(false);
-      setCustomAffiliate("");
-      setExcludedSiteIds([]);
+      if (isProductResearcherRole) {
+        setExcludedSiteIds(sites.map((s: any) => s.id));
+      } else {
+        setExcludedSiteIds([]);
+      }
       setEntryMode("bulk");
       setBulkPasteText("");
       setSpreadsheetRows([
@@ -518,13 +538,19 @@ export default function AddProductModal({
         .then(([catsData, prodCatsData, sitesData, affsData]) => {
           setCategories(Array.isArray(catsData) ? catsData : []);
           setProductCategories(Array.isArray(prodCatsData) ? prodCatsData : []);
-          setSites(Array.isArray(sitesData) ? sitesData : []);
+          const rawSites = Array.isArray(sitesData) ? sitesData : [];
+          setSites(rawSites);
           setAffiliates(Array.isArray(affsData) ? affsData : []);
+          if (isProductResearcherRole) {
+            setExcludedSiteIds(rawSites.map((s: any) => s.id));
+          } else {
+            setExcludedSiteIds([]);
+          }
         })
         .catch(() => setError("Failed to load initial data"))
         .finally(() => setLoading(false));
     }
-  }, [isOpen]);
+  }, [isOpen, isProductResearcherRole]);
 
   // Real-time database check for Single Product mode
   useEffect(() => {
@@ -792,6 +818,7 @@ export default function AddProductModal({
             singleSiteId: distributeToAllSites ? null : (selectedSingleSiteId || (activeSites[0]?.id ?? null)),
             distributeToAllSites,
             addedById: session?.user?.id || 1,
+            isProductResearch: isProductResearcherRole,
           }),
         });
 
@@ -885,6 +912,7 @@ export default function AddProductModal({
           previewLink: form.previewLink.trim() || null,
           remarks: form.remarks || null,
           addedById: session?.user?.id || 1,
+          isProductResearch: isProductResearcherRole,
         }),
       });
 
@@ -918,16 +946,6 @@ export default function AddProductModal({
 
   const activeSites = previewSites.filter((site: any) => !excludedSiteIds.includes(site.id));
   const hasCountrySpecificSite = activeSites.some((site: any) => Boolean(site.allowCountrySpecific));
-
-  const userRole = (session?.user?.role || "").toUpperCase();
-  const sessionRoles = useMemo(() => {
-    const raw: string[] = (session?.user as any)?.roles || [];
-    return Array.from(new Set([...raw, userRole].filter(Boolean).map((r) => r.toUpperCase())));
-  }, [session?.user, userRole]);
-
-  const activeWorkspace = typeof window !== "undefined"
-    ? (localStorage.getItem("active_workspace_role")?.toUpperCase() || getActiveWorkspace(userRole, sessionRoles))
-    : getActiveWorkspace(userRole, sessionRoles);
 
   const canAddProduct =
     userRole === "SUPER_ADMIN" ||
@@ -1134,7 +1152,17 @@ export default function AddProductModal({
                   <div className="pt-2">
                     <button
                       disabled={form.categoryIds.length === 0}
-                      onClick={() => setStep(2)}
+                      onClick={() => {
+                        const matchingSites = sites.filter((site: any) =>
+                          site.categories?.some((c: any) => form.categoryIds.includes(c.id))
+                        );
+                        if (isProductResearcherRole) {
+                          setExcludedSiteIds(matchingSites.map((s: any) => s.id));
+                        } else {
+                          setExcludedSiteIds([]);
+                        }
+                        setStep(2);
+                      }}
                       className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer shadow-md shadow-blue-600/20"
                     >
                       Continue ({form.categoryIds.length} type{form.categoryIds.length !== 1 ? "s" : ""} selected) →
@@ -1364,36 +1392,94 @@ export default function AddProductModal({
                     </div>
                   </div>
 
-                  {/* Sites Exclusion / Customization Collapsible */}
-                  {showSitesDrawer && (
-                    <div className="p-3.5 bg-slate-100 dark:bg-[#131d31] rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 animate-fadeIn">
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-300">
-                        <span>Included Websites for ({getCategoryNames()})</span>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Click to exclude any site from this upload</span>
+                  {/* Site Selection in Bulk Mode */}
+                  {(showSitesDrawer || isProductResearcherRole) && (
+                    <div className="p-3.5 bg-slate-50 dark:bg-[#131d31] rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5 shadow-xs animate-fadeIn">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+                            Target Websites / Site Select
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              activeSites.length === 0
+                                ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-300 dark:border-slate-700"
+                                : "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                            }`}
+                          >
+                            {activeSites.length} of {previewSites.length} Sites Selected
+                          </span>
+                          {isProductResearcherRole && (
+                            <span className="text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded">
+                              None selected by default in Product Research
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => setExcludedSiteIds([])}
+                            className="px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition cursor-pointer"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-slate-300 dark:text-slate-700">|</span>
+                          <button
+                            type="button"
+                            onClick={() => setExcludedSiteIds(previewSites.map((s: any) => s.id))}
+                            className="px-2.5 py-1 text-[11px] font-bold text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                          >
+                            Clear All (None)
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                        {previewSites.map((site: any) => {
-                          const isExcluded = excludedSiteIds.includes(site.id);
-                          return (
-                            <button
-                              key={site.id}
-                              type="button"
-                              onClick={() => {
-                                setExcludedSiteIds((prev) =>
-                                  isExcluded ? prev.filter((id) => id !== site.id) : [...prev, site.id]
-                                );
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${isExcluded
-                                ? "bg-slate-200/70 dark:bg-slate-900/60 text-slate-400 dark:text-slate-500 border-slate-300 dark:border-slate-800 line-through opacity-60"
-                                : "bg-white dark:bg-[#0b1120] text-slate-800 dark:text-slate-200 border-blue-500/50 font-bold shadow-xs"
+
+                      {isProductResearcherRole && activeSites.length === 0 && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                          No websites selected. Products will be created directly in Product Research with 0 assigned sites. Click any website below if you wish to record specific target sites.
+                        </p>
+                      )}
+
+                      {previewSites.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic py-2">
+                          No websites available for ({getCategoryNames() || "selected category"}).
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pt-1">
+                          {previewSites.map((site: any) => {
+                            const isSelected = !excludedSiteIds.includes(site.id);
+                            return (
+                              <button
+                                key={site.id}
+                                type="button"
+                                onClick={() => {
+                                  setExcludedSiteIds((prev) =>
+                                    isSelected ? [...prev, site.id] : prev.filter((id) => id !== site.id)
+                                  );
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-400 dark:border-blue-700 font-bold shadow-2xs"
+                                    : "bg-white dark:bg-[#0b1120] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 opacity-70"
                                 }`}
-                            >
-                              <span>{site.name}</span>
-                              {isExcluded ? <Plus className="w-3 h-3 text-slate-400 dark:text-slate-500" /> : <Check className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
-                            </button>
-                          );
-                        })}
-                      </div>
+                              >
+                                <div
+                                  className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[9px] ${
+                                    isSelected
+                                      ? "bg-blue-600 border-blue-600 text-white"
+                                      : "border-slate-300 dark:border-slate-600 bg-transparent text-transparent"
+                                  }`}
+                                >
+                                  ✓
+                                </div>
+                                <span>{site.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1844,59 +1930,84 @@ export default function AddProductModal({
                       No websites found for selected categories. Click "+ Add Website" above to configure one.
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-56 overflow-y-auto p-1 pr-2">
-                      {previewSites.map((site: any) => {
-                        const isExcluded = excludedSiteIds.includes(site.id);
-                        return (
-                          <div
-                            key={site.id}
-                            className={`w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all ${isExcluded
-                              ? "bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60"
-                              : "bg-white dark:bg-[#131d31] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 shadow-2xs"
-                              }`}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between pb-1 px-1">
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                          {activeSites.length} of {previewSites.length} Sites Selected {isProductResearcherRole && <span className="text-amber-600 dark:text-amber-400 font-semibold">(None by default in Product Research)</span>}
+                        </span>
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setExcludedSiteIds([])}
+                            className="px-2 py-0.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition cursor-pointer"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-bold truncate">{site.name}</span>
-                              {site.url && (
-                                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono truncate hidden sm:inline">
-                                  ({site.url})
-                                </span>
-                              )}
-                              {isExcluded ? (
-                                <span className="text-[10px] bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 px-2 py-0.5 rounded-md font-bold shrink-0">
-                                  Excluded
-                                </span>
-                              ) : (
-                                <span className="text-[10px] bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 px-2 py-0.5 rounded-md font-bold shrink-0">
-                                  Auto-assigned
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setExcludedSiteIds((prev) =>
-                                  isExcluded ? prev.filter((id) => id !== site.id) : [...prev, site.id]
-                                );
-                              }}
-                              className={`p-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 shrink-0 ${isExcluded
-                                ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-600/10"
-                                : "text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                            Select All
+                          </button>
+                          <span className="text-slate-300 dark:text-slate-700">|</span>
+                          <button
+                            type="button"
+                            onClick={() => setExcludedSiteIds(previewSites.map((s: any) => s.id))}
+                            className="px-2 py-0.5 text-[11px] font-bold text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded transition cursor-pointer"
+                          >
+                            Clear All (None)
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 max-h-56 overflow-y-auto p-1 pr-2">
+                        {previewSites.map((site: any) => {
+                          const isExcluded = excludedSiteIds.includes(site.id);
+                          return (
+                            <div
+                              key={site.id}
+                              className={`w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all ${isExcluded
+                                ? "bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60"
+                                : "bg-white dark:bg-[#131d31] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 shadow-2xs"
                                 }`}
-                              title={isExcluded ? "Re-include this site" : "Remove/Deselect this site"}
                             >
-                              {isExcluded ? (
-                                <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">Re-include</span>
-                              ) : (
-                                <>
-                                  <X className="w-4 h-4 text-slate-400 hover:text-rose-600" />
-                                  <span className="text-[11px] font-bold text-slate-500 hover:text-rose-600">Remove</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs font-bold truncate">{site.name}</span>
+                                {site.url && (
+                                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono truncate hidden sm:inline">
+                                    ({site.url})
+                                  </span>
+                                )}
+                                {isExcluded ? (
+                                  <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md font-bold shrink-0">
+                                    {isProductResearcherRole ? "Unselected" : "Excluded"}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 px-2 py-0.5 rounded-md font-bold shrink-0">
+                                    {isProductResearcherRole ? "Target Site" : "Auto-assigned"}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExcludedSiteIds((prev) =>
+                                    isExcluded ? prev.filter((id) => id !== site.id) : [...prev, site.id]
+                                  );
+                                }}
+                                className={`p-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 shrink-0 ${isExcluded
+                                  ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-600/10"
+                                  : "text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                                  }`}
+                                title={isExcluded ? "Select this site" : "Deselect this site"}
+                              >
+                                {isExcluded ? (
+                                  <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">+ Select</span>
+                                ) : (
+                                  <>
+                                    <X className="w-4 h-4 text-slate-400 hover:text-rose-600" />
+                                    <span className="text-[11px] font-bold text-slate-500 hover:text-rose-600">Deselect</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 

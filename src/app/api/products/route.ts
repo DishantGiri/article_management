@@ -201,11 +201,14 @@ export async function POST(req: NextRequest) {
 
     const activeUserRole = session.user.role;
     const activeUserRoles: string[] = (session.user as any)?.roles || (activeUserRole ? [activeUserRole] : []);
-    const isProductResearcherUser = activeUserRole === "PRODUCT_RESEARCHER" || (activeUserRoles && activeUserRoles.includes("PRODUCT_RESEARCHER"));
+    const isProductResearcherUser =
+      activeUserRole === "PRODUCT_RESEARCHER" ||
+      (activeUserRoles && activeUserRoles.includes("PRODUCT_RESEARCHER")) ||
+      Boolean(body.isProductResearch);
 
     // Check if user has permission to add products (either globally or site-specific)
     const authorizedSites = await getUserAuthorizedSiteIds(activeUserId, activeUserRole, "ADD_PRODUCT", activeUserRoles);
-    if (authorizedSites !== null && authorizedSites.length === 0) {
+    if (authorizedSites !== null && authorizedSites.length === 0 && !isProductResearcherUser) {
       return NextResponse.json(
         { error: "Access Denied: You do not have Linker or Product Researcher permissions to add products on any site." },
         { status: 403 }
@@ -228,7 +231,7 @@ export async function POST(req: NextRequest) {
         targetSiteIds.add(explicitSiteId);
       }
     } else {
-      // If Product Researcher and distributeToAllSites is not explicitly true, pick ONLY 1 target site
+      // If Product Researcher and distributeToAllSites is not explicitly true, pick ONLY selected target sites
       const forceSingleSite = isProductResearcherUser && distributeToAllSites !== true;
 
       for (const cat of categoriesWithSites) {
@@ -244,7 +247,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (targetSiteIds.size === 0) {
+    if (targetSiteIds.size === 0 && !isProductResearcherUser) {
       return NextResponse.json(
         { error: "Access Denied: You do not have Linker or Product Researcher permissions to add products to the selected site(s)." },
         { status: 403 }

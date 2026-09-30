@@ -200,9 +200,10 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
 
       if (resData.importedCount > 0) {
         toast.success(`Imported ${resData.importedCount} new products successfully!${resData.skippedCount ? ` (${resData.skippedCount} duplicates skipped)` : ""}`);
-        onSuccess();
+        onSuccess?.();
       } else if (resData.skippedCount > 0) {
         toast.success(`Done: ${resData.skippedCount} products already exist in catalog (duplicates skipped).`);
+        onSuccess?.();
       }
     } catch (e: any) {
       toast.error(e.message || "Failed to import CSV");

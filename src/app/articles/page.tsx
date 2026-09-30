@@ -1828,6 +1828,7 @@ function ArticlesContent() {
           currentUserRole={currentUserRole}
           currentUserId={session?.user?.id}
           onClose={() => setSelectedProduct(null)}
+          onUpdate={() => fetchArticlesList()}
         />
       )}
     </div>

@@ -110,6 +110,7 @@ interface AssignmentDetailsModalProps {
   currentUserId?: string | number;
   onClose: () => void;
   onReportIssue?: (product: AssignmentProduct) => void;
+  onUpdate?: () => void;
 }
 
 const LINK_STATUS_STYLES: Record<string, { bg: string; text: string; border: string }> = {
@@ -173,6 +174,7 @@ export default function AssignmentDetailsModal({
   currentUserId,
   onClose,
   onReportIssue,
+  onUpdate,
 }: AssignmentDetailsModalProps) {
   const router = useRouter();
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -229,6 +231,7 @@ export default function AssignmentDetailsModal({
       }
       toast.success(`Successfully added "${product.name}" to ${targetSiteName}! Assigned for writing.`);
       fetchSiteAvailability();
+      onUpdate?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to add product to site");
     } finally {
@@ -252,6 +255,7 @@ export default function AssignmentDetailsModal({
       }
       toast.success(`Successfully added "${product.name}" to ${data.createdCount} sites!`);
       fetchSiteAvailability();
+      onUpdate?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to add to all missing sites");
     } finally {
@@ -358,6 +362,7 @@ export default function AssignmentDetailsModal({
       });
       if (res.ok) {
         toast.success("Started writing! Navigating to tracker...");
+        onUpdate?.();
         onClose();
         router.push("/#writer-tracker");
       } else {

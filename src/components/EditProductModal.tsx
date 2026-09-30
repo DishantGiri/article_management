@@ -54,6 +54,11 @@ interface EditProductModalProps {
     remarks?: string | null;
     siteId: number;
     categoryId: number;
+    availableCount?: number;
+    missingCount?: number;
+    totalSitesCount?: number;
+    site?: { id?: number; name?: string };
+    allProductIds?: number[];
   } | null;
 }
 
@@ -143,7 +148,12 @@ export default function EditProductModal({
   const handleSubmit = async () => {
     if (!product) return;
 
-    if (!name.trim() || !siteId || !categoryId) {
+    const isMultiSite = Boolean(
+      (product.availableCount ?? 0) > 1 ||
+        (product.allProductIds && product.allProductIds.length > 1)
+    );
+
+    if (!name.trim() || (!isMultiSite && !siteId) || !categoryId) {
       setError("Product Name, Site, and Product Type are required.");
       return;
     }
@@ -179,7 +189,7 @@ export default function EditProductModal({
         body: JSON.stringify({
           name: name.trim(),
           slug: slug.trim() ? generateSlug(slug) : generateSlug(name),
-          siteId: parseInt(siteId),
+          siteId: siteId ? parseInt(siteId) : product.siteId,
           categoryId: parseInt(categoryId),
           productCategory: category.trim() || null,
           source: source.trim() || null,
@@ -189,6 +199,7 @@ export default function EditProductModal({
           affiliateName: affiliateName.trim() || null,
           previewLink: previewLink || null,
           remarks: remarks || null,
+          allProductIds: product.allProductIds,
           callerId: mockUserId,
         }),
       });
@@ -209,6 +220,12 @@ export default function EditProductModal({
   };
 
   if (!isOpen || !product) return null;
+
+  const isMultiSite = Boolean(
+    product &&
+      ((product.availableCount ?? 0) > 1 ||
+        (product.allProductIds && product.allProductIds.length > 1))
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-md animate-fadeIn">
@@ -445,15 +462,34 @@ export default function EditProductModal({
                     <Building2 className="w-3.5 h-3.5 text-zinc-500" />
                     Site <span className="text-rose-500">*</span>
                   </label>
-                  <CustomSelect
-                    value={siteId}
-                    onChange={(val) => setSiteId(val)}
-                    placeholder="Select Site..."
-                    options={sites.map((s) => ({
-                      value: String(s.id),
-                      label: s.name === "Product Research" ? "Research Pool (Unassigned)" : s.name,
-                    }))}
-                  />
+                  {isMultiSite ? (
+                    <div>
+                      <div className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-center justify-between shadow-2xs">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
+                            Multi-Site ({product.availableCount || product.allProductIds?.length} Sites)
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                          Synced
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 mt-1">
+                        Edits will sync across all {product.availableCount || product.allProductIds?.length} active sites.
+                      </p>
+                    </div>
+                  ) : (
+                    <CustomSelect
+                      value={siteId}
+                      onChange={(val) => setSiteId(val)}
+                      placeholder="Select Site..."
+                      options={sites.map((s) => ({
+                        value: String(s.id),
+                        label: s.name === "Product Research" ? "Research Pool (Unassigned)" : s.name,
+                      }))}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">

@@ -37,6 +37,7 @@ interface Product {
   missingCount?: number;
   totalSitesCount?: number;
   isResearchSite?: boolean;
+  allProductIds?: number[];
   categoryId: number;
   productCategory?: string | null;
   source?: string | null;
@@ -280,6 +281,11 @@ function ProductsPageContent() {
         setStats(dashboardData);
         setMyArticles(Array.isArray(articlesData) ? articlesData : []);
         setNotifications(Array.isArray(notifsData) ? notifsData : []);
+        setSelectedProduct((curr) => {
+          if (!curr) return null;
+          const updated = prods.find((p: any) => p.id === curr.id || (p.name && curr.name && p.name.trim().toLowerCase() === curr.name.trim().toLowerCase()));
+          return updated ? { ...curr, ...updated } : curr;
+        });
       })
       .finally(() => {
         setLoading(false);
@@ -582,15 +588,24 @@ function ProductsPageContent() {
     for (const p of filtered) {
       const key = (p.name || "").trim().toLowerCase() || `id-${p.id}`;
       if (!map.has(key)) {
-        map.set(key, { ...p });
+        map.set(key, { ...p, allProductIds: [p.id] });
       } else {
         const existing = map.get(key)!;
         const mergedLinkLogs = [...(existing.linkLogs || []), ...(p.linkLogs || [])];
         const uniqueLinkLogs = Array.from(new Map(mergedLinkLogs.map((l) => [l.id, l])).values());
+        const mergedProductIds = Array.from(new Set([...(existing.allProductIds || [existing.id]), p.id]));
+        const prevMissing = existing.missingCount;
+        const currMissing = p.missingCount;
+        const resolvedMissing =
+          prevMissing !== undefined && currMissing !== undefined
+            ? Math.min(prevMissing, currMissing)
+            : (prevMissing ?? currMissing ?? 0);
+
         map.set(key, {
           ...existing,
+          allProductIds: mergedProductIds,
           availableCount: Math.max(existing.availableCount ?? 0, p.availableCount ?? 0),
-          missingCount: Math.min(existing.missingCount ?? 999, p.missingCount ?? 999),
+          missingCount: resolvedMissing,
           linkLogs: uniqueLinkLogs,
           article: existing.article || p.article,
           country: existing.country || p.country,
@@ -1297,6 +1312,7 @@ function ProductsPageContent() {
                                     });
                                     if (res.ok) {
                                       toast.success("Started! Navigating to tracker...");
+                                      refreshProductsData(false);
                                       router.push("/#writer-tracker");
                                     } else {
                                       const err = await res.json();
@@ -1564,6 +1580,7 @@ function ProductsPageContent() {
           setIsAddModalOpen(false);
           refreshProductsData(false);
         }}
+        isProductResearch={true}
       />
 
       <EditProductModal
@@ -1578,9 +1595,11 @@ function ProductsPageContent() {
 
       <ImportProductModal
         isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onSuccess={() => {
+        onClose={() => {
           setIsImportModalOpen(false);
+          refreshProductsData(false);
+        }}
+        onSuccess={() => {
           refreshProductsData(false);
         }}
         userId={session?.user?.id ? Number(session.user.id) : 1}
@@ -1592,6 +1611,7 @@ function ProductsPageContent() {
           currentUserRole={activeRole}
           currentUserId={session?.user?.id}
           onClose={() => setSelectedProduct(null)}
+          onUpdate={() => refreshProductsData(false)}
           onReportIssue={(prod) => {
             setSelectedProduct(null);
             setReportingProduct(prod as any);

@@ -694,6 +694,75 @@ export async function GET(req: NextRequest) {
       console.error("Failed to compute productResearcherData:", err);
     }
 
+    // ─────────────────────────────────────────────
+    // ENRICH PRODUCTS WITH SITE AVAILABILITY METRICS
+    // ─────────────────────────────────────────────
+    const totalPublishingSites = await prisma.site.count({
+      where: { name: { not: "Product Research" } },
+    });
+
+    const rawDashboardProducts = [
+      ...recentProducts,
+      ...(productResearcherData?.recentResearchedProducts || []),
+      ...linkerProducts,
+    ];
+
+    const uniqueProductNames = Array.from(
+      new Set(
+        rawDashboardProducts
+          .map((p: any) => p?.name?.trim())
+          .filter(Boolean)
+      )
+    );
+
+    let productSiteOccurrences: { name: string; siteId: number }[] = [];
+    if (uniqueProductNames.length > 0) {
+      productSiteOccurrences = await prisma.product.findMany({
+        where: {
+          site: { name: { not: "Product Research" } },
+          OR: uniqueProductNames.flatMap((n) => [
+            { name: { equals: n } },
+            { name: { equals: n.toLowerCase() } },
+            { name: { equals: n.toUpperCase() } },
+          ]),
+        },
+        select: { name: true, siteId: true },
+      });
+    }
+
+    const availabilityMap = new Map<string, Set<number>>();
+    for (const item of productSiteOccurrences) {
+      const key = item.name.trim().toLowerCase();
+      if (!availabilityMap.has(key)) {
+        availabilityMap.set(key, new Set());
+      }
+      availabilityMap.get(key)!.add(item.siteId);
+    }
+
+    const enrichDashboardProduct = (p: any) => {
+      if (!p || !p.name) return p;
+      const key = p.name.trim().toLowerCase();
+      const liveSiteIds = availabilityMap.get(key) || new Set<number>();
+      const isResearchSite = p.site?.name === "Product Research";
+      const availableCount = liveSiteIds.size;
+      const missingCount = Math.max(0, totalPublishingSites - availableCount);
+
+      return {
+        ...p,
+        isResearchSite,
+        availableCount,
+        missingCount,
+        totalSitesCount: totalPublishingSites,
+      };
+    };
+
+    const enrichedRecentProducts = recentProducts.map(enrichDashboardProduct);
+    const enrichedLinkerProducts = linkerProducts.map(enrichDashboardProduct);
+    if (productResearcherData?.recentResearchedProducts) {
+      productResearcherData.recentResearchedProducts =
+        productResearcherData.recentResearchedProducts.map(enrichDashboardProduct);
+    }
+
     return NextResponse.json({
       role,
       general: {
@@ -718,13 +787,13 @@ export async function GET(req: NextRequest) {
       superAdminError,
       teamLead: teamLeadData,
       productResearcher: productResearcherData,
-      recentProducts,
+      recentProducts: enrichedRecentProducts,
       recentArticles,
       unlinkedProducts,
       writerPendingArticles,
       writerInProgressArticles,
       writerCompletedArticles,
-      linkerProducts,
+      linkerProducts: enrichedLinkerProducts,
       linkerLinks,
       flaggedLinks,
       individualCommission,
