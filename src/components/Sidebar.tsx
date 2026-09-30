@@ -450,8 +450,10 @@ export default function Sidebar() {
 
     // 2. Persist in storage/cookies and broadcast
     setActiveWorkspace(upperRole, sessionRoles);
+    window.dispatchEvent(new CustomEvent("workspaceRoleChanged", { detail: { role: upperRole } }));
+    window.dispatchEvent(new CustomEvent("workspace-changed", { detail: { role: upperRole } }));
 
-    // 3. Route check & refresh
+    // 3. Route check
     const allowed = NAV_ITEMS.some((item) => {
       if (item.href === "/" && pathname === "/") return true;
       if (pathname.startsWith(item.href) && item.href !== "/") {
@@ -462,8 +464,6 @@ export default function Sidebar() {
 
     if (!allowed && pathname !== "/") {
       router.push("/");
-    } else {
-      router.refresh();
     }
   };
 

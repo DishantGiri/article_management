@@ -143,9 +143,14 @@ function ArticlesContent() {
     const uid = session?.user?.id || currentUserId;
     if (!uid) return;
     try {
-      const res = await fetch(`/api/articles?userId=${uid}`);
-      const data = await res.json();
+      const [artRes, dashRes] = await Promise.all([
+        fetch(`/api/articles?userId=${uid}`),
+        fetch(`/api/dashboard?userId=${uid}`),
+      ]);
+      const data = await artRes.json();
       if (Array.isArray(data)) setArticles(data);
+      const dashData = await dashRes.json();
+      if (dashData) setStats(dashData);
     } catch {
       // ignore
     }
@@ -976,7 +981,7 @@ function ArticlesContent() {
 
       {/* Table Content */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-4">
-        {loading ? (
+        {loading && articles.length === 0 ? (
           <div className="py-12">
             <LoadingScreen
               message="Loading articles queue..."

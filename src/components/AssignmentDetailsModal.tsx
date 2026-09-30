@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   X,
   ExternalLink,
@@ -173,6 +174,7 @@ export default function AssignmentDetailsModal({
   onClose,
   onReportIssue,
 }: AssignmentDetailsModalProps) {
+  const router = useRouter();
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [activeLogIndex, setActiveLogIndex] = useState<number>(0);
   const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
@@ -355,10 +357,9 @@ export default function AssignmentDetailsModal({
         body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
       });
       if (res.ok) {
-        toast.success("Started writing! Redirecting to tracker...");
-        setTimeout(() => {
-          window.location.href = "/#writer-tracker";
-        }, 500);
+        toast.success("Started writing! Navigating to tracker...");
+        onClose();
+        router.push("/#writer-tracker");
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to start writing");

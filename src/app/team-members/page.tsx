@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
@@ -72,7 +72,7 @@ export default function TeamMembersPage() {
   const isAdminOrSuperAdmin =
     session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
 
-  useEffect(() => {
+  const fetchTeamData = useCallback(() => {
     if (!session?.user?.id) return;
 
     const uId = session.user.id;
@@ -82,6 +82,9 @@ export default function TeamMembersPage() {
       router.push("/");
       return;
     }
+
+    setLoading(true);
+    setError("");
 
     // For Admin / Super Admin, fetch all writers across all team leads; for TL, fetch assigned squad
     const endpoint =
@@ -116,6 +119,10 @@ export default function TeamMembersPage() {
         .catch(() => {});
     }
   }, [session?.user?.id, session?.user?.role, router]);
+
+  useEffect(() => {
+    fetchTeamData();
+  }, [fetchTeamData]);
 
   const formatWritingTime = (mins: number) => {
     if (!mins || mins <= 0) return "N/A";
@@ -236,7 +243,7 @@ export default function TeamMembersPage() {
         <h2 className="text-base font-bold text-slate-900">Unable to Load Team Analytics</h2>
         <p className="text-xs text-slate-500 mt-1 mb-6">{error}</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => fetchTeamData()}
           className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition"
         >
           Retry Connection

@@ -220,7 +220,7 @@ export default function UsersPage() {
   const [stats, setStats] = useState<any>(null);
 
   // Fetch Users & Sites
-  const fetchData = async () => {
+  const fetchData = async (showLoading = false) => {
     if (!session?.user?.id) return;
     const stored = session.user.id;
     setCurrentUserId(stored);
@@ -233,7 +233,7 @@ export default function UsersPage() {
     }
 
     try {
-      setLoading(true);
+      if (showLoading && users.length === 0) setLoading(true);
       const [usersRes, sitesRes, dashRes] = await Promise.all([
         fetch("/api/users"),
         fetch("/api/sites"),
@@ -1042,7 +1042,7 @@ export default function UsersPage() {
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* MAIN CONTENT AREA */}
       {/* ───────────────────────────────────────────────────────────────── */}
-      {loading ? (
+      {loading && users.length === 0 ? (
         <div className="py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800">
           <LoadingScreen
             message="Loading team members..."

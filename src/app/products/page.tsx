@@ -265,7 +265,7 @@ function ProductsPageContent() {
     const uRole = getActiveWorkspace(session.user.role, (session.user as any)?.roles);
     setCurrentUserRole(uRole);
 
-    if (showLoading) setLoading(true);
+    if (showLoading && products.length === 0) setLoading(true);
     Promise.all([
       fetch(`/api/products?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
       fetch("/api/categories").then((r) => (r.ok ? r.json() : [])),
@@ -282,7 +282,7 @@ function ProductsPageContent() {
         setNotifications(Array.isArray(notifsData) ? notifsData : []);
       })
       .finally(() => {
-        if (showLoading) setLoading(false);
+        setLoading(false);
       });
   };
 
@@ -576,10 +576,48 @@ function ProductsPageContent() {
     return matchSearch && matchSite && matchCategory && matchStatus;
   });
 
+  // Deduplicate products so each product appears only ONCE ("dont splite like that only one product")
+  const collapsedProducts = useMemo(() => {
+    const map = new Map<string, Product>();
+    for (const p of filtered) {
+      const key = (p.name || "").trim().toLowerCase() || `id-${p.id}`;
+      if (!map.has(key)) {
+        map.set(key, { ...p });
+      } else {
+        const existing = map.get(key)!;
+        const mergedLinkLogs = [...(existing.linkLogs || []), ...(p.linkLogs || [])];
+        const uniqueLinkLogs = Array.from(new Map(mergedLinkLogs.map((l) => [l.id, l])).values());
+        map.set(key, {
+          ...existing,
+          availableCount: Math.max(existing.availableCount ?? 0, p.availableCount ?? 0),
+          missingCount: Math.min(existing.missingCount ?? 999, p.missingCount ?? 999),
+          linkLogs: uniqueLinkLogs,
+          article: existing.article || p.article,
+          country: existing.country || p.country,
+          source: existing.source || p.source,
+          affiliateName:
+            existing.affiliateName &&
+            existing.affiliateName.toLowerCase() !== "general" &&
+            existing.affiliateName.toLowerCase() !== "no affiliate"
+              ? existing.affiliateName
+              : p.affiliateName || existing.affiliateName,
+          productCategory: existing.productCategory || p.productCategory,
+          category: existing.category || p.category,
+          addedBy: existing.addedBy || p.addedBy,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [filtered]);
+
+  const uniqueProductsCount = useMemo(() => {
+    return new Set(products.map((p) => (p.name || "").trim().toLowerCase()).filter(Boolean)).size;
+  }, [products]);
+
   const sortedFiltered = useMemo(() => {
-    if (!search || !search.trim()) return filtered;
+    if (!search || !search.trim()) return collapsedProducts;
     const q = search.trim().toLowerCase();
-    return [...filtered].sort((a, b) => {
+    return [...collapsedProducts].sort((a, b) => {
       const aName = (a.name || "").toLowerCase();
       const bName = (b.name || "").toLowerCase();
       const aExact = aName === q ? 3 : aName.startsWith(q) ? 2 : (a.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
@@ -587,7 +625,7 @@ function ProductsPageContent() {
       if (aExact !== bExact) return bExact - aExact;
       return 0;
     });
-  }, [filtered, search]);
+  }, [collapsedProducts, search]);
 
   const sortedFilteredMyArticles = useMemo(() => {
     if (!search || !search.trim()) return filteredMyArticles;
@@ -843,7 +881,7 @@ function ProductsPageContent() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between h-28">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Products</span>
           <span className="text-3xl font-extrabold text-[#7C3AED] dark:text-[#A78BFA]">
-            {stats?.general?.totalProducts ?? products.length}
+            {uniqueProductsCount}
           </span>
         </div>
 
@@ -1027,7 +1065,7 @@ function ProductsPageContent() {
 
       {/* ─── TABLE CONTENT ─────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-        {loading ? (
+        {loading && products.length === 0 ? (
           <div className="py-12">
             <LoadingScreen
               message="Loading products catalog..."
@@ -1137,60 +1175,28 @@ function ProductsPageContent() {
                           </div>
                         </td>
 
-                        {/* Site Availability */}
+                        {/* Site Availability: Numbers only (available in green, missing in red) */}
                         <td className="px-4 py-3.5">
-                          {p.site?.name === "Product Research" || p.isResearchSite || !p.site?.name ? (
-                            <div
-                              onClick={() => setSelectedProduct(p)}
-                              className="inline-flex items-center gap-1.5 cursor-pointer group/avail"
-                              title={`Network Availability: ${p.availableCount ?? 0} sites available, ${p.missingCount ?? 12} sites missing. Click to open network availability.`}
+                          <div
+                            onClick={() => setSelectedProduct(p)}
+                            className="inline-flex items-center gap-1.5 cursor-pointer group/avail"
+                            title={`Network Availability: ${p.availableCount ?? 0} sites available, ${p.missingCount ?? 0} sites missing. Click to view or manage site network.`}
+                          >
+                            <span
+                              className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md text-xs font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
+                              title={`${p.availableCount ?? 0} sites available`}
                             >
-                              <span
-                                className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md text-xs font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
-                                title={`${p.availableCount ?? 0} sites available`}
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
-                                {p.availableCount ?? 0}
-                              </span>
-                              <span
-                                className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md text-xs font-black bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300/80 dark:border-rose-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
-                                title={`${p.missingCount ?? 12} sites missing`}
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
-                                {p.missingCount ?? 12}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-1">
-                              {p.site?.url ? (
-                                <a
-                                  href={p.site.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1"
-                                >
-                                  <span>{p.site.name}</span>
-                                  <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                                </a>
-                              ) : (
-                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{p.site?.name}</span>
-                              )}
-                              {p.availableCount !== undefined && (
-                                <div
-                                  onClick={() => setSelectedProduct(p)}
-                                  className="inline-flex items-center gap-1 cursor-pointer"
-                                  title={`Network Availability: ${p.availableCount} available, ${p.missingCount} missing`}
-                                >
-                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                    {p.availableCount}
-                                  </span>
-                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                                    {p.missingCount}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                              {p.availableCount ?? 0}
+                            </span>
+                            <span
+                              className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md text-xs font-black bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300/80 dark:border-rose-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
+                              title={`${p.missingCount ?? 0} sites missing`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
+                              {p.missingCount ?? 0}
+                            </span>
+                          </div>
                         </td>
 
                         {/* Category */}
@@ -1290,8 +1296,8 @@ function ProductsPageContent() {
                                       body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
                                     });
                                     if (res.ok) {
-                                      toast.success("Started! Redirecting to tracker...");
-                                      setTimeout(() => { window.location.href = "/#writer-tracker"; }, 600);
+                                      toast.success("Started! Navigating to tracker...");
+                                      router.push("/#writer-tracker");
                                     } else {
                                       const err = await res.json();
                                       toast.error(err.error || "Failed to start writing");
@@ -1496,7 +1502,7 @@ function ProductsPageContent() {
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex items-center gap-3.5 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-md rounded-xl px-3.5 py-1.5 opacity-0 translate-x-12 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto transition-all duration-300 ease-out whitespace-nowrap">
                             {status === "IN_PROGRESS" || status === "REDO" ? (
                               <button
-                                onClick={() => { window.location.href = "/#writer-tracker"; }}
+                                onClick={() => { router.push("/#writer-tracker"); }}
                                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition cursor-pointer"
                               >
                                 <PlayCircle className="w-3.5 h-3.5" />

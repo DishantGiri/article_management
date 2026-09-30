@@ -246,11 +246,15 @@ export default function DashboardPage() {
       if (e.detail?.role) {
         const newRole = e.detail.role.toUpperCase();
         setActiveRoleView(newRole);
-        fetchDashboardData(true, newRole);
+        fetchDashboardData(false, newRole);
       }
     };
     window.addEventListener("workspace-changed", handleWorkspaceChanged);
-    return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+    window.addEventListener("workspaceRoleChanged", handleWorkspaceChanged);
+    return () => {
+      window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+      window.removeEventListener("workspaceRoleChanged", handleWorkspaceChanged);
+    };
   }, []);
 
   const fetchDashboardData = (showLoading = false, roleOverride?: string) => {
@@ -263,7 +267,7 @@ export default function DashboardPage() {
 
     const targetRole = roleOverride || activeRoleView || session.user.role;
 
-    if (showLoading) setLoading(true);
+    if (showLoading && !data) setLoading(true);
     else setRefreshing(true);
 
     fetch(`/api/dashboard?userId=${uId}${targetRole ? `&role=${targetRole}` : ""}`)
@@ -276,7 +280,7 @@ export default function DashboardPage() {
       })
       .catch((e) => console.error("Failed to load dashboard data", e))
       .finally(() => {
-        if (showLoading) setLoading(false);
+        setLoading(false);
         setRefreshing(false);
       });
 
@@ -383,8 +387,8 @@ export default function DashboardPage() {
     }
   };
 
-  // Loading State
-  if (loading || status === "loading") {
+  // Loading State (only if initial data is not yet available)
+  if ((loading && !data) || (status === "loading" && !data)) {
     return (
       <div className="min-h-[75vh] flex items-center justify-center p-6" suppressHydrationWarning>
         <LoadingScreen
@@ -503,7 +507,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   setActiveWorkspace("TEAM_LEAD", availableRoles);
                   setActiveRoleView("TEAM_LEAD");
-                  fetchDashboardData(true, "TEAM_LEAD");
+                  fetchDashboardData(false, "TEAM_LEAD");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "TEAM_LEAD"
@@ -526,7 +530,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   setActiveWorkspace("WRITER", availableRoles);
                   setActiveRoleView("WRITER");
-                  fetchDashboardData(true, "WRITER");
+                  fetchDashboardData(false, "WRITER");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "WRITER"
@@ -549,7 +553,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   setActiveWorkspace("LINKER", availableRoles);
                   setActiveRoleView("LINKER");
-                  fetchDashboardData(true, "LINKER");
+                  fetchDashboardData(false, "LINKER");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "LINKER"
@@ -572,7 +576,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   setActiveWorkspace("PRODUCT_RESEARCHER", availableRoles);
                   setActiveRoleView("PRODUCT_RESEARCHER");
-                  fetchDashboardData(true, "PRODUCT_RESEARCHER");
+                  fetchDashboardData(false, "PRODUCT_RESEARCHER");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "PRODUCT_RESEARCHER"
@@ -1911,7 +1915,7 @@ function ProductResearcherHubStudio({
 
   // Filter products by search and site
   const filteredProducts = useMemo(() => {
-    return rawList.filter((p: any) => {
+    const matched = rawList.filter((p: any) => {
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -1925,6 +1929,24 @@ function ProductResearcherHubStudio({
 
       return matchesSearch && matchesSite;
     });
+
+    if (selectedSite !== "ALL") return matched;
+
+    const map = new Map<string, any>();
+    for (const p of matched) {
+      const key = (p.name || "").trim().toLowerCase() || `id-${p.id}`;
+      if (!map.has(key)) {
+        map.set(key, { ...p });
+      } else {
+        const existing = map.get(key)!;
+        map.set(key, {
+          ...existing,
+          availableCount: Math.max(existing.availableCount ?? 0, p.availableCount ?? 0),
+          missingCount: Math.min(existing.missingCount ?? 999, p.missingCount ?? 999),
+        });
+      }
+    }
+    return Array.from(map.values());
   }, [rawList, searchQuery, selectedSite]);
 
   const formatAddedDate = (dateStr?: string | Date) => {
@@ -2283,32 +2305,26 @@ function ProductResearcherHubStudio({
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          {p.site?.name === "Product Research" || !p.site?.name ? (
-                            <div
-                              onClick={() => router.push(`/products?search=${encodeURIComponent(p.name)}`)}
-                              className="inline-flex items-center gap-1.5 cursor-pointer group/avail"
-                              title={`Network Availability: ${p.availableCount ?? 0} sites available, ${p.missingCount ?? 12} sites missing. Click to open network availability.`}
+                          <div
+                            onClick={() => router.push(`/products?search=${encodeURIComponent(p.name)}`)}
+                            className="inline-flex items-center gap-1.5 cursor-pointer group/avail"
+                            title={`Network Availability: ${p.availableCount ?? 0} sites available, ${p.missingCount ?? 0} sites missing. Click to open network availability.`}
+                          >
+                            <span
+                              className="inline-flex items-center justify-center min-w-[30px] px-2 py-0.5 rounded-md text-xs font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
+                              title={`${p.availableCount ?? 0} sites available`}
                             >
-                              <span
-                                className="inline-flex items-center justify-center min-w-[30px] px-2 py-0.5 rounded-md text-xs font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
-                                title={`${p.availableCount ?? 0} sites available`}
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
-                                {p.availableCount ?? 0}
-                              </span>
-                              <span
-                                className="inline-flex items-center justify-center min-w-[30px] px-2 py-0.5 rounded-md text-xs font-black bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300/80 dark:border-rose-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
-                                title={`${p.missingCount ?? 12} sites missing`}
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
-                                {p.missingCount ?? 12}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                              {p.site.name}
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                              {p.availableCount ?? 0}
                             </span>
-                          )}
+                            <span
+                              className="inline-flex items-center justify-center min-w-[30px] px-2 py-0.5 rounded-md text-xs font-black bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300/80 dark:border-rose-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
+                              title={`${p.missingCount ?? 0} sites missing`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
+                              {p.missingCount ?? 0}
+                            </span>
+                          </div>
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-slate-600 dark:text-slate-300 truncate block max-w-[120px]">
