@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, Info } from "lucide-react";
+import { X, Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, Info, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 interface ImportProductModalProps {
@@ -364,6 +364,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
                           <th className="px-3 py-2 font-bold text-slate-500">Source</th>
                           <th className="px-3 py-2 font-bold text-slate-500">Trend</th>
                           <th className="px-3 py-2 font-bold text-slate-500">Affiliate</th>
+                          <th className="px-3 py-2 font-bold text-slate-500">Added By</th>
                           <th className="px-3 py-2 font-bold text-slate-500">Sites</th>
                         </tr>
                       </thead>
@@ -373,13 +374,21 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
                             ? row.selectedSites.join(", ")
                             : (row.siteName || "All Sites");
 
+                          const affiliateDisplay =
+                            row.affiliateName && !["-", "--", "none", "nil", "n/a", "na", "null", "no affiliate", "no", "general"].includes(row.affiliateName.toLowerCase().trim())
+                              ? row.affiliateName
+                              : "No Affiliate";
+
+                          const addedByDisplay = row.researchedBy || row["Researched By"] || row["Added By"] || row.addedBy || "(Current User)";
+
                           return (
                             <tr key={idx} className="hover:bg-slate-50/50">
                               <td className="px-3 py-2 font-semibold text-slate-700">{row.name || "--"}</td>
                               <td className="px-3 py-2 text-slate-500">{row.categoryName || row.type || "--"}</td>
                               <td className="px-3 py-2 text-slate-500">{row.source || "--"}</td>
                               <td className="px-3 py-2 text-slate-500">{row.trendLevel || "--"}</td>
-                              <td className="px-3 py-2 text-slate-500">{row.affiliateName || "--"}</td>
+                              <td className="px-3 py-2 text-slate-500">{affiliateDisplay}</td>
+                              <td className="px-3 py-2 text-slate-600 font-medium">{addedByDisplay}</td>
                               <td className="px-3 py-2 text-indigo-600 font-semibold">{sitesDisplay}</td>
                             </tr>
                           );
@@ -397,11 +406,47 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
 
           {results && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl flex items-start gap-3 bg-emerald-50/70 border border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900/40">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <div
+                className={`p-4 rounded-xl flex items-start gap-3 ${
+                  results.importedCount > 0
+                    ? "bg-emerald-50/70 border border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900/40"
+                    : results.skippedCount && results.skippedCount > 0 && results.errors.length === 0
+                    ? "bg-amber-50/70 border border-amber-100 dark:bg-amber-950/30 dark:border-amber-900/40"
+                    : "bg-rose-50/70 border border-rose-100 dark:bg-rose-950/30 dark:border-rose-900/40"
+                }`}
+              >
+                {results.importedCount > 0 ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                ) : results.skippedCount && results.skippedCount > 0 && results.errors.length === 0 ? (
+                  <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                )}
                 <div>
-                  <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">Import Completed</h3>
-                  <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-0.5">
+                  <h3
+                    className={`text-sm font-bold ${
+                      results.importedCount > 0
+                        ? "text-emerald-950 dark:text-emerald-200"
+                        : results.skippedCount && results.skippedCount > 0 && results.errors.length === 0
+                        ? "text-amber-950 dark:text-amber-200"
+                        : "text-rose-950 dark:text-rose-200"
+                    }`}
+                  >
+                    {results.importedCount > 0
+                      ? "Import Completed"
+                      : results.skippedCount && results.skippedCount > 0 && results.errors.length === 0
+                      ? "Import Finished (All Existing)"
+                      : "Import Incomplete"}
+                  </h3>
+                  <p
+                    className={`text-xs mt-0.5 ${
+                      results.importedCount > 0
+                        ? "text-emerald-800 dark:text-emerald-300"
+                        : results.skippedCount && results.skippedCount > 0 && results.errors.length === 0
+                        ? "text-amber-800 dark:text-amber-300"
+                        : "text-rose-800 dark:text-rose-300"
+                    }`}
+                  >
                     Successfully imported <span className="font-bold">{results.importedCount}</span> new product{results.importedCount !== 1 ? "s" : ""}.
                     {Boolean(results.skippedCount && results.skippedCount > 0) && (
                       <span className="ml-1 font-semibold text-amber-700 dark:text-amber-400">
@@ -449,20 +494,51 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition"
-          >
-            {results ? "Close" : "Cancel"}
-          </button>
-          {!results && file && (
-            <button
-              onClick={handleImport}
-              disabled={loading || parsedData.length === 0}
-              className="px-5 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2"
-            >
-              {loading ? "Importing..." : "Start Import"}
-            </button>
+          {results ? (
+            <>
+              <button
+                onClick={() => {
+                  setFile(null);
+                  setParsedData([]);
+                  setResults(null);
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-sm"
+              >
+                <Upload className="w-4 h-4" />
+                Upload Another
+              </button>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition"
+              >
+                Close
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition"
+              >
+                Cancel
+              </button>
+              {file && (
+                <button
+                  onClick={handleImport}
+                  disabled={loading || parsedData.length === 0}
+                  className="px-5 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    "Start Import"
+                  )}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

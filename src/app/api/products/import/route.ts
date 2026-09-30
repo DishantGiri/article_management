@@ -159,6 +159,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const allDbUsers = await prisma.user.findMany({
+      select: { id: true, name: true, email: true },
+    });
+
     const importedProducts = [];
     const skippedDuplicates: string[] = [];
     const errors: string[] = [];
@@ -168,8 +172,9 @@ export async function POST(req: NextRequest) {
       "categoryname", "category", "producttype", "type",
       "productcategory", "source", "trend", "trendlevel",
       "trendlink", "previewlink", "remarks", "date",
-      "researchedby", "productavailability", "affiliatenetwork",
-      "affiliate", "selectedsites", "sitename", "site", "website",
+      "researchedby", "researcher", "addedby", "added_by", "user", "author", "creator",
+      "productavailability", "availability", "affiliatenetwork",
+      "affiliate", "network", "selectedsites", "sitename", "site", "website",
       "isnative", "native"
     ]);
 
@@ -185,6 +190,42 @@ export async function POST(req: NextRequest) {
       if (name.length < 2) {
         errors.push(`Row ${rowNum} ("${name}"): Product name must be at least 2 characters.`);
         continue;
+      }
+
+      // Added By / Researched By user matching from the sheet
+      const rawAddedBy = (
+        row.researchedBy ||
+        row["Researched By"] ||
+        row["researched_by"] ||
+        row.addedBy ||
+        row["Added By"] ||
+        row["added_by"] ||
+        row.researcher ||
+        row["Researcher"] ||
+        row.user ||
+        row["User"] ||
+        row.author ||
+        row["Author"] ||
+        row.creator ||
+        row["Creator"] ||
+        ""
+      ).trim();
+
+      let rowAddedById = Number(addedById);
+      if (rawAddedBy) {
+        const targetSearch = rawAddedBy.toLowerCase();
+        const matchedUser = allDbUsers.find(
+          (u) =>
+            (u.name && u.name.trim().toLowerCase() === targetSearch) ||
+            (u.email && u.email.trim().toLowerCase() === targetSearch) ||
+            (u.email && u.email.trim().toLowerCase().split("@")[0] === targetSearch)
+        );
+
+        if (!matchedUser) {
+          errors.push(`Row ${rowNum} ("${name}"): User "${rawAddedBy}" specified in sheet not found in system.`);
+          continue;
+        }
+        rowAddedById = matchedUser.id;
       }
 
       // Category / Product Type
@@ -222,7 +263,23 @@ export async function POST(req: NextRequest) {
       }
 
       // Affiliate Network
-      const affiliateName = (row.affiliateName || row["Affiliate Network"] || row.affiliate || "").trim() || null;
+      const rawAffiliate = (
+        row.affiliateName ||
+        row["Affiliate Network"] ||
+        row["affiliate_network"] ||
+        row.affiliate ||
+        row["Affiliate"] ||
+        row.network ||
+        row["Network"] ||
+        ""
+      ).trim();
+
+      const isNoAffiliate =
+        !rawAffiliate ||
+        ["-", "--", "none", "nil", "n/a", "na", "null", "no affiliate", "no", "general"].includes(
+          rawAffiliate.toLowerCase()
+        );
+      const affiliateName = isNoAffiliate ? "No Affiliate" : rawAffiliate;
 
       // Preview Link
       const previewLink = (row.previewLink || row["Preview Link"] || "").trim() || null;
@@ -230,7 +287,7 @@ export async function POST(req: NextRequest) {
       // Remarks, Availability, Researched By
       let remarks = (row.remarks || row["Remarks"] || "").trim();
       const availability = (row.productAvailability || row["Product Availability"] || "").trim();
-      const researchedBy = (row.researchedBy || row["Researched By"] || "").trim();
+      const researchedBy = rawAddedBy;
       const extraNotes: string[] = [];
       if (availability && !["available", "yes", "true", "1", "ok"].includes(availability.toLowerCase())) {
         extraNotes.push(`Availability: ${availability}`);
@@ -394,7 +451,7 @@ export async function POST(req: NextRequest) {
               productCategory,
               previewLink,
               remarks: remarks || null,
-              addedById: Number(addedById),
+              addedById: Number(rowAddedById),
               addedAt,
             },
             include: {
@@ -474,7 +531,7 @@ export async function POST(req: NextRequest) {
               productCategory,
               previewLink,
               remarks: remarks || null,
-              addedById: Number(addedById),
+              addedById: Number(rowAddedById),
               addedAt,
             },
             include: {
@@ -496,11 +553,11 @@ export async function POST(req: NextRequest) {
           });
 
           for (const access of accesses) {
-            if (access.userId === Number(addedById)) continue;
+            if (access.userId === Number(rowAddedById)) continue;
             const notif = await prisma.notification.create({
               data: {
                 recipientId: access.userId,
-                senderId: Number(addedById),
+                senderId: Number(rowAddedById),
                 type: "PRODUCT_ADDED",
                 message: `New product "${newProduct.name}" has been added to site "${site.name}".`,
               },
