@@ -4,6 +4,7 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getUserAuthorizedSiteIds, isAdmin } from "@/lib/permissions";
+import { getOrCreateResearchSite } from "@/lib/researchSite";
 
 function isValidUrl(url?: string | null): boolean {
   if (!url || typeof url !== "string") return false;
@@ -25,8 +26,28 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, names, products, categoryIds, excludedSiteIds, trendLink, trendLevel, affiliateName, previewLink, remarks, productCategory, isNative, source } = body;
+    const {
+      name,
+      names,
+      products,
+      categoryIds,
+      excludedSiteIds,
+      singleSiteId,
+      targetSiteId,
+      distributeToAllSites,
+      createArticle,
+      assignWriters,
+      trendLink,
+      trendLevel,
+      affiliateName,
+      previewLink,
+      remarks,
+      productCategory,
+      isNative,
+      source,
+    } = body;
     const excludedSet = new Set(Array.isArray(excludedSiteIds) ? excludedSiteIds.map(Number) : []);
+    const explicitSiteId = singleSiteId || targetSiteId ? Number(singleSiteId || targetSiteId) : null;
 
     interface IncomingProduct {
       name: string;
@@ -131,9 +152,56 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const activeUserId = session.user.id;
+    let activeUserId = Number(session.user.id);
+    let existingUser = Number.isInteger(activeUserId) && activeUserId > 0
+      ? await prisma.user.findUnique({
+          where: { id: activeUserId },
+          select: { id: true, name: true, role: true },
+        })
+      : null;
+
+    if (!existingUser && session.user.email) {
+      existingUser = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true, name: true, role: true },
+      });
+    }
+
+    if (!existingUser && session.user.name) {
+      existingUser = await prisma.user.findFirst({
+        where: { name: session.user.name },
+        select: { id: true, name: true, role: true },
+      });
+    }
+
+    if (!existingUser && (session.user.name || session.user.email)) {
+      const email = session.user.email || `${(session.user.name || "user").toLowerCase().replace(/[^a-z0-9]/g, "")}@fishtailinfosolutions.com`;
+      existingUser = await prisma.user.upsert({
+        where: { email },
+        update: {
+          name: session.user.name || undefined,
+          role: (session.user.role as any) || undefined,
+        },
+        create: {
+          name: session.user.name || "User",
+          email,
+          role: (session.user.role as any) || "PRODUCT_RESEARCHER",
+          approved: true,
+        },
+        select: { id: true, name: true, role: true },
+      });
+    }
+
+    if (existingUser) {
+      activeUserId = existingUser.id;
+    } else {
+      const fallbackUser = await prisma.user.findFirst({ select: { id: true } });
+      if (fallbackUser) activeUserId = fallbackUser.id;
+    }
+
     const activeUserRole = session.user.role;
     const activeUserRoles: string[] = (session.user as any)?.roles || (activeUserRole ? [activeUserRole] : []);
+    const isProductResearcherUser = activeUserRole === "PRODUCT_RESEARCHER" || (activeUserRoles && activeUserRoles.includes("PRODUCT_RESEARCHER"));
 
     // Check if user has permission to add products (either globally or site-specific)
     const authorizedSites = await getUserAuthorizedSiteIds(activeUserId, activeUserRole, "ADD_PRODUCT", activeUserRoles);
@@ -154,14 +222,25 @@ export async function POST(req: NextRequest) {
     }
 
     const targetSiteIds = new Set<number>();
-    for (const cat of categoriesWithSites) {
-      for (const site of cat.sites) {
-        if (!excludedSet.has(site.id)) {
-          // If user is restricted to specific sites, only include authorized ones
-          if (authorizedSites === null || authorizedSites.includes(site.id)) {
-            targetSiteIds.add(site.id);
+
+    if (explicitSiteId) {
+      if (authorizedSites === null || authorizedSites.includes(explicitSiteId)) {
+        targetSiteIds.add(explicitSiteId);
+      }
+    } else {
+      // If Product Researcher and distributeToAllSites is not explicitly true, pick ONLY 1 target site
+      const forceSingleSite = isProductResearcherUser && distributeToAllSites !== true;
+
+      for (const cat of categoriesWithSites) {
+        for (const site of cat.sites) {
+          if (!excludedSet.has(site.id)) {
+            if (authorizedSites === null || authorizedSites.includes(site.id)) {
+              targetSiteIds.add(site.id);
+              if (forceSingleSite) break;
+            }
           }
         }
+        if (forceSingleSite && targetSiteIds.size > 0) break;
       }
     }
 
@@ -172,10 +251,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if any product with the same name already exists on any of the target sites
+    const checkSiteIds = Array.from(targetSiteIds);
+    if (isProductResearcherUser) {
+      const rSite = await getOrCreateResearchSite();
+      checkSiteIds.push(rSite.id);
+    }
+
+    // Check if any product with the same name already exists on any of the target sites or research pool
     const existingProducts = await prisma.product.findMany({
       where: {
-        siteId: { in: Array.from(targetSiteIds) },
+        siteId: { in: checkSiteIds },
         OR: trimmedNames.flatMap((tName) => [
           { name: tName },
           { name: tName.toLowerCase() },
@@ -250,32 +335,87 @@ export async function POST(req: NextRequest) {
     }
 
     const productsToCreate = [];
-    for (const item of productItems) {
-      for (const cat of categoriesWithSites) {
-        for (const site of cat.sites) {
-          if (excludedSet.has(site.id)) {
-            continue;
-          }
-          const finalSlug = item.slug && item.slug.trim()
-            ? item.slug.trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "")
-            : item.name.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+    if (isProductResearcherUser) {
+      const researchSite = await getOrCreateResearchSite();
 
-          productsToCreate.push({
-            name: item.name,
-            slug: finalSlug || null,
-            country: item.country || null,
-            isNative: Boolean(item.isNative),
-            siteId: site.id,
-            categoryId: cat.id,
-            productCategory: item.productCategory || null,
-            source: item.source || null,
-            trendLink: item.trendLink || null,
-            trendLevel: item.trendLevel || "HIGH",
-            affiliateName: item.affiliateName || null,
-            previewLink: item.previewLink || null,
-            remarks: item.remarks || null,
-            addedById: activeUserId,
+      // Connect category to research site if needed
+      const rSiteWithCats = await prisma.site.findUnique({
+        where: { id: researchSite.id },
+        include: { categories: { select: { id: true } } },
+      });
+      for (const cat of categoriesWithSites) {
+        if (!rSiteWithCats?.categories.some((c) => c.id === cat.id)) {
+          await prisma.site.update({
+            where: { id: researchSite.id },
+            data: { categories: { connect: { id: cat.id } } },
           });
+        }
+      }
+
+      // In Product Research: collect researched target sites, create 1 product in the research catalog
+      const targetSitesList = Array.from(targetSiteIds)
+        .map((sId) => {
+          for (const c of categoriesWithSites) {
+            const found = c.sites.find((s) => s.id === sId);
+            if (found) return found.name;
+          }
+          return null;
+        })
+        .filter(Boolean);
+      const targetSitesStr = targetSitesList.length > 0 ? Array.from(new Set(targetSitesList)).join(", ") : null;
+
+      for (const item of productItems) {
+        const finalSlug = item.slug && item.slug.trim()
+          ? item.slug.trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "")
+          : item.name.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+
+        productsToCreate.push({
+          name: item.name,
+          slug: finalSlug || null,
+          country: item.country || null,
+          isNative: Boolean(item.isNative),
+          siteId: researchSite.id, // In product research, do NOT directly add to live site!
+          targetSites: targetSitesStr,
+          categoryId: categoriesWithSites[0]?.id || 1,
+          productCategory: item.productCategory || null,
+          source: item.source || null,
+          trendLink: item.trendLink || null,
+          trendLevel: item.trendLevel || "HIGH",
+          affiliateName: item.affiliateName || null,
+          previewLink: item.previewLink || null,
+          remarks: item.remarks || null,
+          addedById: activeUserId,
+        });
+      }
+    } else {
+      // Linkers / Admins: direct site assignment
+      for (const item of productItems) {
+        for (const cat of categoriesWithSites) {
+          for (const site of cat.sites) {
+            if (!targetSiteIds.has(site.id)) {
+              continue;
+            }
+            const finalSlug = item.slug && item.slug.trim()
+              ? item.slug.trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "")
+              : item.name.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+
+            productsToCreate.push({
+              name: item.name,
+              slug: finalSlug || null,
+              country: item.country || null,
+              isNative: Boolean(item.isNative),
+              siteId: site.id,
+              categoryId: cat.id,
+              productCategory: item.productCategory || null,
+              source: item.source || null,
+              trendLink: item.trendLink || null,
+              trendLevel: item.trendLevel || "HIGH",
+              affiliateName: item.affiliateName || null,
+              previewLink: item.previewLink || null,
+              remarks: item.remarks || null,
+              addedById: activeUserId,
+            });
+          }
         }
       }
     }
@@ -297,55 +437,57 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    // Auto-create a PENDING article for each product with matching country
-    await prisma.$transaction(
-      createdProducts.map((p) =>
-        prisma.article.create({
-          data: { productId: p.id, status: "PENDING", country: p.country || null },
-        })
-      )
-    );
+    // Determine whether to auto-create articles and assign to writers
+    const shouldCreateArticles = createArticle !== false && (!isProductResearcherUser || assignWriters === true);
 
-    // Do not auto-create LinkLogs - linkers will add real link configurations explicitly
+    if (shouldCreateArticles) {
+      // Auto-create a PENDING article for each product with matching country
+      await prisma.$transaction(
+        createdProducts.map((p) =>
+          prisma.article.create({
+            data: { productId: p.id, status: "PENDING", country: p.country || null },
+          })
+        )
+      );
 
-    // Notify writers: collect ALL product names per writer, send one grouped notification
-    const writerProductMap = new Map<number, string[]>();
+      // Notify writers: collect ALL product names per writer, send one grouped notification
+      const writerProductMap = new Map<number, string[]>();
 
-    for (const p of createdProducts) {
-      const accesses = await prisma.siteAccess.findMany({
-        where: { siteId: p.siteId, user: { role: "WRITER" } },
-        select: { userId: true },
-      });
-      for (const access of accesses) {
-        if (access.userId === activeUserId) continue;
-        const existing = writerProductMap.get(access.userId) || [];
-        // Avoid duplicating the same product name for the same writer
-        if (!existing.includes(p.name)) {
-          existing.push(p.name);
+      for (const p of createdProducts) {
+        const accesses = await prisma.siteAccess.findMany({
+          where: { siteId: p.siteId, user: { role: "WRITER" } },
+          select: { userId: true },
+        });
+        for (const access of accesses) {
+          if (access.userId === activeUserId) continue;
+          const existing = writerProductMap.get(access.userId) || [];
+          if (!existing.includes(p.name)) {
+            existing.push(p.name);
+          }
+          writerProductMap.set(access.userId, existing);
         }
-        writerProductMap.set(access.userId, existing);
       }
-    }
 
-    // Send one grouped notification per writer
-    for (const [writerId, productNames] of writerProductMap.entries()) {
-      const count = productNames.length;
-      const nameList = productNames.slice(0, 3).join(", ");
-      const suffix = count > 3 ? ` and ${count - 3} more` : "";
-      const message =
-        count === 1
-          ? `New product "${productNames[0]}" has been added - check your product list.`
-          : `${count} new products added: ${nameList}${suffix}. Check your product list.`;
+      // Send one grouped notification per writer
+      for (const [writerId, productNames] of writerProductMap.entries()) {
+        const count = productNames.length;
+        const nameList = productNames.slice(0, 3).join(", ");
+        const suffix = count > 3 ? ` and ${count - 3} more` : "";
+        const message =
+          count === 1
+            ? `New product "${productNames[0]}" has been added - check your product list.`
+            : `${count} new products added: ${nameList}${suffix}. Check your product list.`;
 
-      const notif = await prisma.notification.create({
-        data: {
-          recipientId: writerId,
-          senderId: activeUserId,
-          type: "PRODUCT_ADDED",
-          message,
-        },
-      });
-      await sendRealtimeNotification(writerId, notif);
+        const notif = await prisma.notification.create({
+          data: {
+            recipientId: writerId,
+            senderId: activeUserId,
+            type: "PRODUCT_ADDED",
+            message,
+          },
+        });
+        await sendRealtimeNotification(writerId, notif);
+      }
     }
 
     return NextResponse.json(createdProducts, { status: 201 });
@@ -411,5 +553,51 @@ export async function GET(req: NextRequest) {
     orderBy: { addedAt: "desc" },
   });
 
-  return NextResponse.json(products);
+  // Get total live publishing sites (excluding internal "Product Research" catalog)
+  const totalPublishingSites = await prisma.site.count({
+    where: { name: { not: "Product Research" } },
+  });
+
+  const productNames = Array.from(new Set(products.map((p) => p.name.trim()).filter(Boolean)));
+  let productSiteOccurrences: { name: string; siteId: number }[] = [];
+  if (productNames.length > 0) {
+    productSiteOccurrences = await prisma.product.findMany({
+      where: {
+        site: { name: { not: "Product Research" } },
+        OR: productNames.flatMap((n) => [
+          { name: { equals: n } },
+          { name: { equals: n.toLowerCase() } },
+          { name: { equals: n.toUpperCase() } },
+        ]),
+      },
+      select: { name: true, siteId: true },
+    });
+  }
+
+  const availabilityMap = new Map<string, Set<number>>();
+  for (const item of productSiteOccurrences) {
+    const key = item.name.trim().toLowerCase();
+    if (!availabilityMap.has(key)) {
+      availabilityMap.set(key, new Set());
+    }
+    availabilityMap.get(key)!.add(item.siteId);
+  }
+
+  const enrichedProducts = products.map((p) => {
+    const key = p.name.trim().toLowerCase();
+    const liveSiteIds = availabilityMap.get(key) || new Set<number>();
+    const isResearchSite = p.site?.name === "Product Research";
+    const availableCount = liveSiteIds.size;
+    const missingCount = Math.max(0, totalPublishingSites - availableCount);
+
+    return {
+      ...p,
+      isResearchSite,
+      availableCount,
+      missingCount,
+      totalSitesCount: totalPublishingSites,
+    };
+  });
+
+  return NextResponse.json(enrichedProducts);
 }

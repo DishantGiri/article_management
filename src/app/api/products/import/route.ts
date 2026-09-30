@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getOrCreateResearchSite } from "@/lib/researchSite";
 
 // POST /api/products/import - Import products from parsed CSV
 // Known site abbreviation aliases
@@ -93,8 +94,55 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const addedById = Number(body.addedById || session.user.id);
-    const { products } = body;
+    let addedById = Number(body.addedById || session.user.id);
+    let existingUser = Number.isInteger(addedById) && addedById > 0
+      ? await prisma.user.findUnique({
+          where: { id: addedById },
+          select: { id: true, name: true, role: true },
+        })
+      : null;
+
+    if (!existingUser && session.user.email) {
+      existingUser = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true, name: true, role: true },
+      });
+    }
+
+    if (!existingUser && session.user.name) {
+      existingUser = await prisma.user.findFirst({
+        where: { name: session.user.name },
+        select: { id: true, name: true, role: true },
+      });
+    }
+
+    if (!existingUser && (session.user.name || session.user.email)) {
+      const email = session.user.email || `${(session.user.name || "user").toLowerCase().replace(/[^a-z0-9]/g, "")}@fishtailinfosolutions.com`;
+      existingUser = await prisma.user.upsert({
+        where: { email },
+        update: {
+          name: session.user.name || undefined,
+          role: (session.user.role as any) || undefined,
+        },
+        create: {
+          name: session.user.name || "User",
+          email,
+          role: (session.user.role as any) || "PRODUCT_RESEARCHER",
+          approved: true,
+        },
+        select: { id: true, name: true, role: true },
+      });
+    }
+
+    if (existingUser) {
+      addedById = existingUser.id;
+    } else {
+      const fallbackUser = await prisma.user.findFirst({ select: { id: true } });
+      if (fallbackUser) addedById = fallbackUser.id;
+    }
+    const { products, defaultSiteId, distributeToAllSites, assignWriters } = body;
+
+    const isProductResearcherUser = userRole === "PRODUCT_RESEARCHER" || userRoles.includes("PRODUCT_RESEARCHER");
 
     if (!products || !Array.isArray(products) || products.length === 0) {
       return NextResponse.json(
@@ -235,24 +283,134 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // D. Fallback if no specific site was checked: default to all sites
+      // D. Fallback if no specific site was checked:
       if (targetSites.length === 0) {
-        targetSites.push(...allDbSites);
+        if (defaultSiteId) {
+          const s = allDbSites.find((d) => d.id === Number(defaultSiteId));
+          if (s) targetSites.push(s);
+        }
+        if (targetSites.length === 0) {
+          if (isProductResearcherUser && distributeToAllSites !== true) {
+            // In product research, do NOT clone to all sites: only add to 1 site
+            targetSites.push(allDbSites[0]);
+          } else if (distributeToAllSites === true) {
+            targetSites.push(...allDbSites);
+          } else {
+            targetSites.push(allDbSites[0]);
+          }
+        }
       }
 
-      // Process import for each target site
-      for (const site of targetSites) {
+      // Collect all detected site names for targetSites string
+      const detectedSiteNames = targetSites.map((s) => s.name);
+      const targetSitesStr = detectedSiteNames.length > 0 ? detectedSiteNames.join(", ") : null;
+
+      // Find or create Category
+      let category = await prisma.category.findFirst({
+        where: { name: { equals: categoryName } },
+      });
+      if (!category) {
+        category = await prisma.category.create({
+          data: { name: categoryName },
+        });
+      }
+
+      // Ensure ProductCategory exists
+      if (productCategory) {
+        await prisma.productCategory.upsert({
+          where: { name: productCategory },
+          update: {},
+          create: { name: productCategory },
+        }).catch(() => {});
+      }
+
+      // Ensure AffiliateName exists
+      if (affiliateName) {
+        await prisma.affiliateName.upsert({
+          where: { name: affiliateName },
+          update: {},
+          create: { name: affiliateName },
+        }).catch(() => {});
+      }
+
+      // ─── IF PRODUCT RESEARCHER: DO NOT ADD DIRECTLY TO ANY SITE ───
+      // Simply list in the research pool with detected target sites. Linkers will publish to sites later.
+      if (isProductResearcherUser) {
         try {
-          // Find or create Category
-          let category = await prisma.category.findFirst({
-            where: { name: { equals: categoryName } },
+          const existingInResearch = await prisma.product.findFirst({
+            where: {
+              OR: [
+                { name: { equals: name } },
+                { name: { equals: name.toLowerCase() } },
+                { name: { equals: name.toUpperCase() } },
+              ],
+            },
+            include: {
+              addedBy: { select: { name: true } },
+              site: { select: { name: true } },
+            },
           });
-          if (!category) {
-            category = await prisma.category.create({
-              data: { name: categoryName },
+
+          if (existingInResearch) {
+            const loc = existingInResearch.site?.name ? `on site "${existingInResearch.site.name}"` : "in research catalog";
+            errors.push(`Row ${rowNum} ("${name}"): Product already exists ${loc} (added by ${existingInResearch.addedBy?.name || "researcher"}).`);
+            continue;
+          }
+
+          const researchSite = await getOrCreateResearchSite();
+
+          // Connect category to research site if needed
+          const rSiteWithCats = await prisma.site.findUnique({
+            where: { id: researchSite.id },
+            include: { categories: { select: { id: true } } },
+          });
+          if (!rSiteWithCats?.categories.some((c) => c.id === category.id)) {
+            await prisma.site.update({
+              where: { id: researchSite.id },
+              data: { categories: { connect: { id: category.id } } },
             });
           }
 
+          const newProduct = await prisma.product.create({
+            data: {
+              name,
+              siteId: researchSite.id, // Assigned to Product Research catalog, not live publishing sites!
+              targetSites: targetSitesStr,
+              categoryId: category.id,
+              isNative:
+                row.isNative === true ||
+                row.isNative === "true" ||
+                row.isNative === "yes" ||
+                row.native === true ||
+                row.native === "true" ||
+                row.native === "yes",
+              source,
+              trendLevel,
+              trendLink,
+              affiliateName,
+              productCategory,
+              previewLink,
+              remarks: remarks || null,
+              addedById: Number(addedById),
+              addedAt,
+            },
+            include: {
+              site: { select: { id: true, name: true, url: true } },
+              category: { select: { id: true, name: true } },
+              addedBy: { select: { id: true, name: true } },
+            },
+          });
+
+          importedProducts.push(newProduct);
+        } catch (rowErr: any) {
+          errors.push(`Row ${rowNum} ("${name}"): Failed to import due to: ${rowErr.message}`);
+        }
+        continue;
+      }
+
+      // ─── NON-PRODUCT-RESEARCHER (Linker/Admin): ADD DIRECTLY TO TARGET SITES ───
+      for (const site of targetSites) {
+        try {
           // Ensure Site and Category are connected
           const siteWithCategories = await prisma.site.findUnique({
             where: { id: site.id },
@@ -268,24 +426,6 @@ export async function POST(req: NextRequest) {
                 },
               },
             });
-          }
-
-          // Ensure ProductCategory exists
-          if (productCategory) {
-            await prisma.productCategory.upsert({
-              where: { name: productCategory },
-              update: {},
-              create: { name: productCategory },
-            }).catch(() => {});
-          }
-
-          // Ensure AffiliateName exists
-          if (affiliateName) {
-            await prisma.affiliateName.upsert({
-              where: { name: affiliateName },
-              update: {},
-              create: { name: affiliateName },
-            }).catch(() => {});
           }
 
           // Check for existing product with this name on this site
@@ -315,6 +455,7 @@ export async function POST(req: NextRequest) {
             data: {
               name,
               siteId: site.id,
+              targetSites: targetSitesStr,
               categoryId: category.id,
               isNative:
                 row.isNative === true ||
@@ -340,7 +481,7 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          // Auto-create a PENDING article
+          // Auto-create article only if explicitly requested or linker adding to site
           await prisma.article.create({
             data: { productId: newProduct.id, status: "PENDING" },
           });

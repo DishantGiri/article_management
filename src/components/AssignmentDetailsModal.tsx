@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   X,
@@ -23,6 +23,12 @@ import {
   Share2,
   Calendar,
   RotateCcw,
+  CheckCircle2,
+  PlusCircle,
+  Search,
+  Loader2,
+  Layers,
+  Plus,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
@@ -34,7 +40,8 @@ export interface AssignmentProduct {
   slug?: string | null;
   country?: string | null;
   isNative?: boolean;
-  siteId: number;
+  siteId?: number | null;
+  targetSites?: string | null;
   categoryId: number;
   productCategory?: string | null;
   trendLink?: string;
@@ -43,7 +50,7 @@ export interface AssignmentProduct {
   previewLink?: string;
   remarks?: string;
   addedAt: string;
-  site: { id?: number; name: string; url?: string; allowCountrySpecific?: boolean };
+  site?: { id?: number; name: string; url?: string; allowCountrySpecific?: boolean } | null;
   category: { id?: number; name: string };
   addedBy: { id?: number; name: string };
   article?: {
@@ -69,6 +76,31 @@ export interface AssignmentProduct {
       affiliateName?: string | null;
     }>;
   }>;
+}
+
+export interface SiteAvailabilityItem {
+  siteId: number;
+  siteName: string;
+  siteUrl?: string | null;
+  isAvailable: boolean;
+  isResearchedTarget?: boolean;
+  product?: {
+    id: number;
+    name: string;
+    slug?: string | null;
+    country?: string | null;
+    categoryId?: number;
+    categoryName?: string;
+    productCategory?: string | null;
+    addedAt?: string;
+    addedBy?: string;
+    article?: {
+      id: number;
+      status: string;
+      writerName?: string;
+    } | null;
+    linkCount?: number;
+  } | null;
 }
 
 interface AssignmentDetailsModalProps {
@@ -146,7 +178,99 @@ export default function AssignmentDetailsModal({
   const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
   const [startingWriting, setStartingWriting] = useState<boolean>(false);
 
+  // Site Network Availability & Publishing states
+  const [siteAvailability, setSiteAvailability] = useState<SiteAvailabilityItem[]>([]);
+  const [loadingSites, setLoadingSites] = useState<boolean>(false);
+  const [addingSiteId, setAddingSiteId] = useState<number | null>(null);
+  const [batchAdding, setBatchAdding] = useState<boolean>(false);
+  const [siteFilterTab, setSiteFilterTab] = useState<"all" | "available" | "missing">("all");
+  const [siteSearchQuery, setSiteSearchQuery] = useState<string>("");
+
   const isWriter = currentUserRole?.toUpperCase() === "WRITER";
+  const canManageSites =
+    currentUserRole === "LINKER" ||
+    currentUserRole === "ADMIN" ||
+    currentUserRole === "SUPER_ADMIN" ||
+    currentUserRole === "PRODUCT_RESEARCHER";
+
+  const fetchSiteAvailability = useCallback(async () => {
+    if (!product?.id) return;
+    setLoadingSites(true);
+    try {
+      const res = await fetch(`/api/products/${product.id}/site-availability`);
+      if (res.ok) {
+        const data = await res.json();
+        setSiteAvailability(data.sites || []);
+      }
+    } catch (err) {
+      console.error("Failed to load site availability:", err);
+    } finally {
+      setLoadingSites(false);
+    }
+  }, [product?.id]);
+
+  useEffect(() => {
+    fetchSiteAvailability();
+  }, [fetchSiteAvailability]);
+
+  const handleAddToSite = async (targetSiteId: number, targetSiteName: string) => {
+    setAddingSiteId(targetSiteId);
+    try {
+      const res = await fetch(`/api/products/${product.id}/site-availability`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSiteId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to add product to site");
+      }
+      toast.success(`Successfully added "${product.name}" to ${targetSiteName}! Assigned for writing.`);
+      fetchSiteAvailability();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add product to site");
+    } finally {
+      setAddingSiteId(null);
+    }
+  };
+
+  const handleAddAllMissingSites = async () => {
+    const missingSiteIds = siteAvailability.filter((s) => !s.isAvailable).map((s) => s.siteId);
+    if (missingSiteIds.length === 0) return;
+    setBatchAdding(true);
+    try {
+      const res = await fetch(`/api/products/${product.id}/site-availability`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSiteIds: missingSiteIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to add product to sites");
+      }
+      toast.success(`Successfully added "${product.name}" to ${data.createdCount} sites!`);
+      fetchSiteAvailability();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add to all missing sites");
+    } finally {
+      setBatchAdding(false);
+    }
+  };
+
+  const availableCount = siteAvailability.filter((s) => s.isAvailable).length;
+  const missingCount = siteAvailability.length - availableCount;
+
+  const filteredSites = useMemo(() => {
+    return siteAvailability.filter((s) => {
+      if (siteFilterTab === "available" && !s.isAvailable) return false;
+      if (siteFilterTab === "missing" && s.isAvailable) return false;
+      if (siteSearchQuery.trim()) {
+        const q = siteSearchQuery.toLowerCase().trim();
+        return s.siteName.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [siteAvailability, siteFilterTab, siteSearchQuery]);
 
   const linkLogs = product.linkLogs || [];
   const hasLinkLogs = linkLogs.length > 0;
@@ -341,8 +465,15 @@ export default function AssignmentDetailsModal({
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
                     <Building2 className="w-3.5 h-3.5 text-[#6D8196]" />
-                    <span>{product.site.name}</span>
+                    <span>{(!product.site?.name || product.site.name === "Product Research") ? "Research Pool (Unassigned)" : product.site.name}</span>
                   </span>
+
+                  {product.targetSites && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs font-semibold border border-amber-200 dark:border-amber-800/60 shadow-2xs">
+                      <Globe className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Target Sites: {product.targetSites}</span>
+                    </span>
+                  )}
 
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
                     <LayoutGrid className="w-3.5 h-3.5 text-[#6D8196]" />
@@ -468,6 +599,240 @@ export default function AssignmentDetailsModal({
                     <ExternalLink className="w-3.5 h-3.5" />
                   </Link>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* ─── WEBSITE NETWORK AVAILABILITY & LINKER PUBLISHING ─── */}
+          <div className="p-4 sm:p-5 bg-gradient-to-br from-slate-50 via-slate-50/80 to-indigo-50/20 dark:from-slate-850 dark:via-slate-850/90 dark:to-indigo-950/20 rounded-2xl border border-slate-200 dark:border-slate-750 shadow-2xs space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-700/80">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Globe className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">
+                    Website Network Availability
+                  </h4>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                      availableCount === siteAvailability.length && siteAvailability.length > 0
+                        ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                        : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                    }`}
+                  >
+                    {loadingSites
+                      ? "Checking..."
+                      : `${availableCount} of ${siteAvailability.length} Sites Published`}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Track which network websites have this product and assign it to missing sites
+                </p>
+              </div>
+
+              {/* Action: Add to All Missing Sites */}
+              {canManageSites && missingCount > 0 && !loadingSites && (
+                <button
+                  type="button"
+                  disabled={batchAdding}
+                  onClick={handleAddAllMissingSites}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-xs disabled:opacity-50 cursor-pointer self-start sm:self-auto shrink-0"
+                  title={`Publish ${product.name} to all ${missingCount} missing websites with 1 click`}
+                >
+                  {batchAdding ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Adding to all...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Publish to All Missing ({missingCount})</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* Filter Tabs & Quick Search */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+              <div className="flex items-center p-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSiteFilterTab("all")}
+                  className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer ${
+                    siteFilterTab === "all"
+                      ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  All ({siteAvailability.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSiteFilterTab("available")}
+                  className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer flex items-center gap-1 ${
+                    siteFilterTab === "available"
+                      ? "bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 shadow-2xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Available ({availableCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSiteFilterTab("missing")}
+                  className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer flex items-center gap-1 ${
+                    siteFilterTab === "missing"
+                      ? "bg-slate-200/70 dark:bg-slate-750 text-slate-800 dark:text-slate-200 shadow-2xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  Not Added ({missingCount})
+                </button>
+              </div>
+
+              {siteAvailability.length > 4 && (
+                <div className="relative w-full sm:w-48">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={siteSearchQuery}
+                    onChange={(e) => setSiteSearchQuery(e.target.value)}
+                    placeholder="Filter site..."
+                    className="w-full pl-8 pr-3 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  {siteSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSiteSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Sites Grid Display */}
+            {loadingSites ? (
+              <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                <span>Checking network availability across all websites...</span>
+              </div>
+            ) : filteredSites.length === 0 ? (
+              <div className="py-6 text-center text-xs text-slate-400 italic bg-white/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                No sites match the current filter.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">
+                {filteredSites.map((site) => {
+                  const isCurrentModalSite = site.siteId === product.siteId;
+                  const isAdding = addingSiteId === site.siteId;
+
+                  return (
+                    <div
+                      key={site.siteId}
+                      className={`p-3 rounded-xl border transition flex items-center justify-between gap-2.5 ${
+                        site.isAvailable
+                          ? isCurrentModalSite
+                            ? "bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 shadow-2xs"
+                            : "bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 shadow-2xs"
+                          : "bg-slate-100/50 dark:bg-slate-900/40 border-dashed border-slate-200 dark:border-slate-800"
+                      }`}
+                    >
+                      {/* Left: Site Info */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-2 h-2 rounded-full shrink-0 ${
+                              site.isAvailable
+                                ? "bg-emerald-500 ring-2 ring-emerald-500/20"
+                                : "bg-slate-300 dark:bg-slate-600"
+                            }`}
+                          />
+                          <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {site.siteName}
+                          </span>
+                          {isCurrentModalSite && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                              Current
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Status detail line */}
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px]">
+                          {site.isAvailable ? (
+                            <>
+                              <span className="font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-200/50 dark:border-emerald-800/50">
+                                Available
+                              </span>
+                              {site.product?.article ? (
+                                <span className="font-semibold text-slate-600 dark:text-slate-300">
+                                  • Article: {site.product.article.status} ({site.product.article.writerName})
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">• Ready for Writer</span>
+                              )}
+                              {site.product?.linkCount !== undefined && (
+                                <span className="text-slate-400 font-mono">
+                                  • {site.product.linkCount} Link{site.product.linkCount !== 1 ? "s" : ""}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {site.isResearchedTarget && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                  ★ Researched Target
+                                </span>
+                              )}
+                              <span className="text-slate-400 italic">
+                                Not published on this site yet
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="shrink-0 flex items-center gap-1.5">
+                        {site.isAvailable ? (
+                          <div className="flex items-center gap-1">
+                            <span className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/60">
+                              <Check className="w-3.5 h-3.5" />
+                            </span>
+                          </div>
+                        ) : (
+                          canManageSites && (
+                            <button
+                              type="button"
+                              disabled={isAdding || batchAdding}
+                              onClick={() => handleAddToSite(site.siteId, site.siteName)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white dark:bg-indigo-950/60 dark:hover:bg-indigo-600 dark:text-indigo-300 dark:hover:text-white border border-indigo-200 dark:border-indigo-800/60 text-xs font-bold transition shadow-2xs disabled:opacity-50 cursor-pointer"
+                              title={`Add ${product.name} to ${site.siteName}`}
+                            >
+                              {isAdding ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  <span>Adding...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-3 h-3" />
+                                  <span>Add to Site</span>
+                                </>
+                              )}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

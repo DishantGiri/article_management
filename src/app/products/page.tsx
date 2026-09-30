@@ -32,6 +32,11 @@ interface Product {
   country?: string | null;
   isNative?: boolean;
   siteId: number;
+  targetSites?: string | null;
+  availableCount?: number;
+  missingCount?: number;
+  totalSitesCount?: number;
+  isResearchSite?: boolean;
   categoryId: number;
   productCategory?: string | null;
   source?: string | null;
@@ -175,8 +180,8 @@ function ProductsPageContent() {
     const rows = filtered.map((p) => [
       p.id.toString(),
       p.name,
-      p.site.name,
-      p.category.name,
+      p.site?.name || p.targetSites || "Research Pool",
+      p.category?.name || "",
       p.trendLink || "",
       p.previewLink || "",
       p.remarks || "",
@@ -1041,7 +1046,7 @@ function ProductsPageContent() {
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/40">
                     <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Name</th>
-                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Site</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Site Availability</th>
                     <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Category</th>
                     <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Type</th>
                     <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Affiliate</th>
@@ -1132,20 +1137,59 @@ function ProductsPageContent() {
                           </div>
                         </td>
 
-                        {/* Site */}
+                        {/* Site Availability */}
                         <td className="px-4 py-3.5">
-                          {p.site?.url ? (
-                            <a
-                              href={p.site.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1"
+                          {p.site?.name === "Product Research" || p.isResearchSite || !p.site?.name ? (
+                            <div
+                              onClick={() => setSelectedProduct(p)}
+                              className="inline-flex items-center gap-1.5 cursor-pointer group/avail"
+                              title={`Network Availability: ${p.availableCount ?? 0} sites available, ${p.missingCount ?? 12} sites missing. Click to open network availability.`}
                             >
-                              <span>{p.site.name}</span>
-                              <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                            </a>
+                              <span
+                                className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md text-xs font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
+                                title={`${p.availableCount ?? 0} sites available`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                {p.availableCount ?? 0}
+                              </span>
+                              <span
+                                className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md text-xs font-black bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300/80 dark:border-rose-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
+                                title={`${p.missingCount ?? 12} sites missing`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
+                                {p.missingCount ?? 12}
+                              </span>
+                            </div>
                           ) : (
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{p.site?.name || "-"}</span>
+                            <div className="flex flex-col gap-1">
+                              {p.site?.url ? (
+                                <a
+                                  href={p.site.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1"
+                                >
+                                  <span>{p.site.name}</span>
+                                  <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                                </a>
+                              ) : (
+                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{p.site?.name}</span>
+                              )}
+                              {p.availableCount !== undefined && (
+                                <div
+                                  onClick={() => setSelectedProduct(p)}
+                                  className="inline-flex items-center gap-1 cursor-pointer"
+                                  title={`Network Availability: ${p.availableCount} available, ${p.missingCount} missing`}
+                                >
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                    {p.availableCount}
+                                  </span>
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                    {p.missingCount}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </td>
 

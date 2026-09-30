@@ -2283,9 +2283,32 @@ function ProductResearcherHubStudio({
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                            {p.site?.name || "Global"}
-                          </span>
+                          {p.site?.name === "Product Research" || !p.site?.name ? (
+                            <div
+                              onClick={() => router.push(`/products?search=${encodeURIComponent(p.name)}`)}
+                              className="inline-flex items-center gap-1.5 cursor-pointer group/avail"
+                              title={`Network Availability: ${p.availableCount ?? 0} sites available, ${p.missingCount ?? 12} sites missing. Click to open network availability.`}
+                            >
+                              <span
+                                className="inline-flex items-center justify-center min-w-[30px] px-2 py-0.5 rounded-md text-xs font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
+                                title={`${p.availableCount ?? 0} sites available`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                {p.availableCount ?? 0}
+                              </span>
+                              <span
+                                className="inline-flex items-center justify-center min-w-[30px] px-2 py-0.5 rounded-md text-xs font-black bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300/80 dark:border-rose-700/80 shadow-2xs group-hover/avail:scale-105 transition-transform"
+                                title={`${p.missingCount ?? 12} sites missing`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
+                                {p.missingCount ?? 12}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              {p.site.name}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-slate-600 dark:text-slate-300 truncate block max-w-[120px]">
