@@ -1823,7 +1823,7 @@ export default function UsersPage() {
                           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                             Role:
                           </span>
-                          {(["LINKER", "WRITER", "TEAM_LEAD"] as const).map((r) => {
+                          {(["LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"] as const).map((r) => {
                             const hasRole = activeRoles.includes(r);
                             return (
                               <button
@@ -1839,12 +1839,14 @@ export default function UsersPage() {
                                       ? "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
                                       : r === "WRITER"
                                       ? "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                                      : r === "PRODUCT_RESEARCHER"
+                                      ? "bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-950/50 dark:text-yellow-300 dark:border-yellow-800"
                                       : "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
                                     : "bg-white/80 dark:bg-slate-800/60 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-700"
                                 }`}
                               >
                                 {hasRole && <Check className="w-2.5 h-2.5 inline mr-1" />}
-                                {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "TL"}
+                                {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : r === "PRODUCT_RESEARCHER" ? "Researcher" : "TL"}
                               </button>
                             );
                           })}
@@ -2215,6 +2217,7 @@ export default function UsersPage() {
                     options={[
                       { value: "WRITER", label: "Writer" },
                       { value: "LINKER", label: "Linker" },
+                      { value: "PRODUCT_RESEARCHER", label: "Product Researcher" },
                       { value: "TEAM_LEAD", label: "Team Lead" },
                       ...(isSuperAdmin
                         ? [
@@ -2378,7 +2381,7 @@ export default function UsersPage() {
                               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">
                                 Roles:
                               </span>
-                              {(["LINKER", "WRITER", "TEAM_LEAD"] as const).map((r) => {
+                              {(["LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"] as const).map((r) => {
                                 const hasRole = activeRoles.includes(r);
                                 return (
                                   <button
@@ -2406,12 +2409,14 @@ export default function UsersPage() {
                                           ? "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
                                           : r === "WRITER"
                                           ? "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                                          : r === "PRODUCT_RESEARCHER"
+                                          ? "bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800"
                                           : "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
                                         : "bg-slate-50 dark:bg-slate-800/50 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-600"
                                     }`}
                                   >
                                     {hasRole && <Check className="w-2.5 h-2.5 inline mr-1" />}
-                                    {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "Team Lead"}
+                                    {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : r === "PRODUCT_RESEARCHER" ? "Researcher" : "Team Lead"}
                                   </button>
                                 );
                               })}

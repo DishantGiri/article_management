@@ -203,7 +203,7 @@ export async function PATCH(
       data: {
         ...(name ? { name } : {}),
         ...(image !== undefined ? { image } : {}),
-        ...(role ? { role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" } : {}),
+        ...(role ? { role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" } : {}),
         allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,
         ...(resolvedTeamLeadId !== undefined
           ? resolvedTeamLeadId

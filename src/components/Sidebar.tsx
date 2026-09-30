@@ -767,7 +767,7 @@ export default function Sidebar() {
                     <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-700 mb-1 text-left">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Dev: Switch Role</p>
                       <div className="grid grid-cols-2 gap-1">
-                        {(["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "LINKER", "WRITER"] as const).map((r) => (
+                        {(["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "LINKER", "WRITER", "PRODUCT_RESEARCHER"] as const).map((r) => (
                           <button
                             key={r}
                             onClick={async () => {
