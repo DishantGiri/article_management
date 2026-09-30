@@ -1210,7 +1210,9 @@ function ProductsPageContent() {
                         {/* Affiliate */}
                         <td className="px-4 py-3.5">
                           <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {p.affiliateName || "General"}
+                            {p.affiliateName && p.affiliateName.toLowerCase() !== "general"
+                              ? p.affiliateName
+                              : "No Affiliate"}
                           </span>
                         </td>
 

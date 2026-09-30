@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Upload, CheckCircle2, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import { X, Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, Info } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 interface ImportProductModalProps {
@@ -93,7 +93,16 @@ function parseCSV(text: string): Record<string, any>[] {
         obj.productAvailability = val;
       } else if (h === "affiliatenetwork" || h === "affiliate" || h === "network") {
         obj.affiliateName = val;
-      } else if (h === "researchedby" || h === "researcher" || h === "addedby") {
+      } else if (
+        h === "researchedby" ||
+        h === "researcher" ||
+        h === "addedby" ||
+        h === "addedbyname" ||
+        h === "added_by" ||
+        h === "user" ||
+        h === "author" ||
+        h === "creator"
+      ) {
         obj.researchedBy = val;
       } else if (h === "date" || h === "addedat") {
         obj.date = val;
@@ -124,7 +133,13 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<{ success: boolean; importedCount: number; errors: string[] } | null>(null);
+  const [results, setResults] = useState<{
+    success: boolean;
+    importedCount: number;
+    skippedCount?: number;
+    skipped?: string[];
+    errors: string[];
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -178,12 +193,16 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
       setResults({
         success: resData.success,
         importedCount: resData.importedCount,
+        skippedCount: resData.skippedCount || 0,
+        skipped: resData.skipped || [],
         errors: resData.errors || [],
       });
 
-      toast.success(`Imported ${resData.importedCount} products successfully!`);
       if (resData.importedCount > 0) {
+        toast.success(`Imported ${resData.importedCount} new products successfully!${resData.skippedCount ? ` (${resData.skippedCount} duplicates skipped)` : ""}`);
         onSuccess();
+      } else if (resData.skippedCount > 0) {
+        toast.success(`Done: ${resData.skippedCount} products already exist in catalog (duplicates skipped).`);
       }
     } catch (e: any) {
       toast.error(e.message || "Failed to import CSV");
@@ -378,21 +397,42 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
 
           {results && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl flex items-start gap-3 bg-slate-50 border border-slate-100">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-xl flex items-start gap-3 bg-emerald-50/70 border border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900/40">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800">CSV Import Completed</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Successfully imported <span className="font-bold text-slate-700">{results.importedCount}</span> products out of {parsedData.length} records.
+                  <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">Import Completed</h3>
+                  <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-0.5">
+                    Successfully imported <span className="font-bold">{results.importedCount}</span> new product{results.importedCount !== 1 ? "s" : ""}.
+                    {Boolean(results.skippedCount && results.skippedCount > 0) && (
+                      <span className="ml-1 font-semibold text-amber-700 dark:text-amber-400">
+                        ({results.skippedCount} existing duplicate{results.skippedCount !== 1 ? "s" : ""} skipped)
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
+
+              {results.skipped && results.skipped.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                    <Info className="w-4 h-4 text-amber-500" />
+                    Skipped Existing Products ({results.skipped.length})
+                  </h4>
+                  <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-xl p-3 max-h-[140px] overflow-y-auto">
+                    <ul className="list-disc pl-4 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                      {results.skipped.map((msg: string, idx: number) => (
+                        <li key={idx}>{msg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
 
               {results.errors.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-rose-500 flex items-center gap-1">
                     <AlertTriangle className="w-4 h-4" />
-                    Failed Rows / Warnings ({results.errors.length})
+                    Failed Rows ({results.errors.length})
                   </h4>
                   <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-3 max-h-[200px] overflow-y-auto">
                     <ul className="list-disc pl-4 text-xs text-rose-600 space-y-1">

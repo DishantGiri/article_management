@@ -160,6 +160,7 @@ export async function POST(req: NextRequest) {
     }
 
     const importedProducts = [];
+    const skippedDuplicates: string[] = [];
     const errors: string[] = [];
 
     const standardKeys = new Set([
@@ -352,8 +353,10 @@ export async function POST(req: NextRequest) {
           });
 
           if (existingInResearch) {
-            const loc = existingInResearch.site?.name ? `on site "${existingInResearch.site.name}"` : "in research catalog";
-            errors.push(`Row ${rowNum} ("${name}"): Product already exists ${loc} (added by ${existingInResearch.addedBy?.name || "researcher"}).`);
+            const loc = existingInResearch.site?.name && existingInResearch.site.name !== "Product Research"
+              ? `on site "${existingInResearch.site.name}"`
+              : "in research catalog";
+            skippedDuplicates.push(`Row ${rowNum} ("${name}"): Already exists ${loc} (added by ${existingInResearch.addedBy?.name || "researcher"}).`);
             continue;
           }
 
@@ -446,7 +449,7 @@ export async function POST(req: NextRequest) {
           if (existingWithSameName) {
             const addedByName = existingWithSameName.addedBy?.name;
             const conflictMsg = `Already exists on site ${site.name} (added by ${addedByName || "linker"}).`;
-            errors.push(`Row ${rowNum} ("${name}"): ${conflictMsg}`);
+            skippedDuplicates.push(`Row ${rowNum} ("${name}"): ${conflictMsg}`);
             continue;
           }
 
@@ -513,8 +516,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      success: importedProducts.length > 0 || errors.length === 0,
+      success: importedProducts.length > 0 || (errors.length === 0 && skippedDuplicates.length > 0),
       importedCount: importedProducts.length,
+      skippedCount: skippedDuplicates.length,
+      skipped: skippedDuplicates,
       errors,
     });
   } catch (err: any) {

@@ -185,7 +185,7 @@ model Product {
   source        String?     // Affiliate, Competitor, Social Media/Native, Source
 
   siteId        Int
-  targetSites   String?
+  targetSites   String?     @db.Text
   categoryId    Int
   productCategory String?   // Defined category for the product (e.g. Skincare, Supplements)
   trendLink     String?

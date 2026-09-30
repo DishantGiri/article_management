@@ -84,7 +84,7 @@ export async function POST(
         data: {
           productId: product.id,
           addedById: activeUserId,
-          affiliateName: product.affiliateName?.trim() || "General",
+          affiliateName: (product.affiliateName?.trim() && product.affiliateName.trim().toLowerCase() !== "general") ? product.affiliateName.trim() : "No Affiliate",
           affiliateLink: product.previewLink?.trim() || product.trendLink?.trim() || "",
           status: "ISSUE",
           linkerRemarks: formattedRemark,
