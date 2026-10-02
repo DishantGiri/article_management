@@ -205,6 +205,22 @@ export default function DashboardPage() {
   const [tlTab, setTlTab] = useState<"check" | "write">("check");
   const [showCommission, setShowCommission] = useState(false);
   const [showCommissionDetailsModal, setShowCommissionDetailsModal] = useState(false);
+  const [overviewSearch, setOverviewSearch] = useState("");
+
+  const handleOverviewSearchSubmit = (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    if (
+      effectiveRole === "PRODUCT_RESEARCHER" ||
+      effectiveRole === "LINKER" ||
+      effectiveRole === "ADMIN" ||
+      effectiveRole === "SUPER_ADMIN"
+    ) {
+      router.push(`/products?search=${encodeURIComponent(trimmed)}`);
+    } else {
+      router.push(`/articles?search=${encodeURIComponent(trimmed)}`);
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -433,6 +449,18 @@ export default function DashboardPage() {
         notifications={notifications}
         onMarkAllAsRead={handleMarkAllAsRead}
         onNotificationClick={handleNotificationClick}
+        searchQuery={overviewSearch}
+        onSearchChange={setOverviewSearch}
+        onSearchSubmit={handleOverviewSearchSubmit}
+        searchPlaceholder={
+          effectiveRole === "PRODUCT_RESEARCHER"
+            ? "Search products across sites..."
+            : effectiveRole === "LINKER"
+            ? "Search pending links, products..."
+            : effectiveRole === "WRITER"
+            ? "Search article assignments..."
+            : "Search products, articles, links..."
+        }
         extraActions={
           <>
             {/* Individual Unpaid Commission Widget (WRITER, LINKER, TEAM_LEAD) */}
@@ -677,6 +705,8 @@ export default function DashboardPage() {
             <WriterFocusStudio
               data={data}
               currentUserId={currentUserId}
+              globalSearchQuery={overviewSearch}
+              onGlobalSearchChange={setOverviewSearch}
               onStartWriting={handleStartWriting}
               onRefresh={() => fetchDashboardData(false)}
             />
@@ -686,7 +716,13 @@ export default function DashboardPage() {
 
       {/* ─── ROLE: LINKER VIEW ─────────────────────────────────────── */}
       {effectiveRole === "LINKER" && (
-        <LinkerOperationsStudio data={data} router={router} onRefresh={() => fetchDashboardData(false)} />
+        <LinkerOperationsStudio
+          data={data}
+          router={router}
+          globalSearchQuery={overviewSearch}
+          onGlobalSearchChange={setOverviewSearch}
+          onRefresh={() => fetchDashboardData(false)}
+        />
       )}
 
       {/* ─── ROLE: PRODUCT_RESEARCHER VIEW ────────────────────────── */}
@@ -694,6 +730,8 @@ export default function DashboardPage() {
         <ProductResearcherHubStudio
           data={data}
           router={router}
+          globalSearchQuery={overviewSearch}
+          onGlobalSearchChange={setOverviewSearch}
           onRefresh={() => fetchDashboardData(false)}
         />
       )}
@@ -703,6 +741,8 @@ export default function DashboardPage() {
         <WriterFocusStudio
           data={data}
           currentUserId={currentUserId}
+          globalSearchQuery={overviewSearch}
+          onGlobalSearchChange={setOverviewSearch}
           onStartWriting={handleStartWriting}
           onRefresh={() => fetchDashboardData(false)}
         />
@@ -1349,13 +1389,30 @@ function TeamLeadMissionControl({
 function LinkerOperationsStudio({
   data,
   router,
+  globalSearchQuery,
+  onGlobalSearchChange,
   onRefresh,
 }: {
   data: DashboardData;
   router: any;
+  globalSearchQuery?: string;
+  onGlobalSearchChange?: (q: string) => void;
   onRefresh?: () => void;
 }) {
-  const [searchPending, setSearchPending] = useState("");
+  const [searchPending, setSearchPending] = useState(globalSearchQuery || "");
+
+  useEffect(() => {
+    if (globalSearchQuery !== undefined) {
+      setSearchPending(globalSearchQuery);
+    }
+  }, [globalSearchQuery]);
+
+  const handleSearchChange = (val: string) => {
+    setSearchPending(val);
+    if (onGlobalSearchChange) {
+      onGlobalSearchChange(val);
+    }
+  };
   const [selectedSite, setSelectedSite] = useState("ALL");
   const [isAddLinkModalOpen, setIsAddLinkModalOpen] = useState(false);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
@@ -1635,9 +1692,18 @@ function LinkerOperationsStudio({
                 type="text"
                 placeholder="Search"
                 value={searchPending}
-                onChange={(e) => setSearchPending(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full pl-8 pr-8 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
               />
+              {searchPending && (
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="relative">
@@ -1884,13 +1950,30 @@ function LinkerOperationsStudio({
 function ProductResearcherHubStudio({
   data,
   router,
+  globalSearchQuery,
+  onGlobalSearchChange,
   onRefresh,
 }: {
   data: DashboardData;
   router: any;
+  globalSearchQuery?: string;
+  onGlobalSearchChange?: (q: string) => void;
   onRefresh?: () => void;
 }) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(globalSearchQuery || "");
+
+  useEffect(() => {
+    if (globalSearchQuery !== undefined) {
+      setSearchQuery(globalSearchQuery);
+    }
+  }, [globalSearchQuery]);
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    if (onGlobalSearchChange) {
+      onGlobalSearchChange(val);
+    }
+  };
   const [selectedSite, setSelectedSite] = useState("ALL");
   const [activeTab, setActiveTab] = useState<"all" | "my">("all");
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
@@ -1920,9 +2003,11 @@ function ProductResearcherHubStudio({
       const matchesSearch =
         !q ||
         (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.slug && p.slug.toLowerCase().includes(q)) ||
         (p.category?.name && p.category.name.toLowerCase().includes(q)) ||
         (p.productCategory && p.productCategory.toLowerCase().includes(q)) ||
-        (p.site?.name && p.site.name.toLowerCase().includes(q));
+        (p.site?.name && p.site.name.toLowerCase().includes(q)) ||
+        (p.addedBy?.name && p.addedBy.name.toLowerCase().includes(q));
 
       const matchesSite =
         selectedSite === "ALL" || p.site?.name === selectedSite;
@@ -2226,14 +2311,14 @@ function ProductResearcherHubStudio({
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     placeholder="Search product name, category, website..."
                     className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389]"
                   />
                   {searchQuery && (
                     <button
                       type="button"
-                      onClick={() => setSearchQuery("")}
+                      onClick={() => handleSearchChange("")}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -2550,11 +2635,15 @@ function ProductResearcherHubStudio({
 function WriterFocusStudio({
   data,
   currentUserId,
+  globalSearchQuery,
+  onGlobalSearchChange,
   onStartWriting,
   onRefresh,
 }: {
   data: DashboardData;
   currentUserId: number | null;
+  globalSearchQuery?: string;
+  onGlobalSearchChange?: (q: string) => void;
   onStartWriting: (articleId: number) => void;
   onRefresh: () => void;
 }) {
@@ -2797,6 +2886,8 @@ function WriterFocusStudio({
           pendingArticles={data.writerPendingArticles || []}
           completedArticles={data.writerCompletedArticles || []}
           currentUserId={currentUserId}
+          globalSearchQuery={globalSearchQuery}
+          onGlobalSearchChange={onGlobalSearchChange}
           onStartWriting={onStartWriting}
           onRefresh={onRefresh}
         />
@@ -3760,17 +3851,34 @@ function WriterAvailableAssignments({
   pendingArticles,
   completedArticles,
   currentUserId,
+  globalSearchQuery,
+  onGlobalSearchChange,
   onStartWriting,
   onRefresh,
 }: {
   pendingArticles: any[];
   completedArticles: any[];
   currentUserId: number | null;
+  globalSearchQuery?: string;
+  onGlobalSearchChange?: (q: string) => void;
   onStartWriting: (articleId: number) => void;
   onRefresh: () => void;
 }) {
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(globalSearchQuery || "");
+
+  useEffect(() => {
+    if (globalSearchQuery !== undefined) {
+      setSearchQuery(globalSearchQuery);
+    }
+  }, [globalSearchQuery]);
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    if (onGlobalSearchChange) {
+      onGlobalSearchChange(val);
+    }
+  };
   const [siteFilter, setSiteFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
 
@@ -3841,12 +3949,12 @@ function WriterAvailableAssignments({
                 type="text"
                 placeholder="Search by name, site, category..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-8 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#6D8196] text-slate-800 dark:text-slate-200"
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => handleSearchChange("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 >
                   <X className="w-3.5 h-3.5" />

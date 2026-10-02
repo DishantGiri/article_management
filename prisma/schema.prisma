@@ -84,8 +84,9 @@ model User {
   // Site access for writers (assigned by Admin)
   siteAccess      SiteAccess[]
 
-  // Products added by this linker
+  // Products added/updated by this user
   productsAdded   Product[]    @relation("ProductAddedBy")
+  productsUpdated Product[]    @relation("ProductUpdatedBy")
 
   // Articles written
   articles        Article[]    @relation("ArticleWriter")
@@ -195,10 +196,13 @@ model Product {
   remarks       String?     @db.Text
   addedById     Int
   addedAt       DateTime    @default(now())
+  updatedById   Int?
+  updatedAt     DateTime?   @updatedAt
 
   site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   addedBy    User     @relation("ProductAddedBy", fields: [addedById], references: [id])
+  updatedBy  User?    @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
 
   article         Article?
   linkLogs        LinkLog[]

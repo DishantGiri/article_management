@@ -190,13 +190,31 @@ export default function Sidebar() {
     };
   }, [isMobileOpen]);
 
+  const [profileOverride, setProfileOverride] = useState<{ name?: string; image?: string | null }>({});
+
+  useEffect(() => {
+    const handleProfileUpdate = (e: any) => {
+      if (e.detail) {
+        setProfileOverride((prev) => ({
+          ...prev,
+          ...(e.detail.name !== undefined ? { name: e.detail.name } : {}),
+          ...(e.detail.image !== undefined ? { image: e.detail.image } : {}),
+        }));
+      }
+    };
+    window.addEventListener("user-profile-updated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("user-profile-updated", handleProfileUpdate);
+    };
+  }, []);
+
   const currentUser = session?.user
     ? {
       id: session.user.id,
-      name: session.user.name || "User",
+      name: profileOverride.name ?? session.user.name ?? "User",
       email: session.user.email || "",
       role: session.user.role as Role | null,
-      image: session.user.image || null,
+      image: profileOverride.image !== undefined ? profileOverride.image : (session.user.image || null),
     }
     : null;
 

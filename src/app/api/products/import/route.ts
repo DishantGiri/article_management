@@ -505,7 +505,7 @@ export async function POST(req: NextRequest) {
 
           if (existingWithSameName) {
             const addedByName = existingWithSameName.addedBy?.name;
-            const conflictMsg = `Already exists on site ${site.name} (added by ${addedByName || "linker"}).`;
+            const conflictMsg = `Already exists on site ${site.name} (added by ${addedByName || "user"}).`;
             skippedDuplicates.push(`Row ${rowNum} ("${name}"): ${conflictMsg}`);
             continue;
           }

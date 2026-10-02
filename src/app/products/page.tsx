@@ -49,7 +49,9 @@ interface Product {
   addedAt: string;
   site: { id?: number; name: string; url?: string; allowCountrySpecific?: boolean };
   category: { id?: number; name: string };
-  addedBy: { id?: number; name: string };
+  addedBy: { id?: number; name: string; role?: string };
+  updatedBy?: { id?: number; name: string; role?: string } | null;
+  updatedAt?: string | null;
   article?: { id: number; status: string; country?: string | null; writer?: { id?: number; name: string }; articleLink?: string | null };
   linkLogs?: any[];
 }
@@ -381,7 +383,16 @@ function ProductsPageContent() {
     };
   }, [session?.user?.id]);
 
-  const uniqueSites = Array.from(new Set(products.map((p) => p.site?.name).filter(Boolean))) as string[];
+  const uniqueSites = Array.from(
+    new Set([
+      ...products.map((p) => p.site?.name),
+      ...products.flatMap((p) =>
+        p.targetSites
+          ? p.targetSites.split(/[,|]/).map((s: string) => s.trim())
+          : []
+      ),
+    ].filter(Boolean))
+  ) as string[];
   const uniqueUsers = Array.from(
     new Set([
       ...products.map((p) => p.addedBy?.name),
@@ -430,7 +441,8 @@ function ProductsPageContent() {
       !siteFilter ||
       p.site?.id?.toString() === siteFilter ||
       p.siteId?.toString() === siteFilter ||
-      (p.site?.name && p.site.name.toLowerCase() === siteFilter.toLowerCase());
+      (p.site?.name && p.site.name.toLowerCase() === siteFilter.toLowerCase()) ||
+      (p.targetSites && p.targetSites.toLowerCase().includes(siteFilter.toLowerCase()));
 
     const selectedCategoryObj = categories.find(
       (c) => String(c.id) === categoryFilter || c.name.toLowerCase() === categoryFilter.toLowerCase()
@@ -619,6 +631,8 @@ function ProductsPageContent() {
           productCategory: existing.productCategory || p.productCategory,
           category: existing.category || p.category,
           addedBy: existing.addedBy || p.addedBy,
+          updatedBy: (existing.site?.name === "Product Research" && p.updatedBy) ? p.updatedBy : (existing.updatedBy || p.updatedBy),
+          updatedAt: existing.updatedAt || p.updatedAt,
         });
       }
     }
@@ -664,6 +678,8 @@ function ProductsPageContent() {
       site: baseProduct.site || a.product.site,
       category: baseProduct.category || a.product.category,
       addedBy: baseProduct.addedBy || a.product.addedBy,
+      updatedBy: baseProduct.updatedBy || a.product.updatedBy,
+      updatedAt: baseProduct.updatedAt || a.product.updatedAt,
       linkLogs: (baseProduct.linkLogs && baseProduct.linkLogs.length > 0)
         ? baseProduct.linkLogs
         : (a.product.linkLogs || []),
@@ -792,6 +808,25 @@ function ProductsPageContent() {
         notifications={notifications}
         onMarkAllAsRead={handleMarkAllAsRead}
         onNotificationClick={handleNotificationClick}
+        searchQuery={search}
+        onSearchChange={(val) => {
+          setSearch(val);
+          setIsExact(false);
+          setCurrentPage(1);
+        }}
+        onSearchSubmit={(val) => {
+          setSearch(val);
+          setIsExact(false);
+          setCurrentPage(1);
+          const params = new URLSearchParams(searchParams.toString());
+          if (val) {
+            params.set("search", val);
+          } else {
+            params.delete("search");
+          }
+          router.replace(`/products?${params.toString()}`);
+        }}
+        searchPlaceholder="Search products by name, category, site..."
       />
 
       {/* ─── PRODUCT RESEARCHER READ-ONLY NOTICE ────────────────── */}
@@ -1178,6 +1213,15 @@ function ProductsPageContent() {
                                 {p.source}
                               </span>
                             )}
+                            {p.targetSites && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 shadow-2xs"
+                                title={`Researched Target Sites: ${p.targetSites}`}
+                              >
+                                <Globe className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                                <span className="truncate max-w-[220px]">Targets: {p.targetSites}</span>
+                              </span>
+                            )}
                             {isPublishedWithoutLinks && (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
@@ -1256,7 +1300,20 @@ function ProductsPageContent() {
 
                         {/* Added By (fades on hover) */}
                         <td className="px-4 py-3.5 transition-opacity duration-200 group-hover:opacity-0">
-                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{p.addedBy?.name || "-"}</span>
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300 block">{p.addedBy?.name || "-"}</span>
+                          {p.addedBy?.role && (
+                            <span className="text-[10px] text-slate-400 block">({p.addedBy.role.replace(/_/g, " ")})</span>
+                          )}
+                          {p.updatedBy?.name && (
+                            <span
+                              className="text-[9px] text-blue-600 dark:text-blue-400 block mt-0.5"
+                              title={`${p.updatedBy.name !== p.addedBy?.name ? "Added to site by" : "Modified by"} ${p.updatedBy.name}${p.updatedBy.role ? ` (${p.updatedBy.role.replace(/_/g, " ")})` : ""}`}
+                            >
+                              {p.updatedBy.name !== p.addedBy?.name
+                                ? `Added to site: ${p.updatedBy.name}`
+                                : `Mod: ${p.updatedBy.name}`}
+                            </span>
+                          )}
                         </td>
 
                         {/* Links (fades on hover) */}

@@ -663,12 +663,71 @@ export async function GET(req: NextRequest) {
         }),
       ]);
 
-      const siteIds = siteGroup.map((s) => s.siteId).filter(Boolean);
-      const sitesList = await prisma.site.findMany({
-        where: { id: { in: siteIds } },
+      const allPublishingSites = await prisma.site.findMany({
+        where: { name: { not: "Product Research" } },
         select: { id: true, name: true },
       });
-      const siteNameMap = new Map(sitesList.map((s) => [s.id, s.name]));
+
+      const liveSiteProductCounts = await prisma.product.groupBy({
+        by: ["siteId"],
+        where: {
+          site: { name: { not: "Product Research" } },
+        },
+        _count: { id: true },
+      });
+
+      const siteCountMap = new Map<string, number>();
+      const siteIdToNameMap = new Map<number, string>();
+      for (const s of allPublishingSites) {
+        siteCountMap.set(s.name.toLowerCase(), 0);
+        siteIdToNameMap.set(s.id, s.name);
+      }
+
+      for (const group of liveSiteProductCounts) {
+        const sName = siteIdToNameMap.get(group.siteId);
+        if (sName) {
+          siteCountMap.set(sName.toLowerCase(), (siteCountMap.get(sName.toLowerCase()) || 0) + group._count.id);
+        }
+      }
+
+      const researchedProductsWithTargets = await prisma.product.findMany({
+        where: {
+          targetSites: { not: null },
+        },
+        select: {
+          id: true,
+          targetSites: true,
+          site: { select: { name: true } },
+        },
+      });
+
+      for (const p of researchedProductsWithTargets) {
+        if (!p.targetSites) continue;
+        const targets = p.targetSites
+          .toLowerCase()
+          .split(/[,|]/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+
+        for (const t of targets) {
+          for (const s of allPublishingSites) {
+            const sLower = s.name.toLowerCase();
+            if (sLower === t || sLower.includes(t) || t.includes(sLower)) {
+              if (p.site?.name.toLowerCase() !== sLower) {
+                siteCountMap.set(sLower, (siteCountMap.get(sLower) || 0) + 1);
+              }
+            }
+          }
+        }
+      }
+
+      const sitesDistribution = allPublishingSites
+        .map((s) => ({
+          siteName: s.name,
+          count: siteCountMap.get(s.name.toLowerCase()) || 0,
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
 
       const catIds = catGroup.map((c) => c.categoryId).filter(Boolean);
       const catsList = await prisma.category.findMany({
@@ -681,10 +740,7 @@ export async function GET(req: NextRequest) {
         myProductsCount,
         todaysMyProductsCount,
         recentResearchedProducts: recentResearched,
-        sitesDistribution: siteGroup.map((s) => ({
-          siteName: siteNameMap.get(s.siteId) || `Site #${s.siteId}`,
-          count: s._count.id,
-        })),
+        sitesDistribution,
         categoryDistribution: catGroup.map((c) => ({
           categoryName: catNameMap.get(c.categoryId) || `Category #${c.categoryId}`,
           count: c._count.id,

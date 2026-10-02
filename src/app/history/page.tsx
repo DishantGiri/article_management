@@ -39,7 +39,8 @@ interface HistoryRecord {
   | "ARTICLE_UPDATE"
   | "LINK_LOG"
   | "LINK_ADDED"
-  | "LINK_FLAGGED";
+  | "LINK_FLAGGED"
+  | "PRODUCT_ADDED_TO_SITE";
   actionLabel: string;
   updatedById: number;
   productName: string;
@@ -548,6 +549,11 @@ export default function HistoryPage() {
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 whitespace-nowrap">
                             <PlayCircle className="w-3 h-3 text-blue-500" />
                             Started Writing
+                          </span>
+                        ) : record.actionType === "PRODUCT_ADDED_TO_SITE" ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-700/80 shadow-2xs whitespace-nowrap">
+                            <Globe className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                            Added to Site
                           </span>
                         ) : record.actionType === "LINK_ADDED" ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-700/80 shadow-2xs whitespace-nowrap">

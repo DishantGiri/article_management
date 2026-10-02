@@ -62,7 +62,7 @@ const PRESET_AVATARS = [
 ];
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<"profile" | "appearance" | "notifications" | "workspace" | "security" | "backup">("profile");
 
@@ -256,13 +256,32 @@ export default function SettingsPage() {
       if (res.ok) {
         const updatedUser = await res.json().catch(() => null);
         const savedName = updatedUser?.name || name.trim();
-        const savedImage = updatedUser?.image || imageUrl.trim();
+        const savedImage = updatedUser?.image !== undefined ? (updatedUser.image || "") : imageUrl.trim();
         setName(savedName);
         setImageUrl(savedImage);
         setInitialProfile({
           name: savedName,
           image: savedImage,
         });
+
+        // 1. Dispatch custom event for instantaneous UI update across Sidebar and TopHeader
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("user-profile-updated", {
+              detail: { name: savedName, image: savedImage || null },
+            })
+          );
+        }
+
+        // 2. Trigger NextAuth session refresh
+        try {
+          if (update) {
+            await update({ name: savedName, image: savedImage || null });
+          }
+        } catch (updateErr) {
+          console.error("Session update error:", updateErr);
+        }
+
         toast.success("Profile changes saved successfully!");
       } else {
         const data = await res.json();

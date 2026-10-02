@@ -21,6 +21,7 @@ export interface AffiliateMultiSelectProps {
   portal?: boolean;
   compact?: boolean;
   minWidth?: number;
+  error?: boolean;
   onAddCustomAffiliate?: (name: string) => Promise<void> | void;
 }
 
@@ -37,6 +38,7 @@ export default function AffiliateMultiSelect({
   portal = true,
   compact = false,
   minWidth,
+  error = false,
   onAddCustomAffiliate,
 }: AffiliateMultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -416,10 +418,11 @@ export default function AffiliateMultiSelect({
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={
-          triggerClassName ||
-          (compact
-            ? "w-full px-2 py-1.5 text-xs text-left bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-lg flex items-center justify-between gap-1 transition focus:outline-none"
-            : "w-full px-3.5 py-2.5 text-xs text-left bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl flex items-center justify-between gap-2 transition focus:outline-none shadow-xs")
+          triggerClassName
+            ? `${triggerClassName} ${error ? "!border-rose-500 !bg-rose-50/20" : ""}`
+            : compact
+            ? `w-full px-2 py-1.5 text-xs text-left ${error ? "bg-rose-50/20 border-rose-500 text-rose-900" : "bg-slate-50 dark:bg-[#131d31] border-slate-200 dark:border-slate-800 hover:border-blue-500 text-slate-800 dark:text-slate-200"} border rounded-lg flex items-center justify-between gap-1 transition focus:outline-none`
+            : `w-full px-3.5 py-2.5 text-xs text-left ${error ? "bg-rose-50/20 border-rose-500 text-rose-900" : "bg-white dark:bg-[#0b1120] border-slate-200 dark:border-slate-800 hover:border-blue-500 text-slate-800 dark:text-slate-200"} border rounded-xl flex items-center justify-between gap-2 transition focus:outline-none shadow-xs`
         }
       >
         <div className="flex-1 flex flex-wrap items-center gap-1.5 overflow-hidden">

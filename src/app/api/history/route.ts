@@ -97,6 +97,9 @@ export async function GET() {
       } else if (h.oldStatus === "PENDING" && h.newStatus === "IN_PROGRESS") {
         actionType = "WRITING_STARTED";
         actionLabel = "Started Writing";
+      } else if (h.notes?.toLowerCase().includes("added to site")) {
+        actionType = "PRODUCT_ADDED_TO_SITE";
+        actionLabel = "Added to Site";
       } else if (h.oldLink !== h.newLink && h.newLink) {
         actionType = "LINK_UPDATED";
         actionLabel = "Doc Link Updated";

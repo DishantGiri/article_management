@@ -54,6 +54,10 @@ interface ProductItem {
   addedById: number;
   addedByRole: string;
   addedAt: string;
+  updatedByName?: string | null;
+  updatedById?: number | null;
+  updatedByRole?: string | null;
+  updatedAt?: string | null;
   previewLink: string | null;
   trendLink: string | null;
 }
@@ -812,7 +816,7 @@ export default function AffiliateSettingsTab() {
                     {/* Linkers Breakdown */}
                     <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/60">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                        Added By Linkers:
+                        Added By:
                       </span>
                       {aff.linkers.length === 0 ? (
                         <span className="text-[10px] text-slate-400 italic">No products added yet</span>
@@ -1049,7 +1053,8 @@ export default function AffiliateSettingsTab() {
                 {inspectModal.products
                   .filter((p) =>
                     p.name.toLowerCase().includes(inspectSearch.toLowerCase()) ||
-                    p.addedByName.toLowerCase().includes(inspectSearch.toLowerCase())
+                    p.addedByName.toLowerCase().includes(inspectSearch.toLowerCase()) ||
+                    (p.updatedByName && p.updatedByName.toLowerCase().includes(inspectSearch.toLowerCase()))
                   )
                   .map((p) => (
                     <div key={p.id} className="py-2.5 flex items-center justify-between gap-3">
@@ -1057,10 +1062,26 @@ export default function AffiliateSettingsTab() {
                         <span className="font-bold text-slate-800 dark:text-slate-200 block">
                           {p.name}
                         </span>
-                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-slate-400">
                           <span>Site: {p.siteName}</span>
                           <span>•</span>
-                          <span>Added by: <strong className="text-slate-600 dark:text-slate-300">{p.addedByName}</strong></span>
+                          <span>
+                            Added by: <strong className="text-slate-600 dark:text-slate-300">{p.addedByName}</strong>
+                            <span className="text-[10px] text-slate-400 ml-1">
+                              ({p.addedByRole ? p.addedByRole.replace(/_/g, " ") : "USER"})
+                            </span>
+                          </span>
+                          {p.updatedByName && (
+                            <>
+                              <span>•</span>
+                              <span>
+                                Modified by: <strong className="text-slate-600 dark:text-slate-300">{p.updatedByName}</strong>
+                                <span className="text-[10px] text-slate-400 ml-1">
+                                  ({p.updatedByRole ? p.updatedByRole.replace(/_/g, " ") : "USER"})
+                                </span>
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
 

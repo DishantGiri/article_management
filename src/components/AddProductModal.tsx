@@ -290,6 +290,20 @@ export default function AddProductModal({
       next[index] = updated;
       return next;
     });
+
+    // Clear inline cell error on change
+    setCellErrors((prev) => {
+      if (!prev[index] || !prev[index][field as keyof typeof prev[number]]) return prev;
+      const copy = { ...prev };
+      const rowErr = { ...copy[index] };
+      delete (rowErr as any)[field];
+      if (Object.keys(rowErr).length === 0) {
+        delete copy[index];
+      } else {
+        copy[index] = rowErr;
+      }
+      return copy;
+    });
   };
 
   const addSpreadsheetRow = () => {
@@ -318,6 +332,7 @@ export default function AddProductModal({
       }
       return next;
     });
+    setCellErrors({});
   };
 
   const applyBatchToAll = () => {
@@ -389,6 +404,7 @@ export default function AddProductModal({
   const [singleCheckStatus, setSingleCheckStatus] = useState<{
     checking: boolean;
     exists?: boolean;
+    isUncertain?: boolean;
     message?: string;
     conflicts?: Array<{ siteName: string; addedBy: string; country?: string | null }>;
   }>({ checking: false });
@@ -399,12 +415,28 @@ export default function AddProductModal({
       {
         checking?: boolean;
         exists?: boolean;
+        isUncertain?: boolean;
         message?: string;
         conflicts?: Array<{ siteName: string; addedBy: string; country?: string | null }>;
       }
     >
   >({});
   const [isBulkChecking, setIsBulkChecking] = useState(false);
+
+  // Inline cell errors for spreadsheet rows (no toasts for missing fields)
+  const [cellErrors, setCellErrors] = useState<
+    Record<
+      number,
+      {
+        name?: string;
+        category?: string;
+        affiliateName?: string;
+        trendLevel?: string;
+        trendLink?: string;
+        previewLink?: string;
+      }
+    >
+  >({});
 
   // Inline creation states
   const [showAddCat, setShowAddCat] = useState(false);
@@ -494,6 +526,7 @@ export default function AddProductModal({
       setBulkCheckResults({});              // ← clear stale duplicate warnings
       setSingleCheckStatus({ checking: false }); // ← clear stale check status
       setFieldErrors({});                   // ← clear stale field errors
+      setCellErrors({});                    // ← clear stale cell errors
       setShowAddCat(false);
       setShowAddSite(false);
       setShowCustomAffiliate(false);
@@ -580,6 +613,7 @@ export default function AddProductModal({
             setSingleCheckStatus({
               checking: false,
               exists: result.exists,
+              isUncertain: result.isUncertain,
               message: result.message,
               conflicts: result.conflicts,
             });
@@ -661,12 +695,14 @@ export default function AddProductModal({
             newResults[idx] = {
               checking: false,
               exists: true,
+              isUncertain: false,
               message: internalDuplicates[idx].message,
             };
           } else if (dbResults[String(idx)]) {
             newResults[idx] = {
               checking: false,
               exists: dbResults[String(idx)].exists,
+              isUncertain: dbResults[String(idx)].isUncertain,
               message: dbResults[String(idx)].message,
               conflicts: dbResults[String(idx)].conflicts,
             };
@@ -709,6 +745,13 @@ export default function AddProductModal({
           return next;
         });
       }
+    } else {
+      setFieldErrors((prevErrors) => {
+        if (!prevErrors[field]) return prevErrors;
+        const next = { ...prevErrors };
+        delete next[field];
+        return next;
+      });
     }
   }, [isSlugManuallyEdited]);
 
@@ -732,64 +775,83 @@ export default function AddProductModal({
         return;
       }
 
-      const hasConflict = Object.values(bulkCheckResults).some((r) => r.exists);
-      if (hasConflict) {
-        const conflictCount = Object.values(bulkCheckResults).filter((r) => r.exists).length;
-        toast(`Warning: ${conflictCount} product(s) may already exist on target sites. Proceeding anyway — the server will confirm.`, {
+      // 1. Block exact duplicate rows!
+      const hasExactDuplicate = spreadsheetRows.some(
+        (r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.exists
+      );
+      if (hasExactDuplicate) {
+        // Block the add until the duplicate is removed or renamed
+        return;
+      }
+
+      // 2. A "may already exist" warning is used only for uncertain matches, and then the add can continue.
+      const uncertainCount = spreadsheetRows.filter(
+        (r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.isUncertain
+      ).length;
+      if (uncertainCount > 0) {
+        toast(`Warning: ${uncertainCount} product(s) may already exist on target sites. Proceeding anyway — the server will confirm.`, {
           icon: undefined,
           style: { background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" },
           duration: 4000,
         });
-        // Do not return — let the server-side check handle the final decision
       }
 
-      for (let i = 0; i < validRows.length; i++) {
-        const r = validRows[i];
-        const rowNum = i + 1;
-        if (!r.name.trim()) {
-          const msg = `Row #${rowNum}: Product Name is compulsory.`;
-          setError(msg);
-          toast.error(msg);
-          return;
+      // 3. Show missing-field errors inline on the cells instead of as separate toasts
+      const newCellErrors: Record<
+        number,
+        {
+          name?: string;
+          category?: string;
+          affiliateName?: string;
+          trendLevel?: string;
+          trendLink?: string;
+          previewLink?: string;
         }
+      > = {};
+
+      let hasFieldErrors = false;
+
+      validRows.forEach((r) => {
+        const originalIdx = spreadsheetRows.indexOf(r);
+        // If row is a duplicate, do not validate missing fields (only show duplicate notification)
+        if (bulkCheckResults[originalIdx]?.exists) return;
+
+        const rowErr: Record<string, string> = {};
         if (r.name.trim().length < 2) {
-          const msg = validRows.length === 1
-            ? "Product name must be at least 2 characters."
-            : `Row #${rowNum} ("${r.name.trim()}"): Product name must be at least 2 characters.`;
-          setError(msg);
-          toast.error(msg);
-          return;
+          rowErr.name = "Min 2 characters required";
+          hasFieldErrors = true;
         }
         if (!r.category.trim()) {
-          const msg = `Row #${rowNum} ("${r.name}"): Category is compulsory.`;
-          setError(msg);
-          toast.error(msg);
-          return;
+          rowErr.category = "Category is compulsory";
+          hasFieldErrors = true;
         }
         if (!r.affiliateName.trim()) {
-          const msg = `Row #${rowNum} ("${r.name}"): Affiliate Network is compulsory (choose at least one or 'No Affiliate').`;
-          setError(msg);
-          toast.error(msg);
-          return;
+          rowErr.affiliateName = "Affiliate is compulsory";
+          hasFieldErrors = true;
         }
         if (!r.trendLevel || !r.trendLevel.trim()) {
-          const msg = `Row #${rowNum} ("${r.name}"): Trend Level is compulsory.`;
-          setError(msg);
-          toast.error(msg);
-          return;
+          rowErr.trendLevel = "Trend Level is compulsory";
+          hasFieldErrors = true;
         }
         if (r.trendLink.trim() && !isValidUrl(r.trendLink)) {
-          const msg = `Row #${rowNum} ("${r.name}"): Trend Link must start with http:// or https:// and be a valid URL.`;
-          setError(msg);
-          toast.error(msg);
-          return;
+          rowErr.trendLink = "Must be a valid URL starting with http:// or https://";
+          hasFieldErrors = true;
         }
         if (r.previewLink.trim() && !isValidUrl(r.previewLink)) {
-          const msg = `Row #${rowNum} ("${r.name}"): Preview Link must start with http:// or https:// and be a valid URL.`;
-          setError(msg);
-          toast.error(msg);
-          return;
+          rowErr.previewLink = "Must be a valid URL starting with http:// or https://";
+          hasFieldErrors = true;
         }
+
+        if (Object.keys(rowErr).length > 0) {
+          newCellErrors[originalIdx] = rowErr;
+        }
+      });
+
+      setCellErrors(newCellErrors);
+
+      if (hasFieldErrors) {
+        // Inline errors on cells shown directly; no separate toasts
+        return;
       }
 
       setSubmitting(true);
@@ -815,7 +877,13 @@ export default function AddProductModal({
             })),
             categoryIds: form.categoryIds,
             excludedSiteIds,
-            singleSiteId: distributeToAllSites ? null : (selectedSingleSiteId || (activeSites[0]?.id ?? null)),
+            targetSiteIds: activeSites.map((s: any) => s.id),
+            targetSiteNames: activeSites.map((s: any) => s.name),
+            singleSiteId: isProductResearcherRole
+              ? null
+              : distributeToAllSites
+              ? null
+              : (selectedSingleSiteId || (activeSites[0]?.id ?? null)),
             distributeToAllSites,
             addedById: session?.user?.id || 1,
             isProductResearch: isProductResearcherRole,
@@ -841,53 +909,45 @@ export default function AddProductModal({
     }
 
     // Single mode submission
-    if (!form.name.trim()) {
-      setError("Product Name is compulsory.");
-      toast.error("Product Name is compulsory.");
-      return;
-    }
-    if (form.name.trim().length < 2) {
-      setError("Product name must be at least 2 characters.");
-      toast.error("Product name must be at least 2 characters.");
-      return;
-    }
+    // 1. Block exact duplicate
     if (singleCheckStatus.exists) {
+      return;
+    }
+
+    // 2. A "may already exist" warning is used only for uncertain matches, and then the add can continue.
+    if (singleCheckStatus.isUncertain) {
       toast(`Warning: ${singleCheckStatus.message}. Proceeding — the server will confirm.`, {
         style: { background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" },
         duration: 4000,
       });
-      // Don't return — let the server do final validation
+    }
+
+    const errors: Record<string, string> = {};
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      errors.name = !form.name.trim() ? "Product Name is compulsory." : "Product name must be at least 2 characters.";
     }
     if (!form.category.trim()) {
-      setError("Category is compulsory.");
-      toast.error("Category is compulsory.");
-      return;
+      errors.category = "Category is compulsory.";
     }
     const finalAffiliate = form.affiliateName.trim();
     if (!finalAffiliate) {
-      setError("Affiliate Network is compulsory (choose at least one or 'No Affiliate').");
-      toast.error("Affiliate Network is compulsory.");
-      return;
+      errors.affiliateName = "Affiliate Network is compulsory.";
     }
     if (!form.trendLevel || !form.trendLevel.trim()) {
-      setError("Trend Level is compulsory.");
-      toast.error("Trend Level is compulsory.");
-      return;
+      errors.trendLevel = "Trend Level is compulsory.";
     }
     if (form.trendLink.trim() && !isValidUrl(form.trendLink)) {
-      setError("Please enter a valid Trend Link URL (must start with http:// or https://)");
-      toast.error("Invalid Trend Link URL.");
-      return;
+      errors.trendLink = "Trend Link must start with http:// or https:// and be a valid URL.";
     }
     if (form.previewLink.trim() && !isValidUrl(form.previewLink)) {
-      setError("Please enter a valid Preview Link URL (must start with http:// or https://)");
-      toast.error("Invalid Preview Link URL.");
+      errors.previewLink = "Preview Link must start with http:// or https:// and be a valid URL.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
-    if (Object.keys(fieldErrors).length > 0) {
-      setError("Please fix the link validation errors before submitting.");
-      return;
-    }
+
     setSubmitting(true);
     setError("");
 
@@ -901,7 +961,13 @@ export default function AddProductModal({
           country: form.country?.trim() || null,
           categoryIds: form.categoryIds,
           excludedSiteIds,
-          singleSiteId: distributeToAllSites ? null : (selectedSingleSiteId || (activeSites[0]?.id ?? null)),
+          targetSiteIds: activeSites.map((s: any) => s.id),
+          targetSiteNames: activeSites.map((s: any) => s.name),
+          singleSiteId: isProductResearcherRole
+            ? null
+            : distributeToAllSites
+            ? null
+            : (selectedSingleSiteId || (activeSites[0]?.id ?? null)),
           distributeToAllSites,
           isNative: Boolean(form.isNative),
           productCategory: form.category.trim() || null,
@@ -1508,202 +1574,257 @@ export default function AddProductModal({
                   {/* 3. The Google Sheets Style Table */}
                   <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-[#0b1120] flex-1 flex flex-col min-h-0">
                     <div className="overflow-x-auto max-h-[50vh] overflow-y-auto flex-1">
-                      <table className="w-full text-left border-collapse table-fixed min-w-[1150px]">
+                      <table className="w-full text-left border-collapse table-fixed min-w-[1300px]">
                         <thead className="bg-slate-100 dark:bg-[#162033] sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                           <tr>
                             <th className="w-10 py-2.5 px-2 text-center border-r border-slate-200 dark:border-slate-800/80">#</th>
-                            <th className="w-[16%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Product Name <span className="text-rose-500">*</span></th>
-                            <th className="w-[11%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Slug <span className="text-slate-400 dark:text-slate-500 text-[9px] font-normal lowercase">(auto)</span></th>
-                            <th className="w-[10%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Category <span className="text-rose-500">*</span></th>
-                            <th className="w-[10%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Source</th>
-                            <th className="w-[12%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Affiliate Network <span className="text-rose-500">*</span></th>
-                            <th className="w-[8%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend <span className="text-rose-500">*</span></th>
-                            <th className="w-16 py-2.5 px-2 text-center border-r border-slate-200 dark:border-slate-800/80">Native</th>
-                            <th className="w-[11%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend Link</th>
-                            <th className="w-[11%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Preview Link <span className="text-slate-400 font-normal text-[9px] lowercase">(optional)</span></th>
-                            <th className="w-[8%] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Notes</th>
+                            <th className="w-[22%] min-w-[250px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Product Name <span className="text-rose-500">*</span></th>
+                            <th className="w-[10%] min-w-[110px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Slug <span className="text-slate-400 dark:text-slate-500 text-[9px] font-normal lowercase">(auto)</span></th>
+                            <th className="w-[12%] min-w-[140px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Category <span className="text-rose-500">*</span></th>
+                            <th className="w-[10%] min-w-[110px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Source</th>
+                            <th className="w-[14%] min-w-[150px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Affiliate Network <span className="text-rose-500">*</span></th>
+                            <th className="w-[8%] min-w-[100px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend <span className="text-rose-500">*</span></th>
+                            <th className="w-14 py-2.5 px-2 text-center border-r border-slate-200 dark:border-slate-800/80">Native</th>
+                            <th className="w-[10%] min-w-[110px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Trend Link</th>
+                            <th className="w-[10%] min-w-[110px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Preview Link <span className="text-slate-400 font-normal text-[9px] lowercase">(optional)</span></th>
+                            <th className="w-[8%] min-w-[90px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Notes</th>
                             <th className="w-10 py-2.5 px-1 text-center"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-xs">
-                          {spreadsheetRows.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group">
-                              <td className="py-1 px-2 text-center text-slate-400 dark:text-slate-500 font-bold bg-slate-50 dark:bg-slate-900/40 border-r border-slate-200 dark:border-slate-800/60">
-                                {idx + 1}
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
-                                {(() => {
-                                  const rowResult = bulkCheckResults[idx];
-                                  return (
-                                    <>
-                                      <div className="relative">
-                                        <input
-                                          type="text"
-                                          value={row.name}
-                                          onChange={(e) => updateSpreadsheetRow(idx, "name", e.target.value)}
-                                          placeholder={`Product name *`}
-                                          className={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg focus:outline-none transition-colors ${row.name.trim().length > 0 && row.name.trim().length < 2
-                                              ? "border border-rose-400 bg-rose-50/40 text-rose-900 focus:border-rose-500 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-200"
-                                              : rowResult?.exists
-                                                ? "border border-rose-500 bg-rose-50/40 text-rose-900 focus:border-rose-600 dark:bg-rose-950/30 dark:border-rose-700 dark:text-rose-200"
-                                                : rowResult?.exists === false && row.name.trim().length >= 2
-                                                  ? "border border-emerald-400/80 bg-emerald-50/20 text-emerald-900 focus:border-emerald-500 dark:bg-emerald-950/20 dark:border-emerald-700/60 dark:text-emerald-200"
-                                                  : "text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
-                                            }`}
-                                        />
-                                      </div>
-                                      {row.name.trim().length > 0 && row.name.trim().length < 2 ? (
-                                        <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5">
-                                          Min 2 characters
-                                        </p>
-                                      ) : isBulkChecking && !rowResult && row.name.trim().length >= 2 ? (
-                                        <p className="text-[10px] text-blue-500 font-medium mt-0.5 px-0.5 animate-pulse">
-                                          Checking database...
-                                        </p>
-                                      ) : rowResult?.exists ? (
-                                        <p
-                                          className="text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5 px-0.5 flex items-center gap-1 leading-tight animate-fadeIn"
-                                          title={rowResult.message}
-                                        >
-                                          <AlertCircle className="w-3 h-3 shrink-0" />
-                                          <span className="truncate">{rowResult.message}</span>
-                                        </p>
-                                      ) : rowResult?.exists === false && row.name.trim().length >= 2 ? (
-                                        <p className="text-[10px] font-bold text-zinc-900 dark:text-zinc-100 mt-0.5 px-0.5 flex items-center gap-1 leading-tight animate-fadeIn">
-                                          <Check className="w-3 h-3 shrink-0" />
-                                          <span>Available</span>
-                                        </p>
-                                      ) : null}
-                                    </>
-                                  );
-                                })()}
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
-                                <input
-                                  type="text"
-                                  value={row.slug}
-                                  onChange={(e) => updateSpreadsheetRow(idx, "slug", e.target.value)}
-                                  placeholder="auto-slug"
-                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238] rounded-lg focus:outline-none"
-                                />
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[140px]">
-                                <CustomSelect
-                                  value={row.category}
-                                  onChange={(val) => updateSpreadsheetRow(idx, "category", val)}
-                                  placeholder="Category *"
-                                  searchable={true}
-                                  searchPlaceholder="Search category..."
-                                  portal={true}
-                                  className="w-full"
-                                  triggerClassName="w-full px-2 py-1.5 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
-                                  options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
-                                />
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[130px]">
-                                <CustomSelect
-                                  value={row.source || ""}
-                                  onChange={(val) => updateSpreadsheetRow(idx, "source", val)}
-                                  placeholder="Source..."
-                                  portal={true}
-                                  minWidth={130}
-                                  className="w-full"
-                                  triggerClassName="w-full px-2 py-1.5 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
-                                  options={[
-                                    { value: "", label: "- None -" },
-                                    ...PRODUCT_SOURCE_OPTIONS,
-                                  ]}
-                                />
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[140px]">
-                                <AffiliateMultiSelect
-                                  value={row.affiliateName}
-                                  onChange={(val) => updateSpreadsheetRow(idx, "affiliateName", val)}
-                                  affiliates={affiliates}
-                                  placeholder="Affiliate * (or None)"
-                                  compact={true}
-                                  portal={true}
-                                  minWidth={240}
-                                  onAddCustomAffiliate={async (name) => {
-                                    const res = await fetch("/api/affiliates", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ name }),
-                                    });
-                                    if (res.ok) {
-                                      const data = await res.json();
-                                      setAffiliates((prev) => [...prev, data]);
-                                    }
-                                  }}
-                                />
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
-                                <CustomSelect
-                                  value={row.trendLevel}
-                                  onChange={(val) => updateSpreadsheetRow(idx, "trendLevel", val)}
-                                  portal={true}
-                                  minWidth={120}
-                                  className="w-full"
-                                  triggerClassName="w-full px-2 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-lg"
-                                  options={[
-                                    { value: "HIGH", label: "High" },
-                                    { value: "MODERATE", label: "Moderate" },
-                                    { value: "LOW", label: "Low" },
-                                  ]}
-                                />
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => updateSpreadsheetRow(idx, "isNative", !row.isNative)}
-                                  className={`px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer border w-full flex items-center justify-center gap-1 ${row.isNative
-                                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                                      : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
+                          {spreadsheetRows.map((row, idx) => {
+                            const rowResult = bulkCheckResults[idx];
+                            const isDuplicate = Boolean(rowResult?.exists);
+                            const rowErrors = isDuplicate ? undefined : cellErrors[idx];
+
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group">
+                                <td className="py-2 px-2 text-center text-slate-400 dark:text-slate-500 font-bold bg-slate-50 dark:bg-slate-900/40 border-r border-slate-200 dark:border-slate-800/60 align-top">
+                                  {idx + 1}
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 align-top">
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={row.name}
+                                      onChange={(e) => updateSpreadsheetRow(idx, "name", e.target.value)}
+                                      placeholder={`Product name *`}
+                                      className={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg focus:outline-none transition-colors ${
+                                        isDuplicate
+                                          ? "border-2 border-rose-500 bg-rose-50/50 text-rose-900 focus:border-rose-600 dark:bg-rose-950/40 dark:border-rose-700 dark:text-rose-200"
+                                          : (rowErrors?.name || (row.name.trim().length > 0 && row.name.trim().length < 2))
+                                          ? "border border-rose-400 bg-rose-50/40 text-rose-900 focus:border-rose-500 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-200"
+                                          : rowResult?.isUncertain
+                                          ? "border border-amber-400 bg-amber-50/30 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200"
+                                          : rowResult?.exists === false && row.name.trim().length >= 2
+                                          ? "border border-emerald-400/80 bg-emerald-50/20 text-emerald-900 focus:border-emerald-500 dark:bg-emerald-950/20 dark:border-emerald-700/60 dark:text-emerald-200"
+                                          : "text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
+                                      }`}
+                                    />
+                                  </div>
+                                  {/* When a product already exists, show only the duplicate notification, with who added it and where. The inline text should not be truncated. */}
+                                  {isDuplicate ? (
+                                    <div
+                                      className="text-[11px] font-bold text-rose-700 dark:text-rose-300 mt-1 p-1.5 bg-rose-50 dark:bg-rose-950/60 rounded-lg border border-rose-200 dark:border-rose-800/70 flex items-start gap-1.5 leading-snug animate-fadeIn whitespace-normal break-words shadow-2xs"
+                                    >
+                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                                      <span className="whitespace-normal break-words">{rowResult?.message}</span>
+                                    </div>
+                                  ) : rowResult?.isUncertain ? (
+                                    <div
+                                      className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 mt-1 p-1.5 bg-amber-50 dark:bg-amber-950/60 rounded-lg border border-amber-200 dark:border-amber-800/70 flex items-start gap-1.5 leading-snug animate-fadeIn whitespace-normal break-words shadow-2xs"
+                                    >
+                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                                      <span className="whitespace-normal break-words">{rowResult?.message}</span>
+                                    </div>
+                                  ) : rowErrors?.name ? (
+                                    <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5 leading-tight animate-fadeIn">
+                                      {rowErrors.name}
+                                    </p>
+                                  ) : row.name.trim().length > 0 && row.name.trim().length < 2 ? (
+                                    <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5">
+                                      Min 2 characters
+                                    </p>
+                                  ) : isBulkChecking && !rowResult && row.name.trim().length >= 2 ? (
+                                    <p className="text-[10px] text-blue-500 font-medium mt-0.5 px-0.5 animate-pulse">
+                                      Checking database...
+                                    </p>
+                                  ) : rowResult?.exists === false && row.name.trim().length >= 2 ? (
+                                    <p className="text-[10px] font-bold text-zinc-900 dark:text-zinc-100 mt-0.5 px-0.5 flex items-center gap-1 leading-tight animate-fadeIn">
+                                      <Check className="w-3 h-3 shrink-0" />
+                                      <span>Available</span>
+                                    </p>
+                                  ) : null}
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 align-top">
+                                  <input
+                                    type="text"
+                                    value={row.slug}
+                                    onChange={(e) => updateSpreadsheetRow(idx, "slug", e.target.value)}
+                                    placeholder="auto-slug"
+                                    className="w-full px-2 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238] rounded-lg focus:outline-none"
+                                  />
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[140px] align-top">
+                                  <CustomSelect
+                                    value={row.category}
+                                    onChange={(val) => updateSpreadsheetRow(idx, "category", val)}
+                                    placeholder="Category *"
+                                    searchable={true}
+                                    searchPlaceholder="Search category..."
+                                    portal={true}
+                                    className="w-full"
+                                    triggerClassName={`w-full px-2 py-1.5 rounded-lg text-xs font-medium focus:outline-none transition-colors ${
+                                      rowErrors?.category
+                                        ? "bg-rose-50/40 dark:bg-rose-950/30 border border-rose-500 dark:border-rose-700 text-rose-900 dark:text-rose-200"
+                                        : "bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500 text-slate-800 dark:text-slate-200"
                                     }`}
-                                  title={row.isNative ? "Native Product (Click to toggle)" : "Standard Product (Click to toggle)"}
-                                >
-                                  {row.isNative ? "Yes" : "No"}
-                                </button>
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
-                                <input
-                                  type="url"
-                                  value={row.trendLink}
-                                  onChange={(e) => updateSpreadsheetRow(idx, "trendLink", e.target.value)}
-                                  placeholder="https://... (optional)"
-                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238] rounded-lg focus:outline-none"
-                                />
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
-                                <input
-                                  type="url"
-                                  value={row.previewLink}
-                                  onChange={(e) => updateSpreadsheetRow(idx, "previewLink", e.target.value)}
-                                  placeholder="https://... (optional)"
-                                  className="w-full px-2 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238] rounded-lg focus:outline-none"
-                                />
-                              </td>
-                              <td className="py-1 px-2 border-r border-slate-200 dark:border-slate-800/60">
-                                <input
-                                  type="text"
-                                  value={row.remarks}
-                                  onChange={(e) => updateSpreadsheetRow(idx, "remarks", e.target.value)}
-                                  placeholder="Notes..."
-                                  className="w-full px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238] rounded-lg focus:outline-none"
-                                />
-                              </td>
-                              <td className="py-1 px-2 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => removeSpreadsheetRow(idx)}
-                                  className="w-6 h-6 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 flex items-center justify-center transition cursor-pointer mx-auto"
-                                  title="Delete row"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
+                                    options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
+                                  />
+                                  {rowErrors?.category && (
+                                    <span className="text-[10px] font-semibold text-rose-500 mt-0.5 block leading-tight px-0.5 animate-fadeIn">
+                                      {rowErrors.category}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[130px] align-top">
+                                  <CustomSelect
+                                    value={row.source || ""}
+                                    onChange={(val) => updateSpreadsheetRow(idx, "source", val)}
+                                    placeholder="Source..."
+                                    portal={true}
+                                    minWidth={130}
+                                    className="w-full"
+                                    triggerClassName="w-full px-2 py-1.5 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
+                                    options={[
+                                      { value: "", label: "- None -" },
+                                      ...PRODUCT_SOURCE_OPTIONS,
+                                    ]}
+                                  />
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[140px] align-top">
+                                  <AffiliateMultiSelect
+                                    value={row.affiliateName}
+                                    onChange={(val) => updateSpreadsheetRow(idx, "affiliateName", val)}
+                                    affiliates={affiliates}
+                                    placeholder="Affiliate * (or None)"
+                                    compact={true}
+                                    portal={true}
+                                    minWidth={240}
+                                    error={Boolean(rowErrors?.affiliateName)}
+                                    onAddCustomAffiliate={async (name) => {
+                                      const res = await fetch("/api/affiliates", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ name }),
+                                      });
+                                      if (res.ok) {
+                                        const data = await res.json();
+                                        setAffiliates((prev) => [...prev, data]);
+                                      }
+                                    }}
+                                  />
+                                  {rowErrors?.affiliateName && (
+                                    <span className="text-[10px] font-semibold text-rose-500 mt-0.5 block leading-tight px-0.5 animate-fadeIn">
+                                      {rowErrors.affiliateName}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 align-top">
+                                  <CustomSelect
+                                    value={row.trendLevel}
+                                    onChange={(val) => updateSpreadsheetRow(idx, "trendLevel", val)}
+                                    portal={true}
+                                    minWidth={120}
+                                    className="w-full"
+                                    triggerClassName={`w-full px-2 py-1.5 text-xs font-semibold rounded-lg ${
+                                      rowErrors?.trendLevel
+                                        ? "bg-rose-50/40 dark:bg-rose-950/30 border border-rose-500 text-rose-900"
+                                        : "text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500"
+                                    }`}
+                                    options={[
+                                      { value: "HIGH", label: "High" },
+                                      { value: "MODERATE", label: "Moderate" },
+                                      { value: "LOW", label: "Low" },
+                                    ]}
+                                  />
+                                  {rowErrors?.trendLevel && (
+                                    <span className="text-[10px] font-semibold text-rose-500 mt-0.5 block leading-tight px-0.5 animate-fadeIn">
+                                      {rowErrors.trendLevel}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 text-center align-top">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateSpreadsheetRow(idx, "isNative", !row.isNative)}
+                                    className={`px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer border w-full flex items-center justify-center gap-1 ${row.isNative
+                                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                                        : "bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                      }`}
+                                    title={row.isNative ? "Native Product (Click to toggle)" : "Standard Product (Click to toggle)"}
+                                  >
+                                    {row.isNative ? "Yes" : "No"}
+                                  </button>
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 align-top">
+                                  <input
+                                    type="url"
+                                    value={row.trendLink}
+                                    onChange={(e) => updateSpreadsheetRow(idx, "trendLink", e.target.value)}
+                                    placeholder="https://... (optional)"
+                                    className={`w-full px-2 py-1.5 text-xs font-mono rounded-lg focus:outline-none ${
+                                      rowErrors?.trendLink
+                                        ? "border border-rose-500 bg-rose-50/40 text-rose-900 dark:bg-rose-950/30"
+                                        : "text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
+                                    }`}
+                                  />
+                                  {rowErrors?.trendLink && (
+                                    <span className="text-[10px] font-semibold text-rose-500 mt-0.5 block leading-tight px-0.5 animate-fadeIn">
+                                      {rowErrors.trendLink}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 align-top">
+                                  <input
+                                    type="url"
+                                    value={row.previewLink}
+                                    onChange={(e) => updateSpreadsheetRow(idx, "previewLink", e.target.value)}
+                                    placeholder="https://... (optional)"
+                                    className={`w-full px-2 py-1.5 text-xs font-mono rounded-lg focus:outline-none ${
+                                      rowErrors?.previewLink
+                                        ? "border border-rose-500 bg-rose-50/40 text-rose-900 dark:bg-rose-950/30"
+                                        : "text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238]"
+                                    }`}
+                                  />
+                                  {rowErrors?.previewLink && (
+                                    <span className="text-[10px] font-semibold text-rose-500 mt-0.5 block leading-tight px-0.5 animate-fadeIn">
+                                      {rowErrors.previewLink}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 align-top">
+                                  <input
+                                    type="text"
+                                    value={row.remarks}
+                                    onChange={(e) => updateSpreadsheetRow(idx, "remarks", e.target.value)}
+                                    placeholder="Notes..."
+                                    className="w-full px-2 py-1.5 text-xs text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238] rounded-lg focus:outline-none"
+                                  />
+                                </td>
+                                <td className="py-2 px-1 text-center align-top">
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSpreadsheetRow(idx)}
+                                    className="w-6 h-6 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 flex items-center justify-center transition cursor-pointer mx-auto"
+                                    title="Delete row"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1734,18 +1855,35 @@ export default function AddProductModal({
                       <ChevronLeft className="w-4 h-4" />
                       Back to Product Type
                     </button>
-                    <button
-                      type="button"
-                      disabled={spreadsheetRows.filter((r) => r.name.trim()).length === 0 || submitting}
-                      onClick={handleSubmit}
-                      className="py-2.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      {submitting ? (
-                        "Saving Products..."
-                      ) : (
-                        `Add ${spreadsheetRows.filter((r) => r.name.trim()).length} Products to ${getCategoryNames() || "Selected Type"}`
-                      )}
-                    </button>
+                    {(() => {
+                      const duplicateRowsCount = spreadsheetRows.filter((r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.exists).length;
+                      const hasDuplicates = duplicateRowsCount > 0;
+                      const validCount = spreadsheetRows.filter((r) => r.name.trim()).length;
+                      const isAddDisabled = validCount === 0 || submitting || hasDuplicates || isBulkChecking;
+                      return (
+                        <button
+                          type="button"
+                          disabled={isAddDisabled}
+                          onClick={handleSubmit}
+                          title={hasDuplicates ? `Remove or rename ${duplicateRowsCount} duplicate product(s) to continue` : undefined}
+                          className={`py-2.5 px-6 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                            hasDuplicates
+                              ? "bg-rose-600/80 text-white cursor-not-allowed opacity-80 shadow-xs"
+                              : isAddDisabled
+                              ? "bg-blue-600 text-white opacity-40 cursor-not-allowed"
+                              : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-lg shadow-blue-600/20 cursor-pointer"
+                          }`}
+                        >
+                          {submitting ? (
+                            "Saving Products..."
+                          ) : hasDuplicates ? (
+                            `Blocked: ${duplicateRowsCount} Duplicate${duplicateRowsCount > 1 ? "s" : ""} Found`
+                          ) : (
+                            `Add ${validCount} Products to ${getCategoryNames() || "Selected Type"}`
+                          )}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -2074,10 +2212,15 @@ export default function AddProductModal({
                           <span>Checking database availability...</span>
                         </p>
                       ) : singleCheckStatus.exists ? (
-                        <p className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 animate-fadeIn">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                          <span>{singleCheckStatus.message}</span>
-                        </p>
+                        <div className="text-xs font-bold text-rose-700 dark:text-rose-300 p-2 bg-rose-50 dark:bg-rose-950/60 rounded-xl border border-rose-200 dark:border-rose-800/70 flex items-start gap-2 animate-fadeIn whitespace-normal break-words shadow-2xs">
+                          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                          <span className="whitespace-normal break-words">{singleCheckStatus.message}</span>
+                        </div>
+                      ) : singleCheckStatus.isUncertain ? (
+                        <div className="text-xs font-semibold text-amber-700 dark:text-amber-300 p-2 bg-amber-50 dark:bg-amber-950/60 rounded-xl border border-amber-200 dark:border-amber-800/70 flex items-start gap-2 animate-fadeIn whitespace-normal break-words shadow-2xs">
+                          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                          <span className="whitespace-normal break-words">{singleCheckStatus.message}</span>
+                        </div>
                       ) : singleCheckStatus.exists === false && form.name.trim().length >= 2 ? (
                         <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 animate-fadeIn">
                           <Check className="w-3.5 h-3.5 shrink-0" />
@@ -2249,9 +2392,16 @@ export default function AddProductModal({
                         searchable={true}
                         searchPlaceholder="Search category..."
                         className="w-full"
-                        triggerClassName="w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
+                        triggerClassName={`w-full px-3.5 py-2.5 rounded-xl text-xs font-medium focus:outline-none transition-colors ${
+                          fieldErrors.category
+                            ? "bg-rose-50/40 border border-rose-500 text-rose-900 dark:bg-rose-950/30 dark:border-rose-700 dark:text-rose-200"
+                            : "bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 text-slate-800 dark:text-slate-200"
+                        }`}
                         options={productCategories.map((c) => ({ value: c.name, label: c.name }))}
                       />
+                      {fieldErrors.category && (
+                        <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{fieldErrors.category}</p>
+                      )}
                     </div>
 
                     {/* Affiliate Network Multi-Select */}
@@ -2267,9 +2417,18 @@ export default function AddProductModal({
                       </label>
                       <AffiliateMultiSelect
                         value={form.affiliateName}
-                        onChange={(val) => setForm((prev) => ({ ...prev, affiliateName: val }))}
+                        onChange={(val) => {
+                          setForm((prev) => ({ ...prev, affiliateName: val }));
+                          setFieldErrors((prev) => {
+                            if (!prev.affiliateName) return prev;
+                            const next = { ...prev };
+                            delete next.affiliateName;
+                            return next;
+                          });
+                        }}
                         affiliates={affiliates}
                         placeholder="Select Affiliate Network(s)... *"
+                        error={Boolean(fieldErrors.affiliateName)}
                         onAddCustomAffiliate={async (name) => {
                           const res = await fetch("/api/affiliates", {
                             method: "POST",
@@ -2282,6 +2441,9 @@ export default function AddProductModal({
                           }
                         }}
                       />
+                      {fieldErrors.affiliateName && (
+                        <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{fieldErrors.affiliateName}</p>
+                      )}
                     </div>
                   </div>
 
@@ -2297,13 +2459,20 @@ export default function AddProductModal({
                         value={form.trendLevel}
                         onChange={(val) => update("trendLevel", val)}
                         placeholder="Select Trend Level..."
-                        triggerClassName="w-full px-3.5 py-2.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
+                        triggerClassName={`w-full px-3.5 py-2.5 rounded-xl text-xs font-medium focus:outline-none transition-colors ${
+                          fieldErrors.trendLevel
+                            ? "bg-rose-50/40 border border-rose-500 text-rose-900 dark:bg-rose-950/30 dark:border-rose-700 dark:text-rose-200"
+                            : "bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 text-slate-800 dark:text-slate-200"
+                        }`}
                         options={[
                           { value: "HIGH", label: "High Trend" },
                           { value: "MODERATE", label: "Moderate Trend" },
                           { value: "LOW", label: "Low / Stable" },
                         ]}
                       />
+                      {fieldErrors.trendLevel && (
+                        <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{fieldErrors.trendLevel}</p>
+                      )}
                     </div>
 
                     {/* Trend Link */}
@@ -2374,14 +2543,31 @@ export default function AddProductModal({
                       <ChevronLeft className="w-4 h-4" />
                       Back to Websites
                     </button>
-                    <button
-                      type="button"
-                      disabled={submitting}
-                      onClick={handleSubmit}
-                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-lg shadow-blue-600/20 disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      {submitting ? "Saving..." : "Add Product"}
-                    </button>
+                    {(() => {
+                      const isDuplicate = Boolean(singleCheckStatus.exists);
+                      const isSingleDisabled = submitting || singleCheckStatus.checking || isDuplicate;
+                      return (
+                        <button
+                          type="button"
+                          disabled={isSingleDisabled}
+                          onClick={handleSubmit}
+                          title={isDuplicate ? "This product already exists. Please rename to continue." : undefined}
+                          className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                            isDuplicate
+                              ? "bg-rose-600/80 text-white cursor-not-allowed opacity-80 shadow-xs"
+                              : isSingleDisabled
+                              ? "bg-blue-600 text-white opacity-40 cursor-not-allowed"
+                              : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-lg shadow-blue-600/20 cursor-pointer"
+                          }`}
+                        >
+                          {submitting
+                            ? "Saving..."
+                            : isDuplicate
+                            ? "Blocked: Product Already Exists"
+                            : "Add Product"}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

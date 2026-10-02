@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
         include: {
           site: { select: { id: true, name: true } },
           addedBy: { select: { id: true, name: true, email: true, role: true } },
+          updatedBy: { select: { id: true, name: true, email: true, role: true } },
           linkLogs: {
             select: {
               id: true,
@@ -97,6 +98,10 @@ export async function GET(req: NextRequest) {
         addedById: number;
         addedByRole: string;
         addedAt: Date;
+        updatedByName?: string | null;
+        updatedById?: number | null;
+        updatedByRole?: string | null;
+        updatedAt?: Date | null;
         previewLink: string | null;
         trendLink: string | null;
       }>;
@@ -157,6 +162,10 @@ export async function GET(req: NextRequest) {
           addedById: linkerId,
           addedByRole: linkerRole,
           addedAt: p.addedAt,
+          updatedByName: p.updatedBy?.name || null,
+          updatedById: p.updatedBy?.id || null,
+          updatedByRole: p.updatedBy?.role || null,
+          updatedAt: p.updatedAt || null,
           previewLink: p.previewLink,
           trendLink: p.trendLink,
         });

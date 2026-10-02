@@ -53,7 +53,9 @@ export interface AssignmentProduct {
   addedAt: string;
   site?: { id?: number; name: string; url?: string; allowCountrySpecific?: boolean } | null;
   category: { id?: number; name: string };
-  addedBy: { id?: number; name: string };
+  addedBy: { id?: number; name: string; role?: string };
+  updatedBy?: { id?: number; name: string; role?: string } | null;
+  updatedAt?: string | null;
   article?: {
     id: number;
     status: string;
@@ -95,6 +97,10 @@ export interface SiteAvailabilityItem {
     productCategory?: string | null;
     addedAt?: string;
     addedBy?: string;
+    addedByRole?: string | null;
+    addedToSiteBy?: string | null;
+    addedToSiteByRole?: string | null;
+    updatedAt?: string | null;
     article?: {
       id: number;
       status: string;
@@ -515,6 +521,40 @@ export default function AssignmentDetailsModal({
                       <span className="opacity-75 font-medium">({COUNTRY_NAMES[(product.country || product.article?.country || "").toUpperCase()] || (product.country || product.article?.country)})</span>
                     </span>
                   )}
+
+                  {product.addedBy?.name && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
+                      <User className="w-3.5 h-3.5 text-[#6D8196]" />
+                      <span>
+                        Researched by: <strong>{product.addedBy.name}</strong>
+                        {product.addedBy.role && (
+                          <span className="text-[10px] text-slate-400 ml-1">
+                            ({product.addedBy.role.replace(/_/g, " ")})
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  )}
+
+                  {product.updatedBy?.name && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
+                      <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>
+                        {(!product.site?.name || product.site.name === "Product Research") ? "Modified by: " : "Added to site by: "}
+                        <strong>{product.updatedBy.name}</strong>
+                        {product.updatedBy.role && (
+                          <span className="text-[10px] text-slate-400 ml-1">
+                            ({product.updatedBy.role.replace(/_/g, " ")})
+                          </span>
+                        )}
+                        {product.updatedAt && (
+                          <span className="text-[10px] text-slate-400 ml-1">
+                            on {new Date(product.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -786,6 +826,16 @@ export default function AssignmentDetailsModal({
                               {site.product?.linkCount !== undefined && (
                                 <span className="text-slate-400 font-mono">
                                   • {site.product.linkCount} Link{site.product.linkCount !== 1 ? "s" : ""}
+                                </span>
+                              )}
+                              {site.product?.addedBy && (
+                                <span className="text-slate-500 dark:text-slate-400">
+                                  • Researched by: <strong className="text-slate-700 dark:text-slate-200">{site.product.addedBy}</strong>
+                                </span>
+                              )}
+                              {site.product?.addedToSiteBy && site.product.addedToSiteBy !== site.product.addedBy && (
+                                <span className="text-blue-600 dark:text-blue-400">
+                                  • Added to site by: <strong className="text-blue-700 dark:text-blue-300">{site.product.addedToSiteBy}</strong>
                                 </span>
                               )}
                             </>

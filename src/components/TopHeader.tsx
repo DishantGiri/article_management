@@ -31,6 +31,10 @@ interface TopHeaderProps {
   onMarkAllAsRead?: () => void;
   onNotificationClick?: (notif: any) => void;
   extraActions?: React.ReactNode;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  onSearchSubmit?: (query: string) => void;
+  searchPlaceholder?: string;
 }
 
 function getGreeting(): string {
@@ -45,12 +49,19 @@ export default function TopHeader({
   onMarkAllAsRead,
   onNotificationClick,
   extraActions,
+  searchQuery: externalSearchQuery,
+  onSearchChange,
+  onSearchSubmit,
+  searchPlaceholder,
 }: TopHeaderProps) {
   const router = useRouter();
   const { data: session } = useSession();
   const { resolvedTheme, setTheme } = useTheme();
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const isControlled = externalSearchQuery !== undefined;
+  const [internalQuery, setInternalQuery] = useState("");
+  const activeQuery = isControlled ? (externalSearchQuery || "") : internalQuery;
+
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showBellMenu, setShowBellMenu] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -61,7 +72,32 @@ export default function TopHeader({
   const bellMenuRef = useRef<HTMLDivElement>(null);
   const quickCreateRef = useRef<HTMLDivElement>(null);
 
-  const currentUser = session?.user;
+  const [profileOverride, setProfileOverride] = useState<{ name?: string; image?: string | null }>({});
+
+  useEffect(() => {
+    const handleProfileUpdate = (e: any) => {
+      if (e.detail) {
+        setProfileOverride((prev) => ({
+          ...prev,
+          ...(e.detail.name !== undefined ? { name: e.detail.name } : {}),
+          ...(e.detail.image !== undefined ? { image: e.detail.image } : {}),
+        }));
+      }
+    };
+    window.addEventListener("user-profile-updated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("user-profile-updated", handleProfileUpdate);
+    };
+  }, []);
+
+  const rawUser = session?.user;
+  const currentUser = rawUser
+    ? {
+        ...rawUser,
+        name: profileOverride.name ?? rawUser.name,
+        image: profileOverride.image !== undefined ? profileOverride.image : rawUser.image,
+      }
+    : undefined;
   const userRole = (currentUser?.role || "").toUpperCase();
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -122,11 +158,60 @@ export default function TopHeader({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [router]);
 
+  const handleQueryChange = (val: string) => {
+    if (!isControlled) {
+      setInternalQuery(val);
+    }
+    if (onSearchChange) {
+      onSearchChange(val);
+    }
+  };
+
+  const handleClear = () => {
+    if (!isControlled) {
+      setInternalQuery("");
+    }
+    if (onSearchChange) {
+      onSearchChange("");
+    }
+  };
+
   // Search submission
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
-    router.push(`/articles?search=${encodeURIComponent(searchQuery.trim())}`);
+    const query = activeQuery.trim();
+    if (onSearchSubmit) {
+      onSearchSubmit(query);
+      return;
+    }
+    if (!query) return;
+
+    if (typeof window !== "undefined") {
+      const pathname = window.location.pathname;
+      if (pathname.startsWith("/products")) {
+        router.push(`/products?search=${encodeURIComponent(query)}`);
+        return;
+      }
+      if (pathname.startsWith("/links")) {
+        router.push(`/links?search=${encodeURIComponent(query)}`);
+        return;
+      }
+      if (pathname.startsWith("/articles")) {
+        router.push(`/articles?search=${encodeURIComponent(query)}`);
+        return;
+      }
+    }
+
+    if (
+      userRole === "PRODUCT_RESEARCHER" ||
+      userRole === "LINKER" ||
+      userRole === "ADMIN" ||
+      userRole === "SUPER_ADMIN"
+    ) {
+      router.push(`/products?search=${encodeURIComponent(query)}`);
+    } else {
+      router.push(`/articles?search=${encodeURIComponent(query)}`);
+    }
   };
 
   const isDarkMode = resolvedTheme === "dark";
@@ -157,15 +242,15 @@ export default function TopHeader({
             <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search anything..."
+              value={activeQuery}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              placeholder={searchPlaceholder || "Search anything..."}
               className="w-44 sm:w-60 pl-9.5 pr-8 py-2 text-xs font-medium bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white focus:border-zinc-900 dark:focus:border-white transition shadow-2xs"
             />
-            {searchQuery && (
+            {activeQuery && (
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={handleClear}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />

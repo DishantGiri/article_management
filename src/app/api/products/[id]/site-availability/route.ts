@@ -27,6 +27,8 @@ export async function GET(
       include: {
         site: { select: { id: true, name: true, url: true } },
         category: { select: { id: true, name: true } },
+        addedBy: { select: { id: true, name: true, role: true } },
+        updatedBy: { select: { id: true, name: true, role: true } },
       },
     });
 
@@ -58,7 +60,8 @@ export async function GET(
       include: {
         site: { select: { id: true, name: true, url: true } },
         category: { select: { id: true, name: true } },
-        addedBy: { select: { id: true, name: true } },
+        addedBy: { select: { id: true, name: true, role: true } },
+        updatedBy: { select: { id: true, name: true, role: true } },
         article: {
           select: {
             id: true,
@@ -116,6 +119,10 @@ export async function GET(
               productCategory: match.productCategory,
               addedAt: match.addedAt,
               addedBy: match.addedBy?.name || "Unknown",
+              addedByRole: match.addedBy?.role || null,
+              addedToSiteBy: match.updatedBy?.name || null,
+              addedToSiteByRole: match.updatedBy?.role || null,
+              updatedAt: match.updatedAt,
               article: match.article
                 ? {
                     id: match.article.id,
@@ -135,8 +142,12 @@ export async function GET(
     return NextResponse.json({
       productName: baseProduct.name,
       baseProductId: baseProduct.id,
-      isUnassigned: baseProduct.siteId === null,
+      isUnassigned: baseProduct.siteId === null || baseProduct.site?.name === "Product Research",
       targetSites: baseProduct.targetSites,
+      researchedBy: baseProduct.addedBy?.name || null,
+      researchedByRole: baseProduct.addedBy?.role || null,
+      addedToSiteBy: baseProduct.updatedBy?.name || null,
+      addedToSiteByRole: baseProduct.updatedBy?.role || null,
       totalSites,
       availableCount,
       missingCount: totalSites - availableCount,
@@ -210,6 +221,7 @@ export async function POST(
       include: {
         category: true,
         site: true,
+        addedBy: { select: { id: true, name: true, role: true } },
       },
     });
 
@@ -289,10 +301,13 @@ export async function POST(
           data: {
             siteId: sId,
             categoryId: finalCategoryId,
+            updatedById: activeUserId,
           },
           include: {
             site: { select: { id: true, name: true, url: true } },
             category: { select: { id: true, name: true } },
+            addedBy: { select: { id: true, name: true, role: true } },
+            updatedBy: { select: { id: true, name: true, role: true } },
           },
         });
       } else {
@@ -312,11 +327,17 @@ export async function POST(
             affiliateName: sourceProduct.affiliateName,
             previewLink: sourceProduct.previewLink,
             remarks: sourceProduct.remarks,
-            addedById: activeUserId,
+            // Preserve original researcher as addedBy and original research date
+            addedById: sourceProduct.addedById,
+            addedAt: sourceProduct.addedAt,
+            // Record person who clicked "Add to Site" as updatedById
+            updatedById: activeUserId,
           },
           include: {
             site: { select: { id: true, name: true, url: true } },
             category: { select: { id: true, name: true } },
+            addedBy: { select: { id: true, name: true, role: true } },
+            updatedBy: { select: { id: true, name: true, role: true } },
           },
         });
       }
@@ -327,6 +348,20 @@ export async function POST(
           productId: newProduct.id,
           status: "PENDING",
           country: newProduct.country || null,
+        },
+      });
+
+      // Record in ArticleHistory for audit trail / site activity
+      const adderName = session.user.name || "User";
+      const originalResearcher = sourceProduct.addedBy?.name;
+      await prisma.articleHistory.create({
+        data: {
+          articleId: newArticle.id,
+          updatedById: activeUserId,
+          newStatus: "PENDING",
+          notes: `Product added to site "${targetSite.name}" by ${adderName}${
+            originalResearcher ? ` (Researched by: ${originalResearcher})` : ""
+          }`,
         },
       });
 

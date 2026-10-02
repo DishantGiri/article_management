@@ -57,14 +57,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Query matching products
+    // Query matching products across sites
     const existingProducts = await prisma.product.findMany({
       where: {
-        ...(targetSiteIds.size > 0 ? { siteId: { in: Array.from(targetSiteIds) } } : {}),
         OR: uniqueNames.flatMap((uName) => [
           { name: uName },
           { name: uName.toLowerCase() },
           { name: uName.toUpperCase() },
+          { name: { contains: uName } },
         ]),
       },
       include: {
@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
       string,
       {
         exists: boolean;
+        isUncertain: boolean;
         message: string;
         conflicts: Array<{ siteName: string; addedBy: string; country?: string | null }>;
       }
@@ -94,42 +95,54 @@ export async function POST(req: NextRequest) {
       const itemLower = item.name.toLowerCase();
       const itemCountry = (item.country || "").toUpperCase();
 
-      const conflicts: Array<{ siteName: string; addedBy: string; country?: string | null }> = [];
+      const exactConflicts: Array<{ siteName: string; addedBy: string; country?: string | null }> = [];
+      const uncertainConflicts: Array<{ siteName: string; addedBy: string; country?: string | null }> = [];
 
       for (const ep of existingProducts) {
         if (ep.name.trim().toLowerCase() === itemLower) {
           const siteAllowsCountry = Boolean(ep.site?.allowCountrySpecific);
           const epCountry = (ep.country || ep.article?.country || "").trim().toUpperCase();
+          const countryMatches = !siteAllowsCountry || !epCountry || !itemCountry || epCountry === itemCountry;
 
-          if (siteAllowsCountry) {
-            if (epCountry === itemCountry) {
-              conflicts.push({
-                siteName: ep.site?.name || "Unknown Site",
-                addedBy: ep.addedBy?.name || "Unknown Linker",
-                country: epCountry || null,
-              });
-            }
-          } else {
-            conflicts.push({
+          if (countryMatches) {
+            const conflictInfo = {
               siteName: ep.site?.name || "Unknown Site",
-              addedBy: ep.addedBy?.name || "Unknown Linker",
+              addedBy: ep.addedBy?.name || "Unknown User",
               country: epCountry || null,
-            });
+            };
+
+            const isTargetSite = targetSiteIds.size === 0 || targetSiteIds.has(ep.siteId);
+            if (isTargetSite) {
+              exactConflicts.push(conflictInfo);
+            } else {
+              uncertainConflicts.push(conflictInfo);
+            }
           }
         }
       }
 
-      if (conflicts.length > 0) {
-        const first = conflicts[0];
+      if (exactConflicts.length > 0) {
+        const first = exactConflicts[0];
         const countryText = first.country ? ` for country ${first.country}` : "";
         results[item.key] = {
           exists: true,
+          isUncertain: false,
           message: `Already added by ${first.addedBy} on ${first.siteName}${countryText}`,
-          conflicts,
+          conflicts: exactConflicts,
+        };
+      } else if (uncertainConflicts.length > 0) {
+        const first = uncertainConflicts[0];
+        const countryText = first.country ? ` for country ${first.country}` : "";
+        results[item.key] = {
+          exists: false,
+          isUncertain: true,
+          message: `May already exist: already on ${first.siteName} (added by ${first.addedBy})${countryText}`,
+          conflicts: uncertainConflicts,
         };
       } else {
         results[item.key] = {
           exists: false,
+          isUncertain: false,
           message: "Available to add",
           conflicts: [],
         };

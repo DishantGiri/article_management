@@ -15,7 +15,8 @@ export async function GET(
       include: {
         site: { select: { id: true, name: true } },
         category: { select: { id: true, name: true } },
-        addedBy: { select: { name: true } },
+        addedBy: { select: { id: true, name: true, role: true } },
+        updatedBy: { select: { id: true, name: true, role: true } },
       },
     });
 
@@ -154,7 +155,7 @@ export async function PATCH(
         const addedByName = matching[0].addedBy?.name;
         const siteName = matching[0].site?.name;
         const siteSuffix = siteName ? ` on site ${siteName}` : "";
-        const errorMsg = `Product "${targetName}" already added by linker ${addedByName || "another linker"}${siteSuffix}.`;
+        const errorMsg = `Product "${targetName}" already added by ${addedByName || "another user"}${siteSuffix}.`;
 
         return NextResponse.json({ error: errorMsg }, { status: 400 });
       }
@@ -214,6 +215,8 @@ export async function PATCH(
             .replace(/^-+|-+$/g, "")
         : undefined;
 
+    const activeUserId = session?.user?.id ? Number(session.user.id) : null;
+
     const updateData: any = {
       ...(name !== undefined ? { name: targetName } : {}),
       ...(sanitizedSlug !== undefined ? { slug: sanitizedSlug } : {}),
@@ -226,6 +229,7 @@ export async function PATCH(
       ...(affiliateName !== undefined ? { affiliateName: affiliateName || null } : {}),
       ...(previewLink !== undefined ? { previewLink: previewLink || null } : {}),
       ...(remarks !== undefined ? { remarks: remarks || null } : {}),
+      ...(activeUserId ? { updatedById: activeUserId } : {}),
     };
 
     if (isSingleProduct && isSiteChanging) {
@@ -257,6 +261,8 @@ export async function PATCH(
       include: {
         site: { select: { name: true } },
         category: { select: { name: true } },
+        addedBy: { select: { id: true, name: true, role: true } },
+        updatedBy: { select: { id: true, name: true, role: true } },
       },
     });
 

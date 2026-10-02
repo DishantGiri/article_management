@@ -32,6 +32,8 @@ export async function POST(req: NextRequest) {
       products,
       categoryIds,
       excludedSiteIds,
+      targetSiteIds: bodyTargetSiteIds,
+      targetSiteNames: bodyTargetSiteNames,
       singleSiteId,
       targetSiteId,
       distributeToAllSites,
@@ -226,32 +228,46 @@ export async function POST(req: NextRequest) {
 
     const targetSiteIds = new Set<number>();
 
-    if (explicitSiteId) {
-      if (authorizedSites === null || authorizedSites.includes(explicitSiteId)) {
-        targetSiteIds.add(explicitSiteId);
-      }
-    } else {
-      // If Product Researcher and distributeToAllSites is not explicitly true, pick ONLY selected target sites
-      const forceSingleSite = isProductResearcherUser && distributeToAllSites !== true;
-
-      for (const cat of categoriesWithSites) {
-        for (const site of cat.sites) {
-          if (!excludedSet.has(site.id)) {
-            if (authorizedSites === null || authorizedSites.includes(site.id)) {
+    if (isProductResearcherUser) {
+      // Product Researcher recording target websites
+      if (Array.isArray(bodyTargetSiteIds) && bodyTargetSiteIds.length > 0) {
+        bodyTargetSiteIds
+          .map(Number)
+          .filter((id) => !isNaN(id) && id > 0)
+          .forEach((id) => targetSiteIds.add(id));
+      } else {
+        for (const cat of categoriesWithSites) {
+          for (const site of cat.sites) {
+            if (!excludedSet.has(site.id)) {
               targetSiteIds.add(site.id);
-              if (forceSingleSite) break;
             }
           }
         }
-        if (forceSingleSite && targetSiteIds.size > 0) break;
       }
-    }
+    } else {
+      // Linkers / Admins: publishing directly to live sites
+      if (explicitSiteId) {
+        if (authorizedSites === null || authorizedSites.includes(explicitSiteId)) {
+          targetSiteIds.add(explicitSiteId);
+        }
+      } else {
+        for (const cat of categoriesWithSites) {
+          for (const site of cat.sites) {
+            if (!excludedSet.has(site.id)) {
+              if (authorizedSites === null || authorizedSites.includes(site.id)) {
+                targetSiteIds.add(site.id);
+              }
+            }
+          }
+        }
+      }
 
-    if (targetSiteIds.size === 0 && !isProductResearcherUser) {
-      return NextResponse.json(
-        { error: "Access Denied: You do not have Linker or Product Researcher permissions to add products to the selected site(s)." },
-        { status: 403 }
-      );
+      if (targetSiteIds.size === 0) {
+        return NextResponse.json(
+          { error: "Access Denied: You do not have Linker or Product Researcher permissions to add products to the selected site(s)." },
+          { status: 403 }
+        );
+      }
     }
 
     const checkSiteIds = Array.from(targetSiteIds);
@@ -309,19 +325,19 @@ export async function POST(req: NextRequest) {
     if (duplicateConflicts.length > 0) {
       if (duplicateConflicts.length === 1) {
         const conflict = duplicateConflicts[0];
-        const addedByPart = conflict.existing.addedBy?.name || "another linker";
+        const addedByPart = conflict.existing.addedBy?.name || "another user";
         const siteName = conflict.existing.site?.name;
         const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
         const countryPart = conflict.item.country ? ` for country ${conflict.item.country}` : "";
 
-        const errorMsg = `Already added by linker ${addedByPart}${siteSuffix}${countryPart}.`;
+        const errorMsg = `Already added by ${addedByPart}${siteSuffix}${countryPart}.`;
         return NextResponse.json({ error: errorMsg }, { status: 400 });
       } else {
         const conflictDetails = Array.from(
           new Set(
             duplicateConflicts.map((c) => {
               const siteStr = c.existing.site?.name ? ` on ${c.existing.site.name}` : "";
-              const userStr = c.existing.addedBy?.name ? `linker ${c.existing.addedBy.name}` : "another linker";
+              const userStr = c.existing.addedBy?.name ? c.existing.addedBy.name : "another user";
               const countryStr = c.item.country ? ` (${c.item.country})` : "";
               return `"${c.item.name}"${countryStr} (already added by ${userStr}${siteStr})`;
             })
@@ -356,16 +372,27 @@ export async function POST(req: NextRequest) {
       }
 
       // In Product Research: collect researched target sites, create 1 product in the research catalog
-      const targetSitesList = Array.from(targetSiteIds)
-        .map((sId) => {
-          for (const c of categoriesWithSites) {
-            const found = c.sites.find((s) => s.id === sId);
-            if (found) return found.name;
+      let resolvedTargetNames: string[] = [];
+      if (Array.isArray(bodyTargetSiteNames) && bodyTargetSiteNames.length > 0) {
+        resolvedTargetNames = bodyTargetSiteNames
+          .map((n: any) => String(n).trim())
+          .filter(Boolean);
+      }
+      if (targetSiteIds.size > 0) {
+        const dbTargetSites = await prisma.site.findMany({
+          where: { id: { in: Array.from(targetSiteIds) } },
+          select: { id: true, name: true },
+        });
+        for (const s of dbTargetSites) {
+          if (!resolvedTargetNames.includes(s.name)) {
+            resolvedTargetNames.push(s.name);
           }
-          return null;
-        })
-        .filter(Boolean);
-      const targetSitesStr = targetSitesList.length > 0 ? Array.from(new Set(targetSitesList)).join(", ") : null;
+        }
+      }
+      const targetSitesStr =
+        resolvedTargetNames.length > 0
+          ? Array.from(new Set(resolvedTargetNames)).join(", ")
+          : null;
 
       for (const item of productItems) {
         const finalSlug = item.slug && item.slug.trim()
@@ -434,7 +461,8 @@ export async function POST(req: NextRequest) {
           include: {
             site: { select: { name: true, url: true, allowCountrySpecific: true } },
             category: { select: { name: true } },
-            addedBy: { select: { name: true } },
+            addedBy: { select: { id: true, name: true, role: true } },
+            updatedBy: { select: { id: true, name: true, role: true } },
           },
         })
       )
@@ -549,7 +577,8 @@ export async function GET(req: NextRequest) {
     include: {
       site: { select: { id: true, name: true, url: true, allowCountrySpecific: true } },
       category: { select: { id: true, name: true } },
-      addedBy: { select: { id: true, name: true } },
+      addedBy: { select: { id: true, name: true, role: true } },
+      updatedBy: { select: { id: true, name: true, role: true } },
       article: { select: { id: true, status: true, articleLink: true, country: true, writer: { select: { id: true, name: true } } } },
       linkLogs: { include: { geos: true } },
     },

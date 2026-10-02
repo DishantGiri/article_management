@@ -53,6 +53,10 @@ interface ProductItem {
   addedById: number;
   addedByRole: string;
   addedAt: string;
+  updatedByName?: string | null;
+  updatedById?: number | null;
+  updatedByRole?: string | null;
+  updatedAt?: string | null;
   previewLink: string | null;
   trendLink: string | null;
 }
@@ -511,7 +515,7 @@ export default function AffiliatesPage() {
                 </span>
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Track how many products are added from each affiliate network and inspect which linker added each product.
+                Track how many products are added from each affiliate network and inspect who added or modified each product.
               </p>
             </div>
           </div>
@@ -1000,7 +1004,7 @@ export default function AffiliatesPage() {
                       {/* Contributing Linkers Breakdown */}
                       <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80">
                         <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
-                          Linkers Who Added Products ({aff.linkers.length})
+                          Added By ({aff.linkers.length})
                         </span>
 
                         {aff.linkers.length === 0 ? (
@@ -1259,7 +1263,8 @@ export default function AffiliatesPage() {
                   (p) =>
                     p.name.toLowerCase().includes(modalSearch.toLowerCase()) ||
                     p.siteName.toLowerCase().includes(modalSearch.toLowerCase()) ||
-                    p.addedByName.toLowerCase().includes(modalSearch.toLowerCase())
+                    p.addedByName.toLowerCase().includes(modalSearch.toLowerCase()) ||
+                    (p.updatedByName && p.updatedByName.toLowerCase().includes(modalSearch.toLowerCase()))
                 );
 
                 if (filteredModalProducts.length === 0) {
@@ -1277,7 +1282,8 @@ export default function AffiliatesPage() {
                         <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                           <th className="py-2.5 px-3">Product Name</th>
                           <th className="py-2.5 px-3">Site</th>
-                          <th className="py-2.5 px-3">Added By Linker</th>
+                          <th className="py-2.5 px-3">Added By</th>
+                          <th className="py-2.5 px-3">Modified By</th>
                           <th className="py-2.5 px-3">Date Added</th>
                           <th className="py-2.5 px-3 text-right">Action</th>
                         </tr>
@@ -1301,12 +1307,35 @@ export default function AffiliatesPage() {
                               </span>
                             </td>
                             <td className="py-3 px-3">
-                              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                              <span className="font-semibold text-slate-700 dark:text-slate-200 block">
                                 {p.addedByName}
                               </span>
                               <span className="text-[10px] text-slate-400 block">
-                                ({p.addedByRole})
+                                ({p.addedByRole ? p.addedByRole.replace(/_/g, " ") : "USER"})
                               </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              {p.updatedByName ? (
+                                <div>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-200 block">
+                                    {p.updatedByName}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 block">
+                                    ({p.updatedByRole ? p.updatedByRole.replace(/_/g, " ") : "USER"})
+                                  </span>
+                                  {p.updatedAt && (
+                                    <span className="text-[9px] text-slate-400 block">
+                                      {new Date(p.updatedAt).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      })}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">-</span>
+                              )}
                             </td>
                             <td className="py-3 px-3 text-slate-500">
                               {new Date(p.addedAt).toLocaleDateString("en-US", {
