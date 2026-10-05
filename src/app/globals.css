@@ -42,6 +42,17 @@ body {
   background: #3F3F46;
 }
 
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 @theme inline {
   --font-heading: var(--font-sans), "Plus Jakarta Sans", sans-serif;
   --font-sans: var(--font-sans), "Plus Jakarta Sans", sans-serif;

@@ -901,7 +901,7 @@ export async function PATCH(
         const newWriterName = updated.writer?.name || "none";
         changeNotes.push(`Writer changed to ${newWriterName}`);
       }
-      if (existing.priority !== updated.priority) {
+      if (existing.priority && updated.priority && existing.priority !== updated.priority) {
         changeNotes.push(`Priority changed from ${existing.priority} to ${updated.priority}`);
       }
       if (existing.specialApprovalRequested !== updated.specialApprovalRequested) {
@@ -920,6 +920,54 @@ export async function PATCH(
         const finalNotes = notes
           ? `${changeNotes.join(", ")}${changeNotes.length > 0 ? ". " : ""}Writer remarks: ${notes}`
           : changeNotes.join(", ");
+
+        // If this is ONLY a priority change without other alterations, avoid flooding history:
+        // check if the most recent history entry for this article by the same user within 5 minutes was also a priority change
+        const isOnlyPriorityChange =
+          changeNotes.length === 1 &&
+          changeNotes[0].startsWith("Priority changed from ") &&
+          !notes &&
+          existing.status === updated.status &&
+          existing.articleLink === updated.articleLink &&
+          existing.writerId === updated.writerId;
+
+        if (isOnlyPriorityChange) {
+          const recentHistory = await prisma.articleHistory.findFirst({
+            where: { articleId: updated.id },
+            orderBy: { id: "desc" },
+          });
+
+          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+          const priorityRegex = /^Priority changed from (\w+) to (\w+)$/;
+
+          if (
+            recentHistory &&
+            recentHistory.updatedById === Number(activeUserId) &&
+            recentHistory.updatedAt >= fiveMinutesAgo &&
+            recentHistory.notes &&
+            priorityRegex.test(recentHistory.notes)
+          ) {
+            const match = recentHistory.notes.match(priorityRegex);
+            const originalPriority = match ? match[1] : null;
+
+            if (originalPriority === updated.priority) {
+              // Toggled back to original priority within the window - delete intermediate entry
+              await prisma.articleHistory.delete({
+                where: { id: recentHistory.id },
+              });
+            } else {
+              // Update the existing entry to reflect the overall priority shift instead of stacking rows
+              await prisma.articleHistory.update({
+                where: { id: recentHistory.id },
+                data: {
+                  notes: `Priority changed from ${originalPriority} to ${updated.priority}`,
+                  updatedAt: new Date(),
+                },
+              });
+            }
+            return NextResponse.json(updated);
+          }
+        }
 
         await prisma.articleHistory.create({
           data: {

@@ -656,48 +656,57 @@ export default function AddLinkModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-fadeIn">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[88vh] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200">
         {/* Header */}
-        <div className="px-6 py-4 bg-[#4A4A4A] dark:bg-slate-800 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white shadow-inner">
-              <Link2 className="w-5 h-5" />
+        <div className="px-3.5 py-2.5 sm:px-6 sm:py-3.5 bg-[#4A4A4A] dark:bg-slate-800 text-white flex items-center justify-between shrink-0 border-b border-white/10 dark:border-slate-700/60">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 mr-2">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white shadow-inner shrink-0">
+              <Link2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2 flex-wrap">
-                <span>Add New Link Log</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight shrink-0">
+                  Add New Link Log
+                </h2>
                 {selectedProduct && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/15 text-white border border-white/20 flex items-center gap-1">
-                    <Globe className="w-3 h-3 text-white/80" />
-                    Site: {selectedProduct.site?.name || "Unassigned"}
+                  <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-white/15 text-white border border-white/20 flex items-center gap-1 shrink-0">
+                    <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white/80" />
+                    <span className="truncate max-w-[120px] sm:max-w-none">
+                      {selectedProduct.site?.name || "Unassigned"}
+                    </span>
                   </span>
                 )}
                 {selectedProduct?.name && (
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-white/15 text-white border border-white/20">
+                  <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-white/15 text-white border border-white/20 truncate max-w-[160px]">
                     {selectedProduct.name}
                   </span>
                 )}
-                {availableSitesForProduct.length > 1 && (
-                  <div className="flex items-center gap-1 ml-1 flex-wrap">
-                    <span className="text-[11px] text-white/70 font-normal">Switch:</span>
-                    {availableSitesForProduct.map((s) => (
-                      <button
-                        key={s.siteId}
-                        type="button"
-                        onClick={() => setSelectedProductId(s.productId)}
-                        className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition cursor-pointer border ${
-                          s.isSelected
-                            ? "bg-white text-slate-800 border-white shadow-xs"
-                            : "bg-white/15 hover:bg-white/25 text-white border-white/20"
-                        }`}
-                        title={`Switch to ${s.siteName} for ${selectedProduct?.name}`}
-                      >
-                        {s.siteName}
-                        {s.hasLogs ? " [Linked]" : " [Pending]"}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </h2>
-              <p className="text-xs text-white/80 font-normal">
+              </div>
+
+              {/* Single-row horizontal scrollable site switcher */}
+              {availableSitesForProduct.length > 1 && (
+                <div className="flex items-center gap-1.5 mt-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+                  <span className="text-[10px] sm:text-[11px] text-white/70 font-semibold shrink-0">
+                    Switch:
+                  </span>
+                  {availableSitesForProduct.map((s) => (
+                    <button
+                      key={s.siteId}
+                      type="button"
+                      onClick={() => setSelectedProductId(s.productId)}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition cursor-pointer border shrink-0 whitespace-nowrap ${
+                        s.isSelected
+                          ? "bg-white text-slate-800 border-white shadow-xs"
+                          : "bg-white/15 hover:bg-white/25 text-white border-white/20"
+                      }`}
+                      title={`Switch to ${s.siteName} for ${selectedProduct?.name}`}
+                    >
+                      {s.siteName}
+                      {s.hasLogs ? " ✓" : " [Pending]"}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <p className="hidden md:block text-[11px] text-white/80 font-normal mt-0.5">
                 Configure affiliate links, bridge page, and buy now links via dropdown selections
               </p>
             </div>
@@ -705,7 +714,8 @@ export default function AddLinkModal({
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer shrink-0"
+            aria-label="Close modal"
           >
             <X className="w-4 h-4" />
           </button>
@@ -1612,26 +1622,28 @@ export default function AddLinkModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+        <div className="px-3.5 py-2.5 sm:px-6 sm:py-3.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
+          <div className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-between sm:justify-start gap-1.5 min-w-0">
             {selectedProduct ? (
-              <span className="text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                {useCountrySpecificLinks
-                  ? `${countryLinks.length} country link${countryLinks.length !== 1 ? "s" : ""} ready to save for`
-                  : `${affiliateEntries.length} link log ${affiliateEntries.length !== 1 ? "entries" : "entry"} ready to save for`}{" "}
-                <strong className="underline decoration-blue-500 font-extrabold">{selectedProduct.site?.name || "Active Site"}</strong>
+              <span className="text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5 truncate">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="truncate">
+                  {useCountrySpecificLinks
+                    ? `${countryLinks.length} country link${countryLinks.length !== 1 ? "s" : ""} ready for `
+                    : `${affiliateEntries.length} link entry ready for `}
+                  <strong className="underline decoration-blue-500 font-extrabold">{selectedProduct.site?.name || "Active Site"}</strong>
+                </span>
               </span>
             ) : (
               <span>Select a product above</span>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 justify-end shrink-0">
             <button
               onClick={onClose}
               type="button"
-              className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-white dark:hover:bg-slate-800 transition text-xs cursor-pointer shadow-xs"
+              className="flex-1 sm:flex-initial px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-white dark:hover:bg-slate-800 transition text-xs cursor-pointer shadow-xs whitespace-nowrap text-center"
             >
               Done / Close
             </button>
@@ -1646,13 +1658,17 @@ export default function AddLinkModal({
                     : "Please configure all required fields (Product, GEOs, Country Links, Bridge Link, Buy Link)"
                   : undefined
               }
-              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
+              className="flex-1 sm:flex-initial px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
-              {submitting
-                ? "Saving..."
-                : useCountrySpecificLinks
-                  ? `Save for ${selectedProduct?.site?.name || "Active Site"} (${countryLinks.length} Country Links)`
-                  : `Save for ${selectedProduct?.site?.name || "Active Site"} (${affiliateEntries.length} Links)`}
+              {submitting ? (
+                "Saving..."
+              ) : (
+                <>
+                  <span>Save</span>
+                  <span className="hidden sm:inline">for {selectedProduct?.site?.name || "Site"}</span>
+                  <span>({useCountrySpecificLinks ? countryLinks.length : affiliateEntries.length} Links)</span>
+                </>
+              )}
             </button>
           </div>
         </div>

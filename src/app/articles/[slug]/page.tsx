@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileText,
@@ -202,24 +202,58 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
     }
   }, [article?.priority]);
 
-  const handleSetRedoPriority = async (newPriority: "LOW" | "MEDIUM" | "HIGH") => {
-    if (newPriority === redoPriority) return;
-    setRedoPriority(newPriority);
-    try {
-      const res = await fetch(`/api/articles/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priority: newPriority, callerId: currentUserId }),
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Failed to update priority");
+  const redoPriorityDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redoPriorityDebounceRef.current) {
+        clearTimeout(redoPriorityDebounceRef.current);
       }
-      setArticle((prev) => (prev ? { ...prev, priority: newPriority } : prev));
-      toast.success(`Priority updated to ${newPriority === "HIGH" ? "High" : newPriority === "MEDIUM" ? "Medium" : "Low"}`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update priority");
+    };
+  }, []);
+
+  const handleSetRedoPriority = (newPriority: "LOW" | "MEDIUM" | "HIGH") => {
+    if (newPriority === redoPriority && newPriority === article?.priority) return;
+    setRedoPriority(newPriority);
+
+    if (redoPriorityDebounceRef.current) {
+      clearTimeout(redoPriorityDebounceRef.current);
     }
+
+    if (newPriority === article?.priority) {
+      // Reverted back to saved priority; no network call needed
+      return;
+    }
+
+    redoPriorityDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/articles/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ priority: newPriority, callerId: currentUserId }),
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Failed to update priority");
+        }
+        const label = newPriority === "HIGH" ? "High" : newPriority === "MEDIUM" ? "Medium" : "Low";
+        toast.success(`Priority updated to ${label}`, { id: "article-priority-toast" });
+
+        // Refresh article so activity & audit trail stays updated and synchronized
+        const ref = await fetch(`/api/articles/${id}?userId=${currentUserId}`);
+        const fresh = await ref.json();
+        if (!fresh.error) {
+          setArticle(fresh);
+        } else {
+          setArticle((prev) => (prev ? { ...prev, priority: newPriority } : prev));
+        }
+      } catch (err: any) {
+        toast.error(err.message || "Failed to update priority", { id: "article-priority-toast" });
+        if (article?.priority) {
+          setRedoPriority(article.priority);
+        }
+      }
+    }, 400);
   };
 
   const handleReviewSubmit = async (approved: boolean) => {

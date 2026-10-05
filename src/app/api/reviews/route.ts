@@ -135,6 +135,7 @@ export async function POST(req: NextRequest) {
     try {
       const priorityChanged = Boolean(
         priority &&
+        article.priority &&
         ["LOW", "MEDIUM", "HIGH"].includes(priority) &&
         article.priority !== priority
       );

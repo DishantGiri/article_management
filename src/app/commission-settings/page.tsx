@@ -121,6 +121,45 @@ const POOL_CONFIG = [
   },
 ];
 
+function areSettingsEqual(
+  a: Record<string, CommissionTier>,
+  b: Record<string, CommissionTier>
+): boolean {
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length === 0 && keysB.length === 0) return true;
+  if (keysA.length === 0 || keysB.length === 0) return false;
+
+  for (const key of keysA) {
+    const tierA = a[key];
+    const tierB = b[key];
+    if (!tierB) return false;
+
+    if (
+      tierA.category !== tierB.category ||
+      tierA.saleType !== tierB.saleType ||
+      tierA.rateType !== tierB.rateType ||
+      tierA.currency !== tierB.currency ||
+      Number(tierA.linker || 0) !== Number(tierB.linker || 0) ||
+      Number(tierA.writer || 0) !== Number(tierB.writer || 0) ||
+      Number(tierA.tl || 0) !== Number(tierB.tl || 0) ||
+      Number(tierA.seo || 0) !== Number(tierB.seo || 0) ||
+      Number(tierA.bonusPool || 0) !== Number(tierB.bonusPool || 0) ||
+      Number(tierA.partyFund || 0) !== Number(tierB.partyFund || 0) ||
+      Number(tierA.total || 0) !== Number(tierB.total || 0) ||
+      (tierA.notes || "") !== (tierB.notes || "")
+    ) {
+      return false;
+    }
+  }
+
+  for (const key of keysB) {
+    if (!a[key]) return false;
+  }
+
+  return true;
+}
+
 export default function CommissionSettingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -135,9 +174,16 @@ export default function CommissionSettingsPage() {
 
   // Settings state for all 4 combinations
   const [settings, setSettings] = useState<Record<string, CommissionTier>>({});
+  const [initialSettings, setInitialSettings] = useState<Record<string, CommissionTier>>({});
 
   // Simulator state
   const [simulationPrice, setSimulationPrice] = useState<number>(100);
+
+  // Track if changes have been made compared to saved baseline
+  const hasChanges = useMemo(() => {
+    if (Object.keys(initialSettings).length === 0) return false;
+    return !areSettingsEqual(settings, initialSettings);
+  }, [settings, initialSettings]);
 
   // Fetch Settings
   useEffect(() => {
@@ -165,6 +211,7 @@ export default function CommissionSettingsPage() {
           });
         }
         setSettings(mapped);
+        setInitialSettings(JSON.parse(JSON.stringify(mapped)));
       })
       .catch((err: any) => {
         console.error(err);
@@ -225,6 +272,13 @@ export default function CommissionSettingsPage() {
 
   // Save All Changes
   const handleSaveAll = async () => {
+    if (!hasChanges) {
+      toast("No changes to save", {
+        icon: "ℹ️",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = Object.values(settings);
@@ -239,6 +293,7 @@ export default function CommissionSettingsPage() {
         throw new Error(errData.error || "Save failed");
       }
 
+      setInitialSettings(JSON.parse(JSON.stringify(settings)));
       toast.success("All commission settings saved successfully!");
     } catch (err: any) {
       toast.error(err.message || "Failed to save settings");
@@ -270,6 +325,7 @@ export default function CommissionSettingsPage() {
         mapped[key] = tier;
       });
       setSettings(mapped);
+      setInitialSettings(JSON.parse(JSON.stringify(mapped)));
 
       toast.success("Commission settings reset to standard defaults!");
     } catch (err: any) {
@@ -397,8 +453,13 @@ export default function CommissionSettingsPage() {
 
             <button
               onClick={handleSaveAll}
-              disabled={saving || resetting}
-              className="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white text-xs sm:text-sm font-bold shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+              disabled={saving || resetting || !hasChanges}
+              className={`flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 ${
+                !hasChanges || saving || resetting
+                  ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-transparent shadow-none"
+                  : "bg-[#6D8196] hover:bg-[#5A6D81] text-white cursor-pointer shadow-xs active:scale-95"
+              }`}
+              title={!hasChanges ? "No changes to save" : "Save All Settings"}
             >
               <Save className={`w-4 h-4 ${saving ? "animate-spin" : ""}`} />
               <span>{saving ? "Saving Changes..." : "Save All Settings"}</span>

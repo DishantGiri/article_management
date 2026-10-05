@@ -269,13 +269,14 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
                     <button
                       onClick={() => handleDelete(g.id, g.code)}
                       disabled={deletingId === g.id}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 opacity-0 group-hover:opacity-100 transition disabled:opacity-50 cursor-pointer"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-950/50 transition disabled:opacity-50 cursor-pointer shrink-0"
                       title={`Delete ${g.code}`}
+                      aria-label={`Delete ${g.code}`}
                     >
                       {deletingId === g.id ? (
-                        <span className="w-4 h-4 border-2 border-rose-300 border-t-transparent rounded-full animate-spin" />
+                        <span className="w-4 h-4 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       )}
                     </button>
                   </li>

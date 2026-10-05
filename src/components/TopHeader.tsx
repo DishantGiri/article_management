@@ -361,8 +361,12 @@ export default function TopHeader({
                 <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 text-center">
                   <Link
                     href="/notifications"
-                    onClick={() => setShowBellMenu(false)}
-                    className="text-xs font-bold text-zinc-900 dark:text-zinc-100 hover:underline transition"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowBellMenu(false);
+                      router.push("/notifications");
+                    }}
+                    className="text-xs font-bold text-zinc-900 dark:text-zinc-100 hover:underline transition cursor-pointer"
                   >
                     View All Notification Center &rarr;
                   </Link>
@@ -395,8 +399,12 @@ export default function TopHeader({
                 {(userRole === "SUPER_ADMIN" || userRole === "ADMIN") && (
                   <Link
                     href="/products/add"
-                    onClick={() => setShowQuickCreate(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowQuickCreate(false);
+                      router.push("/products/add");
+                    }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer"
                   >
                     <Package className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                     <span>Add New Product</span>
@@ -404,8 +412,12 @@ export default function TopHeader({
                 )}
                 <Link
                   href="/articles"
-                  onClick={() => setShowQuickCreate(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowQuickCreate(false);
+                    router.push("/articles");
+                  }}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer"
                 >
                   <FileText className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                   <span>Article Pipeline</span>
@@ -413,21 +425,29 @@ export default function TopHeader({
                 {(userRole === "SUPER_ADMIN" || userRole === "ADMIN" || userRole === "LINKER") && (
                   <Link
                     href="/links"
-                    onClick={() => setShowQuickCreate(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowQuickCreate(false);
+                      router.push("/links");
+                    }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer"
                   >
                     <Link2 className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-                    <span>Link Operations</span>
+                    <span>Link Logs</span>
                   </Link>
                 )}
                 {(userRole === "SUPER_ADMIN" || userRole === "ADMIN") && (
                   <Link
                     href="/users"
-                    onClick={() => setShowQuickCreate(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowQuickCreate(false);
+                      router.push("/users");
+                    }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer"
                   >
                     <User className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-                    <span>Manage Users</span>
+                    <span>Users</span>
                   </Link>
                 )}
               </div>
@@ -497,7 +517,11 @@ export default function TopHeader({
                   {/* View Profile */}
                   <Link
                     href="/settings"
-                    onClick={() => setShowProfileMenu(false)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowProfileMenu(false);
+                      router.push("/settings");
+                    }}
                     className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
@@ -512,7 +536,11 @@ export default function TopHeader({
                   {/* Settings */}
                   <Link
                     href="/settings"
-                    onClick={() => setShowProfileMenu(false)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowProfileMenu(false);
+                      router.push("/settings");
+                    }}
                     className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">

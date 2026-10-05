@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
@@ -145,8 +145,57 @@ export default function EditProductModal({
     }
   }, [isOpen, product]);
 
+  const hasChanges = useMemo(() => {
+    if (!product) return false;
+
+    const isMultiSite = Boolean(
+      (product.availableCount ?? 0) > 1 ||
+        (product.allProductIds && product.allProductIds.length > 1)
+    );
+
+    const norm = (v: string | null | undefined) => (v || "").trim();
+
+    const currentSlug = slug.trim() ? generateSlug(slug) : generateSlug(name);
+    const initialSlug = product.slug ? generateSlug(product.slug) : generateSlug(product.name || "");
+
+    if (name.trim() !== (product.name || "").trim()) return true;
+    if (currentSlug !== initialSlug) return true;
+    if (Boolean(isNative) !== Boolean(product.isNative)) return true;
+    if (!isMultiSite && siteId !== (product.siteId?.toString() || "")) return true;
+    if (categoryId !== (product.categoryId?.toString() || "")) return true;
+    if (norm(category) !== norm(product.productCategory)) return true;
+    if (norm(source) !== norm(product.source)) return true;
+    if (norm(trendLink) !== norm(product.trendLink)) return true;
+    if (norm(trendLevel || "HIGH") !== norm(product.trendLevel || "HIGH")) return true;
+    if (norm(affiliateName) !== norm(product.affiliateName)) return true;
+    if (norm(previewLink) !== norm(product.previewLink)) return true;
+    if (norm(remarks) !== norm(product.remarks)) return true;
+
+    return false;
+  }, [
+    product,
+    name,
+    slug,
+    isNative,
+    siteId,
+    categoryId,
+    category,
+    source,
+    trendLink,
+    trendLevel,
+    affiliateName,
+    previewLink,
+    remarks,
+  ]);
+
   const handleSubmit = async () => {
     if (!product) return;
+
+    if (!hasChanges) {
+      toast("No changes to save", { icon: "ℹ️" });
+      onClose();
+      return;
+    }
 
     const isMultiSite = Boolean(
       (product.availableCount ?? 0) > 1 ||
@@ -608,9 +657,14 @@ export default function EditProductModal({
                 </button>
                 <button
                   type="button"
-                  disabled={!name.trim() || submitting}
+                  disabled={!name.trim() || submitting || !hasChanges}
                   onClick={handleSubmit}
-                  className="px-5 py-2.5 bg-zinc-950 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-[0.98] text-white dark:text-zinc-950 rounded-xl text-xs font-bold shadow-xs disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                    !hasChanges || submitting || !name.trim()
+                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed shadow-none"
+                      : "bg-zinc-950 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-[0.98] text-white dark:text-zinc-950 shadow-xs cursor-pointer"
+                  }`}
+                  title={!hasChanges ? "No changes to save" : "Save Changes"}
                 >
                   {submitting ? (
                     <>

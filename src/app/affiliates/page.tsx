@@ -1068,14 +1068,14 @@ export default function AffiliatesPage() {
                           setModalSearch("");
                         }}
                         disabled={aff.productCount === 0}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                           aff.productCount > 0
-                            ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+                            ? "bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 dark:text-blue-300 dark:border-blue-800 shadow-2xs"
+                            : "bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-600 border border-slate-200/40 dark:border-slate-800 cursor-not-allowed"
                         }`}
                       >
                         <span>View Products</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <ChevronRight className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       </button>
                     </div>
                   </div>
