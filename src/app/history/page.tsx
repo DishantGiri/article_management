@@ -451,7 +451,7 @@ export default function HistoryPage() {
         />
 
         {/* Date Filter */}
-        <div className="border-l border-slate-100 dark:border-slate-800 pl-3">
+        <div className="border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-2 sm:pt-0 sm:pl-3 w-full sm:w-auto">
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -466,6 +466,7 @@ export default function HistoryPage() {
             }}
             placeholder="Filter Date Range"
             disableFutureDates={true}
+            className="w-full sm:w-auto"
           />
         </div>
       </div>

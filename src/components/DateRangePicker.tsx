@@ -262,12 +262,12 @@ export default function DateRangePicker({
       {/* Date Range Input Box */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between border border-[#CBCBCB]/70 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-[#6D8196] bg-white dark:bg-slate-850 rounded-xl px-3 py-1.5 min-w-[210px] text-xs font-semibold text-[#4A4A4A] dark:text-slate-200 shadow-2xs transition-all cursor-pointer select-none"
+        className="flex items-center justify-between border border-[#CBCBCB]/70 dark:border-slate-700 hover:border-[#6D8196] dark:hover:border-[#6D8196] bg-white dark:bg-slate-850 rounded-xl px-3 py-1.5 w-full sm:w-auto min-w-0 sm:min-w-[210px] text-xs font-semibold text-[#4A4A4A] dark:text-slate-200 shadow-2xs transition-all cursor-pointer select-none"
       >
-        <span className={startDate ? "text-[#4A4A4A] dark:text-white" : "text-slate-400 font-medium"}>
+        <span className={`truncate text-xs ${startDate ? "text-[#4A4A4A] dark:text-white" : "text-slate-400 font-medium"}`}>
           {displayValue()}
         </span>
-        <div className="flex items-center gap-1.5 ml-2">
+        <div className="flex items-center gap-1.5 ml-2 shrink-0">
           {startDate && (
             <button
               onClick={handleClear}
@@ -286,8 +286,10 @@ export default function DateRangePicker({
       {isOpen && (
         <div
           className={`absolute z-50 mt-1.5 ${
-            align === "right" ? "right-0" : "left-0"
-          } w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-3.5 animate-in fade-in slide-in-from-top-1 duration-150`}
+            align === "right"
+              ? "right-0 max-sm:left-1/2 max-sm:-translate-x-1/2 max-sm:right-auto sm:right-0"
+              : "left-0 max-sm:left-1/2 max-sm:-translate-x-1/2 sm:left-0"
+          } w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-3.5 animate-in fade-in slide-in-from-top-1 duration-150`}
         >
           {/* Preset Buttons */}
           <div className="grid grid-cols-5 gap-1 mb-3 pb-2.5 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold">

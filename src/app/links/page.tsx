@@ -663,10 +663,10 @@ function LinksPageContent() {
       )}
 
       {/* Tabs Selector for Links */}
-      <div className="flex border-b border-[#CBCBCB]/60 dark:border-slate-800 mb-6 gap-2">
+      <div className="flex border-b border-[#CBCBCB]/60 dark:border-slate-800 mb-6 gap-1 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth">
         <button
           onClick={() => { setActiveMainTab("links"); setStatusFilter(""); setShowOnlyDeadLinks(false); setCurrentPage(1); router.replace("/links"); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${activeMainTab === "links" && !statusFilter && !showOnlyDeadLinks
+          className={`px-3 sm:px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${activeMainTab === "links" && !statusFilter && !showOnlyDeadLinks
               ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400 font-bold"
               : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
@@ -679,7 +679,7 @@ function LinksPageContent() {
         </button>
         <button
           onClick={() => { setActiveMainTab("links"); setStatusFilter("ISSUE"); setShowOnlyDeadLinks(false); setCurrentPage(1); router.replace("/links?status=ISSUE"); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${activeMainTab === "links" && statusFilter === "ISSUE"
+          className={`px-3 sm:px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${activeMainTab === "links" && statusFilter === "ISSUE"
               ? "border-rose-500 text-rose-600 dark:text-rose-400 font-bold"
               : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
@@ -693,7 +693,7 @@ function LinksPageContent() {
         </button>
         <button
           onClick={() => { setActiveMainTab("links"); setStatusFilter("REQUESTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); router.replace("/links?status=REQUESTED"); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${activeMainTab === "links" && statusFilter === "REQUESTED"
+          className={`px-3 sm:px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${activeMainTab === "links" && statusFilter === "REQUESTED"
               ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400 font-bold"
               : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
@@ -708,7 +708,7 @@ function LinksPageContent() {
         </button>
         <button
           onClick={() => { setActiveMainTab("links"); setStatusFilter("ACCEPTED"); setShowOnlyDeadLinks(false); setCurrentPage(1); router.replace("/links?status=ACCEPTED"); }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${activeMainTab === "links" && statusFilter === "ACCEPTED"
+          className={`px-3 sm:px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${activeMainTab === "links" && statusFilter === "ACCEPTED"
               ? "border-[#6D8196] text-[#6D8196] dark:border-sky-400 dark:text-sky-400 font-bold"
               : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
             }`}
@@ -726,7 +726,7 @@ function LinksPageContent() {
             setActiveMainTab("compare");
             router.replace("/links?tab=compare");
           }}
-          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+          className={`px-3 sm:px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
             activeMainTab === "compare"
               ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold"
               : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
@@ -835,6 +835,7 @@ function LinksPageContent() {
             }}
             placeholder="Select Date Range"
             disableFutureDates={true}
+            className="w-full sm:w-auto"
           />
 
           {/* Reset Filters Action */}

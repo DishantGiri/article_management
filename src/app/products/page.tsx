@@ -1060,9 +1060,9 @@ function ProductsPageContent() {
           )}
         </div>
 
-        <div className="flex items-center gap-2.5 ml-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto sm:ml-auto">
           {/* Search */}
-          <div className="relative min-w-[200px] sm:w-60">
+          <div className="relative w-full sm:w-60 min-w-0">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="w-4 h-4 text-slate-400" />
             </div>
@@ -1098,18 +1098,21 @@ function ProductsPageContent() {
           )}
 
           {/* Filter Date */}
-          <DateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            onChange={(start, end) => {
-              setStartDate(start);
-              setEndDate(end);
-              setCurrentPage(1);
-            }}
-            placeholder="Filter Date"
-            align="right"
-            disableFutureDates={true}
-          />
+          <div className="w-full sm:w-auto min-w-0">
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(start, end) => {
+                setStartDate(start);
+                setEndDate(end);
+                setCurrentPage(1);
+              }}
+              placeholder="Filter Date"
+              align="right"
+              disableFutureDates={true}
+              className="w-full sm:w-auto"
+            />
+          </div>
         </div>
       </div>
 

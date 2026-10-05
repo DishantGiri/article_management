@@ -602,16 +602,16 @@ export default function PendingLinkLogsSection({
     <div className="mb-6 bg-white dark:bg-slate-900 border border-[#CBCBCB]/70 dark:border-slate-800 rounded-2xl p-5 shadow-xs transition-all duration-200">
       {/* Top Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-500/20 dark:border-amber-800/50 shadow-xs">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-500/20 dark:border-amber-800/50 shadow-xs shrink-0">
             <AlertTriangle className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <h3 className="text-base font-bold text-[#4A4A4A] dark:text-slate-100 tracking-tight">{title}</h3>
-              <span className="px-2.5 py-0.5 text-xs font-extrabold bg-[#FFFFE3] dark:bg-amber-950/60 text-[#4A4A4A] dark:text-amber-300 border border-[#CBCBCB] dark:border-amber-800/60 rounded-full">
+              <span className="px-2.5 py-0.5 text-xs font-extrabold bg-[#FFFFE3] dark:bg-amber-950/60 text-[#4A4A4A] dark:text-amber-300 border border-[#CBCBCB] dark:border-amber-800/60 rounded-full shrink-0">
                 {isGrouped
                   ? `${groupedProducts.length} ${groupedProducts.length === 1 ? "Product" : "Products"} (${filteredProducts.length} Links)`
                   : `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`}
@@ -705,7 +705,7 @@ export default function PendingLinkLogsSection({
           {/* Filters & Search Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             {/* Search Input */}
-            <div className="relative min-w-[220px] flex-1 max-w-sm">
+            <div className="relative w-full sm:w-auto min-w-0 sm:min-w-[220px] flex-1 max-w-sm">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
