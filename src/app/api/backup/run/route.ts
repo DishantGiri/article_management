@@ -30,9 +30,14 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("[POST /api/backup/run]", err);
+    const detailedError = (err.stderr && err.stderr.trim()) 
+      || (err.stdout && err.stdout.trim()) 
+      || err.message 
+      || "Failed to run backup";
     return NextResponse.json(
       {
-        error: err.stderr || err.message || "Failed to run backup",
+        error: detailedError,
+        output: err.stdout || "",
       },
       { status: 500 }
     );

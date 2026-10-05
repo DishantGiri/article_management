@@ -14,10 +14,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "GDRIVE_CLIENT_ID not found in .env" }, { status: 400 });
     }
 
-    // Determine base URL from NEXTAUTH_URL, NEXT_PUBLIC_APP_URL, or request headers
-    const host = req.headers.get("host") || "localhost:3022";
-    const protocol = req.headers.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    // Determine base URL dynamically from request headers first, then env variables
+    const forwardedHost = req.headers.get("x-forwarded-host");
+    const hostHeader = req.headers.get("host");
+    const host = forwardedHost || hostHeader || "localhost:3022";
+    const forwardedProto = req.headers.get("x-forwarded-proto");
+    const protocol = forwardedProto || (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+    
+    // If the request came through a real domain (not localhost), use that domain
+    let baseUrl: string;
+    if (forwardedHost || (hostHeader && !hostHeader.startsWith("localhost") && !hostHeader.startsWith("127.0.0.1"))) {
+      baseUrl = `${protocol}://${host}`;
+    } else {
+      baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    }
     const redirectUri = `${baseUrl.replace(/\/$/, "")}/api/backup/google/callback`;
 
     const scope = [

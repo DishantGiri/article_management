@@ -57,17 +57,39 @@ if [ ! -f "${ENV_FILE}" ]; then
   exit 1
 fi
 
-DB_HOST=$(grep -E '^DATABASE_HOST=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r')
-DB_PORT=$(grep -E '^DATABASE_PORT=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r')
-DB_USER=$(grep -E '^DATABASE_USER=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r')
-DB_PASS=$(grep -E '^DATABASE_PASSWORD=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r')
-DB_NAME=$(grep -E '^DATABASE_NAME=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r')
+DB_HOST=$(grep -E '^DATABASE_HOST=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r' || true)
+DB_PORT=$(grep -E '^DATABASE_PORT=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r' || true)
+DB_USER=$(grep -E '^DATABASE_USER=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r' || true)
+DB_PASS=$(grep -E '^DATABASE_PASSWORD=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r' || true)
+DB_NAME=$(grep -E '^DATABASE_NAME=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r' || true)
+
+# If DB_USER or DB_NAME is missing, parse from DATABASE_URL
+if [ -z "${DB_USER:-}" ] || [ -z "${DB_NAME:-}" ]; then
+  DATABASE_URL=$(grep -E '^DATABASE_URL=' "${ENV_FILE}" | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r' || true)
+  if [ -n "${DATABASE_URL:-}" ]; then
+    PROTO_REMOVED="${DATABASE_URL#*://}"
+    USER_PASS="${PROTO_REMOVED%%@*}"
+    HOST_PORT_DB="${PROTO_REMOVED#*@}"
+    
+    DB_USER="${DB_USER:-${USER_PASS%%:*}}"
+    DB_PASS="${DB_PASS:-${USER_PASS#*:}}"
+    
+    HOST_PORT="${HOST_PORT_DB%%/*}"
+    DB_HOST="${DB_HOST:-${HOST_PORT%%:*}}"
+    if [[ "${HOST_PORT}" == *:* ]]; then
+      DB_PORT="${DB_PORT:-${HOST_PORT#*:}}"
+    fi
+    
+    DB_REST="${HOST_PORT_DB#*/}"
+    DB_NAME="${DB_NAME:-${DB_REST%%\?*}}"
+  fi
+fi
 
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-3306}"
 
-if [ -z "${DB_NAME}" ] || [ -z "${DB_USER}" ]; then
-  echo "[-] ERROR: DATABASE_NAME or DATABASE_USER is missing in .env" >&2
+if [ -z "${DB_NAME:-}" ] || [ -z "${DB_USER:-}" ]; then
+  echo "[-] ERROR: DATABASE_NAME or DATABASE_USER is missing in .env and could not be determined from DATABASE_URL" >&2
   exit 1
 fi
 
@@ -87,7 +109,7 @@ if ! command -v "${DUMP_CMD}" &>/dev/null; then
   if command -v mariadb-dump &>/dev/null; then
     DUMP_CMD="mariadb-dump"
   else
-    echo "[-] ERROR: Neither mysqldump nor mariadb-dump was found in PATH." >&2
+    echo "[-] ERROR: Neither mysqldump nor mariadb-dump was found in PATH. Install with: sudo apt install -y mysql-client" >&2
     exit 1
   fi
 fi
@@ -97,9 +119,11 @@ BACKUP_PATH="${BACKUP_DIR}/${BACKUP_FILENAME}"
 
 echo "[*] Database: ${DB_NAME} on ${DB_HOST}:${DB_PORT} (user: ${DB_USER})"
 echo "[*] Destination: ${BACKUP_PATH}"
-echo "[*] Exporting all data, schemas, routines, triggers & events..."
+echo "[*] Exporting data, schemas, triggers..."
 
-MYSQL_PWD="${DB_PASS}" "${DUMP_CMD}" \
+# Try comprehensive dump (with routines & events). If privileges fail, retry without routines/events.
+DUMP_ERROR_FILE="${LOG_DIR}/mysqldump_err_${TIMESTAMP}.tmp"
+if ! MYSQL_PWD="${DB_PASS}" "${DUMP_CMD}" \
   --host="${DB_HOST}" \
   --port="${DB_PORT}" \
   --user="${DB_USER}" \
@@ -110,7 +134,27 @@ MYSQL_PWD="${DB_PASS}" "${DUMP_CMD}" \
   --events \
   --hex-blob \
   --max-allowed-packet=512M \
-  "${DB_NAME}" | gzip -9 > "${BACKUP_PATH}"
+  "${DB_NAME}" 2>"${DUMP_ERROR_FILE}" | gzip -9 > "${BACKUP_PATH}"; then
+
+  echo "[!] Notice: Comprehensive dump failed (possibly due to MySQL EVENT/PROCESS privileges). Retrying standard dump..."
+  if [ -f "${DUMP_ERROR_FILE}" ]; then
+    cat "${DUMP_ERROR_FILE}" >&2
+    rm -f "${DUMP_ERROR_FILE}"
+  fi
+
+  MYSQL_PWD="${DB_PASS}" "${DUMP_CMD}" \
+    --host="${DB_HOST}" \
+    --port="${DB_PORT}" \
+    --user="${DB_USER}" \
+    --single-transaction \
+    --quick \
+    --triggers \
+    --hex-blob \
+    --max-allowed-packet=512M \
+    "${DB_NAME}" | gzip -9 > "${BACKUP_PATH}"
+else
+  rm -f "${DUMP_ERROR_FILE}"
+fi
 
 # Validate file
 if [ ! -s "${BACKUP_PATH}" ]; then
@@ -130,26 +174,28 @@ elif [ -f "${HOME:-/root}/.config/rclone/rclone.conf" ]; then
   RCLONE_CONF_OPT="--config ${HOME:-/root}/.config/rclone/rclone.conf"
 fi
 
-if command -v rclone &>/dev/null; then
-  if rclone ${RCLONE_CONF_OPT} listremotes 2>/dev/null | grep -q "^${RCLONE_REMOTE}:"; then
-    echo "[*] Uploading to Google Drive: ${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}..."
-    rclone ${RCLONE_CONF_OPT} copy "${BACKUP_PATH}" "${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}/" --progress
-
-    echo "[+] Uploaded to Google Drive successfully!"
-
-    # Prune old backups on Google Drive
-    echo "[*] Cleaning up Google Drive (${BACKUP_TYPE}) backups older than ${REMOTE_RETENTION_DAYS} days..."
-    rclone ${RCLONE_CONF_OPT} delete "${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}" --min-age "${REMOTE_RETENTION_DAYS}d" || true
-  else
-    echo "[!] WARNING: rclone remote '${RCLONE_REMOTE}' not configured in 'rclone listremotes'."
-    echo "[!] Please connect Google Drive in Settings (Super Admin) or run 'rclone config'."
-    echo "[!] Local backup kept at: ${BACKUP_PATH}"
-  fi
-else
-  echo "[!] WARNING: 'rclone' is not installed."
-  echo "[!] Install it with: sudo apt install -y rclone"
-  echo "[!] Local backup kept at: ${BACKUP_PATH}"
+if ! command -v rclone &>/dev/null; then
+  echo "[-] ERROR: 'rclone' is not installed on this server." >&2
+  echo "[-] Install it with: sudo apt install -y rclone" >&2
+  echo "[*] Local backup preserved at: ${BACKUP_PATH}"
+  exit 1
 fi
+
+if ! rclone ${RCLONE_CONF_OPT} listremotes 2>/dev/null | grep -q "^${RCLONE_REMOTE}:"; then
+  echo "[-] ERROR: Google Drive is not connected yet (remote '${RCLONE_REMOTE}' not found)." >&2
+  echo "[-] Please open Settings -> Backup in the web dashboard and click 'Connect Google Drive'." >&2
+  echo "[*] Local backup preserved at: ${BACKUP_PATH}"
+  exit 1
+fi
+
+echo "[*] Uploading to Google Drive: ${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}..."
+rclone ${RCLONE_CONF_OPT} copy "${BACKUP_PATH}" "${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}/"
+
+echo "[+] Uploaded to Google Drive successfully!"
+
+# Prune old backups on Google Drive
+echo "[*] Cleaning up Google Drive (${BACKUP_TYPE}) backups older than ${REMOTE_RETENTION_DAYS} days..."
+rclone ${RCLONE_CONF_OPT} delete "${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}" --min-age "${REMOTE_RETENTION_DAYS}d" || true
 
 # 6. Local Cleanup (Prune old local backups)
 echo "[*] Cleaning up local (${BACKUP_TYPE}) backups older than ${LOCAL_RETENTION_DAYS} days..."
