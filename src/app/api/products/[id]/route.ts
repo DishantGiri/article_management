@@ -303,41 +303,10 @@ export async function DELETE(
       );
     }
 
-    const { id } = await params;
-
-    const existing = await prisma.product.findUnique({ where: { id: parseInt(id) } });
-    if (!existing) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
-
-    const oldName = existing.name.trim();
-    const { searchParams } = new URL(req.url);
-    const deleteSingle = searchParams.get("single") === "true";
-
-    if (deleteSingle) {
-      await prisma.product.delete({
-        where: { id: parseInt(id) },
-      });
-    } else {
-      // Find all sibling products with same name across sites and delete them
-      const siblingProducts = await prisma.product.findMany({
-        where: {
-          OR: [
-            { name: oldName },
-            { name: oldName.toLowerCase() },
-            { name: oldName.toUpperCase() },
-          ],
-        },
-        select: { id: true },
-      });
-      const siblingIds = siblingProducts.map((p) => p.id);
-
-      await prisma.product.deleteMany({
-        where: { id: { in: siblingIds } },
-      });
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json(
+      { error: "Product deletion is disabled. Added products cannot be deleted because it affects multiple places across sites, articles, link logs, and commissions." },
+      { status: 400 }
+    );
   } catch (err) {
     console.error("[DELETE /api/products/:id]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

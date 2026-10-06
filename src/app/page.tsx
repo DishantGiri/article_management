@@ -52,6 +52,7 @@ import {
   Plus,
   GitCompare,
   Edit,
+  Compass,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
@@ -2240,6 +2241,14 @@ function ProductResearcherHubStudio({
             <Package className="w-4 h-4 text-slate-500" />
             <span>Product Catalog</span>
             <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+          </Link>
+
+          <Link
+            href="/trendmap-products"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-bold transition shadow-2xs"
+          >
+            <Compass className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>Products from Trendmap</span>
           </Link>
 
           <Link

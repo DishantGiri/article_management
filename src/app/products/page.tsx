@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
-import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Trash2, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import AddProductModal from "@/components/AddProductModal";
@@ -13,7 +13,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
 import DateRangePicker from "@/components/DateRangePicker";
-import ConfirmDialog from "@/components/ConfirmDialog";
 import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import TopHeader from "@/components/TopHeader";
@@ -167,17 +166,6 @@ function ProductsPageContent() {
   const [issueMessage, setIssueMessage] = useState("");
   const [submittingIssue, setSubmittingIssue] = useState(false);
 
-  // Confirm dialog state
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
-  const [confirmMsg, setConfirmMsg] = useState("");
-
-  const openConfirm = (message: string, action: () => void) => {
-    setConfirmMsg(message);
-    setConfirmAction(() => action);
-    setConfirmOpen(true);
-  };
-
   const handleExportCSV = () => {
     const headers = ["ID", "Name", "Site", "Category", "Trend Link", "Preview Link", "Remarks", "Status", "Links Count", "Added By", "Added At"];
     const rows = filtered.map((p) => [
@@ -213,27 +201,6 @@ function ProductsPageContent() {
     toast.success("CSV exported successfully!");
   };
 
-  const handleDeleteProduct = async (productId: number, productName: string) => {
-    openConfirm(
-      `Are you sure you want to delete "${productName}"? This will also delete all associated article tracking and link log entries.`,
-      async () => {
-        const uId = session?.user?.id || 1;
-        try {
-          const res = await fetch(`/api/products/${productId}?callerId=${uId}`, {
-            method: "DELETE",
-          });
-          if (!res.ok) {
-            const errData = await res.json();
-            throw new Error(errData.error || "Failed to delete product");
-          }
-          toast.success("Product deleted successfully!");
-          refreshProductsData(false);
-        } catch (err: any) {
-          toast.error(err.message || "Failed to delete product");
-        }
-      }
-    );
-  };
 
   const [userFilter, setUserFilter] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -1415,18 +1382,6 @@ function ProductsPageContent() {
                               </button>
                             )}
 
-                            {/* Delete */}
-                            {canAddProduct && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteProduct(p.id, p.name)}
-                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition cursor-pointer"
-                                title="Delete Product"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                                <span>Delete</span>
-                              </button>
-                            )}
 
                             {/* Link Issue Flag (if issue exists or to report) */}
                             {(() => {
@@ -1871,20 +1826,6 @@ function ProductsPageContent() {
           </div>
         );
       })()}
-
-      {/* Confirm Delete Dialog */}
-      <ConfirmDialog
-        isOpen={confirmOpen}
-        title="Delete Product"
-        message={confirmMsg}
-        confirmLabel="Delete Product"
-        variant="danger"
-        onConfirm={() => {
-          setConfirmOpen(false);
-          confirmAction?.();
-        }}
-        onCancel={() => setConfirmOpen(false)}
-      />
     </div>
   );
 }

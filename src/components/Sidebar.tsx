@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText, PenLine, Link2, Tag } from "lucide-react";
+import { LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText, PenLine, Link2, Tag, Compass } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/context/ThemeContext";
 import { ArchedNotificationCard } from "./ArchedNotificationCard";
@@ -58,6 +58,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Products",
     roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"],
     icon: Package,
+  },
+  {
+    href: "/trendmap-products",
+    label: "Products from Trendmap",
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "PRODUCT_RESEARCHER"],
+    icon: Compass,
   },
 
   {
@@ -152,6 +158,7 @@ export default function Sidebar() {
   const { data: session, status, update } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [trendmapPendingCount, setTrendmapPendingCount] = useState(0);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [toast, setToast] = useState<{
     id?: number;
@@ -377,12 +384,27 @@ export default function Sidebar() {
         .catch((err) => console.error("Failed to fetch notification count:", err));
     };
 
+    const refreshTrendmapCount = () => {
+      fetch("/api/trendmap-products?limit=1&status=PENDING")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.counts?.pending !== undefined) {
+            setTrendmapPendingCount(data.counts.pending);
+          }
+        })
+        .catch(() => {});
+    };
+
+    refreshTrendmapCount();
+
     window.addEventListener("notifications-marked-read", refreshCount);
     window.addEventListener("notifications-updated", refreshCount);
+    window.addEventListener("trendmap-updated", refreshTrendmapCount);
 
     return () => {
       window.removeEventListener("notifications-marked-read", refreshCount);
       window.removeEventListener("notifications-updated", refreshCount);
+      window.removeEventListener("trendmap-updated", refreshTrendmapCount);
     };
   }, [session?.user?.id]);
 
@@ -687,6 +709,11 @@ export default function Sidebar() {
                     {item.label === "Notifications" && unreadCount > 0 && (
                       <span className="bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold text-[9px] px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm mr-2">
                         {unreadCount}
+                      </span>
+                    )}
+                    {item.label === "Products from Trendmap" && trendmapPendingCount > 0 && (
+                      <span className="bg-blue-600 text-white dark:bg-blue-500 font-bold text-[9px] px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm mr-2">
+                        {trendmapPendingCount}
                       </span>
                     )}
                   </div>

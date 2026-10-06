@@ -156,16 +156,33 @@ function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | 
   );
 }
 
+export interface InitialProductData {
+  name?: string;
+  slug?: string;
+  category?: string;
+  source?: string;
+  trendLink?: string;
+  previewLink?: string;
+  trendLevel?: string;
+  remarks?: string;
+  country?: string;
+  isNative?: boolean;
+  defaultEntryMode?: "single" | "bulk";
+  trendmapProductId?: number;
+}
+
 export default function AddProductModal({
   isOpen,
   onClose,
   onSuccess,
   isProductResearch: isProductResearchProp,
+  initialData,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (createdProduct?: any) => void;
   isProductResearch?: boolean;
+  initialData?: InitialProductData | null;
 }) {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "ADMIN";
@@ -535,32 +552,32 @@ export default function AddProductModal({
       } else {
         setExcludedSiteIds([]);
       }
-      setEntryMode("bulk");
+      setEntryMode(initialData?.defaultEntryMode || (initialData?.name ? "single" : "bulk"));
       setBulkPasteText("");
       setSpreadsheetRows([
-        { name: "", slug: "", category: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false },
+        { name: initialData?.name || "", slug: initialData?.slug || (initialData?.name ? generateSlug(initialData.name) : ""), category: initialData?.category || "", affiliateName: "", trendLevel: initialData?.trendLevel || "HIGH", trendLink: initialData?.trendLink || "", previewLink: initialData?.previewLink || "", remarks: initialData?.remarks || "", isNative: initialData?.isNative ?? false },
       ]);
-      setBatchCategory("");
-      setBatchSource("");
+      setBatchCategory(initialData?.category || "");
+      setBatchSource(initialData?.source || "");
       setBatchAffiliate("");
-      setBatchTrendLevel("");
+      setBatchTrendLevel(initialData?.trendLevel || "");
       setBatchIsNative("");
       setShowSitesDrawer(false);
       setForm({
         categoryIds: [],
-        name: "",
-        slug: "",
-        country: "",
-        category: "",
-        source: "",
-        trendLink: "",
-        trendLevel: "HIGH",
+        name: initialData?.name || "",
+        slug: initialData?.slug || (initialData?.name ? generateSlug(initialData.name) : ""),
+        country: initialData?.country || "",
+        category: initialData?.category || "",
+        source: initialData?.source || "Competitor",
+        trendLink: initialData?.trendLink || "",
+        trendLevel: initialData?.trendLevel || "HIGH",
         affiliateName: "",
-        previewLink: "",
-        remarks: "",
-        isNative: false,
+        previewLink: initialData?.previewLink || "",
+        remarks: initialData?.remarks || "",
+        isNative: initialData?.isNative ?? false,
       });
-      setIsSlugManuallyEdited(false);
+      setIsSlugManuallyEdited(Boolean(initialData?.slug));
       setLoading(true);
       Promise.all([
         fetch("/api/categories").then((r) => r.json()),
@@ -569,7 +586,8 @@ export default function AddProductModal({
         fetch("/api/affiliates").then((r) => r.json()),
       ])
         .then(([catsData, prodCatsData, sitesData, affsData]) => {
-          setCategories(Array.isArray(catsData) ? catsData : []);
+          const rawCats = Array.isArray(catsData) ? catsData : [];
+          setCategories(rawCats);
           setProductCategories(Array.isArray(prodCatsData) ? prodCatsData : []);
           const rawSites = Array.isArray(sitesData) ? sitesData : [];
           setSites(rawSites);
@@ -579,11 +597,24 @@ export default function AddProductModal({
           } else {
             setExcludedSiteIds([]);
           }
+
+          if (initialData?.category) {
+            const matchedCat = rawCats.find(
+              (c: any) => c.name.toLowerCase() === initialData.category?.toLowerCase()
+            );
+            if (matchedCat) {
+              setForm((prev) => ({
+                ...prev,
+                categoryIds: [matchedCat.id],
+                category: matchedCat.name,
+              }));
+            }
+          }
         })
         .catch(() => setError("Failed to load initial data"))
         .finally(() => setLoading(false));
     }
-  }, [isOpen, isProductResearcherRole]);
+  }, [isOpen, isProductResearcherRole, initialData]);
 
   // Real-time database check for Single Product mode
   useEffect(() => {
@@ -895,9 +926,22 @@ export default function AddProductModal({
           throw new Error(err.error || "Failed to create products");
         }
 
+        const resData = await res.json().catch(() => null);
+
+        if (initialData?.trendmapProductId) {
+          fetch(`/api/trendmap-products/${initialData.trendmapProductId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              addedToCatalog: true,
+              status: "ADDED",
+            }),
+          }).catch((e) => console.error("Failed to link Trendmap product:", e));
+        }
+
         toast.success(`Successfully created ${validRows.length} products!`);
         setSuccessState(true);
-        if (onSuccess) onSuccess();
+        if (onSuccess) onSuccess(resData);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Something went wrong";
         setError(msg);
@@ -982,14 +1026,24 @@ export default function AddProductModal({
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to create product");
+      const resData = await res.json().catch(() => null);
+
+      if (initialData?.trendmapProductId) {
+        const createdProdId = resData?.products?.[0]?.id || null;
+        fetch(`/api/trendmap-products/${initialData.trendmapProductId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            addedToCatalog: true,
+            status: "ADDED",
+            catalogProductId: createdProdId,
+          }),
+        }).catch((e) => console.error("Failed to link Trendmap product:", e));
       }
 
       toast.success("Successfully added product!");
       setSuccessState(true);
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(resData);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Something went wrong";
       setError(msg);

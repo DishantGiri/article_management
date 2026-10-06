@@ -121,6 +121,9 @@ model User {
   // Notice board
   noticesCreated        Notice[]               @relation("NoticeCreatedBy")
   noticeAcknowledgments NoticeAcknowledgment[] @relation("NoticeAcknowledgedBy")
+
+  // Trendmap products added manually by this user
+  trendmapProductsAdded TrendmapProduct[]      @relation("TrendmapProductAddedBy")
 }
 
 // ─────────────────────────────────────────────
@@ -480,6 +483,38 @@ model CommissionSale {
   @@index([productId])
   @@index([siteId])
   @@index([saleType])
+}
+
+// ─────────────────────────────────────────────
+// TRENDMAP PRODUCT
+// ─────────────────────────────────────────────
+
+model TrendmapProduct {
+  id               Int       @id @default(autoincrement())
+  name             String
+  productUrl       String?   @db.Text
+  competitor       String?
+  searchDemand     String?   // e.g. "26 / 100" or "Not analyzed"
+  demandScore      Int?      // e.g. 26
+  demandLevel      String?   @default("NOT_ANALYZED") // "HIGH", "MODERATE", "LOW", "NOT_ANALYZED"
+  category         String?
+  market           String?   @default("United (US)")
+  modifiedDate     String?   // e.g. "Jan 19, 2026"
+  discoveredDate   String?   // e.g. "Oct 6"
+  researchedBy     String?   // User who researched the product in Trendmap
+  notes            String?   @db.Text
+  status           String    @default("PENDING") // "PENDING" | "ADDED" | "DISMISSED"
+  addedToCatalog   Boolean   @default(false)
+  catalogProductId Int?
+  addedById        Int?
+  addedBy          User?     @relation("TrendmapProductAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([name])
+  @@index([competitor])
+  @@index([status])
+  @@index([demandLevel])
 }
 
 

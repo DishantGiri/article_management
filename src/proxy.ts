@@ -2,12 +2,12 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  SUPER_ADMIN: ["/", "/products", "/articles", "/links", "/affiliates", "/sites", "/categories", "/product-categories", "/product-types", "/reports", "/history", "/users", "/notifications", "/notices", "/settings", "/team-members", "/calendar", "/commission-settings", "/commissions", "/commission-list", "/user-commissions"],
-  ADMIN: ["/", "/products", "/articles", "/links", "/affiliates", "/sites", "/categories", "/product-categories", "/product-types", "/reports", "/history", "/users", "/notifications", "/notices", "/settings", "/team-members", "/calendar", "/user-commissions"],
+  SUPER_ADMIN: ["/", "/products", "/trendmap-products", "/articles", "/links", "/affiliates", "/sites", "/categories", "/product-categories", "/product-types", "/reports", "/history", "/users", "/notifications", "/notices", "/settings", "/team-members", "/calendar", "/commission-settings", "/commissions", "/commission-list", "/user-commissions"],
+  ADMIN: ["/", "/products", "/trendmap-products", "/articles", "/links", "/affiliates", "/sites", "/categories", "/product-categories", "/product-types", "/reports", "/history", "/users", "/notifications", "/notices", "/settings", "/team-members", "/calendar", "/user-commissions"],
   TEAM_LEAD: ["/", "/products", "/articles", "/links", "/reports", "/notifications", "/notices", "/settings", "/team-members", "/calendar", "/user-commissions"],
-  LINKER: ["/", "/products", "/links", "/affiliates", "/sites", "/categories", "/product-categories", "/product-types", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
+  LINKER: ["/", "/products", "/trendmap-products", "/links", "/affiliates", "/sites", "/categories", "/product-categories", "/product-types", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
   WRITER: ["/", "/products", "/articles", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
-  PRODUCT_RESEARCHER: ["/", "/products", "/product-types", "/product-categories", "/notifications", "/notices", "/settings", "/calendar"],
+  PRODUCT_RESEARCHER: ["/", "/products", "/trendmap-products", "/product-types", "/product-categories", "/notifications", "/notices", "/settings", "/calendar"],
 };
 
 function isRouteAllowed(pathname: string, role: string | null | undefined, roles?: string[]): boolean {
@@ -38,8 +38,12 @@ export default withAuth(
     const token = req.nextauth.token;
     const { pathname } = req.nextUrl;
 
-    // Never intercept NextAuth internal endpoints or WebSocket upgrades
-    if (pathname.startsWith("/api/auth") || pathname === "/ws") {
+    // Never intercept NextAuth internal endpoints, WebSocket upgrades, or external Trendmap push
+    if (
+      pathname.startsWith("/api/auth") ||
+      pathname === "/ws" ||
+      (pathname.startsWith("/api/trendmap-products") && req.method === "POST")
+    ) {
       return NextResponse.next();
     }
 
