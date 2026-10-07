@@ -19,6 +19,7 @@ import {
   PlayCircle,
   FileText,
   User,
+  UserCheck,
   Clock,
   Sparkles,
   Share2,
@@ -54,6 +55,7 @@ export interface AssignmentProduct {
   site?: { id?: number; name: string; url?: string; allowCountrySpecific?: boolean } | null;
   category: { id?: number; name: string };
   addedBy: { id?: number; name: string; role?: string };
+  researchedBy?: string | null;
   updatedBy?: { id?: number; name: string; role?: string } | null;
   updatedAt?: string | null;
   article?: {
@@ -98,6 +100,8 @@ export interface SiteAvailabilityItem {
     addedAt?: string;
     addedBy?: string;
     addedByRole?: string | null;
+    researchedBy?: string | null;
+    researchedByRole?: string | null;
     addedToSiteBy?: string | null;
     addedToSiteByRole?: string | null;
     updatedAt?: string | null;
@@ -202,6 +206,19 @@ export default function AssignmentDetailsModal({
     currentUserRole === "ADMIN" ||
     currentUserRole === "SUPER_ADMIN" ||
     currentUserRole === "PRODUCT_RESEARCHER";
+
+  // Resolve original Product Researcher name (never overwritten by linker/admin)
+  const originalResearcher = useMemo(() => {
+    if (product.researchedBy) return product.researchedBy;
+    if (product.remarks) {
+      const match = product.remarks.match(/Researched by:\s*([^.\n,]+)/i);
+      if (match && match[1]?.trim()) return match[1].trim();
+    }
+    if (product.addedBy?.role === "PRODUCT_RESEARCHER") {
+      return product.addedBy.name;
+    }
+    return null;
+  }, [product]);
 
   const fetchSiteAvailability = useCallback(async () => {
     if (!product?.id) return;
@@ -522,11 +539,32 @@ export default function AssignmentDetailsModal({
                     </span>
                   )}
 
-                  {product.addedBy?.name && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
-                      <User className="w-3.5 h-3.5 text-[#6D8196]" />
+                  {/* Researched by attribution */}
+                  {originalResearcher ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 text-xs font-semibold border border-blue-200/80 dark:border-blue-800/60 shadow-2xs">
+                      <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>
+                        Researched by: <strong>{originalResearcher}</strong>
+                      </span>
+                    </span>
+                  ) : product.addedBy?.role === "PRODUCT_RESEARCHER" ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 text-xs font-semibold border border-blue-200/80 dark:border-blue-800/60 shadow-2xs">
+                      <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       <span>
                         Researched by: <strong>{product.addedBy.name}</strong>
+                        <span className="text-[10px] text-blue-500/80 ml-1">
+                          (Product Researcher)
+                        </span>
+                      </span>
+                    </span>
+                  ) : null}
+
+                  {/* Added by attribution (shows who created or imported this product entry) */}
+                  {product.addedBy?.name && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>
+                        Added by: <strong>{product.addedBy.name}</strong>
                         {product.addedBy.role && (
                           <span className="text-[10px] text-slate-400 ml-1">
                             ({product.addedBy.role.replace(/_/g, " ")})
@@ -828,14 +866,19 @@ export default function AssignmentDetailsModal({
                                   • {site.product.linkCount} Link{site.product.linkCount !== 1 ? "s" : ""}
                                 </span>
                               )}
+                              {site.product?.researchedBy && (
+                                <span className="text-blue-600 dark:text-blue-400">
+                                  • Researched by: <strong className="text-blue-700 dark:text-blue-300">{site.product.researchedBy}</strong>
+                                </span>
+                              )}
                               {site.product?.addedBy && (
                                 <span className="text-slate-500 dark:text-slate-400">
-                                  • Researched by: <strong className="text-slate-700 dark:text-slate-200">{site.product.addedBy}</strong>
+                                  • Added by: <strong className="text-slate-700 dark:text-slate-200">{site.product.addedBy}</strong>
                                 </span>
                               )}
                               {site.product?.addedToSiteBy && site.product.addedToSiteBy !== site.product.addedBy && (
-                                <span className="text-blue-600 dark:text-blue-400">
-                                  • Added to site by: <strong className="text-blue-700 dark:text-blue-300">{site.product.addedToSiteBy}</strong>
+                                <span className="text-indigo-600 dark:text-indigo-400">
+                                  • Added to site by: <strong className="text-indigo-700 dark:text-indigo-300">{site.product.addedToSiteBy}</strong>
                                 </span>
                               )}
                             </>

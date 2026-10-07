@@ -65,6 +65,14 @@ export async function GET(req: NextRequest) {
         where.addedToCatalog = true;
       } else if (status === "PENDING") {
         where.addedToCatalog = false;
+      } else if (status === "DUPLICATES") {
+        const dupGroups = await prisma.trendmapProduct.groupBy({
+          by: ["name"],
+          _count: { id: true },
+          having: { id: { _count: { gt: 1 } } },
+        });
+        const dupNames = dupGroups.map((d) => d.name);
+        where.name = { in: dupNames };
       } else {
         where.status = status;
       }
@@ -80,7 +88,7 @@ export async function GET(req: NextRequest) {
     else if (sort === "demand_asc") orderBy = { demandScore: "asc" };
     else if (sort === "name_asc") orderBy = { name: "asc" };
 
-    const [products, totalCount, countsGroup, competitorsList] = await Promise.all([
+    const [products, totalCount, countsGroup, competitorsList, duplicateGroups] = await Promise.all([
       prisma.trendmapProduct.findMany({
         where,
         orderBy,
@@ -101,6 +109,11 @@ export async function GET(req: NextRequest) {
         where: { competitor: { not: null } },
         select: { competitor: true },
         distinct: ["competitor"],
+      }),
+      prisma.trendmapProduct.groupBy({
+        by: ["name"],
+        _count: { id: true },
+        having: { id: { _count: { gt: 1 } } },
       }),
     ]);
 
@@ -130,8 +143,88 @@ export async function GET(req: NextRequest) {
       .filter((c): c is string => Boolean(c))
       .sort();
 
+    // Deduplication & Live Catalog Cross-Reference
+    const productNames = Array.from(new Set(products.map((p) => p.name.trim()).filter(Boolean)));
+
+    const [catalogMatches, allRelatedOpportunities] = await Promise.all([
+      productNames.length > 0
+        ? prisma.product.findMany({
+            where: {
+              OR: productNames.flatMap((n) => [
+                { name: n },
+                { name: n.toLowerCase() },
+                { name: n.toUpperCase() },
+              ]),
+            },
+            select: {
+              id: true,
+              name: true,
+              addedAt: true,
+              site: { select: { id: true, name: true } },
+              addedBy: { select: { id: true, name: true } },
+            },
+            orderBy: { addedAt: "desc" },
+          })
+        : Promise.resolve([]),
+      productNames.length > 0
+        ? prisma.trendmapProduct.findMany({
+            where: {
+              name: { in: productNames },
+            },
+            select: {
+              id: true,
+              name: true,
+              competitor: true,
+              researchedBy: true,
+              addedToCatalog: true,
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const enrichedProducts = products.map((item) => {
+      const norm = item.name.trim().toLowerCase();
+      const related = allRelatedOpportunities.filter(
+        (r) => r.name.trim().toLowerCase() === norm
+      );
+      const isAnyDuplicateAdded = related.some((r) => r.addedToCatalog);
+      const catMatch = catalogMatches.find(
+        (c) => c.name.trim().toLowerCase() === norm
+      );
+      const inCatalog = Boolean(catMatch) || isAnyDuplicateAdded || item.addedToCatalog;
+
+      return {
+        ...item,
+        duplicateCount: related.length,
+        hasDuplicates: related.length > 1,
+        duplicateSources: Array.from(
+          new Set(
+            related
+              .map((r) => r.competitor)
+              .filter((c): c is string => Boolean(c))
+          )
+        ),
+        duplicateResearchers: Array.from(
+          new Set(
+            related
+              .map((r) => r.researchedBy)
+              .filter((u): u is string => Boolean(u))
+          )
+        ),
+        inCatalog,
+        catalogDetails: catMatch
+          ? {
+              id: catMatch.id,
+              siteName: catMatch.site?.name || "Catalog Site",
+              addedBy: catMatch.addedBy?.name || "Catalog User",
+              addedAt: catMatch.addedAt,
+            }
+          : null,
+      };
+    });
+
     return NextResponse.json({
-      products,
+      products: enrichedProducts,
       totalCount,
       page,
       limit,
@@ -144,6 +237,7 @@ export async function GET(req: NextRequest) {
         notAnalyzed,
         added: addedCount,
         pending: pendingCount,
+        duplicates: duplicateGroups.length,
       },
       competitors,
     });
@@ -192,12 +286,15 @@ export async function POST(req: NextRequest) {
     const market = body.market || "United (US)";
     const modifiedDate = body.modifiedDate || null;
     const discoveredDate = body.discoveredDate || null;
-    const researchedBy =
+    const explicitResearcher =
       body.researchedBy ||
       body.userName ||
       body.user ||
       body.researcher ||
       body.researchedByName ||
+      null;
+    const researchedBy =
+      explicitResearcher ||
       (session?.user?.name ? session.user.name : null);
     const notes = body.notes || body.remarks || null;
 
@@ -214,6 +311,30 @@ export async function POST(req: NextRequest) {
     let result;
     let isUpdate = false;
 
+    // Check if this product is already in the Articleflow Catalog or added from another opportunity
+    const [matchingCatalogProduct, otherDuplicateOpportunity] = await Promise.all([
+      prisma.product.findFirst({
+        where: {
+          OR: [
+            { name },
+            { name: name.toLowerCase() },
+            { name: name.toUpperCase() },
+          ],
+        },
+        select: { id: true, name: true, site: { select: { name: true } }, addedBy: { select: { name: true } } },
+      }),
+      prisma.trendmapProduct.findFirst({
+        where: {
+          name,
+          addedToCatalog: true,
+        },
+        select: { id: true, catalogProductId: true },
+      }),
+    ]);
+
+    const isAlreadyInCatalog = Boolean(matchingCatalogProduct) || Boolean(otherDuplicateOpportunity);
+    const catalogProductId = matchingCatalogProduct?.id || otherDuplicateOpportunity?.catalogProductId || null;
+
     if (existing) {
       result = await prisma.trendmapProduct.update({
         where: { id: existing.id },
@@ -226,8 +347,10 @@ export async function POST(req: NextRequest) {
           market: market || existing.market,
           modifiedDate: modifiedDate || existing.modifiedDate,
           discoveredDate: discoveredDate || existing.discoveredDate,
-          researchedBy: researchedBy || existing.researchedBy,
+          // CRITICAL: Preserve original researcher name if already set unless explicitly passed
+          researchedBy: explicitResearcher ? explicitResearcher : (existing.researchedBy || researchedBy),
           notes: notes || existing.notes,
+          ...(isAlreadyInCatalog && !existing.addedToCatalog ? { addedToCatalog: true, status: "ADDED", catalogProductId } : {}),
         },
       });
       isUpdate = true;
@@ -247,8 +370,9 @@ export async function POST(req: NextRequest) {
           researchedBy,
           notes,
           addedById,
-          status: "PENDING",
-          addedToCatalog: false,
+          status: isAlreadyInCatalog ? "ADDED" : "PENDING",
+          addedToCatalog: isAlreadyInCatalog,
+          catalogProductId,
         },
       });
     }
@@ -260,6 +384,7 @@ export async function POST(req: NextRequest) {
         : `Successfully recorded opportunity: ${name}`,
       product: result,
       isUpdate,
+      alreadyInCatalog: isAlreadyInCatalog,
     });
   } catch (error: any) {
     console.error("Failed to create/update Trendmap product:", error);

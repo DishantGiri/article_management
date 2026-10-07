@@ -597,7 +597,8 @@ function ProductsPageContent() {
               : p.affiliateName || existing.affiliateName,
           productCategory: existing.productCategory || p.productCategory,
           category: existing.category || p.category,
-          addedBy: existing.addedBy || p.addedBy,
+          remarks: (existing.remarks && existing.remarks.includes("Researched by:")) ? existing.remarks : (p.remarks || existing.remarks),
+          addedBy: (p.addedBy?.role === "PRODUCT_RESEARCHER" && existing.addedBy?.role !== "PRODUCT_RESEARCHER") ? p.addedBy : (existing.addedBy || p.addedBy),
           updatedBy: (existing.site?.name === "Product Research" && p.updatedBy) ? p.updatedBy : (existing.updatedBy || p.updatedBy),
           updatedAt: existing.updatedAt || p.updatedAt,
         });

@@ -19,16 +19,36 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "mark-added") {
-      const res = await prisma.trendmapProduct.updateMany({
+      const selected = await prisma.trendmapProduct.findMany({
         where: { id: { in: numericIds } },
+        select: { name: true },
+      });
+      const names = Array.from(new Set(selected.map((s) => s.name.trim()).filter(Boolean)));
+      const res = await prisma.trendmapProduct.updateMany({
+        where: {
+          OR: [
+            { id: { in: numericIds } },
+            ...(names.length > 0 ? [{ name: { in: names } }] : []),
+          ],
+        },
         data: { addedToCatalog: true, status: "ADDED" },
       });
       return NextResponse.json({ success: true, count: res.count });
     }
 
     if (action === "mark-pending") {
-      const res = await prisma.trendmapProduct.updateMany({
+      const selected = await prisma.trendmapProduct.findMany({
         where: { id: { in: numericIds } },
+        select: { name: true },
+      });
+      const names = Array.from(new Set(selected.map((s) => s.name.trim()).filter(Boolean)));
+      const res = await prisma.trendmapProduct.updateMany({
+        where: {
+          OR: [
+            { id: { in: numericIds } },
+            ...(names.length > 0 ? [{ name: { in: names } }] : []),
+          ],
+        },
         data: { addedToCatalog: false, status: "PENDING" },
       });
       return NextResponse.json({ success: true, count: res.count });

@@ -169,6 +169,7 @@ export interface InitialProductData {
   isNative?: boolean;
   defaultEntryMode?: "single" | "bulk";
   trendmapProductId?: number;
+  researchedBy?: string;
 }
 
 export default function AddProductModal({
@@ -554,8 +555,13 @@ export default function AddProductModal({
       }
       setEntryMode(initialData?.defaultEntryMode || (initialData?.name ? "single" : "bulk"));
       setBulkPasteText("");
+      const rawRemarks = initialData?.remarks || "";
+      const resolvedRemarks = (initialData?.researchedBy && !rawRemarks.includes("Researched by:"))
+        ? (rawRemarks ? `${rawRemarks}. Researched by: ${initialData.researchedBy}` : `Researched by: ${initialData.researchedBy}`)
+        : rawRemarks;
+
       setSpreadsheetRows([
-        { name: initialData?.name || "", slug: initialData?.slug || (initialData?.name ? generateSlug(initialData.name) : ""), category: initialData?.category || "", affiliateName: "", trendLevel: initialData?.trendLevel || "HIGH", trendLink: initialData?.trendLink || "", previewLink: initialData?.previewLink || "", remarks: initialData?.remarks || "", isNative: initialData?.isNative ?? false },
+        { name: initialData?.name || "", slug: initialData?.slug || (initialData?.name ? generateSlug(initialData.name) : ""), category: initialData?.category || "", affiliateName: "", trendLevel: initialData?.trendLevel || "HIGH", trendLink: initialData?.trendLink || "", previewLink: initialData?.previewLink || "", remarks: resolvedRemarks, isNative: initialData?.isNative ?? false },
       ]);
       setBatchCategory(initialData?.category || "");
       setBatchSource(initialData?.source || "");
@@ -574,7 +580,7 @@ export default function AddProductModal({
         trendLevel: initialData?.trendLevel || "HIGH",
         affiliateName: "",
         previewLink: initialData?.previewLink || "",
-        remarks: initialData?.remarks || "",
+        remarks: resolvedRemarks,
         isNative: initialData?.isNative ?? false,
       });
       setIsSlugManuallyEdited(Boolean(initialData?.slug));
@@ -1946,7 +1952,7 @@ export default function AddProductModal({
               {step === 2 && entryMode === "single" && (
                 <div className="space-y-4 max-w-4xl mx-auto w-full">
                   {/* Mode Switcher */}
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
                     <div>
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wider">
                         Product Entry Mode
@@ -1956,7 +1962,7 @@ export default function AddProductModal({
                       </p>
                     </div>
 
-                    <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl">
+                    <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl self-start sm:self-auto">
                       <button
                         type="button"
                         onClick={() => setEntryMode("bulk")}
@@ -2588,11 +2594,11 @@ export default function AddProductModal({
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-3">
+                  <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-3">
                     <button
                       type="button"
                       onClick={() => setStep(2)}
-                      className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131d31] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                      className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131d31] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       Back to Websites
@@ -2606,7 +2612,7 @@ export default function AddProductModal({
                           disabled={isSingleDisabled}
                           onClick={handleSubmit}
                           title={isDuplicate ? "This product already exists. Please rename to continue." : undefined}
-                          className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                          className={`w-full sm:flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
                             isDuplicate
                               ? "bg-rose-600/80 text-white cursor-not-allowed opacity-80 shadow-xs"
                               : isSingleDisabled

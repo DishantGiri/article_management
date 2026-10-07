@@ -120,6 +120,7 @@ export async function GET(
               addedAt: match.addedAt,
               addedBy: match.addedBy?.name || "Unknown",
               addedByRole: match.addedBy?.role || null,
+              researchedBy: match.remarks?.match(/Researched by:\s*([^.\n,]+)/i)?.[1]?.trim() || (match.addedBy?.role === "PRODUCT_RESEARCHER" ? match.addedBy.name : null) || null,
               addedToSiteBy: match.updatedBy?.name || null,
               addedToSiteByRole: match.updatedBy?.role || null,
               updatedAt: match.updatedAt,
@@ -139,13 +140,18 @@ export async function GET(
     const totalSites = allSites.length;
     const availableCount = siteAvailability.filter((s) => s.isAvailable).length;
 
+    const baseResearchedMatch = baseProduct.remarks?.match(/Researched by:\s*([^.\n,]+)/i)?.[1]?.trim();
+    const baseResearcher = baseResearchedMatch || (baseProduct.addedBy?.role === "PRODUCT_RESEARCHER" ? baseProduct.addedBy.name : null);
+
     return NextResponse.json({
       productName: baseProduct.name,
       baseProductId: baseProduct.id,
       isUnassigned: baseProduct.siteId === null || baseProduct.site?.name === "Product Research",
       targetSites: baseProduct.targetSites,
-      researchedBy: baseProduct.addedBy?.name || null,
-      researchedByRole: baseProduct.addedBy?.role || null,
+      researchedBy: baseResearcher || baseProduct.addedBy?.name || null,
+      researchedByRole: baseResearcher ? "Product Researcher" : (baseProduct.addedBy?.role || null),
+      addedBy: baseProduct.addedBy?.name || null,
+      addedByRole: baseProduct.addedBy?.role || null,
       addedToSiteBy: baseProduct.updatedBy?.name || null,
       addedToSiteByRole: baseProduct.updatedBy?.role || null,
       totalSites,

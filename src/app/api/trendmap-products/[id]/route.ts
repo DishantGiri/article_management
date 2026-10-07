@@ -58,7 +58,9 @@ export async function PATCH(
     if (body.demandLevel !== undefined) data.demandLevel = body.demandLevel;
     if (body.category !== undefined) data.category = body.category;
     if (body.market !== undefined) data.market = body.market;
-    if (body.researchedBy !== undefined) data.researchedBy = body.researchedBy;
+    if (body.researchedBy !== undefined && body.researchedBy !== null && body.researchedBy.trim() !== "") {
+      data.researchedBy = body.researchedBy.trim();
+    }
     if (body.notes !== undefined) data.notes = body.notes;
     if (body.status !== undefined) data.status = body.status;
     if (body.addedToCatalog !== undefined) data.addedToCatalog = Boolean(body.addedToCatalog);
@@ -68,6 +70,22 @@ export async function PATCH(
       where: { id: numericId },
       data,
     });
+
+    // Synchronize all duplicate opportunities for the same product name
+    if (body.addedToCatalog !== undefined && updated.name) {
+      const syncStatus = Boolean(body.addedToCatalog);
+      await prisma.trendmapProduct.updateMany({
+        where: {
+          name: updated.name,
+          id: { not: numericId },
+        },
+        data: {
+          addedToCatalog: syncStatus,
+          status: syncStatus ? "ADDED" : "PENDING",
+          ...(body.catalogProductId !== undefined ? { catalogProductId: body.catalogProductId } : {}),
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
