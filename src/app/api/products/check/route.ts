@@ -57,28 +57,46 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Query matching products across sites
-    const existingProducts = await prisma.product.findMany({
-      where: {
-        OR: uniqueNames.flatMap((uName) => [
-          { name: uName },
-          { name: uName.toLowerCase() },
-          { name: uName.toUpperCase() },
-          { name: { contains: uName } },
-        ]),
-      },
-      include: {
-        site: { select: { id: true, name: true, allowCountrySpecific: true } },
-        addedBy: { select: { name: true } },
-        article: {
-          select: {
-            country: true,
-            writer: { select: { name: true } },
+    // Query matching products and trendmap researchers concurrently
+    const [existingProducts, existingTrendmaps] = await Promise.all([
+      prisma.product.findMany({
+        where: {
+          OR: uniqueNames.map((uName) => ({ name: uName })),
+        },
+        select: {
+          id: true,
+          name: true,
+          country: true,
+          remarks: true,
+          siteId: true,
+          site: { select: { id: true, name: true, allowCountrySpecific: true } },
+          addedBy: { select: { name: true, role: true } },
+          article: {
+            select: {
+              country: true,
+              writer: { select: { name: true } },
+            },
           },
         },
-      },
-      orderBy: { addedAt: "desc" },
-    });
+        orderBy: { addedAt: "desc" },
+      }),
+      prisma.trendmapProduct.findMany({
+        where: {
+          OR: uniqueNames.map((uName) => ({ name: uName })),
+        },
+        select: {
+          name: true,
+          researchedBy: true,
+          addedBy: { select: { name: true } },
+        },
+      }),
+    ]);
+
+    const trendmapResearcherMap = new Map<string, string>();
+    for (const tm of existingTrendmaps) {
+      const r = tm.researchedBy || tm.addedBy?.name;
+      if (r) trendmapResearcherMap.set(tm.name.trim().toLowerCase(), r);
+    }
 
     // Check each valid item against existing products
     const results: Record<
@@ -87,7 +105,17 @@ export async function POST(req: NextRequest) {
         exists: boolean;
         isUncertain: boolean;
         message: string;
-        conflicts: Array<{ siteName: string; addedBy: string; country?: string | null }>;
+        productId?: number;
+        productName: string;
+        researchedBy?: string | null;
+        conflicts: Array<{
+          productId: number;
+          siteId: number;
+          siteName: string;
+          addedBy: string;
+          researchedBy?: string | null;
+          country?: string | null;
+        }>;
       }
     > = {};
 
@@ -95,8 +123,22 @@ export async function POST(req: NextRequest) {
       const itemLower = item.name.toLowerCase();
       const itemCountry = (item.country || "").toUpperCase();
 
-      const exactConflicts: Array<{ siteName: string; addedBy: string; country?: string | null }> = [];
-      const uncertainConflicts: Array<{ siteName: string; addedBy: string; country?: string | null }> = [];
+      const exactConflicts: Array<{
+        productId: number;
+        siteId: number;
+        siteName: string;
+        addedBy: string;
+        researchedBy?: string | null;
+        country?: string | null;
+      }> = [];
+      const uncertainConflicts: Array<{
+        productId: number;
+        siteId: number;
+        siteName: string;
+        addedBy: string;
+        researchedBy?: string | null;
+        country?: string | null;
+      }> = [];
 
       for (const ep of existingProducts) {
         if (ep.name.trim().toLowerCase() === itemLower) {
@@ -105,9 +147,19 @@ export async function POST(req: NextRequest) {
           const countryMatches = !siteAllowsCountry || !epCountry || !itemCountry || epCountry === itemCountry;
 
           if (countryMatches) {
+            const remarksResearcher = ep.remarks?.match(/Researched by:\s*([^.\n,]+)/i)?.[1]?.trim();
+            const researcher =
+              remarksResearcher ||
+              (ep.addedBy?.role === "PRODUCT_RESEARCHER" ? ep.addedBy.name : null) ||
+              trendmapResearcherMap.get(itemLower) ||
+              null;
+
             const conflictInfo = {
+              productId: ep.id,
+              siteId: ep.siteId,
               siteName: ep.site?.name || "Unknown Site",
               addedBy: ep.addedBy?.name || "Unknown User",
+              researchedBy: researcher,
               country: epCountry || null,
             };
 
@@ -127,6 +179,9 @@ export async function POST(req: NextRequest) {
         results[item.key] = {
           exists: true,
           isUncertain: false,
+          productId: first.productId,
+          productName: item.name,
+          researchedBy: first.researchedBy || trendmapResearcherMap.get(itemLower) || null,
           message: `Already added by ${first.addedBy} on ${first.siteName}${countryText}`,
           conflicts: exactConflicts,
         };
@@ -136,6 +191,9 @@ export async function POST(req: NextRequest) {
         results[item.key] = {
           exists: false,
           isUncertain: true,
+          productId: first.productId,
+          productName: item.name,
+          researchedBy: first.researchedBy || trendmapResearcherMap.get(itemLower) || null,
           message: `May already exist: already on ${first.siteName} (added by ${first.addedBy})${countryText}`,
           conflicts: uncertainConflicts,
         };
@@ -143,6 +201,7 @@ export async function POST(req: NextRequest) {
         results[item.key] = {
           exists: false,
           isUncertain: false,
+          productName: item.name,
           message: "Available to add",
           conflicts: [],
         };

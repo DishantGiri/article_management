@@ -30,8 +30,11 @@ import {
   Trash2,
   RotateCcw,
   Building2,
+  ExternalLink,
+  Eye,
 } from "lucide-react";
 
+import DuplicateProductPreviewModal from "@/components/DuplicateProductPreviewModal";
 import { getCountryFlag, TIER1_CODES, LATAM_COUNTRIES, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 interface Site {
@@ -61,6 +64,7 @@ export interface SpreadsheetRow {
   name: string;
   slug: string;
   country?: string;
+  productType?: string;
   category: string;
   source?: string;
   affiliateName: string;
@@ -73,6 +77,7 @@ export interface SpreadsheetRow {
 
 interface FormData {
   categoryIds: number[];
+  productType?: string;
   name: string;
   slug: string;
   country?: string;
@@ -87,73 +92,7 @@ interface FormData {
 }
 
 function StepIndicator({ step, entryMode }: { step: number; entryMode: "bulk" | "single" }) {
-  if (entryMode === "bulk") {
-    return (
-      <div className="flex items-center justify-center max-w-lg mx-auto w-full mb-4 px-4">
-        <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100 shrink-0">
-          <div className="w-5 h-5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center text-[10px] font-bold shadow-xs">
-            <Check className="w-3 h-3" />
-          </div>
-          <span className="text-zinc-700 dark:text-zinc-300">Product Type</span>
-        </div>
-
-        <div className="h-0.5 flex-1 mx-4 bg-blue-600/40 rounded-full" />
-
-        <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
-          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
-            2
-          </div>
-          <span className="text-slate-800 dark:text-slate-200 font-bold">Bulk Products</span>
-          <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded font-medium">
-            Google Sheet
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  const steps = ["Product Type", "Preview Sites", "Details"];
-  return (
-    <div className="flex items-center gap-0 mb-6 max-w-xl mx-auto w-full px-2">
-      {steps.map((label, i) => {
-        const idx = i + 1;
-        const active = step === idx;
-        const done = step > idx;
-        return (
-          <div key={idx} className="flex items-center flex-1 last:flex-none">
-            <div className="flex flex-col items-center gap-1">
-              <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${done
-                  ? "bg-blue-600 text-white"
-                  : active
-                    ? "bg-blue-600 text-white ring-4 ring-blue-500/20 shadow-xs"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
-                  }`}
-              >
-                {done ? (
-                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                ) : (
-                  idx
-                )}
-              </div>
-              <span
-                className={`text-[10px] font-bold tracking-tight whitespace-nowrap ${active ? "text-blue-600 dark:text-blue-400" : done ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500"
-                  }`}
-              >
-                {label}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div
-                className={`h-0.5 flex-1 mx-2 mb-4 rounded transition-all duration-500 ${done ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-800"
-                  }`}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
+  return null;
 }
 
 export interface InitialProductData {
@@ -209,6 +148,7 @@ export default function AddProductModal({
   ]);
 
   // Batch Fill Helpers
+  const [batchProductType, setBatchProductType] = useState("");
   const [batchCategory, setBatchCategory] = useState("");
   const [batchSource, setBatchSource] = useState("");
   const [batchAffiliate, setBatchAffiliate] = useState("");
@@ -234,13 +174,14 @@ export default function AddProductModal({
 
     const uniqueNames = Array.from(new Set(lines));
     if (uniqueNames.length === 0) {
-      setSpreadsheetRows([{ name: "", slug: "", category: "", source: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }]);
+      setSpreadsheetRows([{ name: "", slug: "", productType: batchProductType || "", category: "", source: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }]);
       return;
     }
 
     const newRows: SpreadsheetRow[] = uniqueNames.map((n) => ({
       name: n,
       slug: generateSlug(n),
+      productType: batchProductType || form.productType || "",
       category: batchCategory || form.category || "",
       source: batchSource || form.source || "",
       affiliateName: batchAffiliate || form.affiliateName || "",
@@ -275,6 +216,7 @@ export default function AddProductModal({
     const newRows: SpreadsheetRow[] = uniqueNames.map((n) => ({
       name: n,
       slug: generateSlug(n),
+      productType: batchProductType || form.productType || "",
       category: batchCategory || form.category || "",
       source: batchSource || form.source || "",
       affiliateName: batchAffiliate || form.affiliateName || "",
@@ -330,6 +272,7 @@ export default function AddProductModal({
       {
         name: "",
         slug: "",
+        productType: batchProductType || form.productType || "",
         category: batchCategory || form.category || "",
         source: batchSource || form.source || "",
         affiliateName: batchAffiliate || form.affiliateName || "",
@@ -346,7 +289,7 @@ export default function AddProductModal({
     setSpreadsheetRows((prev) => {
       const next = prev.filter((_, i) => i !== index);
       if (next.length === 0) {
-        return [{ name: "", slug: "", category: "", source: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }];
+        return [{ name: "", slug: "", productType: batchProductType || "", category: "", source: "", affiliateName: "", trendLevel: "HIGH", trendLink: "", previewLink: "", remarks: "", isNative: false }];
       }
       return next;
     });
@@ -354,7 +297,7 @@ export default function AddProductModal({
   };
 
   const applyBatchToAll = () => {
-    if (!batchCategory && !batchSource && !batchAffiliate && !batchTrendLevel && !batchIsNative) {
+    if (!batchProductType && !batchCategory && !batchSource && !batchAffiliate && !batchTrendLevel && !batchIsNative) {
       toast.error("Please select at least one field to apply to all rows.");
       return;
     }
@@ -367,6 +310,7 @@ export default function AddProductModal({
     setSpreadsheetRows((prev) =>
       prev.map((row) => ({
         ...row,
+        productType: batchProductType ? batchProductType : row.productType,
         category: batchCategory ? batchCategory : row.category,
         source: batchSource ? batchSource : row.source,
         affiliateName: batchAffiliate ? batchAffiliate : row.affiliateName,
@@ -423,8 +367,17 @@ export default function AddProductModal({
     checking: boolean;
     exists?: boolean;
     isUncertain?: boolean;
+    productId?: number;
+    researchedBy?: string | null;
     message?: string;
-    conflicts?: Array<{ siteName: string; addedBy: string; country?: string | null }>;
+    conflicts?: Array<{
+      productId?: number;
+      siteId?: number;
+      siteName: string;
+      addedBy: string;
+      researchedBy?: string | null;
+      country?: string | null;
+    }>;
   }>({ checking: false });
 
   const [bulkCheckResults, setBulkCheckResults] = useState<
@@ -434,12 +387,31 @@ export default function AddProductModal({
         checking?: boolean;
         exists?: boolean;
         isUncertain?: boolean;
+        productId?: number;
+        researchedBy?: string | null;
         message?: string;
-        conflicts?: Array<{ siteName: string; addedBy: string; country?: string | null }>;
+        conflicts?: Array<{
+          productId?: number;
+          siteId?: number;
+          siteName: string;
+          addedBy: string;
+          researchedBy?: string | null;
+          country?: string | null;
+        }>;
       }
     >
   >({});
   const [isBulkChecking, setIsBulkChecking] = useState(false);
+
+  // Duplicate Inspection Modal state
+  const [previewDuplicate, setPreviewDuplicate] = useState<{
+    isOpen: boolean;
+    productId?: number | null;
+    productName: string;
+  }>({
+    isOpen: false,
+    productName: "",
+  });
 
   // Inline cell errors for spreadsheet rows (no toasts for missing fields)
   const [cellErrors, setCellErrors] = useState<
@@ -447,6 +419,7 @@ export default function AddProductModal({
       number,
       {
         name?: string;
+        productType?: string;
         category?: string;
         affiliateName?: string;
         trendLevel?: string;
@@ -561,8 +534,9 @@ export default function AddProductModal({
         : rawRemarks;
 
       setSpreadsheetRows([
-        { name: initialData?.name || "", slug: initialData?.slug || (initialData?.name ? generateSlug(initialData.name) : ""), category: initialData?.category || "", affiliateName: "", trendLevel: initialData?.trendLevel || "HIGH", trendLink: initialData?.trendLink || "", previewLink: initialData?.previewLink || "", remarks: resolvedRemarks, isNative: initialData?.isNative ?? false },
+        { name: initialData?.name || "", slug: initialData?.slug || (initialData?.name ? generateSlug(initialData.name) : ""), productType: "", category: initialData?.category || "", affiliateName: "", trendLevel: initialData?.trendLevel || "HIGH", trendLink: initialData?.trendLink || "", previewLink: initialData?.previewLink || "", remarks: resolvedRemarks, isNative: initialData?.isNative ?? false },
       ]);
+      setBatchProductType("");
       setBatchCategory(initialData?.category || "");
       setBatchSource(initialData?.source || "");
       setBatchAffiliate("");
@@ -571,6 +545,7 @@ export default function AddProductModal({
       setShowSitesDrawer(false);
       setForm({
         categoryIds: [],
+        productType: "",
         name: initialData?.name || "",
         slug: initialData?.slug || (initialData?.name ? generateSlug(initialData.name) : ""),
         country: initialData?.country || "",
@@ -624,19 +599,23 @@ export default function AddProductModal({
 
   // Real-time database check for Single Product mode
   useEffect(() => {
-    if (!isOpen || entryMode !== "single" || step !== 3) return;
+    if (!isOpen || entryMode !== "single" || step !== 1) return;
     const trimmedName = form.name.trim();
     if (trimmedName.length < 2) {
-      setSingleCheckStatus({ checking: false });
+      setSingleCheckStatus({ checking: false, exists: false, isUncertain: false, message: undefined });
       return;
     }
 
-    setSingleCheckStatus({ checking: true });
+    // Immediately show checking state and clear previous duplicate flag
+    setSingleCheckStatus({ checking: true, exists: false, isUncertain: false, message: undefined });
+
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
         const res = await fetch("/api/products/check", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             items: [{ name: trimmedName, country: form.country, key: "single" }],
             categoryIds: form.categoryIds,
@@ -651,30 +630,36 @@ export default function AddProductModal({
               checking: false,
               exists: result.exists,
               isUncertain: result.isUncertain,
+              productId: result.productId,
+              researchedBy: result.researchedBy,
               message: result.message,
               conflicts: result.conflicts,
             });
             return;
           }
         }
-        setSingleCheckStatus({ checking: false });
-      } catch (err) {
+        setSingleCheckStatus({ checking: false, exists: false, isUncertain: false });
+      } catch (err: any) {
+        if (err.name === "AbortError") return;
         console.error("Single product check failed:", err);
-        setSingleCheckStatus({ checking: false });
+        setSingleCheckStatus({ checking: false, exists: false, isUncertain: false });
       }
-    }, 280);
+    }, 150);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [isOpen, entryMode, step, form.name, form.country, form.categoryIds, excludedSiteIds]);
 
   // Real-time database check for Bulk Spreadsheet mode
   useEffect(() => {
-    if (!isOpen || entryMode !== "bulk" || step !== 2) return;
+    if (!isOpen || entryMode !== "bulk" || step !== 1) return;
 
     const itemsToCheck: Array<{ name: string; country?: string | null; key: string }> = [];
     const internalDuplicates: Record<number, { exists: boolean; message: string }> = {};
 
-    // Check duplicate rows inside the table itself
+    // 1. Check duplicate rows inside the spreadsheet table itself (0ms instant check)
     const seenMap = new Map<string, number>();
 
     spreadsheetRows.forEach((row, idx) => {
@@ -685,7 +670,7 @@ export default function AddProductModal({
           const firstIdx = seenMap.get(key)!;
           internalDuplicates[idx] = {
             exists: true,
-            message: `Duplicate in row #${firstIdx + 1}`,
+            message: `Duplicate of row #${firstIdx + 1} ("${trimmed}")`,
           };
         } else {
           seenMap.set(key, idx);
@@ -704,7 +689,32 @@ export default function AddProductModal({
       return;
     }
 
+    // 2. Immediately mark internal duplicates in state and mark database queries as checking
+    setBulkCheckResults((prev) => {
+      const updated: Record<number, any> = { ...prev };
+      spreadsheetRows.forEach((row, idx) => {
+        if (row.name.trim().length < 2) {
+          delete updated[idx];
+        } else if (internalDuplicates[idx]) {
+          updated[idx] = {
+            checking: false,
+            exists: true,
+            isUncertain: false,
+            message: internalDuplicates[idx].message,
+          };
+        } else if (!updated[idx] || updated[idx].checking !== true) {
+          updated[idx] = {
+            ...updated[idx],
+            checking: true,
+          };
+        }
+      });
+      return updated;
+    });
+
     setIsBulkChecking(true);
+    const controller = new AbortController();
+
     const timer = setTimeout(async () => {
       try {
         let dbResults: Record<string, any> = {};
@@ -712,6 +722,7 @@ export default function AddProductModal({
           const res = await fetch("/api/products/check", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
             body: JSON.stringify({
               items: itemsToCheck,
               categoryIds: form.categoryIds,
@@ -740,6 +751,8 @@ export default function AddProductModal({
               checking: false,
               exists: dbResults[String(idx)].exists,
               isUncertain: dbResults[String(idx)].isUncertain,
+              productId: dbResults[String(idx)].productId,
+              researchedBy: dbResults[String(idx)].researchedBy,
               message: dbResults[String(idx)].message,
               conflicts: dbResults[String(idx)].conflicts,
             };
@@ -747,14 +760,18 @@ export default function AddProductModal({
         });
 
         setBulkCheckResults(newResults);
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === "AbortError") return;
         console.error("Bulk check failed:", err);
       } finally {
         setIsBulkChecking(false);
       }
-    }, 320);
+    }, 160);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [isOpen, entryMode, step, spreadsheetRows, form.categoryIds, excludedSiteIds]);
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -803,6 +820,129 @@ export default function AddProductModal({
     }
   };
 
+  const handleBulkProceedToStep2 = () => {
+    const validRows = spreadsheetRows.filter((r) => r.name.trim().length > 0);
+    if (validRows.length === 0) {
+      setError("Please enter or paste at least one product name in the spreadsheet table.");
+      toast.error("Please enter or paste at least one product name in the spreadsheet table.");
+      return;
+    }
+
+    const hasExactDuplicate = spreadsheetRows.some(
+      (r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.exists
+    );
+    if (hasExactDuplicate) {
+      setError("Please resolve duplicate product names before continuing.");
+      toast.error("Please resolve duplicate product names before continuing.");
+      return;
+    }
+
+    const newCellErrors: Record<
+      number,
+      {
+        name?: string;
+        productType?: string;
+        category?: string;
+        affiliateName?: string;
+        trendLevel?: string;
+        trendLink?: string;
+        previewLink?: string;
+      }
+    > = {};
+
+    let hasFieldErrors = false;
+
+    validRows.forEach((r) => {
+      const originalIdx = spreadsheetRows.indexOf(r);
+      if (bulkCheckResults[originalIdx]?.exists) return;
+
+      const rowErr: Record<string, string> = {};
+      if (r.name.trim().length < 2) {
+        rowErr.name = "Min 2 characters required";
+        hasFieldErrors = true;
+      }
+      if (!r.productType?.trim()) {
+        rowErr.productType = "Product Type is compulsory";
+        hasFieldErrors = true;
+      }
+      if (!r.category.trim()) {
+        rowErr.category = "Category is compulsory";
+        hasFieldErrors = true;
+      }
+      if (!r.affiliateName.trim()) {
+        rowErr.affiliateName = "Affiliate is compulsory";
+        hasFieldErrors = true;
+      }
+      if (!r.trendLevel || !r.trendLevel.trim()) {
+        rowErr.trendLevel = "Trend Level is compulsory";
+        hasFieldErrors = true;
+      }
+      if (r.trendLink.trim() && !isValidUrl(r.trendLink)) {
+        rowErr.trendLink = "Must be a valid URL starting with http:// or https://";
+        hasFieldErrors = true;
+      }
+      if (r.previewLink.trim() && !isValidUrl(r.previewLink)) {
+        rowErr.previewLink = "Must be a valid URL starting with http:// or https://";
+        hasFieldErrors = true;
+      }
+
+      if (Object.keys(rowErr).length > 0) {
+        newCellErrors[originalIdx] = rowErr;
+      }
+    });
+
+    setCellErrors(newCellErrors);
+
+    if (hasFieldErrors) {
+      setError("Please fix highlighted errors in the spreadsheet table before continuing.");
+      return;
+    }
+
+    setError("");
+    setStep(2);
+  };
+
+  const handleSingleProceedToStep2 = () => {
+    if (singleCheckStatus.exists) {
+      setError("This product already exists. Please rename to continue.");
+      return;
+    }
+
+    const errors: Record<string, string> = {};
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      errors.name = !form.name.trim() ? "Product Name is compulsory." : "Product name must be at least 2 characters.";
+    }
+    if (!form.productType?.trim() && form.categoryIds.length === 0) {
+      errors.productType = "Product Type is compulsory.";
+    }
+    if (!form.category.trim()) {
+      errors.category = "Category is compulsory.";
+    }
+    const finalAffiliate = form.affiliateName.trim();
+    if (!finalAffiliate) {
+      errors.affiliateName = "Affiliate Network is compulsory.";
+    }
+    if (!form.trendLevel || !form.trendLevel.trim()) {
+      errors.trendLevel = "Trend Level is compulsory.";
+    }
+    if (form.trendLink.trim() && !isValidUrl(form.trendLink)) {
+      errors.trendLink = "Trend Link must start with http:// or https:// and be a valid URL.";
+    }
+    if (form.previewLink.trim() && !isValidUrl(form.previewLink)) {
+      errors.previewLink = "Preview Link must start with http:// or https:// and be a valid URL.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError("Please fill out all compulsory fields before continuing.");
+      return;
+    }
+
+    setError("");
+    setFieldErrors({});
+    setStep(2);
+  };
+
   const handleSubmit = async () => {
     if (entryMode === "bulk") {
       const validRows = spreadsheetRows.filter((r) => r.name.trim().length > 0);
@@ -838,6 +978,7 @@ export default function AddProductModal({
         number,
         {
           name?: string;
+          productType?: string;
           category?: string;
           affiliateName?: string;
           trendLevel?: string;
@@ -856,6 +997,10 @@ export default function AddProductModal({
         const rowErr: Record<string, string> = {};
         if (r.name.trim().length < 2) {
           rowErr.name = "Min 2 characters required";
+          hasFieldErrors = true;
+        }
+        if (!r.productType?.trim()) {
+          rowErr.productType = "Product Type is compulsory";
           hasFieldErrors = true;
         }
         if (!r.category.trim()) {
@@ -903,6 +1048,7 @@ export default function AddProductModal({
               name: r.name.trim(),
               slug: r.slug?.trim() ? generateSlug(r.slug) : generateSlug(r.name),
               country: r.country?.trim() || null,
+              categoryId: categories.find((c) => c.name === r.productType)?.id || effectiveCategoryIds[0] || null,
               isNative: Boolean(r.isNative),
               productCategory: r.category.trim(),
               source: r.source?.trim() || null,
@@ -912,7 +1058,7 @@ export default function AddProductModal({
               previewLink: r.previewLink.trim(),
               remarks: r.remarks.trim() || null,
             })),
-            categoryIds: form.categoryIds,
+            categoryIds: effectiveCategoryIds,
             excludedSiteIds,
             targetSiteIds: activeSites.map((s: any) => s.id),
             targetSiteNames: activeSites.map((s: any) => s.name),
@@ -976,6 +1122,9 @@ export default function AddProductModal({
     if (!form.name.trim() || form.name.trim().length < 2) {
       errors.name = !form.name.trim() ? "Product Name is compulsory." : "Product name must be at least 2 characters.";
     }
+    if (!form.productType?.trim() && form.categoryIds.length === 0) {
+      errors.productType = "Product Type is compulsory.";
+    }
     if (!form.category.trim()) {
       errors.category = "Category is compulsory.";
     }
@@ -1009,7 +1158,9 @@ export default function AddProductModal({
           name: form.name.trim(),
           slug: form.slug?.trim() ? generateSlug(form.slug) : generateSlug(form.name),
           country: form.country?.trim() || null,
-          categoryIds: form.categoryIds,
+          categoryIds: form.productType
+            ? [categories.find((c) => c.name === form.productType)?.id || form.categoryIds[0]].filter(Boolean)
+            : form.categoryIds,
           excludedSiteIds,
           targetSiteIds: activeSites.map((s: any) => s.id),
           targetSiteNames: activeSites.map((s: any) => s.name),
@@ -1059,15 +1210,36 @@ export default function AddProductModal({
     }
   };
 
+  const rowCategoryIds = useMemo(() => {
+    return Array.from(
+      new Set(
+        spreadsheetRows
+          .map((r) => categories.find((c) => c.name === r.productType)?.id)
+          .filter(Boolean) as number[]
+      )
+    );
+  }, [spreadsheetRows, categories]);
+
+  const effectiveCategoryIds = useMemo(() => {
+    if (entryMode === "bulk") {
+      return rowCategoryIds.length > 0 ? rowCategoryIds : form.categoryIds;
+    }
+    if (form.productType) {
+      const matched = categories.find((c) => c.name === form.productType);
+      if (matched) return [matched.id];
+    }
+    return form.categoryIds;
+  }, [entryMode, rowCategoryIds, form.categoryIds, form.productType, categories]);
+
   const getCategoryNames = () => {
     return categories
-      .filter((c) => form.categoryIds.includes(c.id))
+      .filter((c) => effectiveCategoryIds.includes(c.id))
       .map((c) => c.name)
       .join(", ");
   };
 
   const previewSites = sites.filter((site: any) =>
-    site.categories?.some((c: any) => form.categoryIds.includes(c.id))
+    site.categories?.some((c: any) => effectiveCategoryIds.includes(c.id))
   );
 
   const activeSites = previewSites.filter((site: any) => !excludedSiteIds.includes(site.id));
@@ -1091,7 +1263,7 @@ export default function AddProductModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/60 dark:bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className={`bg-white dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 transition-all duration-300 ${entryMode === "bulk" && step === 2
+      <div className={`bg-white dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 transition-all duration-300 ${entryMode === "bulk" && step === 1
         ? "w-[98vw] max-w-[1550px] h-[95vh] max-h-[96vh]"
         : "w-[96vw] max-w-4xl max-h-[92vh]"
         }`}>
@@ -1106,7 +1278,7 @@ export default function AddProductModal({
                 <span>Add New Product</span>
                 <span className="text-slate-300 dark:text-slate-600 font-normal">·</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-                  {entryMode === "bulk" && step === 2 ? "Bulk Spreadsheet Mode" : "Product Setup"}
+                  {entryMode === "bulk" ? "Bulk Spreadsheet Mode" : "Single Product Form"}
                 </span>
               </h2>
             </div>
@@ -1120,7 +1292,7 @@ export default function AddProductModal({
         </div>
 
         {/* Modal Content */}
-        <div className={`overflow-y-auto flex-1 flex flex-col ${entryMode === "bulk" && step === 2 ? "p-3 sm:p-4" : "p-5 sm:p-6"}`}>
+        <div className={`overflow-y-auto flex-1 flex flex-col ${entryMode === "bulk" && step === 1 ? "p-3 sm:p-4" : "p-5 sm:p-6"}`}>
           {successState ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-200 dark:border-emerald-800">
@@ -1187,8 +1359,8 @@ export default function AddProductModal({
                 </div>
               )}
 
-              {/* STEP 1: Choose Product Type */}
-              {step === 1 && (
+              {/* STEP 2: Choose Product Type */}
+              {step === 2 && (
                 <div className="space-y-5 max-w-4xl mx-auto w-full py-2">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1275,30 +1447,144 @@ export default function AddProductModal({
                     </div>
                   )}
 
-                  <div className="pt-2">
+                  {/* Target Websites preview when product types are selected in bulk mode */}
+                  {entryMode === "bulk" && form.categoryIds.length > 0 && (
+                    <div className="p-3.5 bg-slate-50 dark:bg-[#131d31] rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5 shadow-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+                            Target Websites ({activeSites.length} of {previewSites.length} selected)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setExcludedSiteIds([])}
+                            className="px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition cursor-pointer"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-slate-300 dark:text-slate-700">|</span>
+                          <button
+                            type="button"
+                            onClick={() => setExcludedSiteIds(previewSites.map((s: any) => s.id))}
+                            className="px-2.5 py-1 text-[11px] font-bold text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+                      </div>
+                      {previewSites.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic py-1">
+                          No websites available for ({getCategoryNames() || "selected category"}).
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pt-1">
+                          {previewSites.map((site: any) => {
+                            const isSelected = !excludedSiteIds.includes(site.id);
+                            return (
+                              <button
+                                key={site.id}
+                                type="button"
+                                onClick={() => {
+                                  setExcludedSiteIds((prev) =>
+                                    isSelected ? [...prev, site.id] : prev.filter((id) => id !== site.id)
+                                  );
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-400 dark:border-blue-700 font-bold shadow-2xs"
+                                    : "bg-white dark:bg-[#0b1120] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300 opacity-70"
+                                }`}
+                              >
+                                <div
+                                  className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[9px] ${
+                                    isSelected
+                                      ? "bg-blue-600 border-blue-600 text-white"
+                                      : "border-slate-300 dark:border-slate-600 bg-transparent text-transparent"
+                                  }`}
+                                >
+                                  ✓
+                                </div>
+                                <span>{site.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-2">
                     <button
-                      disabled={form.categoryIds.length === 0}
-                      onClick={() => {
-                        const matchingSites = sites.filter((site: any) =>
-                          site.categories?.some((c: any) => form.categoryIds.includes(c.id))
-                        );
-                        if (isProductResearcherRole) {
-                          setExcludedSiteIds(matchingSites.map((s: any) => s.id));
-                        } else {
-                          setExcludedSiteIds([]);
-                        }
-                        setStep(2);
-                      }}
-                      className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer shadow-md shadow-blue-600/20"
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131d31] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      Continue ({form.categoryIds.length} type{form.categoryIds.length !== 1 ? "s" : ""} selected) →
+                      <ChevronLeft className="w-4 h-4" />
+                      Back to {entryMode === "bulk" ? "Spreadsheet" : "Product Details"}
                     </button>
+                    {entryMode === "bulk" ? (
+                      (() => {
+                        const validRows = spreadsheetRows.filter((r) => r.name.trim().length > 0);
+                        const validCount = validRows.length;
+                        const duplicateRowsCount = spreadsheetRows.filter(
+                          (r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.exists
+                        ).length;
+                        const hasDuplicates = duplicateRowsCount > 0;
+                        const isAddDisabled = form.categoryIds.length === 0 || submitting || hasDuplicates || validCount === 0;
+
+                        return (
+                          <button
+                            type="button"
+                            disabled={isAddDisabled}
+                            onClick={handleSubmit}
+                            title={hasDuplicates ? "Resolve highlighted duplicates in spreadsheet" : undefined}
+                            className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                              hasDuplicates
+                                ? "bg-rose-600/80 text-white cursor-not-allowed opacity-80 shadow-xs"
+                                : isAddDisabled
+                                ? "bg-blue-600 text-white opacity-40 cursor-not-allowed"
+                                : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-lg shadow-blue-600/20 cursor-pointer"
+                            }`}
+                          >
+                            {submitting ? (
+                              "Saving Products..."
+                            ) : hasDuplicates ? (
+                              `Blocked: ${duplicateRowsCount} Duplicate${duplicateRowsCount > 1 ? "s" : ""} Found`
+                            ) : (
+                              `Add ${validCount} Products to ${getCategoryNames() || "Selected Type"}`
+                            )}
+                          </button>
+                        );
+                      })()
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={form.categoryIds.length === 0}
+                        onClick={() => {
+                          const matchingSites = sites.filter((site: any) =>
+                            site.categories?.some((c: any) => form.categoryIds.includes(c.id))
+                          );
+                          if (isProductResearcherRole) {
+                            setExcludedSiteIds(matchingSites.map((s: any) => s.id));
+                          } else {
+                            setExcludedSiteIds([]);
+                          }
+                          setStep(3);
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer shadow-md shadow-blue-600/20"
+                      >
+                        Continue to Websites ({form.categoryIds.length} type{form.categoryIds.length !== 1 ? "s" : ""} selected) →
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* STEP 2: BULK SPREADSHEET MODE (DEFAULT) */}
-              {step === 2 && entryMode === "bulk" && (
+              {/* STEP 1: BULK SPREADSHEET MODE (DEFAULT) */}
+              {step === 1 && entryMode === "bulk" && (
                 <div className="space-y-4">
                   {/* Mode Switcher */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
@@ -1313,7 +1599,7 @@ export default function AddProductModal({
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Selected: <strong className="text-slate-800 dark:text-slate-200">{getCategoryNames() || "Selected Type"}</strong> · Direct paste 10+ products or edit directly in the table
+                        Direct paste 10+ products or edit directly in the table below
                       </p>
                     </div>
 
@@ -1422,6 +1708,22 @@ export default function AddProductModal({
                       </p>
 
                       <div className="space-y-2.5 flex-1">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                            PRODUCT TYPE
+                          </label>
+                          <CustomSelect
+                            value={batchProductType}
+                            onChange={(val) => setBatchProductType(val)}
+                            placeholder="Select product type..."
+                            searchable={true}
+                            searchPlaceholder="Search product type..."
+                            className="w-full"
+                            triggerClassName="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
+                            options={categories.map((c) => ({ value: c.name, label: c.name }))}
+                          />
+                        </div>
+
                         <div>
                           <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">CATEGORY</label>
                           <CustomSelect
@@ -1623,23 +1925,44 @@ export default function AddProductModal({
                           <Check className="w-3 h-3" /> {Object.values(bulkCheckResults).filter((r) => r.exists === false).length} Available
                         </span>
                       )}
-                      {Object.values(bulkCheckResults).filter((r) => r.exists === true).length > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold flex items-center gap-1 animate-pulse">
-                          <AlertCircle className="w-3 h-3" /> {Object.values(bulkCheckResults).filter((r) => r.exists === true).length} Already in DB
-                        </span>
-                      )}
+                      {Object.values(bulkCheckResults).filter((r) => r.exists === true).length > 0 && (() => {
+                        const firstDupIndex = spreadsheetRows.findIndex((_, idx) => bulkCheckResults[idx]?.exists === true);
+                        const firstDupRow = firstDupIndex !== -1 ? spreadsheetRows[firstDupIndex] : null;
+                        const firstDupResult = firstDupIndex !== -1 ? bulkCheckResults[firstDupIndex] : null;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (firstDupRow) {
+                                setPreviewDuplicate({
+                                  isOpen: true,
+                                  productId: firstDupResult?.productId,
+                                  productName: firstDupRow.name,
+                                });
+                              }
+                            }}
+                            className="px-2.5 py-0.5 rounded-full bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 text-[10px] font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs border border-rose-200 dark:border-rose-800"
+                            title="Click to preview duplicate products & site availability"
+                          >
+                            <AlertCircle className="w-3 h-3" />
+                            <span>{Object.values(bulkCheckResults).filter((r) => r.exists === true).length} Already in DB</span>
+                            <Eye className="w-3 h-3 text-rose-500 ml-0.5" />
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
 
                   {/* 3. The Google Sheets Style Table */}
                   <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-[#0b1120] flex-1 flex flex-col min-h-0">
                     <div className="overflow-x-auto max-h-[50vh] overflow-y-auto flex-1">
-                      <table className="w-full text-left border-collapse table-fixed min-w-[1300px]">
+                      <table className="w-full text-left border-collapse table-fixed min-w-[1450px]">
                         <thead className="bg-slate-100 dark:bg-[#162033] sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                           <tr>
                             <th className="w-10 py-2.5 px-2 text-center border-r border-slate-200 dark:border-slate-800/80">#</th>
-                            <th className="w-[22%] min-w-[250px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Product Name <span className="text-rose-500">*</span></th>
+                            <th className="w-[20%] min-w-[230px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Product Name <span className="text-rose-500">*</span></th>
                             <th className="w-[10%] min-w-[110px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Slug <span className="text-slate-400 dark:text-slate-500 text-[9px] font-normal lowercase">(auto)</span></th>
+                            <th className="w-[12%] min-w-[140px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Product Type <span className="text-rose-500">*</span></th>
                             <th className="w-[12%] min-w-[140px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Category <span className="text-rose-500">*</span></th>
                             <th className="w-[10%] min-w-[110px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Source</th>
                             <th className="w-[14%] min-w-[150px] py-2.5 px-3 border-r border-slate-200 dark:border-slate-800/80">Affiliate Network <span className="text-rose-500">*</span></th>
@@ -1685,17 +2008,51 @@ export default function AddProductModal({
                                   {/* When a product already exists, show only the duplicate notification, with who added it and where. The inline text should not be truncated. */}
                                   {isDuplicate ? (
                                     <div
-                                      className="text-[11px] font-bold text-rose-700 dark:text-rose-300 mt-1 p-1.5 bg-rose-50 dark:bg-rose-950/60 rounded-lg border border-rose-200 dark:border-rose-800/70 flex items-start gap-1.5 leading-snug animate-fadeIn whitespace-normal break-words shadow-2xs"
+                                      className="text-[11px] font-bold text-rose-700 dark:text-rose-300 mt-1 p-1.5 bg-rose-50 dark:bg-rose-950/60 rounded-lg border border-rose-200 dark:border-rose-800/70 flex items-center justify-between gap-1.5 leading-snug animate-fadeIn whitespace-normal break-words shadow-2xs"
                                     >
-                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
-                                      <span className="whitespace-normal break-words">{rowResult?.message}</span>
+                                      <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                                        <span className="whitespace-normal break-words">{rowResult?.message}</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setPreviewDuplicate({
+                                            isOpen: true,
+                                            productId: rowResult?.productId,
+                                            productName: row.name,
+                                          })
+                                        }
+                                        className="shrink-0 px-2 py-0.5 bg-white dark:bg-rose-900/80 hover:bg-rose-100 dark:hover:bg-rose-800 text-rose-700 dark:text-rose-200 border border-rose-300 dark:border-rose-700 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                                        title="Preview duplicate product & site availability"
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                        <span>Preview</span>
+                                      </button>
                                     </div>
                                   ) : rowResult?.isUncertain ? (
                                     <div
-                                      className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 mt-1 p-1.5 bg-amber-50 dark:bg-amber-950/60 rounded-lg border border-amber-200 dark:border-amber-800/70 flex items-start gap-1.5 leading-snug animate-fadeIn whitespace-normal break-words shadow-2xs"
+                                      className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 mt-1 p-1.5 bg-amber-50 dark:bg-amber-950/60 rounded-lg border border-amber-200 dark:border-amber-800/70 flex items-center justify-between gap-1.5 leading-snug animate-fadeIn whitespace-normal break-words shadow-2xs"
                                     >
-                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-                                      <span className="whitespace-normal break-words">{rowResult?.message}</span>
+                                      <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                                        <span className="whitespace-normal break-words">{rowResult?.message}</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setPreviewDuplicate({
+                                            isOpen: true,
+                                            productId: rowResult?.productId,
+                                            productName: row.name,
+                                          })
+                                        }
+                                        className="shrink-0 px-2 py-0.5 bg-white dark:bg-amber-900/80 hover:bg-amber-100 dark:hover:bg-amber-800 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                                        title="Preview duplicate product & site availability"
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                        <span>Preview</span>
+                                      </button>
                                     </div>
                                   ) : rowErrors?.name ? (
                                     <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5 leading-tight animate-fadeIn">
@@ -1705,9 +2062,10 @@ export default function AddProductModal({
                                     <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5">
                                       Min 2 characters
                                     </p>
-                                  ) : isBulkChecking && !rowResult && row.name.trim().length >= 2 ? (
-                                    <p className="text-[10px] text-blue-500 font-medium mt-0.5 px-0.5 animate-pulse">
-                                      Checking database...
+                                  ) : (rowResult?.checking || isBulkChecking) && row.name.trim().length >= 2 ? (
+                                    <p className="text-[10px] text-blue-500 font-semibold mt-0.5 px-0.5 flex items-center gap-1.5 animate-pulse">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
+                                      <span>Checking database...</span>
                                     </p>
                                   ) : rowResult?.exists === false && row.name.trim().length >= 2 ? (
                                     <p className="text-[10px] font-bold text-zinc-900 dark:text-zinc-100 mt-0.5 px-0.5 flex items-center gap-1 leading-tight animate-fadeIn">
@@ -1724,6 +2082,37 @@ export default function AddProductModal({
                                     placeholder="auto-slug"
                                     className="w-full px-2 py-1.5 text-xs font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:bg-white dark:focus:bg-[#162238] rounded-lg focus:outline-none"
                                   />
+                                </td>
+                                <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[140px] align-top">
+                                  <CustomSelect
+                                    value={row.productType || ""}
+                                    onChange={(val) => {
+                                      updateSpreadsheetRow(idx, "productType", val);
+                                      const matchedCat = categories.find((c) => c.name === val);
+                                      if (matchedCat && !form.categoryIds.includes(matchedCat.id)) {
+                                        setForm((prev) => ({
+                                          ...prev,
+                                          categoryIds: [...prev.categoryIds, matchedCat.id],
+                                        }));
+                                      }
+                                    }}
+                                    placeholder="Product Type *"
+                                    searchable={true}
+                                    searchPlaceholder="Search product type..."
+                                    portal={true}
+                                    className="w-full"
+                                    triggerClassName={`w-full px-2 py-1.5 rounded-lg text-xs font-medium focus:outline-none transition-colors ${
+                                      rowErrors?.productType
+                                        ? "bg-rose-50/40 dark:bg-rose-950/30 border border-rose-500 dark:border-rose-700 text-rose-900 dark:text-rose-200"
+                                        : "bg-slate-50 dark:bg-[#131d31] border border-slate-200 dark:border-slate-800 hover:border-blue-500 text-slate-800 dark:text-slate-200"
+                                    }`}
+                                    options={categories.map((c) => ({ value: c.name, label: c.name }))}
+                                  />
+                                  {rowErrors?.productType && (
+                                    <span className="text-[10px] font-semibold text-rose-500 mt-0.5 block leading-tight px-0.5 animate-fadeIn">
+                                      {rowErrors.productType}
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="py-2 px-2 border-r border-slate-200 dark:border-slate-800/60 min-w-[140px] align-top">
                                   <CustomSelect
@@ -1909,37 +2298,36 @@ export default function AddProductModal({
                   <div className="flex items-center justify-between gap-3 pt-2">
                     <button
                       type="button"
-                      onClick={() => setStep(1)}
-                      className="py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131d31] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center gap-1.5"
+                      onClick={onClose}
+                      className="py-2.5 px-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131d31] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center gap-1.5"
                     >
-                      <ChevronLeft className="w-4 h-4" />
-                      Back to Product Type
+                      Cancel
                     </button>
                     {(() => {
                       const duplicateRowsCount = spreadsheetRows.filter((r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.exists).length;
                       const hasDuplicates = duplicateRowsCount > 0;
                       const validCount = spreadsheetRows.filter((r) => r.name.trim()).length;
-                      const isAddDisabled = validCount === 0 || submitting || hasDuplicates || isBulkChecking;
+                      const isNextDisabled = validCount === 0 || hasDuplicates || isBulkChecking;
                       return (
                         <button
                           type="button"
-                          disabled={isAddDisabled}
+                          disabled={isNextDisabled || submitting}
                           onClick={handleSubmit}
                           title={hasDuplicates ? `Remove or rename ${duplicateRowsCount} duplicate product(s) to continue` : undefined}
                           className={`py-2.5 px-6 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
                             hasDuplicates
                               ? "bg-rose-600/80 text-white cursor-not-allowed opacity-80 shadow-xs"
-                              : isAddDisabled
+                              : isNextDisabled || submitting
                               ? "bg-blue-600 text-white opacity-40 cursor-not-allowed"
                               : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-lg shadow-blue-600/20 cursor-pointer"
                           }`}
                         >
                           {submitting ? (
-                            "Saving Products..."
+                            "Adding Products..."
                           ) : hasDuplicates ? (
                             `Blocked: ${duplicateRowsCount} Duplicate${duplicateRowsCount > 1 ? "s" : ""} Found`
                           ) : (
-                            `Add ${validCount} Products to ${getCategoryNames() || "Selected Type"}`
+                            `Add ${validCount} Product${validCount !== 1 ? "s" : ""} →`
                           )}
                         </button>
                       );
@@ -1948,38 +2336,9 @@ export default function AddProductModal({
                 </div>
               )}
 
-              {/* STEP 2: PREVIEW SITES (IF IN SINGLE MODE) */}
-              {step === 2 && entryMode === "single" && (
+              {/* STEP 3: PREVIEW SITES (IF IN SINGLE MODE) */}
+              {step === 3 && entryMode === "single" && (
                 <div className="space-y-4 max-w-4xl mx-auto w-full">
-                  {/* Mode Switcher */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
-                    <div>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wider">
-                        Product Entry Mode
-                      </span>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Switch to Bulk Spreadsheet or continue with Single Product Form
-                      </p>
-                    </div>
-
-                    <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl self-start sm:self-auto">
-                      <button
-                        type="button"
-                        onClick={() => setEntryMode("bulk")}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Table className="w-3.5 h-3.5" />
-                        Bulk Spreadsheet
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEntryMode("single")}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-blue-600 text-white shadow-sm cursor-pointer"
-                      >
-                        Single Product Form
-                      </button>
-                    </div>
-                  </div>
 
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
@@ -2212,27 +2571,73 @@ export default function AddProductModal({
                   <div className="flex gap-3 pt-2">
                     <button
                       type="button"
-                      onClick={() => setStep(1)}
+                      onClick={() => setStep(2)}
                       className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131d31] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <ChevronLeft className="w-4 h-4" />
-                      Back
+                      Back to Product Type
                     </button>
-                    <button
-                      type="button"
-                      disabled={activeSites.length === 0}
-                      onClick={() => setStep(3)}
-                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs disabled:opacity-40 transition cursor-pointer shadow-md shadow-blue-600/20"
-                    >
-                      Continue ({activeSites.length} site{activeSites.length !== 1 ? "s" : ""})
-                    </button>
+                    {(() => {
+                      const isDuplicate = Boolean(singleCheckStatus.exists);
+                      const isSingleDisabled = submitting || singleCheckStatus.checking || isDuplicate;
+                      return (
+                        <button
+                          type="button"
+                          disabled={isSingleDisabled}
+                          onClick={handleSubmit}
+                          title={isDuplicate ? "This product already exists. Please rename to continue." : undefined}
+                          className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                            isDuplicate
+                              ? "bg-rose-600/80 text-white cursor-not-allowed opacity-80 shadow-xs"
+                              : isSingleDisabled
+                              ? "bg-blue-600 text-white opacity-40 cursor-not-allowed"
+                              : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-lg shadow-blue-600/20 cursor-pointer"
+                          }`}
+                        >
+                          {submitting
+                            ? "Saving..."
+                            : isDuplicate
+                            ? "Blocked: Product Already Exists"
+                            : `Add Product to ${activeSites.length} Site${activeSites.length !== 1 ? "s" : ""}`}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
 
-              {/* STEP 3: DETAILS (IF IN SINGLE MODE) */}
-              {step === 3 && entryMode === "single" && (
+              {/* STEP 1: DETAILS (IF IN SINGLE MODE) */}
+              {step === 1 && entryMode === "single" && (
                 <div className="space-y-4 max-w-4xl mx-auto w-full">
+                  {/* Mode Switcher */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wider">
+                        Product Entry Mode
+                      </span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Switch to Bulk Spreadsheet or continue with Single Product Form
+                      </p>
+                    </div>
+
+                    <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setEntryMode("bulk")}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Table className="w-3.5 h-3.5" />
+                        Bulk Spreadsheet
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEntryMode("single")}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-blue-600 text-white shadow-sm cursor-pointer"
+                      >
+                        Single Product Form
+                      </button>
+                    </div>
+                  </div>
                   {/* Grid 2-Column: Product Name & Slug */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Product Name */}
@@ -2272,14 +2677,46 @@ export default function AddProductModal({
                           <span>Checking database availability...</span>
                         </p>
                       ) : singleCheckStatus.exists ? (
-                        <div className="text-xs font-bold text-rose-700 dark:text-rose-300 p-2 bg-rose-50 dark:bg-rose-950/60 rounded-xl border border-rose-200 dark:border-rose-800/70 flex items-start gap-2 animate-fadeIn whitespace-normal break-words shadow-2xs">
-                          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                          <span className="whitespace-normal break-words">{singleCheckStatus.message}</span>
+                        <div className="text-xs font-bold text-rose-700 dark:text-rose-300 p-2.5 bg-rose-50 dark:bg-rose-950/60 rounded-xl border border-rose-200 dark:border-rose-800/70 flex items-center justify-between gap-2 animate-fadeIn whitespace-normal break-words shadow-2xs">
+                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                            <span className="whitespace-normal break-words">{singleCheckStatus.message}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewDuplicate({
+                                isOpen: true,
+                                productId: singleCheckStatus.productId,
+                                productName: form.name,
+                              })
+                            }
+                            className="shrink-0 px-2.5 py-1 bg-white dark:bg-rose-900/80 hover:bg-rose-100 dark:hover:bg-rose-800 text-rose-700 dark:text-rose-200 border border-rose-300 dark:border-rose-700 rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Preview</span>
+                          </button>
                         </div>
                       ) : singleCheckStatus.isUncertain ? (
-                        <div className="text-xs font-semibold text-amber-700 dark:text-amber-300 p-2 bg-amber-50 dark:bg-amber-950/60 rounded-xl border border-amber-200 dark:border-amber-800/70 flex items-start gap-2 animate-fadeIn whitespace-normal break-words shadow-2xs">
-                          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-                          <span className="whitespace-normal break-words">{singleCheckStatus.message}</span>
+                        <div className="text-xs font-semibold text-amber-700 dark:text-amber-300 p-2.5 bg-amber-50 dark:bg-amber-950/60 rounded-xl border border-amber-200 dark:border-amber-800/70 flex items-center justify-between gap-2 animate-fadeIn whitespace-normal break-words shadow-2xs">
+                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                            <span className="whitespace-normal break-words">{singleCheckStatus.message}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewDuplicate({
+                                isOpen: true,
+                                productId: singleCheckStatus.productId,
+                                productName: form.name,
+                              })
+                            }
+                            className="shrink-0 px-2.5 py-1 bg-white dark:bg-amber-900/80 hover:bg-amber-100 dark:hover:bg-amber-800 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Preview</span>
+                          </button>
                         </div>
                       ) : singleCheckStatus.exists === false && form.name.trim().length >= 2 ? (
                         <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 animate-fadeIn">
@@ -2437,8 +2874,49 @@ export default function AddProductModal({
                     </div>
                   </div>
 
-                  {/* Grid 2-Column: Category & Affiliate Network */}
+                  {/* Grid 2-Column: Product Type & Category */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Product Type */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        Product Type <span className="text-rose-500">*</span>
+                      </label>
+                      <CustomSelect
+                        value={form.productType || (categories.find((c) => form.categoryIds.includes(c.id))?.name || "")}
+                        onChange={(val) => {
+                          update("productType", val);
+                          const matchedCat = categories.find((c) => c.name === val);
+                          if (matchedCat) {
+                            setForm((prev) => ({
+                              ...prev,
+                              productType: val,
+                              categoryIds: [matchedCat.id],
+                            }));
+                          }
+                          setFieldErrors((prev) => {
+                            if (!prev.productType) return prev;
+                            const next = { ...prev };
+                            delete next.productType;
+                            return next;
+                          });
+                        }}
+                        placeholder="Select Product Type..."
+                        searchable={true}
+                        searchPlaceholder="Search product type..."
+                        className="w-full"
+                        triggerClassName={`w-full px-3.5 py-2.5 rounded-xl text-xs font-medium focus:outline-none transition-colors ${
+                          fieldErrors.productType
+                            ? "bg-rose-50/40 border border-rose-500 text-rose-900 dark:bg-rose-950/30 dark:border-rose-700 dark:text-rose-200"
+                            : "bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 text-slate-800 dark:text-slate-200"
+                        }`}
+                        options={categories.map((c) => ({ value: c.name, label: c.name }))}
+                      />
+                      {fieldErrors.productType && (
+                        <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{fieldErrors.productType}</p>
+                      )}
+                    </div>
+
                     {/* Category */}
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
@@ -2463,48 +2941,48 @@ export default function AddProductModal({
                         <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{fieldErrors.category}</p>
                       )}
                     </div>
+                  </div>
 
-                    {/* Affiliate Network Multi-Select */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                          Affiliate Network <span className="text-rose-500">*</span>
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-normal normal-case">
-                          Select multiple or No Affiliate
-                        </span>
-                      </label>
-                      <AffiliateMultiSelect
-                        value={form.affiliateName}
-                        onChange={(val) => {
-                          setForm((prev) => ({ ...prev, affiliateName: val }));
-                          setFieldErrors((prev) => {
-                            if (!prev.affiliateName) return prev;
-                            const next = { ...prev };
-                            delete next.affiliateName;
-                            return next;
-                          });
-                        }}
-                        affiliates={affiliates}
-                        placeholder="Select Affiliate Network(s)... *"
-                        error={Boolean(fieldErrors.affiliateName)}
-                        onAddCustomAffiliate={async (name) => {
-                          const res = await fetch("/api/affiliates", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ name }),
-                          });
-                          if (res.ok) {
-                            const data = await res.json();
-                            setAffiliates((prev) => [...prev, data]);
-                          }
-                        }}
-                      />
-                      {fieldErrors.affiliateName && (
-                        <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{fieldErrors.affiliateName}</p>
-                      )}
-                    </div>
+                  {/* Affiliate Network Multi-Select */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        Affiliate Network <span className="text-rose-500">*</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-normal normal-case">
+                        Select multiple or No Affiliate
+                      </span>
+                    </label>
+                    <AffiliateMultiSelect
+                      value={form.affiliateName}
+                      onChange={(val) => {
+                        setForm((prev) => ({ ...prev, affiliateName: val }));
+                        setFieldErrors((prev) => {
+                          if (!prev.affiliateName) return prev;
+                          const next = { ...prev };
+                          delete next.affiliateName;
+                          return next;
+                        });
+                      }}
+                      affiliates={affiliates}
+                      placeholder="Select Affiliate Network(s)... *"
+                      error={Boolean(fieldErrors.affiliateName)}
+                      onAddCustomAffiliate={async (name) => {
+                        const res = await fetch("/api/affiliates", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ name }),
+                        });
+                        if (res.ok) {
+                          const data = await res.json();
+                          setAffiliates((prev) => [...prev, data]);
+                        }
+                      }}
+                    />
+                    {fieldErrors.affiliateName && (
+                      <p className="text-xs font-semibold text-rose-500 dark:text-rose-400">{fieldErrors.affiliateName}</p>
+                    )}
                   </div>
 
                   {/* Grid 2-Column: Trend Level & Trend Link */}
@@ -2594,34 +3072,100 @@ export default function AddProductModal({
                     </div>
                   </div>
 
+                  {/* Target Websites in Single Mode */}
+                  <div className="p-3 bg-slate-50 dark:bg-[#131d31] rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+                          Target Websites ({activeSites.length} of {previewSites.length} Selected)
+                        </span>
+                      </div>
+                      {previewSites.length > 0 && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setExcludedSiteIds([])}
+                            className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-slate-300 dark:text-slate-700">|</span>
+                          <button
+                            type="button"
+                            onClick={() => setExcludedSiteIds(previewSites.map((s: any) => s.id))}
+                            className="text-[11px] font-bold text-slate-500 hover:text-rose-500 cursor-pointer"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {previewSites.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pt-0.5">
+                        {previewSites.map((site: any) => {
+                          const isSelected = !excludedSiteIds.includes(site.id);
+                          return (
+                            <button
+                              key={site.id}
+                              type="button"
+                              onClick={() => {
+                                setExcludedSiteIds((prev) =>
+                                  isSelected ? [...prev, site.id] : prev.filter((id) => id !== site.id)
+                                );
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${
+                                isSelected
+                                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-400 dark:border-blue-700 font-bold"
+                                  : "bg-white dark:bg-[#0b1120] text-slate-500 border-slate-200 dark:border-slate-800 opacity-60"
+                              }`}
+                            >
+                              <div
+                                className={`w-3 h-3 rounded flex items-center justify-center border text-[8px] ${
+                                  isSelected ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 dark:border-slate-700"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                              </div>
+                              <span>{site.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 italic">
+                        Select a Product Type above to see associated target websites.
+                      </p>
+                    )}
+                  </div>
+
                   <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-3">
                     <button
                       type="button"
-                      onClick={() => setStep(2)}
+                      onClick={onClose}
                       className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131d31] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold transition text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      <ChevronLeft className="w-4 h-4" />
-                      Back to Websites
+                      Cancel
                     </button>
                     {(() => {
                       const isDuplicate = Boolean(singleCheckStatus.exists);
-                      const isSingleDisabled = submitting || singleCheckStatus.checking || isDuplicate;
+                      const isSingleDisabled = singleCheckStatus.checking || isDuplicate || !form.name.trim();
                       return (
                         <button
                           type="button"
-                          disabled={isSingleDisabled}
+                          disabled={isSingleDisabled || submitting}
                           onClick={handleSubmit}
                           title={isDuplicate ? "This product already exists. Please rename to continue." : undefined}
                           className={`w-full sm:flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
                             isDuplicate
                               ? "bg-rose-600/80 text-white cursor-not-allowed opacity-80 shadow-xs"
-                              : isSingleDisabled
+                              : isSingleDisabled || submitting
                               ? "bg-blue-600 text-white opacity-40 cursor-not-allowed"
                               : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-lg shadow-blue-600/20 cursor-pointer"
                           }`}
                         >
                           {submitting
-                            ? "Saving..."
+                            ? "Adding Product..."
                             : isDuplicate
                             ? "Blocked: Product Already Exists"
                             : "Add Product"}
@@ -2635,6 +3179,17 @@ export default function AddProductModal({
           )}
         </div>
       </div>
+
+      {/* Duplicate Product Preview & Site Availability Modal */}
+      <DuplicateProductPreviewModal
+        isOpen={previewDuplicate.isOpen}
+        onClose={() => setPreviewDuplicate({ isOpen: false, productName: "" })}
+        productId={previewDuplicate.productId}
+        productName={previewDuplicate.productName}
+        onProductAddedToSite={(_siteId, _siteName) => {
+          // Callback after product has been successfully added to a target site
+        }}
+      />
     </div>
   );
 }

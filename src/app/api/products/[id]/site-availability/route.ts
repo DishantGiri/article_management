@@ -18,19 +18,59 @@ export async function GET(
 
     const { id } = await params;
     const productId = parseInt(id, 10);
-    if (isNaN(productId)) {
-      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
+    const searchName = req.nextUrl.searchParams.get("name")?.trim();
+
+    type BaseProductWithIncludes = {
+      id: number;
+      name: string;
+      slug: string | null;
+      country: string | null;
+      isNative: boolean;
+      source: string | null;
+      siteId: number;
+      targetSites: string | null;
+      categoryId: number;
+      productCategory: string | null;
+      remarks: string | null;
+      addedAt: Date;
+      updatedAt: Date | null;
+      site?: { id: number; name: string; url: string | null } | null;
+      category?: { id: number; name: string } | null;
+      addedBy?: { id: number; name: string; role: string | null } | null;
+      updatedBy?: { id: number; name: string; role: string | null } | null;
+    };
+
+    let baseProduct: BaseProductWithIncludes | null = null;
+    if (!isNaN(productId)) {
+      baseProduct = await prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          site: { select: { id: true, name: true, url: true } },
+          category: { select: { id: true, name: true } },
+          addedBy: { select: { id: true, name: true, role: true } },
+          updatedBy: { select: { id: true, name: true, role: true } },
+        },
+      });
     }
 
-    const baseProduct = await prisma.product.findUnique({
-      where: { id: productId },
-      include: {
-        site: { select: { id: true, name: true, url: true } },
-        category: { select: { id: true, name: true } },
-        addedBy: { select: { id: true, name: true, role: true } },
-        updatedBy: { select: { id: true, name: true, role: true } },
-      },
-    });
+    if (!baseProduct && searchName) {
+      baseProduct = await prisma.product.findFirst({
+        where: {
+          OR: [
+            { name: searchName },
+            { name: searchName.toLowerCase() },
+            { name: searchName.toUpperCase() },
+          ],
+        },
+        include: {
+          site: { select: { id: true, name: true, url: true } },
+          category: { select: { id: true, name: true } },
+          addedBy: { select: { id: true, name: true, role: true } },
+          updatedBy: { select: { id: true, name: true, role: true } },
+        },
+        orderBy: { addedAt: "desc" },
+      });
+    }
 
     if (!baseProduct) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
@@ -141,7 +181,24 @@ export async function GET(
     const availableCount = siteAvailability.filter((s) => s.isAvailable).length;
 
     const baseResearchedMatch = baseProduct.remarks?.match(/Researched by:\s*([^.\n,]+)/i)?.[1]?.trim();
-    const baseResearcher = baseResearchedMatch || (baseProduct.addedBy?.role === "PRODUCT_RESEARCHER" ? baseProduct.addedBy.name : null);
+    let baseResearcher = baseResearchedMatch || (baseProduct.addedBy?.role === "PRODUCT_RESEARCHER" ? baseProduct.addedBy.name : null);
+
+    if (!baseResearcher) {
+      const trimmed = baseProduct.name.trim();
+      const tm = await prisma.trendmapProduct.findFirst({
+        where: {
+          OR: [
+            { name: trimmed },
+            { name: trimmed.toLowerCase() },
+            { name: trimmed.toUpperCase() },
+          ],
+        },
+        select: { researchedBy: true, addedBy: { select: { name: true } } },
+      });
+      if (tm) {
+        baseResearcher = tm.researchedBy || tm.addedBy?.name || null;
+      }
+    }
 
     return NextResponse.json({
       productName: baseProduct.name,
@@ -201,12 +258,9 @@ export async function POST(
 
     const { id } = await params;
     const productId = parseInt(id, 10);
-    if (isNaN(productId)) {
-      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
-    }
 
     const body = await req.json();
-    const { targetSiteId, targetSiteIds } = body;
+    const { targetSiteId, targetSiteIds, productName } = body;
 
     // Handle single or multiple site IDs
     const siteIdsToAdd: number[] = Array.isArray(targetSiteIds) && targetSiteIds.length > 0
@@ -222,14 +276,60 @@ export async function POST(
       );
     }
 
-    const sourceProduct = await prisma.product.findUnique({
-      where: { id: productId },
-      include: {
-        category: true,
-        site: true,
-        addedBy: { select: { id: true, name: true, role: true } },
-      },
-    });
+    type SourceProductWithIncludes = {
+      id: number;
+      name: string;
+      slug: string | null;
+      country: string | null;
+      isNative: boolean;
+      source: string | null;
+      siteId: number;
+      targetSites: string | null;
+      categoryId: number;
+      productCategory: string | null;
+      trendLink: string | null;
+      trendLevel: string | null;
+      affiliateName: string | null;
+      previewLink: string | null;
+      remarks: string | null;
+      addedById: number;
+      addedAt: Date;
+      updatedAt: Date | null;
+      category?: { id: number; name: string } | null;
+      site?: { id: number; name: string } | null;
+      addedBy?: { id: number; name: string; role: string | null } | null;
+    };
+
+    let sourceProduct: SourceProductWithIncludes | null = null;
+    if (!isNaN(productId)) {
+      sourceProduct = await prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          category: true,
+          site: true,
+          addedBy: { select: { id: true, name: true, role: true } },
+        },
+      });
+    }
+
+    if (!sourceProduct && productName) {
+      const pName = String(productName).trim();
+      sourceProduct = await prisma.product.findFirst({
+        where: {
+          OR: [
+            { name: pName },
+            { name: pName.toLowerCase() },
+            { name: pName.toUpperCase() },
+          ],
+        },
+        include: {
+          category: true,
+          site: true,
+          addedBy: { select: { id: true, name: true, role: true } },
+        },
+        orderBy: { addedAt: "desc" },
+      });
+    }
 
     if (!sourceProduct) {
       return NextResponse.json({ error: "Source product not found." }, { status: 404 });
@@ -238,7 +338,10 @@ export async function POST(
     const createdList: any[] = [];
     const errors: string[] = [];
 
-    let activeUserId = Number(session.user.id) || sourceProduct.addedById;
+    let activeUserId: number = Number(session.user.id);
+    if (!activeUserId || isNaN(activeUserId)) {
+      activeUserId = sourceProduct.addedById;
+    }
     const existingUser = await prisma.user.findUnique({
       where: { id: activeUserId },
       select: { id: true },
@@ -280,7 +383,7 @@ export async function POST(
         include: { sites: true },
       });
 
-      if (!targetCategory) {
+      if (!targetCategory && sourceProduct.category?.name) {
         targetCategory = await prisma.category.findFirst({
           where: { name: sourceProduct.category.name },
           include: { sites: true },

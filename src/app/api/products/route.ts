@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       name: string;
       slug?: string | null;
       country?: string | null;
+      categoryId?: number | null;
       isNative?: boolean;
       productCategory?: string | null;
       source?: string | null;
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest) {
           name: typeof p.name === "string" ? p.name.trim() : "",
           slug: typeof p.slug === "string" ? p.slug.trim() : (typeof body.slug === "string" ? body.slug.trim() : null),
           country: typeof p.country === "string" && p.country.trim() ? p.country.trim() : (typeof body.country === "string" && body.country.trim() ? body.country.trim() : null),
+          categoryId: Number.isInteger(Number(p.categoryId)) && Number(p.categoryId) > 0 ? Number(p.categoryId) : null,
           isNative: typeof p.isNative === "boolean" ? p.isNative : (typeof isNative === "boolean" ? isNative : false),
           productCategory: p.productCategory?.trim() || productCategory?.trim() || null,
           source: p.source?.trim() || source?.trim() || null,
@@ -94,6 +96,7 @@ export async function POST(req: NextRequest) {
           name: n,
           slug: typeof body.slug === "string" ? body.slug.trim() : null,
           country: typeof body.country === "string" && body.country.trim() ? body.country.trim() : null,
+          categoryId: null,
           isNative: typeof isNative === "boolean" ? isNative : false,
           productCategory: productCategory?.trim() || null,
           source: typeof body.source === "string" && body.source.trim() ? body.source.trim() : null,
@@ -116,11 +119,18 @@ export async function POST(req: NextRequest) {
     });
 
     const trimmedNames = productItems.map((p) => p.name);
+    const itemCategoryIds = productItems.map((p) => p.categoryId).filter(Boolean) as number[];
+    const allCategoryIds = Array.from(
+      new Set([
+        ...(Array.isArray(categoryIds) ? categoryIds.map(Number).filter((id) => !isNaN(id) && id > 0) : []),
+        ...itemCategoryIds,
+      ])
+    );
 
     // Basic validation
-    if (trimmedNames.length === 0 || !categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
+    if (trimmedNames.length === 0 || allCategoryIds.length === 0) {
       return NextResponse.json(
-        { error: "Product name(s) and categoryIds array are required." },
+        { error: "Product name(s) and category / product type are required." },
         { status: 400 }
       );
     }
@@ -218,7 +228,7 @@ export async function POST(req: NextRequest) {
     }
 
     const categoriesWithSites = await prisma.category.findMany({
-      where: { id: { in: categoryIds.map(Number) } },
+      where: { id: { in: allCategoryIds } },
       include: { sites: true },
     });
 
@@ -406,7 +416,7 @@ export async function POST(req: NextRequest) {
           isNative: Boolean(item.isNative),
           siteId: researchSite.id, // In product research, do NOT directly add to live site!
           targetSites: targetSitesStr,
-          categoryId: categoriesWithSites[0]?.id || 1,
+          categoryId: item.categoryId || categoriesWithSites[0]?.id || 1,
           productCategory: item.productCategory || null,
           source: item.source || null,
           trendLink: item.trendLink || null,
@@ -420,7 +430,11 @@ export async function POST(req: NextRequest) {
     } else {
       // Linkers / Admins: direct site assignment
       for (const item of productItems) {
-        for (const cat of categoriesWithSites) {
+        const applicableCategories = item.categoryId
+          ? categoriesWithSites.filter((c) => c.id === item.categoryId)
+          : categoriesWithSites;
+
+        for (const cat of applicableCategories) {
           for (const site of cat.sites) {
             if (!targetSiteIds.has(site.id)) {
               continue;
