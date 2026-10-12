@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import {
   RefreshCw,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
   X,
   Filter,
   CheckCircle2,
@@ -117,6 +118,69 @@ export default function TrendmapProductsPage() {
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+  // Scroll & drag management for metric chips
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [initialScrollLeft, setInitialScrollLeft] = useState(0);
+  const [hasDragged, setHasDragged] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    const handleResize = () => checkScroll();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [checkScroll, counts]);
+
+  const handleScrollLeft = () => {
+    scrollContainerRef.current?.scrollBy({ left: -260, behavior: "smooth" });
+  };
+
+  const handleScrollRight = () => {
+    scrollContainerRef.current?.scrollBy({ left: 260, behavior: "smooth" });
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY !== 0 && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft += e.deltaY;
+      checkScroll();
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!scrollContainerRef.current) return;
+    setIsDragging(true);
+    setHasDragged(false);
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+    setInitialScrollLeft(scrollContainerRef.current.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - startX) * 1.4;
+    if (Math.abs(walk) > 4) {
+      setHasDragged(true);
+    }
+    scrollContainerRef.current.scrollLeft = initialScrollLeft - walk;
+    checkScroll();
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false);
+  };
 
   // Modals
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
@@ -504,162 +568,271 @@ export default function TrendmapProductsPage() {
       </div>
 
       {/* ─── PRIORITY & STATUS METRIC CHIPS ─── */}
-      <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 bg-zinc-100/70 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200/70 dark:border-zinc-800 overflow-x-auto no-scrollbar scroll-smooth">
-        <button
-          onClick={() => { setPriorityFilter("ALL"); setPage(1); }}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-            priorityFilter === "ALL"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-2xs"
-              : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+      <div className="relative group w-full min-w-0">
+        {/* Left Scroll Button & Subtle Fade Overlay */}
+        <div
+          className={`absolute left-0 top-0 bottom-0 z-20 flex items-center pl-1 transition-all duration-200 pointer-events-none ${
+            canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         >
-          <span>All Priorities</span>
-          <span className={`px-1.5 py-0.2 rounded-md text-[10px] ${
-            priorityFilter === "ALL"
-              ? "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
-              : "bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-          }`}>
-            {counts.total.toLocaleString()}
+          <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-zinc-100 via-zinc-100/90 to-transparent dark:from-zinc-950 dark:via-zinc-950/90 dark:to-transparent rounded-l-2xl pointer-events-none" />
+          <button
+            type="button"
+            onClick={handleScrollLeft}
+            aria-label="Scroll filters left"
+            className="relative pointer-events-auto w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/95 dark:bg-zinc-800/95 border border-zinc-200 dark:border-zinc-700 shadow-md hover:shadow-lg flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-xs"
+          >
+            <ChevronLeft className="w-4 h-4 shrink-0" />
+          </button>
+        </div>
+
+        {/* Scrollable Chips List */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={checkScroll}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUpOrLeave}
+          onMouseLeave={handleMouseUpOrLeave}
+          className={`flex items-center gap-1.5 sm:gap-2 p-1.5 bg-zinc-100/70 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200/70 dark:border-zinc-800 overflow-x-auto no-scrollbar scroll-smooth select-none min-w-0 ${
+            isDragging ? "cursor-grabbing" : "cursor-grab"
+          }`}
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          {/* Priority Label */}
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 pl-1.5 shrink-0 select-none">
+            Priority:
           </span>
-        </button>
 
-        <button
-          onClick={() => { setPriorityFilter("HIGH"); setPage(1); }}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-            priorityFilter === "HIGH"
-              ? "bg-emerald-600 text-white shadow-2xs"
-              : "text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400"
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0" />
-          <span>High Demand</span>
-          <span className={`px-1.5 py-0.2 rounded-md text-[10px] ${
-            priorityFilter === "HIGH" ? "bg-emerald-700 text-white" : "bg-zinc-200/80 dark:bg-zinc-800"
-          }`}>
-            {counts.high}
-          </span>
-        </button>
-
-        <button
-          onClick={() => { setPriorityFilter("MODERATE"); setPage(1); }}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-            priorityFilter === "MODERATE"
-              ? "bg-amber-600 text-white shadow-2xs"
-              : "text-zinc-600 hover:text-amber-600 dark:text-zinc-400 dark:hover:text-amber-400"
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-amber-500 inline-block shrink-0" />
-          <span>Moderate</span>
-          <span className={`px-1.5 py-0.2 rounded-md text-[10px] ${
-            priorityFilter === "MODERATE" ? "bg-amber-700 text-white" : "bg-zinc-200/80 dark:bg-zinc-800"
-          }`}>
-            {counts.moderate}
-          </span>
-        </button>
-
-        <button
-          onClick={() => { setPriorityFilter("LOW"); setPage(1); }}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-            priorityFilter === "LOW"
-              ? "bg-blue-600 text-white shadow-2xs"
-              : "text-zinc-600 hover:text-blue-600 dark:text-zinc-400 dark:hover:text-blue-400"
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block shrink-0" />
-          <span>Low</span>
-          <span className={`px-1.5 py-0.2 rounded-md text-[10px] ${
-            priorityFilter === "LOW" ? "bg-blue-700 text-white" : "bg-zinc-200/80 dark:bg-zinc-800"
-          }`}>
-            {counts.low}
-          </span>
-        </button>
-
-        <button
-          onClick={() => { setPriorityFilter("NOT_ANALYZED"); setPage(1); }}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-            priorityFilter === "NOT_ANALYZED"
-              ? "bg-zinc-700 text-white dark:bg-zinc-300 dark:text-zinc-900 shadow-2xs"
-              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-          }`}
-        >
-          <span>Not Analyzed</span>
-          <span className={`px-1.5 py-0.2 rounded-md text-[10px] ${
-            priorityFilter === "NOT_ANALYZED" ? "bg-zinc-800 text-white" : "bg-zinc-200/80 dark:bg-zinc-800"
-          }`}>
-            {counts.notAnalyzed.toLocaleString()}
-          </span>
-        </button>
-
-        <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700 mx-1 shrink-0" />
-
-        {/* Catalog Conversion Status Tabs */}
-        <button
-          onClick={() => { setStatusFilter("ALL"); setPage(1); }}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-            statusFilter === "ALL"
-              ? "text-zinc-900 dark:text-white underline decoration-2 underline-offset-4 font-extrabold"
-              : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400"
-          }`}
-        >
-          All Catalog Status
-        </button>
-
-        <button
-          onClick={() => { setStatusFilter("PENDING"); setPage(1); }}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer whitespace-nowrap ${
-            statusFilter === "PENDING"
-              ? "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs"
-              : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400"
-          }`}
-        >
-          <span>Pending in Catalog</span>
-          <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-200/80 dark:bg-amber-800 text-amber-900 dark:text-amber-100">
-            {counts.pending}
-          </span>
-        </button>
-
-        <button
-          onClick={() => { setStatusFilter("ADDED"); setPage(1); }}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer whitespace-nowrap ${
-            statusFilter === "ADDED"
-              ? "bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-700 shadow-2xs"
-              : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400"
-          }`}
-        >
-          <CheckCircle2 className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
-          <span>Added to Catalog</span>
-          <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-teal-200/80 dark:bg-teal-800 text-teal-900 dark:text-teal-100">
-            {counts.added}
-          </span>
-        </button>
-
-        <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700 mx-1 shrink-0" />
-
-        {/* Duplicates Tab */}
-        <button
-          onClick={() => {
-            setStatusFilter(statusFilter === "DUPLICATES" ? "ALL" : "DUPLICATES");
-            setPage(1);
-          }}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-            statusFilter === "DUPLICATES"
-              ? "bg-amber-500 text-white shadow-2xs"
-              : "text-zinc-500 hover:text-amber-700 dark:hover:text-amber-300"
-          }`}
-          title="Filter opportunities that appear multiple times or across multiple competitors"
-        >
-          <Copy className="w-3.5 h-3.5 shrink-0" />
-          <span>Duplicates</span>
-          {counts.duplicates !== undefined && (
-            <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${
-              statusFilter === "DUPLICATES"
-                ? "bg-amber-700 text-white"
-                : "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-            }`}>
-              {counts.duplicates}
+          {/* All Priorities */}
+          <button
+            onClick={() => {
+              if (hasDragged) return;
+              setPriorityFilter("ALL");
+              setPage(1);
+            }}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              priorityFilter === "ALL"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-2xs"
+                : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <span>All Priorities</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[9px] sm:text-[10px] ${
+                priorityFilter === "ALL"
+                  ? "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
+                  : "bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+              }`}
+            >
+              {counts.total.toLocaleString()}
             </span>
-          )}
-        </button>
+          </button>
+
+          {/* High Demand */}
+          <button
+            onClick={() => {
+              if (hasDragged) return;
+              setPriorityFilter("HIGH");
+              setPage(1);
+            }}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              priorityFilter === "HIGH"
+                ? "bg-emerald-600 text-white shadow-2xs"
+                : "text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0" />
+            <span>High Demand</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[9px] sm:text-[10px] ${
+                priorityFilter === "HIGH" ? "bg-emerald-700 text-white" : "bg-zinc-200/80 dark:bg-zinc-800"
+              }`}
+            >
+              {counts.high}
+            </span>
+          </button>
+
+          {/* Moderate */}
+          <button
+            onClick={() => {
+              if (hasDragged) return;
+              setPriorityFilter("MODERATE");
+              setPage(1);
+            }}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              priorityFilter === "MODERATE"
+                ? "bg-amber-600 text-white shadow-2xs"
+                : "text-zinc-600 hover:text-amber-600 dark:text-zinc-400 dark:hover:text-amber-400"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block shrink-0" />
+            <span>Moderate</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[9px] sm:text-[10px] ${
+                priorityFilter === "MODERATE" ? "bg-amber-700 text-white" : "bg-zinc-200/80 dark:bg-zinc-800"
+              }`}
+            >
+              {counts.moderate}
+            </span>
+          </button>
+
+          {/* Low */}
+          <button
+            onClick={() => {
+              if (hasDragged) return;
+              setPriorityFilter("LOW");
+              setPage(1);
+            }}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              priorityFilter === "LOW"
+                ? "bg-blue-600 text-white shadow-2xs"
+                : "text-zinc-600 hover:text-blue-600 dark:text-zinc-400 dark:hover:text-blue-400"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-blue-500 inline-block shrink-0" />
+            <span>Low</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[9px] sm:text-[10px] ${
+                priorityFilter === "LOW" ? "bg-blue-700 text-white" : "bg-zinc-200/80 dark:bg-zinc-800"
+              }`}
+            >
+              {counts.low}
+            </span>
+          </button>
+
+          {/* Not Analyzed */}
+          <button
+            onClick={() => {
+              if (hasDragged) return;
+              setPriorityFilter("NOT_ANALYZED");
+              setPage(1);
+            }}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              priorityFilter === "NOT_ANALYZED"
+                ? "bg-zinc-700 text-white dark:bg-zinc-300 dark:text-zinc-900 shadow-2xs"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <span>Not Analyzed</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[9px] sm:text-[10px] ${
+                priorityFilter === "NOT_ANALYZED" ? "bg-zinc-800 text-white" : "bg-zinc-200/80 dark:bg-zinc-800"
+              }`}
+            >
+              {counts.notAnalyzed.toLocaleString()}
+            </span>
+          </button>
+
+          <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700 mx-1 shrink-0" />
+
+          {/* Catalog Label */}
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 pl-1 shrink-0 select-none">
+            Catalog:
+          </span>
+
+          {/* Catalog Conversion Status Tabs */}
+          <button
+            onClick={() => {
+              if (hasDragged) return;
+              setStatusFilter("ALL");
+              setPage(1);
+            }}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              statusFilter === "ALL"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-2xs"
+                : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <span>All Catalog Status</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (hasDragged) return;
+              setStatusFilter("PENDING");
+              setPage(1);
+            }}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              statusFilter === "PENDING"
+                ? "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs"
+                : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <span>Pending in Catalog</span>
+            <span className="text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-200/80 dark:bg-amber-800 text-amber-900 dark:text-amber-100">
+              {counts.pending}
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (hasDragged) return;
+              setStatusFilter("ADDED");
+              setPage(1);
+            }}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              statusFilter === "ADDED"
+                ? "bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-700 shadow-2xs"
+                : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <CheckCircle2 className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+            <span>Added to Catalog</span>
+            <span className="text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-teal-200/80 dark:bg-teal-800 text-teal-900 dark:text-teal-100">
+              {counts.added}
+            </span>
+          </button>
+
+          <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700 mx-1 shrink-0" />
+
+          {/* Duplicates Tab */}
+          <button
+            onClick={() => {
+              if (hasDragged) return;
+              setStatusFilter(statusFilter === "DUPLICATES" ? "ALL" : "DUPLICATES");
+              setPage(1);
+            }}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              statusFilter === "DUPLICATES"
+                ? "bg-amber-500 text-white shadow-2xs"
+                : "text-zinc-600 hover:text-amber-700 dark:text-zinc-400 dark:hover:text-amber-300"
+            }`}
+            title="Filter opportunities that appear multiple times or across multiple competitors"
+          >
+            <Copy className="w-3.5 h-3.5 shrink-0" />
+            <span>Duplicates</span>
+            {counts.duplicates !== undefined && (
+              <span
+                className={`text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.2 rounded ${
+                  statusFilter === "DUPLICATES"
+                    ? "bg-amber-700 text-white"
+                    : "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                }`}
+              >
+                {counts.duplicates}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Right Scroll Button & Subtle Fade Overlay */}
+        <div
+          className={`absolute right-0 top-0 bottom-0 z-20 flex items-center pr-1 transition-all duration-200 pointer-events-none ${
+            canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        >
+          <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-zinc-100 via-zinc-100/90 to-transparent dark:from-zinc-950 dark:via-zinc-950/90 dark:to-transparent rounded-r-2xl pointer-events-none" />
+          <button
+            type="button"
+            onClick={handleScrollRight}
+            aria-label="Scroll filters right"
+            className="relative pointer-events-auto w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/95 dark:bg-zinc-800/95 border border-zinc-200 dark:border-zinc-700 shadow-md hover:shadow-lg flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-xs"
+          >
+            <ChevronRight className="w-4 h-4 shrink-0" />
+          </button>
+        </div>
       </div>
 
       {/* ─── SEARCH & FILTER TOOLBAR ─── */}

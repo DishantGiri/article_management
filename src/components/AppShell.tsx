@@ -36,7 +36,7 @@ export default function AppShell({ children, initialSession }: AppShellProps) {
     <div className="flex h-full min-h-screen" suppressHydrationWarning>
       {showSidebar && <Sidebar />}
       <main
-        className={`flex-1 min-h-screen overflow-y-auto transition-all duration-200 ${
+        className={`flex-1 min-w-0 min-h-screen overflow-y-auto transition-all duration-200 ${
           showSidebar ? "pt-[57px] lg:pt-0 ml-0 lg:ml-64" : ""
         }`}
         suppressHydrationWarning
