@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { parseSiteRoles } from "@/lib/permissions-utils";
+import { validateUserName, filterNameInput, handleNameKeyDown } from "@/lib/user-validation";
 import {
   Users,
   Search,
@@ -563,8 +564,9 @@ export default function UsersPage() {
 
     const errors: { name?: string; email?: string } = {};
 
-    if (!trimmedName) {
-      errors.name = "Please enter a user name";
+    const nameValidation = validateUserName(trimmedName);
+    if (!nameValidation.isValid) {
+      errors.name = nameValidation.error;
     }
 
     if (!editingUserId) {
@@ -709,8 +711,11 @@ export default function UsersPage() {
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const getInitials = (name: string) => {
-    return name
-      .split(" ")
+    if (!name) return "U";
+    const cleaned = name.replace(/[^\p{L}\s]/gu, "").trim();
+    if (!cleaned) return name.substring(0, 2).toUpperCase() || "U";
+    return cleaned
+      .split(/\s+/)
       .map((n) => n[0])
       .join("")
       .substring(0, 2)
@@ -2091,27 +2096,34 @@ export default function UsersPage() {
                     <input
                       type="text"
                       value={form.name}
+                      onKeyDown={handleNameKeyDown}
                       onChange={(e) => {
-                        setForm({ ...form, name: e.target.value });
+                        const filtered = filterNameInput(e.target.value);
+                        setForm({ ...form, name: filtered });
                         if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
                         if (error) setError("");
                       }}
-                      className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition placeholder:text-slate-400 ${(formSubmitted || fieldErrors.name) && !form.name.trim()
+                      className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition placeholder:text-slate-400 ${
+                        Boolean(fieldErrors.name) || (formSubmitted && !form.name.trim())
                           ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400/30"
                           : "border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-[#6D8196]/40"
-                        }`}
+                      }`}
                       placeholder="e.g. Sarah Mitchell"
                     />
-                    {(formSubmitted || fieldErrors.name) && !form.name.trim() && (
+                    {(Boolean(fieldErrors.name) || (formSubmitted && !form.name.trim())) && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                         <AlertCircle className="w-4 h-4 text-rose-500" />
                       </div>
                     )}
                   </div>
-                  {(formSubmitted || fieldErrors.name) && !form.name.trim() && (
+                  {Boolean(fieldErrors.name) || (formSubmitted && !form.name.trim()) ? (
                     <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1 mt-1.5 animate-fadeIn">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      <span>{fieldErrors.name || "Please enter a user name"}</span>
+                      <span>{fieldErrors.name || "Please enter a valid user name"}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                      Only letters, spaces, hyphens, and apostrophes are allowed (no special characters).
                     </p>
                   )}
                 </div>

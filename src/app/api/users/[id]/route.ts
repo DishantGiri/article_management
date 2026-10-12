@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { validateUserName } from "@/lib/user-validation";
 
 // GET /api/users/[id] - get user profile details
 export async function GET(
@@ -89,6 +90,14 @@ export async function PATCH(
 
     if (!isSelf && !isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Validate name if provided
+    if (name !== undefined) {
+      const nameValidation = validateUserName(name);
+      if (!nameValidation.isValid) {
+        return NextResponse.json({ error: nameValidation.error }, { status: 400 });
+      }
     }
 
     // Non-admin cannot modify role, approval, or site access
@@ -201,7 +210,7 @@ export async function PATCH(
     const updated = await prisma.user.update({
       where: { id: parseInt(id) },
       data: {
-        ...(name ? { name } : {}),
+        ...(name ? { name: name.trim() } : {}),
         ...(image !== undefined ? { image } : {}),
         ...(role ? { role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" } : {}),
         allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,

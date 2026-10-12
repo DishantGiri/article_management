@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { validateUserName } from "@/lib/user-validation";
 
 // GET /api/users - list all users with their accesses
 export async function GET() {
@@ -51,6 +52,10 @@ export async function POST(req: NextRequest) {
     }
     if (!trimmedName) {
       return NextResponse.json({ error: "Full name is required" }, { status: 400 });
+    }
+    const nameValidation = validateUserName(trimmedName);
+    if (!nameValidation.isValid) {
+      return NextResponse.json({ error: nameValidation.error }, { status: 400 });
     }
     if (!trimmedEmail) {
       return NextResponse.json({ error: "Email address is required" }, { status: 400 });

@@ -35,6 +35,7 @@ import CustomSelect from "@/components/CustomSelect";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useTheme } from "@/context/ThemeContext";
 import GoogleDriveBackupSettings from "@/components/GoogleDriveBackupSettings";
+import { validateUserName, filterNameInput, handleNameKeyDown } from "@/lib/user-validation";
 
 const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-purple-100 text-purple-800 border-purple-200",
@@ -242,13 +243,20 @@ export default function SettingsPage() {
       return;
     }
 
+    const trimmedName = name.trim();
+    const nameValidation = validateUserName(trimmedName);
+    if (!nameValidation.isValid) {
+      toast.error(nameValidation.error || "Please enter a valid display name.");
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch(`/api/users/${session.user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: name.trim(),
+          name: trimmedName,
           image: imageUrl.trim() || null,
         }),
       });
@@ -568,11 +576,15 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={handleNameKeyDown}
+                  onChange={(e) => setName(filterNameInput(e.target.value))}
                   className="w-full px-4 py-2.5 bg-white border border-[#CBCBCB] rounded-xl text-sm font-semibold text-[#4A4A4A] focus:outline-none focus:border-[#6D8196] focus:ring-2 focus:ring-[#6D8196]/20 transition shadow-2xs"
                   placeholder="Enter your full name"
                   required
                 />
+                <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-1.5">
+                  Only letters, spaces, hyphens, and apostrophes are allowed (no numbers or symbols like @, #, $, %, &).
+                </p>
               </div>
 
               {/* Email Address (Read-Only) */}

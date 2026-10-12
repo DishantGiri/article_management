@@ -3,6 +3,7 @@ import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+import { sanitizeUserName } from "@/lib/user-validation";
 
 const providers: any[] = [
   GoogleProvider({
@@ -31,9 +32,11 @@ const providers: any[] = [
       });
 
       if (!user) {
+        const rawName = email.split("@")[0].replace(/[._-]/g, " ");
+        const initialName = sanitizeUserName(rawName) || "User";
         user = await prisma.user.create({
           data: {
-            name: email.split("@")[0],
+            name: initialName,
             email: email,
             role: null,
             approved: false,
@@ -85,9 +88,10 @@ export const authOptions: NextAuthOptions = {
           }
         } else {
           // Auto-create unrecognized Google logins with null role and pending approval (approved: false)
+          const initialName = sanitizeUserName(user.name || "") || "Google User";
           dbUser = await prisma.user.create({
             data: {
-              name: user.name || "Google User",
+              name: initialName,
               email: user.email,
               role: null, // No role assigned initially
               approved: false, // Wait for admin approval
