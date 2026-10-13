@@ -31,6 +31,10 @@ export async function GET(
       targetSites: string | null;
       categoryId: number;
       productCategory: string | null;
+      trendLink?: string | null;
+      trendLevel?: string | null;
+      affiliateName?: string | null;
+      previewLink?: string | null;
       remarks: string | null;
       addedAt: Date;
       updatedAt: Date | null;
@@ -215,6 +219,29 @@ export async function GET(
       availableCount,
       missingCount: totalSites - availableCount,
       sites: siteAvailability,
+      product: {
+        id: baseProduct.id,
+        name: baseProduct.name,
+        slug: baseProduct.slug,
+        country: baseProduct.country,
+        isNative: baseProduct.isNative,
+        source: baseProduct.source,
+        siteId: baseProduct.siteId,
+        site: baseProduct.site,
+        categoryId: baseProduct.categoryId,
+        categoryName: baseProduct.category?.name,
+        productCategory: baseProduct.productCategory,
+        trendLink: baseProduct.trendLink || null,
+        trendLevel: baseProduct.trendLevel || "HIGH",
+        affiliateName: baseProduct.affiliateName || null,
+        previewLink: baseProduct.previewLink || null,
+        remarks: baseProduct.remarks || null,
+        targetSites: baseProduct.targetSites,
+        availableCount,
+        missingCount: totalSites - availableCount,
+        totalSitesCount: totalSites,
+        allProductIds: existingProducts.map((p) => p.id),
+      },
     });
   } catch (err: any) {
     console.error("[GET /api/products/:id/site-availability]", err);

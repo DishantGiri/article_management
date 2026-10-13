@@ -60,6 +60,20 @@ interface EditProductModalProps {
     site?: { id?: number; name?: string };
     allProductIds?: number[];
   } | null;
+  spreadsheetRowData?: {
+    name?: string;
+    slug?: string;
+    productType?: string;
+    category?: string;
+    source?: string;
+    affiliateName?: string;
+    trendLevel?: string;
+    trendLink?: string;
+    previewLink?: string;
+    remarks?: string;
+    isNative?: boolean;
+    country?: string;
+  } | null;
 }
 
 const isValidUrl = (url: string) => {
@@ -78,6 +92,7 @@ export default function EditProductModal({
   onClose,
   onSuccess,
   product,
+  spreadsheetRowData,
 }: EditProductModalProps) {
   const { data: session } = useSession();
   const [sites, setSites] = useState<Site[]>([]);
@@ -126,6 +141,28 @@ export default function EditProductModal({
       setError("");
       setTrendLinkError("");
       setPreviewLinkError("");
+
+      if (product.id && (!product.siteId || !product.categoryId || !product.affiliateName)) {
+        fetch(`/api/products/${product.id}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((fullProd) => {
+            if (fullProd) {
+              if (fullProd.name) setName(fullProd.name);
+              if (fullProd.slug) setSlug(fullProd.slug);
+              if (fullProd.isNative !== undefined) setIsNative(Boolean(fullProd.isNative));
+              if (fullProd.siteId) setSiteId(fullProd.siteId.toString());
+              if (fullProd.categoryId) setCategoryId(fullProd.categoryId.toString());
+              if (fullProd.productCategory) setCategory(fullProd.productCategory);
+              if (fullProd.source) setSource(fullProd.source);
+              if (fullProd.trendLink) setTrendLink(fullProd.trendLink);
+              if (fullProd.trendLevel) setTrendLevel(fullProd.trendLevel);
+              if (fullProd.affiliateName) setAffiliateName(fullProd.affiliateName);
+              if (fullProd.previewLink) setPreviewLink(fullProd.previewLink);
+              if (fullProd.remarks) setRemarks(fullProd.remarks);
+            }
+          })
+          .catch((e) => console.error("Failed to load product details", e));
+      }
 
       setLoading(true);
       Promise.all([
@@ -268,6 +305,28 @@ export default function EditProductModal({
     }
   };
 
+  const handleApplySpreadsheetData = () => {
+    if (!spreadsheetRowData) return;
+    if (spreadsheetRowData.name?.trim()) setName(spreadsheetRowData.name.trim());
+    if (spreadsheetRowData.slug?.trim()) {
+      setSlug(spreadsheetRowData.slug.trim());
+      setIsSlugEdited(true);
+    }
+    if (spreadsheetRowData.category?.trim()) setCategory(spreadsheetRowData.category.trim());
+    if (spreadsheetRowData.source !== undefined) setSource(spreadsheetRowData.source?.trim() || "");
+    if (spreadsheetRowData.affiliateName?.trim()) setAffiliateName(spreadsheetRowData.affiliateName.trim());
+    if (spreadsheetRowData.trendLevel?.trim()) setTrendLevel(spreadsheetRowData.trendLevel.trim());
+    if (spreadsheetRowData.trendLink !== undefined) setTrendLink(spreadsheetRowData.trendLink?.trim() || "");
+    if (spreadsheetRowData.previewLink !== undefined) setPreviewLink(spreadsheetRowData.previewLink?.trim() || "");
+    if (spreadsheetRowData.remarks !== undefined) setRemarks(spreadsheetRowData.remarks?.trim() || "");
+    if (spreadsheetRowData.isNative !== undefined) setIsNative(Boolean(spreadsheetRowData.isNative));
+    if (spreadsheetRowData.productType?.trim()) {
+      const match = categories.find((c) => c.name.toLowerCase() === spreadsheetRowData.productType?.trim().toLowerCase());
+      if (match) setCategoryId(String(match.id));
+    }
+    toast.success("Applied spreadsheet row values!");
+  };
+
   if (!isOpen || !product) return null;
 
   const isMultiSite = Boolean(
@@ -277,7 +336,7 @@ export default function EditProductModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-md animate-fadeIn">
       <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl w-full max-w-2xl sm:max-w-[700px] overflow-hidden max-h-[92vh] flex flex-col border border-zinc-100 dark:border-zinc-800 animate-scaleIn">
         {/* Modal Header */}
         <div className="px-6 py-4 bg-zinc-950 dark:bg-zinc-900 text-white flex items-center justify-between shrink-0 border-b border-transparent dark:border-zinc-800">
@@ -313,6 +372,26 @@ export default function EditProductModal({
             </div>
           ) : (
             <>
+              {spreadsheetRowData && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                      Bulk Spreadsheet Row Data Available
+                    </p>
+                    <p className="text-[11px] text-blue-700 dark:text-blue-300 truncate">
+                      Quickly prefill this form with the values entered in the spreadsheet table
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplySpreadsheetData}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white rounded-lg text-xs font-bold shrink-0 transition shadow-xs cursor-pointer"
+                  >
+                    Apply Table Values
+                  </button>
+                </div>
+              )}
+
               {/* Product Name & Product Slug */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">

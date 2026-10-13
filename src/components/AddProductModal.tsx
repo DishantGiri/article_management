@@ -32,9 +32,11 @@ import {
   Building2,
   ExternalLink,
   Eye,
+  Edit3,
 } from "lucide-react";
 
 import DuplicateProductPreviewModal from "@/components/DuplicateProductPreviewModal";
+import EditProductModal from "@/components/EditProductModal";
 import { getCountryFlag, TIER1_CODES, LATAM_COUNTRIES, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 interface Site {
@@ -403,11 +405,26 @@ export default function AddProductModal({
   >({});
   const [isBulkChecking, setIsBulkChecking] = useState(false);
 
+  const [recheckCounter, setRecheckCounter] = useState(0);
+
   // Duplicate Inspection Modal state
   const [previewDuplicate, setPreviewDuplicate] = useState<{
     isOpen: boolean;
     productId?: number | null;
     productName: string;
+    rowIndex?: number;
+    spreadsheetRowData?: any;
+  }>({
+    isOpen: false,
+    productName: "",
+  });
+
+  // Direct Edit Existing Product state
+  const [directEditProduct, setDirectEditProduct] = useState<{
+    isOpen: boolean;
+    productId?: number | null;
+    productName: string;
+    spreadsheetRowData?: any;
   }>({
     isOpen: false,
     productName: "",
@@ -772,7 +789,7 @@ export default function AddProductModal({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [isOpen, entryMode, step, spreadsheetRows, form.categoryIds, excludedSiteIds]);
+  }, [isOpen, entryMode, step, spreadsheetRows, form.categoryIds, excludedSiteIds, recheckCounter]);
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -828,12 +845,14 @@ export default function AddProductModal({
       return;
     }
 
-    const hasExactDuplicate = spreadsheetRows.some(
-      (r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.exists
-    );
-    if (hasExactDuplicate) {
-      setError("Please resolve duplicate product names before continuing.");
-      toast.error("Please resolve duplicate product names before continuing.");
+    const nonDuplicateRows = validRows.filter((r) => {
+      const origIdx = spreadsheetRows.indexOf(r);
+      return !(r.name.trim().length >= 2 && bulkCheckResults[origIdx]?.exists);
+    });
+
+    if (nonDuplicateRows.length === 0) {
+      setError("All entered products already exist in the database. Please resolve duplicates before continuing.");
+      toast.error("All entered products already exist in the database.");
       return;
     }
 
@@ -952,19 +971,24 @@ export default function AddProductModal({
         return;
       }
 
-      // 1. Block exact duplicate rows!
-      const hasExactDuplicate = spreadsheetRows.some(
-        (r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.exists
-      );
-      if (hasExactDuplicate) {
-        // Block the add until the duplicate is removed or renamed
+      // 1. Skip exact duplicate rows and add only new products!
+      const nonDuplicateRows = validRows.filter((r) => {
+        const origIdx = spreadsheetRows.indexOf(r);
+        return !(r.name.trim().length >= 2 && bulkCheckResults[origIdx]?.exists);
+      });
+      const duplicateCount = validRows.length - nonDuplicateRows.length;
+
+      if (nonDuplicateRows.length === 0) {
+        setError(`All ${duplicateCount} product(s) already exist in database. Please remove or rename duplicates.`);
+        toast.error(`All ${duplicateCount} product(s) already exist in database.`);
         return;
       }
 
       // 2. A "may already exist" warning is used only for uncertain matches, and then the add can continue.
-      const uncertainCount = spreadsheetRows.filter(
-        (r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.isUncertain
-      ).length;
+      const uncertainCount = nonDuplicateRows.filter((r) => {
+        const origIdx = spreadsheetRows.indexOf(r);
+        return r.name.trim().length >= 2 && bulkCheckResults[origIdx]?.isUncertain;
+      }).length;
       if (uncertainCount > 0) {
         toast(`Warning: ${uncertainCount} product(s) may already exist on target sites. Proceeding anyway — the server will confirm.`, {
           icon: undefined,
@@ -989,10 +1013,8 @@ export default function AddProductModal({
 
       let hasFieldErrors = false;
 
-      validRows.forEach((r) => {
+      nonDuplicateRows.forEach((r) => {
         const originalIdx = spreadsheetRows.indexOf(r);
-        // If row is a duplicate, do not validate missing fields (only show duplicate notification)
-        if (bulkCheckResults[originalIdx]?.exists) return;
 
         const rowErr: Record<string, string> = {};
         if (r.name.trim().length < 2) {
@@ -1044,7 +1066,7 @@ export default function AddProductModal({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            products: validRows.map((r) => ({
+            products: nonDuplicateRows.map((r) => ({
               name: r.name.trim(),
               slug: r.slug?.trim() ? generateSlug(r.slug) : generateSlug(r.name),
               country: r.country?.trim() || null,
@@ -1058,6 +1080,7 @@ export default function AddProductModal({
               previewLink: r.previewLink.trim(),
               remarks: r.remarks.trim() || null,
             })),
+            skipDuplicates: true,
             categoryIds: effectiveCategoryIds,
             excludedSiteIds,
             targetSiteIds: activeSites.map((s: any) => s.id),
@@ -1091,7 +1114,11 @@ export default function AddProductModal({
           }).catch((e) => console.error("Failed to link Trendmap product:", e));
         }
 
-        toast.success(`Successfully created ${validRows.length} products!`);
+        if (duplicateCount > 0) {
+          toast.success(`Successfully added ${nonDuplicateRows.length} product(s)! (${duplicateCount} duplicate(s) skipped)`);
+        } else {
+          toast.success(`Successfully created ${nonDuplicateRows.length} product(s)!`);
+        }
         setSuccessState(true);
         if (onSuccess) onSuccess(resData);
       } catch (e: unknown) {
@@ -1528,21 +1555,28 @@ export default function AddProductModal({
                     {entryMode === "bulk" ? (
                       (() => {
                         const validRows = spreadsheetRows.filter((r) => r.name.trim().length > 0);
-                        const validCount = validRows.length;
-                        const duplicateRowsCount = spreadsheetRows.filter(
-                          (r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.exists
-                        ).length;
-                        const hasDuplicates = duplicateRowsCount > 0;
-                        const isAddDisabled = form.categoryIds.length === 0 || submitting || hasDuplicates || validCount === 0;
+                        const duplicateRowsCount = validRows.filter((r) => {
+                          const origIdx = spreadsheetRows.indexOf(r);
+                          return r.name.trim().length >= 2 && bulkCheckResults[origIdx]?.exists;
+                        }).length;
+                        const availableRowsCount = validRows.length - duplicateRowsCount;
+                        const hasOnlyDuplicates = validRows.length > 0 && availableRowsCount === 0;
+                        const isAddDisabled = form.categoryIds.length === 0 || submitting || hasOnlyDuplicates || validRows.length === 0;
 
                         return (
                           <button
                             type="button"
                             disabled={isAddDisabled}
                             onClick={handleSubmit}
-                            title={hasDuplicates ? "Resolve highlighted duplicates in spreadsheet" : undefined}
+                            title={
+                              hasOnlyDuplicates
+                                ? `All ${duplicateRowsCount} product(s) already exist in database`
+                                : duplicateRowsCount > 0
+                                ? `Add ${availableRowsCount} new product(s) and skip ${duplicateRowsCount} duplicate(s)`
+                                : undefined
+                            }
                             className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
-                              hasDuplicates
+                              hasOnlyDuplicates
                                 ? "bg-rose-600/80 text-white cursor-not-allowed opacity-80 shadow-xs"
                                 : isAddDisabled
                                 ? "bg-blue-600 text-white opacity-40 cursor-not-allowed"
@@ -1551,10 +1585,12 @@ export default function AddProductModal({
                           >
                             {submitting ? (
                               "Saving Products..."
-                            ) : hasDuplicates ? (
-                              `Blocked: ${duplicateRowsCount} Duplicate${duplicateRowsCount > 1 ? "s" : ""} Found`
+                            ) : hasOnlyDuplicates ? (
+                              `Blocked: All ${duplicateRowsCount} Already in DB`
+                            ) : duplicateRowsCount > 0 ? (
+                              `Add ${availableRowsCount} Product${availableRowsCount !== 1 ? "s" : ""} (Skip ${duplicateRowsCount} Duplicate${duplicateRowsCount !== 1 ? "s" : ""})`
                             ) : (
-                              `Add ${validCount} Products to ${getCategoryNames() || "Selected Type"}`
+                              `Add ${availableRowsCount} Products to ${getCategoryNames() || "Selected Type"}`
                             )}
                           </button>
                         );
@@ -2014,21 +2050,41 @@ export default function AddProductModal({
                                         <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
                                         <span className="whitespace-normal break-words">{rowResult?.message}</span>
                                       </div>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setPreviewDuplicate({
-                                            isOpen: true,
-                                            productId: rowResult?.productId,
-                                            productName: row.name,
-                                          })
-                                        }
-                                        className="shrink-0 px-2 py-0.5 bg-white dark:bg-rose-900/80 hover:bg-rose-100 dark:hover:bg-rose-800 text-rose-700 dark:text-rose-200 border border-rose-300 dark:border-rose-700 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
-                                        title="Preview duplicate product & site availability"
-                                      >
-                                        <Eye className="w-3 h-3" />
-                                        <span>Preview</span>
-                                      </button>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setPreviewDuplicate({
+                                              isOpen: true,
+                                              productId: rowResult?.productId,
+                                              productName: row.name,
+                                              rowIndex: idx,
+                                              spreadsheetRowData: row,
+                                            })
+                                          }
+                                          className="shrink-0 px-2 py-0.5 bg-white dark:bg-rose-900/80 hover:bg-rose-100 dark:hover:bg-rose-800 text-rose-700 dark:text-rose-200 border border-rose-300 dark:border-rose-700 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                                          title="Preview duplicate product, site availability & edit"
+                                        >
+                                          <Eye className="w-3 h-3" />
+                                          <span>Preview</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setDirectEditProduct({
+                                              isOpen: true,
+                                              productId: rowResult?.productId,
+                                              productName: row.name,
+                                              spreadsheetRowData: row,
+                                            })
+                                          }
+                                          className="shrink-0 px-2 py-0.5 bg-white dark:bg-blue-900/80 hover:bg-blue-50 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 border border-blue-300 dark:border-blue-700 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                                          title="Make changes to existing product"
+                                        >
+                                          <Edit3 className="w-3 h-3" />
+                                          <span>Edit</span>
+                                        </button>
+                                      </div>
                                     </div>
                                   ) : rowResult?.isUncertain ? (
                                     <div
@@ -2038,21 +2094,41 @@ export default function AddProductModal({
                                         <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                                         <span className="whitespace-normal break-words">{rowResult?.message}</span>
                                       </div>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setPreviewDuplicate({
-                                            isOpen: true,
-                                            productId: rowResult?.productId,
-                                            productName: row.name,
-                                          })
-                                        }
-                                        className="shrink-0 px-2 py-0.5 bg-white dark:bg-amber-900/80 hover:bg-amber-100 dark:hover:bg-amber-800 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
-                                        title="Preview duplicate product & site availability"
-                                      >
-                                        <Eye className="w-3 h-3" />
-                                        <span>Preview</span>
-                                      </button>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setPreviewDuplicate({
+                                              isOpen: true,
+                                              productId: rowResult?.productId,
+                                              productName: row.name,
+                                              rowIndex: idx,
+                                              spreadsheetRowData: row,
+                                            })
+                                          }
+                                          className="shrink-0 px-2 py-0.5 bg-white dark:bg-amber-900/80 hover:bg-amber-100 dark:hover:bg-amber-800 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                                          title="Preview duplicate product & site availability"
+                                        >
+                                          <Eye className="w-3 h-3" />
+                                          <span>Preview</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setDirectEditProduct({
+                                              isOpen: true,
+                                              productId: rowResult?.productId,
+                                              productName: row.name,
+                                              spreadsheetRowData: row,
+                                            })
+                                          }
+                                          className="shrink-0 px-2 py-0.5 bg-white dark:bg-blue-900/80 hover:bg-blue-50 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 border border-blue-300 dark:border-blue-700 rounded-md text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                                          title="Make changes to existing product"
+                                        >
+                                          <Edit3 className="w-3 h-3" />
+                                          <span>Edit</span>
+                                        </button>
+                                      </div>
                                     </div>
                                   ) : rowErrors?.name ? (
                                     <p className="text-[10px] text-rose-500 font-semibold mt-0.5 px-0.5 leading-tight animate-fadeIn">
@@ -2304,30 +2380,43 @@ export default function AddProductModal({
                       Cancel
                     </button>
                     {(() => {
-                      const duplicateRowsCount = spreadsheetRows.filter((r, idx) => r.name.trim().length >= 2 && bulkCheckResults[idx]?.exists).length;
-                      const hasDuplicates = duplicateRowsCount > 0;
-                      const validCount = spreadsheetRows.filter((r) => r.name.trim()).length;
-                      const isNextDisabled = validCount === 0 || hasDuplicates || isBulkChecking;
+                      const validRows = spreadsheetRows.filter((r) => r.name.trim().length > 0);
+                      const duplicateRowsCount = validRows.filter((r) => {
+                        const origIdx = spreadsheetRows.indexOf(r);
+                        return r.name.trim().length >= 2 && bulkCheckResults[origIdx]?.exists;
+                      }).length;
+                      const availableRowsCount = validRows.length - duplicateRowsCount;
+                      const hasOnlyDuplicates = validRows.length > 0 && availableRowsCount === 0;
+                      const isNextDisabled = validRows.length === 0 || hasOnlyDuplicates || isBulkChecking || submitting;
+
                       return (
                         <button
                           type="button"
-                          disabled={isNextDisabled || submitting}
+                          disabled={isNextDisabled}
                           onClick={handleSubmit}
-                          title={hasDuplicates ? `Remove or rename ${duplicateRowsCount} duplicate product(s) to continue` : undefined}
+                          title={
+                            hasOnlyDuplicates
+                              ? `All ${duplicateRowsCount} product(s) already exist in database`
+                              : duplicateRowsCount > 0
+                              ? `Add ${availableRowsCount} new product(s) and skip ${duplicateRowsCount} duplicate(s)`
+                              : undefined
+                          }
                           className={`py-2.5 px-6 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
-                            hasDuplicates
+                            hasOnlyDuplicates
                               ? "bg-rose-600/80 text-white cursor-not-allowed opacity-80 shadow-xs"
-                              : isNextDisabled || submitting
+                              : isNextDisabled
                               ? "bg-blue-600 text-white opacity-40 cursor-not-allowed"
                               : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-lg shadow-blue-600/20 cursor-pointer"
                           }`}
                         >
                           {submitting ? (
                             "Adding Products..."
-                          ) : hasDuplicates ? (
-                            `Blocked: ${duplicateRowsCount} Duplicate${duplicateRowsCount > 1 ? "s" : ""} Found`
+                          ) : hasOnlyDuplicates ? (
+                            `Blocked: All ${duplicateRowsCount} Already in DB`
+                          ) : duplicateRowsCount > 0 ? (
+                            `Add ${availableRowsCount} Product${availableRowsCount !== 1 ? "s" : ""} (Skip ${duplicateRowsCount} Duplicate${duplicateRowsCount !== 1 ? "s" : ""}) →`
                           ) : (
-                            `Add ${validCount} Product${validCount !== 1 ? "s" : ""} →`
+                            `Add ${availableRowsCount} Product${availableRowsCount !== 1 ? "s" : ""} →`
                           )}
                         </button>
                       );
@@ -3187,9 +3276,36 @@ export default function AddProductModal({
         productId={previewDuplicate.productId}
         productName={previewDuplicate.productName}
         onProductAddedToSite={(_siteId, _siteName) => {
-          // Callback after product has been successfully added to a target site
+          setRecheckCounter((c) => c + 1);
         }}
+        onProductUpdated={() => {
+          setRecheckCounter((c) => c + 1);
+        }}
+        spreadsheetRowData={previewDuplicate.spreadsheetRowData}
       />
+
+      {/* Direct Edit Existing Product Modal */}
+      {directEditProduct.isOpen && (
+        <EditProductModal
+          isOpen={directEditProduct.isOpen}
+          onClose={() => setDirectEditProduct({ isOpen: false, productName: "" })}
+          onSuccess={() => {
+            setDirectEditProduct({ isOpen: false, productName: "" });
+            setRecheckCounter((c) => c + 1);
+          }}
+          product={
+            directEditProduct.productId
+              ? {
+                  id: directEditProduct.productId,
+                  name: directEditProduct.productName,
+                  siteId: 1,
+                  categoryId: 1,
+                }
+              : null
+          }
+          spreadsheetRowData={directEditProduct.spreadsheetRowData}
+        />
+      )}
     </div>
   );
 }

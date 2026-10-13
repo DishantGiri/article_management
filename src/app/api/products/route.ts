@@ -332,34 +332,56 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const shouldSkipDuplicates = Boolean(body.skipDuplicates);
+
     if (duplicateConflicts.length > 0) {
-      if (duplicateConflicts.length === 1) {
-        const conflict = duplicateConflicts[0];
-        const addedByPart = conflict.existing.addedBy?.name || "another user";
-        const siteName = conflict.existing.site?.name;
-        const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
-        const countryPart = conflict.item.country ? ` for country ${conflict.item.country}` : "";
+      if (shouldSkipDuplicates) {
+        const conflictItemsSet = new Set(duplicateConflicts.map((c) => c.item));
+        const nonConflicting = productItems.filter((p) => !conflictItemsSet.has(p));
 
-        const errorMsg = `Already added by ${addedByPart}${siteSuffix}${countryPart}.`;
-        return NextResponse.json({ error: errorMsg }, { status: 400 });
+        if (nonConflicting.length === 0) {
+          const first = duplicateConflicts[0];
+          const addedByPart = first.existing.addedBy?.name || "another user";
+          const siteName = first.existing.site?.name;
+          const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
+          const countryPart = first.item.country ? ` for country ${first.item.country}` : "";
+          const errorMsg = duplicateConflicts.length === 1
+            ? `Already added by ${addedByPart}${siteSuffix}${countryPart}.`
+            : `All ${duplicateConflicts.length} product(s) already exist in database and were skipped.`;
+          return NextResponse.json({ error: errorMsg }, { status: 400 });
+        }
+
+        // Proceed with only the non-duplicate products
+        productItems = nonConflicting;
       } else {
-        const conflictDetails = Array.from(
-          new Set(
-            duplicateConflicts.map((c) => {
-              const siteStr = c.existing.site?.name ? ` on ${c.existing.site.name}` : "";
-              const userStr = c.existing.addedBy?.name ? c.existing.addedBy.name : "another user";
-              const countryStr = c.item.country ? ` (${c.item.country})` : "";
-              return `"${c.item.name}"${countryStr} (already added by ${userStr}${siteStr})`;
-            })
-          )
-        );
+        if (duplicateConflicts.length === 1) {
+          const conflict = duplicateConflicts[0];
+          const addedByPart = conflict.existing.addedBy?.name || "another user";
+          const siteName = conflict.existing.site?.name;
+          const siteSuffix = siteName ? ` on site ${siteName}` : " on this site";
+          const countryPart = conflict.item.country ? ` for country ${conflict.item.country}` : "";
 
-        return NextResponse.json(
-          {
-            error: `The following product(s) already exist: ${conflictDetails.join("; ")}. Please remove them from the list.`,
-          },
-          { status: 400 }
-        );
+          const errorMsg = `Already added by ${addedByPart}${siteSuffix}${countryPart}.`;
+          return NextResponse.json({ error: errorMsg }, { status: 400 });
+        } else {
+          const conflictDetails = Array.from(
+            new Set(
+              duplicateConflicts.map((c) => {
+                const siteStr = c.existing.site?.name ? ` on ${c.existing.site.name}` : "";
+                const userStr = c.existing.addedBy?.name ? c.existing.addedBy.name : "another user";
+                const countryStr = c.item.country ? ` (${c.item.country})` : "";
+                return `"${c.item.name}"${countryStr} (already added by ${userStr}${siteStr})`;
+              })
+            )
+          );
+
+          return NextResponse.json(
+            {
+              error: `The following product(s) already exist: ${conflictDetails.join("; ")}. Please remove them from the list.`,
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 

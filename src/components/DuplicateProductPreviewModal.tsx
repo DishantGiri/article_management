@@ -20,7 +20,9 @@ import {
   Target,
   Compass,
   ArrowUpRight,
+  Edit3,
 } from "lucide-react";
+import EditProductModal from "@/components/EditProductModal";
 
 export interface SiteAvailabilityItem {
   siteId: number;
@@ -64,6 +66,7 @@ export interface DuplicatePreviewData {
   availableCount: number;
   missingCount: number;
   sites: SiteAvailabilityItem[];
+  product?: any;
 }
 
 interface DuplicateProductPreviewModalProps {
@@ -72,6 +75,8 @@ interface DuplicateProductPreviewModalProps {
   productId?: number | null;
   productName: string;
   onProductAddedToSite?: (siteId: number, siteName: string) => void;
+  onProductUpdated?: () => void;
+  spreadsheetRowData?: any;
 }
 
 export default function DuplicateProductPreviewModal({
@@ -80,6 +85,8 @@ export default function DuplicateProductPreviewModal({
   productId,
   productName,
   onProductAddedToSite,
+  onProductUpdated,
+  spreadsheetRowData,
 }: DuplicateProductPreviewModalProps) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<DuplicatePreviewData | null>(null);
@@ -88,6 +95,7 @@ export default function DuplicateProductPreviewModal({
   const [batchAdding, setBatchAdding] = useState(false);
   const [filterMode, setFilterMode] = useState<"all" | "missing" | "available">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isEditingProduct, setIsEditingProduct] = useState(false);
 
   const fetchAvailability = useCallback(async () => {
     if (!productName && !productId) return;
@@ -252,7 +260,16 @@ export default function DuplicateProductPreviewModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0 ml-3">
+          <div className="flex items-center gap-2 shrink-0 ml-3">
+            <button
+              type="button"
+              onClick={() => setIsEditingProduct(true)}
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+              title="Edit existing product details & settings in database"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit Product</span>
+            </button>
             <button
               type="button"
               onClick={() => fetchAvailability()}
@@ -692,15 +709,50 @@ export default function DuplicateProductPreviewModal({
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
             <span>Adding to missing websites automatically links categories and prepares articles for writing.</span>
           </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer"
-          >
-            Close
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsEditingProduct(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit Existing Product</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Edit Existing Product Modal */}
+      {isEditingProduct && (
+        <EditProductModal
+          isOpen={isEditingProduct}
+          onClose={() => setIsEditingProduct(false)}
+          onSuccess={async () => {
+            setIsEditingProduct(false);
+            await fetchAvailability();
+            onProductUpdated?.();
+          }}
+          product={
+            data?.product ||
+            (productId || data?.baseProductId
+              ? {
+                  id: (productId || data?.baseProductId)!,
+                  name: data?.productName || productName,
+                  siteId: 1,
+                  categoryId: 1,
+                }
+              : null)
+          }
+          spreadsheetRowData={spreadsheetRowData}
+        />
+      )}
     </div>
   );
 }
