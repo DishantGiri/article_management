@@ -55,8 +55,8 @@ interface CommissionTier {
 const POOL_CONFIG = [
   {
     key: "linker" as const,
-    label: "Linker",
-    roleDesc: "Affiliate sourcing & link integration",
+    label: "Linker / Product Researcher",
+    roleDesc: "Product research, affiliate sourcing & link integration",
     icon: Link2,
     color: "text-sky-600 dark:text-sky-400",
     bg: "bg-sky-50 dark:bg-sky-950/40",
@@ -1029,14 +1029,14 @@ function PoolInputCard({
   pctShare: string;
   onUpdate: (newVal: number) => void;
 }) {
-  const step = isFixed ? 1 : 1;
+  const step = isFixed ? 0.5 : 1;
 
   const handleStep = (delta: number) => {
     const nextVal = Math.max(0, parseFloat((val + delta).toFixed(2)));
     onUpdate(nextVal);
   };
 
-  const presets = isFixed ? [1, 5, 10, 50] : [5, 10, 20];
+  const presets = isFixed ? [0.5, 1, 2.5, 5] : [5, 10, 20];
 
   return (
     <div
@@ -1090,7 +1090,7 @@ function PoolInputCard({
           <input
             type="number"
             min="0"
-            step={isFixed ? "1" : "1"}
+            step="any"
             value={val === 0 ? "0" : val}
             onChange={(e) => {
               const parsed = parseFloat(e.target.value);

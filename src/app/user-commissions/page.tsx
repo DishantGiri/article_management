@@ -304,7 +304,7 @@ export default function UserCommissionsPage() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-[#737373] dark:text-slate-400 mt-1 font-medium max-w-2xl leading-relaxed">
-                Review individual commission earnings for Writers, Linkers, and Team Leads. Track 1st sale totals, resales, paid balances, and settle pending payouts.
+                Review individual commission earnings for Writers, Linkers, Product Researchers, and Team Leads. Track 1st sale totals, resales, paid balances, and settle pending payouts.
               </p>
             </div>
           </div>
@@ -455,6 +455,7 @@ export default function UserCommissionsPage() {
               { key: "ALL", label: "All Roles" },
               { key: "WRITER", label: "Writers" },
               { key: "LINKER", label: "Linkers" },
+              { key: "PRODUCT_RESEARCHER", label: "Product Researchers" },
               { key: "TEAM_LEAD", label: "Team Leads" },
             ].map((tab) => (
               <button
@@ -599,6 +600,7 @@ export default function UserCommissionsPage() {
                     WRITER: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50",
                     LINKER: "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800/50",
                     TEAM_LEAD: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800/50",
+                    PRODUCT_RESEARCHER: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800/50",
                     ADMIN: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700",
                     SUPER_ADMIN: "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800/50",
                   };

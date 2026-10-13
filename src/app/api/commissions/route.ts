@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { DEFAULT_COMMISSION_TIERS } from "@/app/api/commission-settings/route";
 
 // Helper to determine category key: NUTRA or ECOM
 export function resolveCategoryKey(catName?: string | null): "NUTRA" | "ECOM" {
@@ -136,7 +137,22 @@ export async function GET(req: NextRequest) {
     });
 
     // 2. Fetch all commission settings tiers
-    const settingsList = await prisma.commissionSetting.findMany();
+    let settingsList = await prisma.commissionSetting.findMany();
+    if (settingsList.length === 0) {
+      for (const tier of DEFAULT_COMMISSION_TIERS) {
+        await prisma.commissionSetting.upsert({
+          where: {
+            category_saleType: {
+              category: tier.category,
+              saleType: tier.saleType,
+            },
+          },
+          create: { ...tier },
+          update: {},
+        });
+      }
+      settingsList = await prisma.commissionSetting.findMany();
+    }
     const settingsMap: Record<string, any> = {};
     settingsList.forEach((s) => {
       settingsMap[`${s.category}_${s.saleType}`] = s;
@@ -490,18 +506,44 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Default amounts if setting not found
-    const amount = setting?.total || 0;
-    const baseLinkerAmount = setting?.linker || 0;
-    const baseWriterAmount = setting?.writer || 0;
-    const baseTlAmount = setting?.tl || 0;
-    const seoAmount = setting?.seo || 0;
-    const bonusAmount = setting?.bonusPool || 0;
-    const basePartyAmount = setting?.partyFund || 0;
+    // Default amounts if setting not found (fallback to standard tiers)
+    const fallbackTier = DEFAULT_COMMISSION_TIERS.find(
+      (t) => t.category === catKey && t.saleType === type
+    );
+    const amount = setting?.total ?? fallbackTier?.total ?? 0;
+    const baseLinkerAmount = setting?.linker ?? fallbackTier?.linker ?? 0;
+    const baseWriterAmount = setting?.writer ?? fallbackTier?.writer ?? 0;
+    const baseTlAmount = setting?.tl ?? fallbackTier?.tl ?? 0;
+    const seoAmount = setting?.seo ?? fallbackTier?.seo ?? 0;
+    const bonusAmount = setting?.bonusPool ?? fallbackTier?.bonusPool ?? 0;
+    const basePartyAmount = setting?.partyFund ?? fallbackTier?.partyFund ?? 0;
 
     // Beneficiaries
-    const linker = product.addedBy || product.linkLogs[0]?.addedBy;
+    let linker = product.addedBy || product.linkLogs[0]?.addedBy;
     const writer = product.article?.writer;
+
+    // If addedBy is Admin/SuperAdmin, check if there is an assigned Product Researcher or linkLog
+    if (linker?.role === "SUPER_ADMIN" || linker?.role === "ADMIN") {
+      let researcherName: string | null = null;
+      if (product.remarks) {
+        const match = product.remarks.match(/Researched by:\s*([^.\n,]+)/i);
+        if (match && match[1]?.trim()) researcherName = match[1].trim();
+      }
+      if (researcherName) {
+        const matchedResearcher = await prisma.user.findFirst({
+          where: {
+            name: { contains: researcherName },
+            role: { in: ["PRODUCT_RESEARCHER", "LINKER"] },
+          },
+        });
+        if (matchedResearcher) {
+          linker = matchedResearcher;
+        }
+      }
+      if ((linker?.role === "SUPER_ADMIN" || linker?.role === "ADMIN") && product.linkLogs[0]?.addedBy) {
+        linker = product.linkLogs[0].addedBy;
+      }
+    }
 
     // Determine if writer has left the company or has commission routed to Party Fund
     const isWriterLeft =

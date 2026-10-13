@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     const users = await prisma.user.findMany({
       where: {
         role: {
-          in: ["WRITER", "LINKER", "TEAM_LEAD"],
+          in: ["WRITER", "LINKER", "TEAM_LEAD", "PRODUCT_RESEARCHER"],
         },
       },
       select: {
@@ -110,10 +110,10 @@ export async function GET(req: NextRequest) {
           earned += sale.writerAmount;
           roles.push("Writer");
         }
-        // Check if user was the Linker
+        // Check if user was the Linker or Product Researcher
         if (sale.linkerId === user.id && sale.linkerAmount > 0) {
           earned += sale.linkerAmount;
-          roles.push("Linker");
+          roles.push(user.role === "PRODUCT_RESEARCHER" ? "Product Researcher" : "Linker");
         }
         // Check if user was the Team Lead
         if (sale.teamLeadId === user.id && sale.tlAmount > 0) {

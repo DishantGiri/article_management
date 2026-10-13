@@ -960,11 +960,11 @@ export default function CommissionsPage() {
           </div>
 
           <div className="flex items-center gap-2.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            <span>Writer: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalWriterAmount.toFixed(0)}</strong></span>
+            <span>Writer: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalWriterAmount.toFixed(2)}</strong></span>
             <span>•</span>
-            <span>Linker: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalLinkerAmount.toFixed(0)}</strong></span>
+            <span>Linker / Researcher: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalLinkerAmount.toFixed(2)}</strong></span>
             <span>•</span>
-            <span>TL: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalTlAmount.toFixed(0)}</strong></span>
+            <span>TL: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalTlAmount.toFixed(2)}</strong></span>
           </div>
         </div>
       </div>
@@ -1283,33 +1283,33 @@ export default function CommissionsPage() {
                               {sale.writerLeftCompany ? (
                                 <span
                                   className="ml-auto inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
-                                  title={`Writer left company - Rs. ${(sale.writerTransferredToParty || 0).toFixed(0)} commission transferred to Party Fund`}
+                                  title={`Writer left company - Rs. ${(sale.writerTransferredToParty || 0).toFixed(2)} commission transferred to Party Fund`}
                                 >
                                   Left → Party
                                 </span>
                               ) : (
                                 <span className="font-bold text-emerald-600 dark:text-emerald-400 ml-auto">
-                                  Rs. {sale.writerAmount.toFixed(0)}
+                                  Rs. {sale.writerAmount.toFixed(2)}
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-1">
-                              <span className="text-slate-400 font-bold w-10">Linker:</span>
+                              <span className="text-slate-400 font-bold w-14" title="Linker or Product Researcher who added the product">Link/PR:</span>
                               <span className="font-semibold text-slate-700 dark:text-slate-200">
                                 {sale.linkerName}
                               </span>
                               <span className="font-bold text-sky-600 dark:text-sky-400 ml-auto">
-                                Rs. {sale.linkerAmount.toFixed(0)}
+                                Rs. {sale.linkerAmount.toFixed(2)}
                               </span>
                             </div>
                             {sale.teamLeadName && (
                               <div className="flex items-center gap-1">
-                                <span className="text-slate-400 font-bold w-10">TL:</span>
+                                <span className="text-slate-400 font-bold w-14">TL:</span>
                                 <span className="font-semibold text-slate-700 dark:text-slate-200">
                                   {sale.teamLeadName}
                                 </span>
                                 <span className="font-bold text-indigo-600 dark:text-indigo-400 ml-auto">
-                                  Rs. {sale.tlAmount.toFixed(0)}
+                                  Rs. {sale.tlAmount.toFixed(2)}
                                 </span>
                               </div>
                             )}
@@ -1320,7 +1320,7 @@ export default function CommissionsPage() {
                         <td className="py-3.5 px-3 text-center whitespace-nowrap">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-black bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40 shadow-2xs">
                             <Gift className="w-3 h-3 text-amber-500" />
-                            <span>Rs. {sale.bonusAmount.toFixed(0)}</span>
+                            <span>Rs. {sale.bonusAmount.toFixed(2)}</span>
                           </span>
                         </td>
 
@@ -1328,7 +1328,7 @@ export default function CommissionsPage() {
                         <td className="py-3.5 px-3 text-center whitespace-nowrap">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-black bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/40 shadow-2xs">
                             <TrendingUp className="w-3 h-3 text-teal-500" />
-                            <span>Rs. {sale.seoAmount.toFixed(0)}</span>
+                            <span>Rs. {sale.seoAmount.toFixed(2)}</span>
                           </span>
                         </td>
 
@@ -1341,12 +1341,12 @@ export default function CommissionsPage() {
                               }`}
                             title={
                               sale.writerLeftCompany
-                                ? `Includes +Rs. ${(sale.writerTransferredToParty || 0).toFixed(0)} from departed writer`
+                                ? `Includes +Rs. ${(sale.writerTransferredToParty || 0).toFixed(2)} from departed writer`
                                 : undefined
                             }
                           >
                             <PartyPopper className="w-3 h-3 text-rose-500" />
-                            <span>Rs. {sale.partyAmount.toFixed(0)}</span>
+                            <span>Rs. {sale.partyAmount.toFixed(2)}</span>
                             {sale.writerLeftCompany && (
                               <span className="text-[9px] px-1 py-0.2 rounded bg-white/70 dark:bg-slate-900/70 font-bold">
                                 +Writer
@@ -1824,7 +1824,28 @@ export default function CommissionsPage() {
                     )}
                   </div>
 
-                  {/* Fund Distribution Breakdown */}
+                  {/* Linker / Product Researcher attribution */}
+                  <div className="p-2.5 rounded-xl border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Researcher / Linker:</span>
+                      <span className="font-extrabold text-slate-800 dark:text-white truncate text-xs">
+                        {selectedProductForSale.linkerName || "Unassigned"}
+                      </span>
+                    </div>
+                    {(() => {
+                      const brk =
+                        modalSaleType === "FIRST_SALE"
+                          ? selectedProductForSale.rates.firstSaleBreakdown
+                          : selectedProductForSale.rates.resaleBreakdown;
+                      return (
+                        <span className="text-xs font-black text-sky-600 dark:text-sky-400">
+                          Rs. {Number(brk?.linker ?? 0).toFixed(2)}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Fund Distribution Breakdown (All 6 Pools) */}
                   {(() => {
                     const brk =
                       modalSaleType === "FIRST_SALE"
@@ -1832,29 +1853,41 @@ export default function CommissionsPage() {
                         : selectedProductForSale.rates.resaleBreakdown;
                     if (!brk) return null;
                     return (
-                      <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[10px]">
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[10px]">
                         <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-                          <span className="text-slate-400 block font-semibold">Writer</span>
+                          <span className="text-slate-400 block font-semibold truncate">Link / PR</span>
+                          <span className="font-extrabold text-sky-600 dark:text-sky-400">
+                            Rs. {Number(brk.linker ?? 0).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+                          <span className="text-slate-400 block font-semibold truncate">Writer</span>
                           <span className={`font-extrabold ${modalWriterLeftCompany ? "text-slate-400 line-through" : "text-emerald-600 dark:text-emerald-400"}`}>
-                            Rs. {modalWriterLeftCompany ? 0 : brk.writer}
+                            Rs. {modalWriterLeftCompany ? "0.00" : Number(brk.writer ?? 0).toFixed(2)}
                           </span>
                         </div>
                         <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-                          <span className="text-slate-400 block font-semibold">Bonus Pool</span>
+                          <span className="text-slate-400 block font-semibold truncate">Team Lead</span>
+                          <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                            Rs. {Number(brk.tl ?? 0).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+                          <span className="text-slate-400 block font-semibold truncate">Bonus Pool</span>
                           <span className="font-extrabold text-amber-600 dark:text-amber-400">
-                            Rs. {brk.bonusPool}
+                            Rs. {Number(brk.bonusPool ?? 0).toFixed(2)}
                           </span>
                         </div>
                         <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-                          <span className="text-slate-400 block font-semibold">SEO Pool</span>
+                          <span className="text-slate-400 block font-semibold truncate">SEO Pool</span>
                           <span className="font-extrabold text-teal-600 dark:text-teal-400">
-                            Rs. {brk.seo}
+                            Rs. {Number(brk.seo ?? 0).toFixed(2)}
                           </span>
                         </div>
                         <div className={`p-1.5 rounded-lg border text-center ${modalWriterLeftCompany ? "bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"}`}>
-                          <span className="text-slate-400 block font-semibold">Party Fund</span>
+                          <span className="text-slate-400 block font-semibold truncate">Party Fund</span>
                           <span className="font-extrabold text-rose-600 dark:text-rose-400">
-                            Rs. {brk.partyFund + (modalWriterLeftCompany ? brk.writer : 0)}
+                            Rs. {(Number(brk.partyFund ?? 0) + (modalWriterLeftCompany ? Number(brk.writer ?? 0) : 0)).toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -2071,7 +2104,7 @@ export default function CommissionsPage() {
                   </span>
                   {detailsSale.writerLeftCompany && (
                     <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400 block mt-0.5">
-                      (+Rs. {(detailsSale.writerTransferredToParty || 0).toFixed(0)} from departed writer)
+                      (+Rs. {(detailsSale.writerTransferredToParty || 0).toFixed(2)} from departed writer)
                     </span>
                   )}
                 </div>

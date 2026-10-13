@@ -7,7 +7,7 @@ const ROLE_ROUTES: Record<string, string[]> = {
   TEAM_LEAD: ["/", "/products", "/articles", "/links", "/reports", "/notifications", "/notices", "/settings", "/team-members", "/calendar", "/user-commissions"],
   LINKER: ["/", "/products", "/trendmap-products", "/links", "/affiliates", "/sites", "/categories", "/product-categories", "/product-types", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
   WRITER: ["/", "/products", "/articles", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
-  PRODUCT_RESEARCHER: ["/", "/products", "/trendmap-products", "/product-types", "/product-categories", "/notifications", "/notices", "/settings", "/calendar"],
+  PRODUCT_RESEARCHER: ["/", "/products", "/trendmap-products", "/product-types", "/product-categories", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
 };
 
 function isRouteAllowed(pathname: string, role: string | null | undefined, roles?: string[]): boolean {
