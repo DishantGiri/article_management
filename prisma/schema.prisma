@@ -419,8 +419,8 @@ model CommissionSetting {
   id          Int      @id @default(autoincrement())
   category    String   // "NUTRA" | "ECOM"
   saleType    String   // "FIRST_SALE" | "RESALE"
-  rateType    String   @default("FIXED") // "FIXED" ($) or "PERCENTAGE" (%)
-  currency    String   @default("USD")
+  rateType    String   @default("FIXED") // "FIXED" or "PERCENTAGE" (%)
+  currency    String   @default("NPR")
   
   linker      Float    @default(0)
   writer      Float    @default(0)

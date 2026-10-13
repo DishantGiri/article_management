@@ -8,7 +8,7 @@ export const DEFAULT_COMMISSION_TIERS = [
     category: "NUTRA",
     saleType: "FIRST_SALE",
     rateType: "FIXED",
-    currency: "USD",
+    currency: "NPR",
     linker: 2.5,
     writer: 3.5,
     tl: 1.0,
@@ -22,7 +22,7 @@ export const DEFAULT_COMMISSION_TIERS = [
     category: "NUTRA",
     saleType: "RESALE",
     rateType: "FIXED",
-    currency: "USD",
+    currency: "NPR",
     linker: 1.5,
     writer: 2.0,
     tl: 0.5,
@@ -36,7 +36,7 @@ export const DEFAULT_COMMISSION_TIERS = [
     category: "ECOM",
     saleType: "FIRST_SALE",
     rateType: "FIXED",
-    currency: "USD",
+    currency: "NPR",
     linker: 2.0,
     writer: 3.0,
     tl: 1.0,
@@ -50,7 +50,7 @@ export const DEFAULT_COMMISSION_TIERS = [
     category: "ECOM",
     saleType: "RESALE",
     rateType: "FIXED",
-    currency: "USD",
+    currency: "NPR",
     linker: 1.2,
     writer: 1.5,
     tl: 0.5,
@@ -83,6 +83,12 @@ async function ensureDefaultTiers(userId?: number | null) {
       });
     }
   }
+
+  // Migrate any legacy "USD" rows to "NPR" so stored currency matches user-facing labels
+  await prisma.commissionSetting.updateMany({
+    where: { currency: "USD" },
+    data: { currency: "NPR" },
+  });
 }
 
 // GET /api/commission-settings - Retrieve all commission settings (Super Admin only)
@@ -103,7 +109,7 @@ export async function GET() {
     const rawId = (session.user as any)?.id;
     const userId = rawId && !isNaN(Number(rawId)) ? Number(rawId) : null;
 
-    // Seed defaults if empty
+    // Seed defaults if empty and migrate any legacy USD records
     await ensureDefaultTiers(userId);
 
     const settings = await prisma.commissionSetting.findMany({
@@ -147,7 +153,7 @@ export async function PUT(req: NextRequest) {
         category,
         saleType,
         rateType = "FIXED",
-        currency = "USD",
+        currency = "NPR",
         linker = 0,
         writer = 0,
         tl = 0,

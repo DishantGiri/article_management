@@ -121,6 +121,85 @@ const POOL_CONFIG = [
   },
 ];
 
+export const getCurrencySymbol = (curr?: string) => {
+  if (!curr) return "Rs. ";
+  const c = curr.toUpperCase();
+  if (c === "USD" || c === "$") return "$";
+  if (c === "NPR" || c === "RS" || c === "RUPEES") return "Rs. ";
+  return `${curr} `;
+};
+
+export const getCurrencyShort = (curr?: string) => {
+  if (!curr) return "Rs";
+  const c = curr.toUpperCase();
+  if (c === "USD" || c === "$") return "$";
+  return "Rs";
+};
+
+export function getPoolPercentages(pools: typeof POOL_CONFIG, tier: CommissionTier): Record<string, string> {
+  if (!tier.total || tier.total <= 0) {
+    return Object.fromEntries(pools.map((p) => [p.key, "0%"]));
+  }
+
+  const raw = pools.map((p) => {
+    const val = Number(tier[p.key] || 0);
+    return {
+      key: p.key,
+      val,
+      pct: (val / tier.total) * 100,
+    };
+  });
+
+  const hasFractions = raw.some((r) => Math.abs(r.pct - Math.round(r.pct)) > 0.01);
+
+  if (hasFractions) {
+    let sumTenths = 0;
+    const roundedTenths = raw.map((r) => {
+      const tenths = Math.round(r.pct * 10);
+      sumTenths += tenths;
+      return { ...r, tenths };
+    });
+
+    const diffTenths = 1000 - sumTenths;
+    if (diffTenths !== 0) {
+      const sorted = [...roundedTenths].sort(
+        (a, b) => Math.abs(b.pct * 10 - b.tenths) - Math.abs(a.pct * 10 - a.tenths)
+      );
+      if (sorted[0]) {
+        sorted[0].tenths += diffTenths;
+      }
+    }
+
+    const formatted: Record<string, string> = {};
+    roundedTenths.forEach((r) => {
+      const val = r.tenths / 10;
+      formatted[r.key] = val % 1 === 0 ? `${val}%` : `${val.toFixed(1)}%`;
+    });
+    return formatted;
+  }
+
+  // Integer mode with Largest Remainder Method
+  const floors = raw.map((r) => ({
+    key: r.key,
+    val: r.val,
+    floor: Math.floor(r.pct),
+    rem: r.pct - Math.floor(r.pct),
+  }));
+
+  const sumFloors = floors.reduce((acc, f) => acc + f.floor, 0);
+  const diff = 100 - sumFloors;
+
+  const sorted = [...floors].sort((a, b) => b.rem - a.rem || b.val - a.val);
+  const addSet = new Set(sorted.slice(0, Math.max(0, diff)).map((s) => s.key));
+
+  const result: Record<string, string> = {};
+  floors.forEach((f) => {
+    const finalVal = f.floor + (addSet.has(f.key) ? 1 : 0);
+    result[f.key] = `${finalVal}%`;
+  });
+  return result;
+}
+
 function areSettingsEqual(
   a: Record<string, CommissionTier>,
   b: Record<string, CommissionTier>
@@ -233,7 +312,7 @@ export default function CommissionSettingsPage() {
         category,
         saleType,
         rateType: "FIXED",
-        currency: "USD",
+        currency: "NPR",
         linker: 0,
         writer: 0,
         tl: 0,
@@ -379,7 +458,7 @@ export default function CommissionSettingsPage() {
         category,
         saleType,
         rateType: "FIXED",
-        currency: "USD",
+        currency: "NPR",
         linker: 0,
         writer: 0,
         tl: 0,
@@ -473,7 +552,7 @@ export default function CommissionSettingsPage() {
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Nutra 1st Sale</span>
               <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                {nutraFirst.rateType === "FIXED" ? `Rs. ${nutraFirst.total.toFixed(2)}` : `${nutraFirst.total}%`}
+                {nutraFirst.rateType === "FIXED" ? `${getCurrencySymbol(nutraFirst.currency)}${nutraFirst.total.toFixed(2)}` : `${nutraFirst.total}%`}
               </span>
             </div>
             <Pill className="w-4 h-4 text-emerald-500 opacity-60" />
@@ -483,7 +562,7 @@ export default function CommissionSettingsPage() {
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Nutra Resale</span>
               <span className="text-sm font-black text-blue-600 dark:text-blue-400">
-                {nutraResale.rateType === "FIXED" ? `Rs. ${nutraResale.total.toFixed(2)}` : `${nutraResale.total}%`}
+                {nutraResale.rateType === "FIXED" ? `${getCurrencySymbol(nutraResale.currency)}${nutraResale.total.toFixed(2)}` : `${nutraResale.total}%`}
               </span>
             </div>
             <Pill className="w-4 h-4 text-blue-500 opacity-60" />
@@ -493,7 +572,7 @@ export default function CommissionSettingsPage() {
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Ecom 1st Sale</span>
               <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                {ecomFirst.rateType === "FIXED" ? `Rs. ${ecomFirst.total.toFixed(2)}` : `${ecomFirst.total}%`}
+                {ecomFirst.rateType === "FIXED" ? `${getCurrencySymbol(ecomFirst.currency)}${ecomFirst.total.toFixed(2)}` : `${ecomFirst.total}%`}
               </span>
             </div>
             <ShoppingBag className="w-4 h-4 text-emerald-500 opacity-60" />
@@ -503,7 +582,7 @@ export default function CommissionSettingsPage() {
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Ecom Resale</span>
               <span className="text-sm font-black text-blue-600 dark:text-blue-400">
-                {ecomResale.rateType === "FIXED" ? `Rs. ${ecomResale.total.toFixed(2)}` : `${ecomResale.total}%`}
+                {ecomResale.rateType === "FIXED" ? `${getCurrencySymbol(ecomResale.currency)}${ecomResale.total.toFixed(2)}` : `${ecomResale.total}%`}
               </span>
             </div>
             <ShoppingBag className="w-4 h-4 text-blue-500 opacity-60" />
@@ -527,7 +606,7 @@ export default function CommissionSettingsPage() {
                   : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
                 }`}
             >
-              1st: Rs. {nutraFirst.total.toFixed(2)} | Resale: Rs. {nutraResale.total.toFixed(2)}
+              1st: {getCurrencySymbol(nutraFirst.currency)}{nutraFirst.total.toFixed(2)} | Resale: {getCurrencySymbol(nutraResale.currency)}{nutraResale.total.toFixed(2)}
             </span>
           </button>
 
@@ -546,7 +625,7 @@ export default function CommissionSettingsPage() {
                   : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
                 }`}
             >
-              1st: Rs. {ecomFirst.total.toFixed(2)} | Resale: Rs. {ecomResale.total.toFixed(2)}
+              1st: {getCurrencySymbol(ecomFirst.currency)}{ecomFirst.total.toFixed(2)} | Resale: {getCurrencySymbol(ecomResale.currency)}{ecomResale.total.toFixed(2)}
             </span>
           </button>
         </div>
@@ -606,7 +685,7 @@ export default function CommissionSettingsPage() {
             </span>
             <div className="relative">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-black text-[#737373]">
-                Rs.
+                {getCurrencyShort(activeFirstSale.currency)}
               </span>
               <input
                 type="number"
@@ -628,11 +707,11 @@ export default function CommissionSettingsPage() {
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                  1st Sale Payout (Sale: Rs. {simulationPrice})
+                  1st Sale Payout (Sale: {getCurrencySymbol(activeFirstSale.currency)}{simulationPrice})
                 </span>
               </div>
               <span className="text-sm font-black text-[#4A4A4A] dark:text-white">
-                Total: Rs. {simFirstTotal.toFixed(2)}
+                Total: {getCurrencySymbol(activeFirstSale.currency)}{simFirstTotal.toFixed(2)}
               </span>
             </div>
 
@@ -659,7 +738,7 @@ export default function CommissionSettingsPage() {
                       <span className="text-[10px] opacity-60">({pct}%)</span>
                     </span>
                     <span className="font-bold text-[#4A4A4A] dark:text-white">
-                      Rs. {payout.toFixed(2)}
+                      {getCurrencySymbol(activeFirstSale.currency)}{payout.toFixed(2)}
                     </span>
                   </div>
                 );
@@ -673,11 +752,11 @@ export default function CommissionSettingsPage() {
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                 <span className="text-xs font-extrabold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
-                  Resale Payout (Sale: Rs. {simulationPrice})
+                  Resale Payout (Sale: {getCurrencySymbol(activeResale.currency)}{simulationPrice})
                 </span>
               </div>
               <span className="text-sm font-black text-[#4A4A4A] dark:text-white">
-                Total: Rs. {simResaleTotal.toFixed(2)}
+                Total: {getCurrencySymbol(activeResale.currency)}{simResaleTotal.toFixed(2)}
               </span>
             </div>
 
@@ -704,7 +783,7 @@ export default function CommissionSettingsPage() {
                       <span className="text-[10px] opacity-60">({pct}%)</span>
                     </span>
                     <span className="font-bold text-[#4A4A4A] dark:text-white">
-                      Rs. {payout.toFixed(2)}
+                      {getCurrencySymbol(activeResale.currency)}{payout.toFixed(2)}
                     </span>
                   </div>
                 );
@@ -751,7 +830,9 @@ function CommissionCard({
   onChangeField,
 }: CommissionCardProps) {
   const isFixed = tier.rateType === "FIXED";
-  const unitSymbol = isFixed ? "Rs. " : "%";
+  const currencySymbol = getCurrencySymbol(tier.currency);
+  const currencyShort = getCurrencyShort(tier.currency);
+  const unitSymbol = isFixed ? currencySymbol : "%";
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs flex flex-col justify-between space-y-6 relative overflow-hidden">
@@ -774,30 +855,65 @@ function CommissionCard({
             </p>
           </div>
 
-          {/* Rate Type Switcher: Fixed (Rs.) vs Percentage (%) */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold shrink-0 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => onChangeField("rateType", "FIXED")}
-              className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${isFixed
-                  ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
-                  : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
+          {/* Rate Type & Currency Switchers */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+            {/* Currency Selector when Fixed */}
+            {isFixed && (
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => onChangeField("currency", "NPR")}
+                  className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                    tier.currency === "NPR" || !tier.currency
+                      ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
+                      : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
+                  }`}
+                  title="Nepalese Rupee (Rs.)"
+                >
+                  NPR (Rs)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChangeField("currency", "USD")}
+                  className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                    tier.currency === "USD"
+                      ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
+                      : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
+                  }`}
+                  title="US Dollar ($)"
+                >
+                  USD ($)
+                </button>
+              </div>
+            )}
+
+            {/* Rate Type Switcher: Fixed vs Percentage (%) */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => onChangeField("rateType", "FIXED")}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                  isFixed
+                    ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
+                    : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
                 }`}
-            >
-              <Coins className="w-3 h-3" />
-              <span>Fixed (Rs)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeField("rateType", "PERCENTAGE")}
-              className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${!isFixed
-                  ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
-                  : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
+              >
+                <Coins className="w-3 h-3" />
+                <span>Fixed ({currencyShort})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeField("rateType", "PERCENTAGE")}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                  !isFixed
+                    ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
+                    : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
                 }`}
-            >
-              <Percent className="w-3 h-3" />
-              <span>Percentage</span>
-            </button>
+              >
+                <Percent className="w-3 h-3" />
+                <span>Percentage</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -809,7 +925,7 @@ function CommissionCard({
               <span>Combined Pool Allocation</span>
             </span>
             <span className="text-sm font-black text-[#4A4A4A] dark:text-white">
-              Total: {isFixed ? `Rs. ${tier.total.toFixed(2)}` : `${tier.total.toFixed(2)}%`}
+              Total: {isFixed ? `${currencySymbol}${tier.total.toFixed(2)}` : `${tier.total.toFixed(2)}%`}
             </span>
           </div>
 
@@ -831,17 +947,16 @@ function CommissionCard({
 
           {/* Mini Legend Row */}
           <div className="flex flex-wrap items-center gap-3 pt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-            {POOL_CONFIG.map((pool) => {
-              const val = tier[pool.key] || 0;
-              const widthPct = tier.total > 0 ? ((val / tier.total) * 100).toFixed(0) : "0";
-              return (
+            {(() => {
+              const percentages = getPoolPercentages(POOL_CONFIG, tier);
+              return POOL_CONFIG.map((pool) => (
                 <div key={pool.key} className="flex items-center gap-1.5">
                   <span className={`w-2 h-2 rounded-full ${pool.barColor}`} />
                   <span>{pool.label}:</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-200">{widthPct}%</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-200">{percentages[pool.key]}</span>
                 </div>
-              );
-            })}
+              ));
+            })()}
           </div>
         </div>
 
@@ -1009,7 +1124,7 @@ function PoolInputCard({
               onClick={() => handleStep(p)}
               className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 hover:bg-[#6D8196]/20 text-slate-600 dark:text-slate-300 hover:text-[#6D8196] dark:hover:text-sky-300 transition active:scale-95 cursor-pointer"
             >
-              +{isFixed ? `Rs. ${p}` : `${p}%`}
+              +{isFixed ? `${unitSymbol}${p}` : `${p}%`}
             </button>
           ))}
           {val > 0 && (
