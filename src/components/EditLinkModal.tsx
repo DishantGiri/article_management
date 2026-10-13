@@ -199,7 +199,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
         label: `Primary Affiliate URL: ${affiliateEntries[0].affiliateLink}`,
       });
     }
-    if (selectedProduct?.trendLink) {
+    if (selectedProduct?.trendLink && selectedProduct.trendLink.trim().toLowerCase() !== (selectedProduct.previewLink || "").trim().toLowerCase()) {
       opts.push({
         value: selectedProduct.trendLink,
         label: `Product Trend Link: ${selectedProduct.trendLink}`,
@@ -217,7 +217,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   // Dropdown options for Affiliate Links
   const affiliateLinkOptions = useMemo(() => {
     const opts: Array<{ value: string; label: string }> = [];
-    if (selectedProduct?.trendLink) {
+    if (selectedProduct?.trendLink && selectedProduct.trendLink.trim().toLowerCase() !== (selectedProduct.previewLink || "").trim().toLowerCase()) {
       opts.push({
         value: selectedProduct.trendLink,
         label: `Trend URL: ${selectedProduct.trendLink}`,

@@ -1,0 +1,3062 @@
+{
+  "info": {
+    "_postman_id": "article-management-all-apis-v1",
+    "name": "Article Management System - Complete API Collection",
+    "description": "Comprehensive Postman collection covering all REST API endpoints of Article Management System and External Blog / SupplementScience integrations.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication & Session",
+      "item": [
+        {
+          "name": "Get Current Session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "session"
+              ]
+            },
+            "description": "Returns the currently logged in user session information."
+          }
+        },
+        {
+          "name": "Dev - Switch User Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dev/switch-role",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dev",
+                "switch-role"
+              ]
+            },
+            "description": "Development-only utility to switch active session role without re-logging in.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Articles",
+      "item": [
+        {
+          "name": "List Articles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/articles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "articles"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING",
+                  "description": "PENDING | IN_PROGRESS | COMPLETED | APPROVED | REDO",
+                  "disabled": false
+                },
+                {
+                  "key": "writerId",
+                  "value": "1",
+                  "description": "Filter by assigned writer ID",
+                  "disabled": true
+                },
+                {
+                  "key": "productId",
+                  "value": "2036",
+                  "description": "Filter by product ID",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Fetch articles filtered by writerId, status, or productId."
+          }
+        },
+        {
+          "name": "Get Article by Slug / ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/articles/:slug",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "articles",
+                ":slug"
+              ]
+            },
+            "description": "Retrieve article details by product slug or article ID."
+          }
+        },
+        {
+          "name": "Update Article (Status / Link / Timer / Review)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/articles/:slug",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "articles",
+                ":slug"
+              ]
+            },
+            "description": "Update article status, link, writing time, or request special edit approval.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\",\n  \"articleLink\": \"https://dailyhealthsupplement.com/nutricost-review\",\n  \"writingTimeMin\": 45,\n  \"notes\": \"Article completed and ready for review\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Article",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/articles/:slug",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "articles",
+                ":slug"
+              ]
+            },
+            "description": "Delete an article record."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Reviews & Approvals",
+      "item": [
+        {
+          "name": "Submit Article Review (Approve / Request Redo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reviews"
+              ]
+            },
+            "description": "Team Lead or Admin reviews an article to approve or request changes/redo with suggestions.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articleId\": 1942,\n  \"reviewedById\": 1,\n  \"suggestion\": \"Please refine the introduction and check dosage recommendations.\",\n  \"approved\": false,\n  \"priority\": \"HIGH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Special Approval Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/approvals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "approvals"
+              ]
+            },
+            "description": "Fetch pending edit requests on previously approved articles."
+          }
+        },
+        {
+          "name": "Process Approval Request (Approve / Reject)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/approvals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "approvals"
+              ]
+            },
+            "description": "Team Lead or Admin approves or rejects an edit request on an approved article.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articleId\": 1942,\n  \"action\": \"APPROVE\",\n  \"reason\": \"Granted permission to update affiliate links.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Products & Catalog",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Nutricost",
+                  "description": "Search by product name or slug",
+                  "disabled": true
+                },
+                {
+                  "key": "siteId",
+                  "value": "1",
+                  "description": "Filter by site ID",
+                  "disabled": true
+                },
+                {
+                  "key": "categoryId",
+                  "value": "1",
+                  "description": "Filter by category ID",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Fetch catalog products with filtering options."
+          }
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            },
+            "description": "Create a new product and assign it to sites/writers.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nutricost Creatine Monohydrate\",\n  \"productCategory\": \"Supplements\",\n  \"source\": \"Competitor\",\n  \"previewLink\": \"https://getsupplementreviews.com/nutricost-creatine\",\n  \"trendLink\": \"\",\n  \"trendLevel\": \"HIGH\",\n  \"remarks\": \"High demand product researched from Trendmap.\",\n  \"distributeToAllSites\": false,\n  \"singleSiteId\": 1,\n  \"createArticle\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                ":id"
+              ]
+            },
+            "description": "Retrieve single product details."
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                ":id"
+              ]
+            },
+            "description": "Update existing product properties.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nutricost Creatine Monohydrate Pure\",\n  \"previewLink\": \"https://example.com/product\",\n  \"trendLink\": \"https://trends.google.com/trends/explore?q=nutricost\",\n  \"remarks\": \"Updated product specs and instructions.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                ":id"
+              ]
+            },
+            "description": "Delete a product from catalog."
+          }
+        },
+        {
+          "name": "Check Duplicate Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "check"
+              ]
+            },
+            "description": "Check if a product name or slug already exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nutricost\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Import Bulk Products",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "import"
+              ]
+            },
+            "description": "Import multiple products in bulk.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    {\n      \"name\": \"Product A\",\n      \"category\": \"Supplements\",\n      \"previewLink\": \"https://example.com/a\"\n    },\n    {\n      \"name\": \"Product B\",\n      \"category\": \"Vitamins\",\n      \"previewLink\": \"https://example.com/b\"\n    }\n  ],\n  \"targetSiteIds\": [\n    1,\n    2\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Product Site Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/:id/site-availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                ":id",
+                "site-availability"
+              ]
+            },
+            "description": "List all network sites showing whether product is published, pending, or missing."
+          }
+        },
+        {
+          "name": "Report Link Issue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/:id/report-link-issue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                ":id",
+                "report-link-issue"
+              ]
+            },
+            "description": "Report a broken or expired affiliate link on a product.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"linkId\": 10,\n  \"issueType\": \"BROKEN_LINK\",\n  \"notes\": \"The buy link redirects to 404.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Site Product Comparison",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/compare",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "compare"
+              ]
+            },
+            "description": "Fetch product distribution comparison across all network sites."
+          }
+        },
+        {
+          "name": "Add Product to Comparison Network",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/compare/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "compare",
+                "add"
+              ]
+            },
+            "description": "Deploy existing product to an additional network site.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 2036,\n  \"siteId\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Trendmap Opportunities",
+      "item": [
+        {
+          "name": "List Trendmap Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trendmap-products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trendmap-products"
+              ]
+            },
+            "description": "Fetch researched product trend opportunities."
+          }
+        },
+        {
+          "name": "Create Trendmap Opportunity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trendmap-products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trendmap-products"
+              ]
+            },
+            "description": "Add a new product opportunity discovered via trend analysis.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tongkat Ali Extract\",\n  \"category\": \"Herbal Supplements\",\n  \"productUrl\": \"https://competitor.com/tongkat-ali\",\n  \"competitor\": \"competitor.com\",\n  \"demandScore\": 85,\n  \"demandLevel\": \"HIGH\",\n  \"searchDemand\": \"85 / 100\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Trendmap Product",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trendmap-products/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trendmap-products",
+                ":id"
+              ]
+            },
+            "description": "Get details of a specific trend opportunity."
+          }
+        },
+        {
+          "name": "Update Trendmap Product",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trendmap-products/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trendmap-products",
+                ":id"
+              ]
+            },
+            "description": "Update a trend opportunity.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"demandLevel\": \"HIGH\",\n  \"demandScore\": 92\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Trendmap Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trendmap-products/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trendmap-products",
+                ":id"
+              ]
+            },
+            "description": "Delete a trend opportunity."
+          }
+        },
+        {
+          "name": "Check Duplicate Trendmap Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trendmap-products/check-duplicate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trendmap-products",
+                "check-duplicate"
+              ]
+            },
+            "description": "Check whether an opportunity name already exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tongkat Ali\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Batch Import / Modify Trendmap Products",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trendmap-products/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trendmap-products",
+                "batch"
+              ]
+            },
+            "description": "Batch create or update opportunities.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"name\": \"Item 1\",\n      \"category\": \"Supplements\",\n      \"productUrl\": \"https://example.com/1\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Links & Affiliate Networks",
+      "item": [
+        {
+          "name": "List Link Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "links"
+              ],
+              "query": [
+                {
+                  "key": "productId",
+                  "value": "2036",
+                  "description": "Filter by product ID",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Fetch affiliate link logs."
+          }
+        },
+        {
+          "name": "Create Link Log",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "links"
+              ]
+            },
+            "description": "Add an affiliate link record for a product.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 2036,\n  \"affiliateName\": \"BuyGoods\",\n  \"affiliateLink\": \"https://hop.buygoods.com/track/123\",\n  \"buyLink\": \"https://secure.buygoods.com/checkout/123\",\n  \"bridgePageLink\": \"https://dailyhealthsupplement.com/nutricost-presell\",\n  \"status\": \"ACCEPTED\",\n  \"geos\": [\n    \"US\",\n    \"CA\",\n    \"UK\",\n    \"AU\"\n  ],\n  \"linkerRemarks\": \"Configured multi-geo routing\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Link Log",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/links/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                ":id"
+              ]
+            },
+            "description": "Get single link log."
+          }
+        },
+        {
+          "name": "Update Link Log",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/links/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                ":id"
+              ]
+            },
+            "description": "Update link log fields and geos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACCEPTED\",\n  \"affiliateLink\": \"https://hop.buygoods.com/track/new\",\n  \"linkerRemarks\": \"Updated tracking parameters\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Link Log",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/links/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                ":id"
+              ]
+            },
+            "description": "Delete a link log."
+          }
+        },
+        {
+          "name": "Get Link Audit History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/links/:id/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "links",
+                ":id",
+                "history"
+              ]
+            },
+            "description": "Fetch the version audit history of a link log."
+          }
+        },
+        {
+          "name": "List Affiliate Networks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/affiliates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "affiliates"
+              ]
+            },
+            "description": "List all affiliate networks (e.g. ClickBank, BuyGoods, Digistore)."
+          }
+        },
+        {
+          "name": "Create Affiliate Network",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/affiliates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "affiliates"
+              ]
+            },
+            "description": "Add a new affiliate network.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ClickBank\",\n  \"url\": \"https://clickbank.com\",\n  \"description\": \"Digital and physical health products\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Affiliate Network Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/affiliates/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "affiliates",
+                "stats"
+              ]
+            },
+            "description": "Get link usage statistics grouped by affiliate network."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Sites, Categories & Geos",
+      "item": [
+        {
+          "name": "List Network Sites",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sites"
+              ]
+            },
+            "description": "List all published websites in the network."
+          }
+        },
+        {
+          "name": "Create Network Site",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sites"
+              ]
+            },
+            "description": "Add a new network website.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Daily Health Supplement\",\n  \"url\": \"https://dailyhealthsupplement.com\",\n  \"allowCountrySpecific\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Site by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sites/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sites",
+                ":id"
+              ]
+            },
+            "description": "Get details for a specific site."
+          }
+        },
+        {
+          "name": "Update Site",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sites/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sites",
+                ":id"
+              ]
+            },
+            "description": "Update site details.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Daily Health Supplement Pro\",\n  \"allowCountrySpecific\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Site Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sites/:id/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sites",
+                ":id",
+                "categories"
+              ]
+            },
+            "description": "Get categories associated with a website."
+          }
+        },
+        {
+          "name": "List Article Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ]
+            },
+            "description": "List general article categories."
+          }
+        },
+        {
+          "name": "Create Article Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ]
+            },
+            "description": "Create an article category.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Supplements\",\n  \"siteId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Product Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product-categories"
+              ]
+            },
+            "description": "List product categories."
+          }
+        },
+        {
+          "name": "Create Product Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product-categories"
+              ]
+            },
+            "description": "Create a product category.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Daily Health Supplement\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Geos (Country Targets)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/geos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "geos"
+              ]
+            },
+            "description": "List available country codes for geo targeting."
+          }
+        },
+        {
+          "name": "Create Geo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/geos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "geos"
+              ]
+            },
+            "description": "Add a country geo target.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"DE\",\n  \"name\": \"Germany\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Work Calendar & Activity Logs",
+      "item": [
+        {
+          "name": "Get User Work Calendar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/calendar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "calendar"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "Target user ID (defaults to current user)",
+                  "disabled": false
+                },
+                {
+                  "key": "month",
+                  "value": "2026-10",
+                  "description": "Month in YYYY-MM format",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Fetch monthly calendar with completed articles, reviews, links actioned, and daily timelines in NPT."
+          }
+        },
+        {
+          "name": "Get System Activity History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "history"
+              ]
+            },
+            "description": "Fetch system audit trail of status changes, reviews, and edits."
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Dashboard & Reports",
+      "item": [
+        {
+          "name": "Get Dashboard Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard"
+              ]
+            },
+            "description": "Fetch role-specific dashboard metrics, pending tasks, and summary counts."
+          }
+        },
+        {
+          "name": "Get Reports & Performance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "siteId",
+                  "value": "1",
+                  "description": "Filter by site ID",
+                  "disabled": true
+                },
+                {
+                  "key": "month",
+                  "value": "2026-10",
+                  "description": "Month in YYYY-MM format",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Fetch monthly production reports across writers, linkers, and sites."
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Commissions & Payouts",
+      "item": [
+        {
+          "name": "List Commission Records",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/commissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "commissions"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "10",
+                  "description": "Month (1-12)",
+                  "disabled": true
+                },
+                {
+                  "key": "year",
+                  "value": "2026",
+                  "description": "Year (e.g. 2026)",
+                  "disabled": true
+                },
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "User ID",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List user commissions for articles and links."
+          }
+        },
+        {
+          "name": "Create / Update Commission Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/commissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "commissions"
+              ]
+            },
+            "description": "Manually record or adjust a commission item.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 2,\n  \"type\": \"ARTICLE\",\n  \"amount\": 50,\n  \"month\": 10,\n  \"year\": 2026,\n  \"notes\": \"Bonus for high priority article\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "User Commissions Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/commissions/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "commissions",
+                "users"
+              ]
+            },
+            "description": "List cumulative commission totals and unpaid balances by user."
+          }
+        },
+        {
+          "name": "Execute Payout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/commissions/users/payout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "commissions",
+                "users",
+                "payout"
+              ]
+            },
+            "description": "Mark accumulated user commissions as paid.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 2,\n  \"amount\": 150,\n  \"paymentMethod\": \"Bank Transfer\",\n  \"reference\": \"PAY-OCT-2026-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Commission Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/commission-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "commission-settings"
+              ]
+            },
+            "description": "Fetch standard commission rates per article, link, and priority tiers."
+          }
+        },
+        {
+          "name": "Update Commission Settings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/commission-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "commission-settings"
+              ]
+            },
+            "description": "Update commission pricing models.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"standardArticleRate\": 20,\n  \"standardLinkRate\": 10,\n  \"highPriorityBonus\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reset Commission Settings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/commission-settings/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "commission-settings",
+                "reset"
+              ]
+            },
+            "description": "Reset commission settings to default company values."
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Notices & Notifications",
+      "item": [
+        {
+          "name": "List Notices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notices"
+              ]
+            },
+            "description": "List company announcements and team notices."
+          }
+        },
+        {
+          "name": "Create Notice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notices"
+              ]
+            },
+            "description": "Post a new team notice with category and role targeting.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Article Guidelines Update\",\n  \"content\": \"Please ensure all newly submitted articles include comprehensive ingredient breakdowns.\",\n  \"category\": \"IMPORTANT\",\n  \"targetRoles\": [\n    \"WRITER\",\n    \"TEAM_LEAD\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Pending Unread Notices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notices/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notices",
+                "pending"
+              ]
+            },
+            "description": "Fetch notices requiring user acknowledgment before proceeding."
+          }
+        },
+        {
+          "name": "Acknowledge Notice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notices/:id/ack",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notices",
+                ":id",
+                "ack"
+              ]
+            },
+            "description": "Mark a mandatory notice as read and acknowledged."
+          }
+        },
+        {
+          "name": "List User Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
+            "description": "Fetch real-time notifications for current user (mentions, redo alerts, approval alerts)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Users & Team Access",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "List all team members, writers, linkers, and admins."
+          }
+        },
+        {
+          "name": "Update User Role / Approval",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ":id"
+              ]
+            },
+            "description": "Update user role, approval status, team lead assignment, or active status.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"WRITER\",\n  \"approved\": true,\n  \"teamLeadId\": 1,\n  \"allowLinkLogAccess\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get User Site Access",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/:id/access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ":id",
+                "access"
+              ]
+            },
+            "description": "Get site-specific permissions assigned to a writer or linker."
+          }
+        },
+        {
+          "name": "Update User Site Access",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/:id/access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ":id",
+                "access"
+              ]
+            },
+            "description": "Assign permitted sites to a user.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteIds\": [\n    1,\n    2,\n    3\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Team Members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/team-members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team-members"
+              ]
+            },
+            "description": "Fetch members assigned under the logged in Team Lead."
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Backups & System Settings",
+      "item": [
+        {
+          "name": "Get Backup Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backup/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backup",
+                "status"
+              ]
+            },
+            "description": "Check Google Drive automated backup connection and latest snapshot timestamps."
+          }
+        },
+        {
+          "name": "Run Manual Backup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backup/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backup",
+                "run"
+              ]
+            },
+            "description": "Trigger immediate database dump and upload to Google Drive."
+          }
+        },
+        {
+          "name": "Restore from Backup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backup/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backup",
+                "restore"
+              ]
+            },
+            "description": "Restore database from a specific backup archive.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"backupFile\": \"backup-2026-10-13_00-00-00.sql.gz\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Test Backup Connection",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backup/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backup",
+                "test"
+              ]
+            },
+            "description": "Verify connectivity with Google Drive backup folder."
+          }
+        },
+        {
+          "name": "Disconnect Google Drive Backup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/backup/disconnect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "backup",
+                "disconnect"
+              ]
+            },
+            "description": "Remove Google Drive OAuth tokens."
+          }
+        },
+        {
+          "name": "Get Application Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings"
+              ]
+            },
+            "description": "Fetch global application configuration."
+          }
+        },
+        {
+          "name": "Update Application Settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings"
+              ]
+            },
+            "description": "Update application settings.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"allowRegistration\": true,\n  \"defaultReviewerRole\": \"TEAM_LEAD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. SupplementScience / External Blog Integration",
+      "item": [
+        {
+          "name": "Verify Service Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/service/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "service",
+                "verify"
+              ]
+            },
+            "description": "Verify machine-to-machine service token for external blog posting.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{serviceToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List External Blog Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/blog/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "blog",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page",
+                  "disabled": false
+                },
+                {
+                  "key": "category",
+                  "value": "Supplements",
+                  "description": "Filter category",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Fetch published articles on external blog / SupplementScience."
+          }
+        },
+        {
+          "name": "Publish Blog Post via Service Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/blog/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "blog",
+                "posts"
+              ]
+            },
+            "description": "Create and publish a blog post from Article Management System to external blog.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Nutricost Creatine Monohydrate In-Depth Review\",\n  \"slug\": \"nutricost-creatine-review\",\n  \"excerpt\": \"Comprehensive breakdown of Nutricost Creatine Monohydrate purity, dosage, and results.\",\n  \"content\": \"<h2>Overview</h2><p>Nutricost offers pure micronized creatine monohydrate...</p>\",\n  \"category\": \"Supplements\",\n  \"tags\": [\n    \"Nutricost\",\n    \"Creatine\",\n    \"Health\"\n  ],\n  \"featuredImage\": \"https://example.com/nutricost-creatine.jpg\",\n  \"affiliateUrl\": \"https://hop.buygoods.com/track/123\",\n  \"published\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Admin Post by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/posts/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "posts",
+                ":id"
+              ]
+            },
+            "description": "Get external blog post by ID for administration."
+          }
+        },
+        {
+          "name": "Update Admin Post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/posts/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "posts",
+                ":id"
+              ]
+            },
+            "description": "Update an existing blog post on the external site.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Nutricost Creatine Monohydrate In-Depth Review (2026 Edition)\",\n  \"published\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Admin Post",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}",
+                "type": "text",
+                "description": "Used for service-token protected routes",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/posts/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "posts",
+                ":id"
+              ]
+            },
+            "description": "Delete a post from external blog."
+          }
+        }
+      ]
+    }
+  ]
+}

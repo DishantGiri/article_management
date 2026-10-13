@@ -597,35 +597,47 @@ export default function AssignmentDetailsModal({
               </div>
 
               {/* Trend & Preview External Links */}
-              {(product.trendLink || product.previewLink) && (
-                <div className="flex flex-wrap items-center gap-2">
-                  {product.trendLink && (
-                    <a
-                      href={ensureExternalUrl(product.trendLink)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-2xs transition"
-                    >
-                      <TrendingUp className="w-3.5 h-3.5 text-[#6D8196]" />
-                      <span>Trend Link</span>
-                      <ExternalLink className="w-3 h-3 text-slate-400" />
-                    </a>
-                  )}
+              {(() => {
+                const cleanTrend = product.trendLink?.trim() || "";
+                const cleanPreview = product.previewLink?.trim() || "";
+                const normalizeUrl = (u: string) =>
+                  u.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+                const isSameLink = cleanTrend && cleanPreview && normalizeUrl(cleanTrend) === normalizeUrl(cleanPreview);
+                const showTrendLink = Boolean(cleanTrend && !isSameLink);
+                const showPreviewLink = Boolean(cleanPreview);
 
-                  {product.previewLink && (
-                    <a
-                      href={ensureExternalUrl(product.previewLink)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-semibold border border-indigo-200/80 dark:border-indigo-800/50 shadow-2xs transition"
-                    >
-                      <Globe className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>Preview Link</span>
-                      <ExternalLink className="w-3 h-3 text-indigo-400" />
-                    </a>
-                  )}
-                </div>
-              )}
+                if (!showTrendLink && !showPreviewLink) return null;
+
+                return (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {showTrendLink && (
+                      <a
+                        href={ensureExternalUrl(cleanTrend)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-2xs transition"
+                      >
+                        <TrendingUp className="w-3.5 h-3.5 text-[#6D8196]" />
+                        <span>Trend Link</span>
+                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                      </a>
+                    )}
+
+                    {showPreviewLink && (
+                      <a
+                        href={ensureExternalUrl(cleanPreview)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-semibold border border-indigo-200/80 dark:border-indigo-800/50 shadow-2xs transition"
+                      >
+                        <Globe className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Preview Link</span>
+                        <ExternalLink className="w-3 h-3 text-indigo-400" />
+                      </a>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Product Remarks */}

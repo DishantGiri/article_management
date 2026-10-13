@@ -314,7 +314,7 @@ export async function GET(req: NextRequest) {
           badge: "Article Started",
           title: art.product.name,
           subtitle: `Site: ${art.product.site.name} • ${art.product.category.name}`,
-          details: `Writing timer initiated. Current status: ${art.status}.`,
+          details: null,
           status: art.status,
           rawTimestamp: art.startedAt.toISOString(),
         });
@@ -348,6 +348,41 @@ export async function GET(req: NextRequest) {
 
     // Process Article History / Revisions
     articleHistories.forEach((hist) => {
+      // If this history entry was created as part of an ArticleReview conducted by targetUser,
+      // skip it because the review is already captured with full reviewer context in reviewsDone.
+      const isDuplicateOfReview = reviewsDone.some((rev) => {
+        if (rev.articleId !== hist.articleId) return false;
+        const diffMs = Math.abs(new Date(rev.reviewedAt).getTime() - new Date(hist.updatedAt).getTime());
+        // Review and articleHistory created in the same review flow (within 5 minutes)
+        if (diffMs > 5 * 60 * 1000) return false;
+        const revStatus = rev.approved ? "APPROVED" : "REDO";
+        if (hist.newStatus === revStatus) return true;
+        if (
+          hist.notes &&
+          (hist.notes.toLowerCase().includes("redo requested") ||
+            hist.notes.toLowerCase().includes("approved by") ||
+            (rev.suggestion && hist.notes.includes(rev.suggestion)))
+        ) {
+          return true;
+        }
+        return false;
+      });
+
+      if (isDuplicateOfReview) return;
+
+      // If this history entry is just the status change on article completion by the writer,
+      // skip it because it is already captured in articlesCompleted.
+      const isDuplicateOfCompletion = articlesCompleted.some((art) => {
+        if (!art.completedAt || art.id !== hist.articleId) return false;
+        const diffMs = Math.abs(new Date(art.completedAt).getTime() - new Date(hist.updatedAt).getTime());
+        return (
+          diffMs <= 2 * 60 * 1000 &&
+          (hist.newStatus === "SUBMITTED" || hist.newStatus === "PENDING_APPROVAL" || hist.newStatus === art.status)
+        );
+      });
+
+      if (isDuplicateOfCompletion) return;
+
       const rawDetails = hist.notes || (hist.oldStatus && hist.newStatus ? `Status: ${hist.oldStatus} → ${hist.newStatus}` : "Updated article record");
       addActivity(hist.updatedAt, {
         id: `arthist-${hist.id}`,

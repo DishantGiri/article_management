@@ -1354,7 +1354,7 @@ export default function SiteProductComparison({
                                       Preview <ExternalLink className="w-2.5 h-2.5" />
                                     </a>
                                   )}
-                                  {p.trendLink && (
+                                  {p.trendLink && p.trendLink.trim().toLowerCase() !== (p.previewLink || "").trim().toLowerCase() && (
                                     <a
                                       href={p.trendLink}
                                       target="_blank"

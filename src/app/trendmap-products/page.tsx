@@ -338,7 +338,7 @@ export default function TrendmapProductsPage() {
       name: item.name,
       category: item.category || "",
       source: "Competitor",
-      trendLink: item.productUrl || "",
+      trendLink: "",
       previewLink: item.productUrl || "",
       trendLevel:
         item.demandLevel === "MODERATE"

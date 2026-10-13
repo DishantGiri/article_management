@@ -113,6 +113,29 @@ function CalendarContent() {
   const [inspectingDay, setInspectingDay] = useState<CalendarDay | null>(null);
   const isWriter = session?.user?.role === "WRITER";
 
+  // Deduplicate activities in modal if any review event generated both ARTICLE and REVIEW entries
+  const sanitizedActivities = useMemo(() => {
+    if (!inspectingDay?.activities) return [];
+    const reviews = inspectingDay.activities.filter((a) => a.category === "REVIEW");
+    return inspectingDay.activities.filter((a) => {
+      if (a.category === "ARTICLE" && (a.status === "REDO" || a.status === "APPROVED" || a.badge === "Revision Required")) {
+        const hasMatchingReview = reviews.some((rev) => {
+          if (rev.title !== a.title) return false;
+          const timeMatch = rev.time === a.time;
+          const rawTimeDiff =
+            rev.rawTimestamp && a.rawTimestamp
+              ? Math.abs(new Date(rev.rawTimestamp).getTime() - new Date(a.rawTimestamp).getTime()) < 5 * 60 * 1000
+              : false;
+          const detailsMatch =
+            rev.details && a.details && (a.details.includes(rev.details) || rev.details.includes(a.details));
+          return (timeMatch || rawTimeDiff) && (Boolean(detailsMatch) || rev.status === a.status);
+        });
+        if (hasMatchingReview) return false;
+      }
+      return true;
+    });
+  }, [inspectingDay?.activities]);
+
   // Synchronize when query params change or month changes
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -488,7 +511,7 @@ function CalendarContent() {
                   <div className="flex items-center gap-2 mt-0.5">
                     {inspectingDay.isWorkingDay ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active Working Day ({inspectingDay.activityCount} Activities)
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active Working Day ({sanitizedActivities.length} {sanitizedActivities.length === 1 ? "Activity" : "Activities"})
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
@@ -509,7 +532,7 @@ function CalendarContent() {
 
             {/* Modal Scrollable Timeline Body */}
             <div className="p-6 overflow-y-auto space-y-4">
-              {inspectingDay.activities.length === 0 ? (
+              {sanitizedActivities.length === 0 ? (
                 <div className="py-12 text-center space-y-2">
                   <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-2">
                     <CalendarIcon className="w-6 h-6" />
@@ -523,7 +546,7 @@ function CalendarContent() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      Work Activity Timeline ({inspectingDay.activities.length})
+                      Work Activity Timeline ({sanitizedActivities.length})
                     </p>
                     <span className="text-[10px] font-bold text-[#6D8196] dark:text-sky-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700">
                       NPT (UTC+5:45)
@@ -531,7 +554,7 @@ function CalendarContent() {
                   </div>
 
                   <div className="space-y-2.5">
-                    {inspectingDay.activities.map((item) => {
+                    {sanitizedActivities.map((item) => {
                       const meta = CATEGORY_COLORS[item.category] || CATEGORY_COLORS.ARTICLE;
                       const IconComponent = meta.icon;
 
@@ -572,7 +595,7 @@ function CalendarContent() {
                           {/* Subtitle & Details */}
                           <div className="pl-8 space-y-1">
                             <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{item.subtitle}</p>
-                            {item.details && (
+                            {item.details && !item.details.toLowerCase().includes("writing timer initiated") && (
                               <p className="text-xs text-slate-500 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/90 p-2 rounded-lg border border-slate-100 dark:border-slate-800 font-sans">
                                 {sanitizeDetailText(item.details)}
                               </p>
