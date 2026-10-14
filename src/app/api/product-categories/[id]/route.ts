@@ -38,9 +38,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const cleanName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
     if (!cleanName) return NextResponse.json({ error: "Category name is required" }, { status: 400 });
 
-    if (!/^[a-zA-Z0-9 ]+$/.test(cleanName)) {
+    if (!/^[a-zA-Z0-9 &'\-/]+$/.test(cleanName)) {
       return NextResponse.json(
-        { error: "Special characters are not allowed. Only letters, numbers, and spaces are permitted for category names." },
+        { error: "Special characters are not allowed. Only letters, numbers, spaces, and (&, -, ', /) are permitted for category names." },
         { status: 400 }
       );
     }

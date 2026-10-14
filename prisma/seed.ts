@@ -113,20 +113,98 @@ async function main() {
   }
   console.log(`Created ${createdSites.length} sites.`);
 
-  // 5. Seed Core Categories connected to all sites
-  console.log("Creating Categories & Product Categories...");
-  const categoryNames = ["Supplements", "Skincare", "Ecom", "Health & Wellness"];
-  for (const catName of categoryNames) {
+  // 5. Seed Product Types (Categories) connected to all sites
+  console.log("Creating Product Types (Categories)...");
+  const productTypes = ["Nutra", "Ecom", "Multi-Lang"];
+  for (const typeName of productTypes) {
     await prisma.category.create({
       data: {
-        name: catName,
+        name: typeName,
         sites: { connect: createdSites.map((s) => ({ id: s.id })) },
       },
     });
+  }
+  console.log(`Created ${productTypes.length} Product Types (Nutra, Ecom, Multi-Lang).`);
+
+  // 5b. Seed Product Categories
+  console.log("Creating Product Categories...");
+  const productCategoryNames = [
+    "Anti Aging Products",
+    "Anti Fungal Products",
+    "Anxiety & Stress Relief",
+    "Bladder Control",
+    "Blood Health",
+    "Blood Pressure",
+    "Blood Sugar",
+    "Bodybuilding",
+    "Bone Health",
+    "Brain Enhancement",
+    "Breast Enhancement",
+    "Cellular Health",
+    "Colon Cleanser",
+    "Dental Health",
+    "Dietary Supplements",
+    "Ear Health",
+    "ED Support",
+    "Eye Health",
+    "Female Enhancement",
+    "Female Health",
+    "Focus & Alertness",
+    "Foot Care",
+    "General Health",
+    "General Wellness",
+    "Gut Health",
+    "Gut Health Supplement",
+    "Hair Growth",
+    "Health",
+    "Hearing Support",
+    "Heart Health",
+    "Hemorrhoid Pain Relief",
+    "Immune Health",
+    "Joint Pain Pills",
+    "Joint Pain Relief",
+    "Leg Health & Circulation",
+    "Liver Health",
+    "Lung & Respiratory Support",
+    "Lung Health",
+    "Lymphatic Health",
+    "Male Enhancement",
+    "Memory Enhancement",
+    "Men's Health",
+    "Menopause",
+    "Miscellaneous",
+    "Multivitamin Supplement",
+    "Muscle Support",
+    "Nail Care",
+    "Nerve Health",
+    "Oral Health",
+    "Pain Relief",
+    "Parasite & Gut Health",
+    "Parasites Cleanse",
+    "Probiotics",
+    "Prostate",
+    "Skin Brighteners",
+    "Skin Care",
+    "Sleep Aids",
+    "Teeth Health Supplement",
+    "Testosterone Booster",
+    "Thyroid",
+    "Thyroid Support",
+    "Tinnitus",
+    "Topical Joint",
+    "Topical Male Enhancement",
+    "Vision & Eye Care",
+    "Weight Loss",
+    "Weight Loss Shake",
+    "Weight Loss Supplement",
+  ];
+
+  for (const catName of productCategoryNames) {
     await prisma.productCategory.create({
       data: { name: catName },
     });
   }
+  console.log(`Created ${productCategoryNames.length} Product Categories.`);
 
   // 6. Seed Users (Super Admin and 1 User)
   console.log("Creating Super Admin and User...");
