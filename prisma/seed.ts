@@ -266,6 +266,9 @@ async function main() {
   siteDefinitions.forEach((s) => console.log(`   - ${s.name} (${s.url})`));
   console.log(`Created ${affiliateNames.length} Affiliates:`);
   affiliateNames.forEach((a) => console.log(`   - ${a}`));
+  console.log(`Created ${productTypes.length} Product Types:`);
+  productTypes.forEach((t) => console.log(`   - ${t}`));
+  console.log(`Created ${productCategoryNames.length} Product Categories.`);
   console.log("Created Users:");
   console.log(`   - Super Admin: superadmin@fishtailinfosolutions.com (or superadmin@articlemgmt.com)`);
   console.log(`   - User:        user@fishtailinfosolutions.com`);
