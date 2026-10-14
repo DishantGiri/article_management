@@ -674,13 +674,27 @@ export default function AddLinkModal({
         throw new Error(errData.error || "Failed to add link");
       }
 
+      const savedSiteName = selectedProduct?.site?.name || "site";
+
       // Update local products state immediately so active site marks as configured
       setProducts((prev) =>
         prev.map((p) => {
           if (p.id === selectedProductId) {
             return {
               ...p,
-              linkLogs: [...(p.linkLogs || []), { id: Date.now(), bridgePageLink, buyLink }],
+              linkLogs: [
+                ...(p.linkLogs || []),
+                {
+                  id: Date.now(),
+                  bridgePageLink,
+                  buyLink,
+                  status,
+                  linkerRemarks,
+                  affiliateName: useCountrySpecificLinks ? countryLinks[0]?.affiliateName : affiliateEntries[0]?.affiliateName,
+                  affiliateLink: useCountrySpecificLinks ? countryLinks[0]?.affiliateLink : affiliateEntries[0]?.affiliateLink,
+                  geos: geos.map((g) => ({ geo: g })),
+                },
+              ],
             };
           }
           return p;
@@ -695,11 +709,31 @@ export default function AddLinkModal({
         })
         .catch(() => {});
 
-      toast.success(
-        useCountrySpecificLinks
-          ? `Successfully saved links for ${selectedProduct?.site?.name || "site"} with ${countryLinks.length} country link(s)! Switch sites above to continue adding links.`
-          : `Successfully saved ${affiliateEntries.length} link log(s) for ${selectedProduct?.site?.name || "site"}! Switch sites above to continue adding links.`
+      const nextPending = availableSitesForProduct.find(
+        (s) => s.productId !== selectedProductId && !s.hasLogs
       );
+
+      if (nextPending) {
+        setSaveSuccessNotification({
+          siteName: savedSiteName,
+          nextSite: {
+            productId: nextPending.productId,
+            siteName: nextPending.siteName,
+          },
+        });
+        toast.success(
+          `Successfully saved links for ${savedSiteName}! Switch to ${nextPending.siteName} above to continue adding links.`
+        );
+      } else {
+        setSaveSuccessNotification({
+          siteName: savedSiteName,
+          nextSite: null,
+        });
+        toast.success(
+          `Successfully saved links for ${savedSiteName}! All sites for this product are now configured.`
+        );
+      }
+
       if (onSuccess) onSuccess();
       // Keep modal open so linker can switch to other sites for this product!
     } catch (e: any) {
@@ -729,75 +763,113 @@ export default function AddLinkModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[88vh] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-[1100px] flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200">
         {/* Header */}
-        <div className="px-3.5 py-2.5 sm:px-6 sm:py-3.5 bg-[#4A4A4A] dark:bg-slate-800 text-white flex items-center justify-between shrink-0 border-b border-white/10 dark:border-slate-700/60">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 mr-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white shadow-inner shrink-0">
-              <Link2 className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
-                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight shrink-0">
-                  Add New Link Log
-                </h2>
-                {selectedProduct && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-white/15 text-white border border-white/20 flex items-center gap-1 shrink-0">
-                    <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white/80" />
-                    <span className="truncate max-w-[120px] sm:max-w-none">
-                      {selectedProduct.site?.name || "Unassigned"}
-                    </span>
-                  </span>
-                )}
-                {selectedProduct?.name && (
-                  <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-white/15 text-white border border-white/20 truncate max-w-[160px]">
-                    {selectedProduct.name}
-                  </span>
-                )}
+        <div className="px-4 py-3 sm:px-6 sm:py-3.5 bg-[#4A4A4A] dark:bg-slate-800 text-white shrink-0 border-b border-white/10 dark:border-slate-700/60 space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white shadow-inner shrink-0">
+                <Link2 className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-
-              {/* Single-row horizontal scrollable site switcher */}
-              {availableSitesForProduct.length > 1 && (
-                <div className="flex items-center gap-1.5 mt-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
-                  <span className="text-[10px] sm:text-[11px] text-white/70 font-semibold shrink-0">
-                    Switch:
-                  </span>
-                  {availableSitesForProduct.map((s) => (
-                    <button
-                      key={s.siteId}
-                      type="button"
-                      onClick={() => setSelectedProductId(s.productId)}
-                      className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition cursor-pointer border shrink-0 whitespace-nowrap ${
-                        s.isSelected
-                          ? "bg-white text-slate-800 border-white shadow-xs"
-                          : "bg-white/15 hover:bg-white/25 text-white border-white/20"
-                      }`}
-                      title={`Switch to ${s.siteName} for ${selectedProduct?.name}`}
-                    >
-                      {s.siteName}
-                      {s.hasLogs ? " ✓" : " [Pending]"}
-                    </button>
-                  ))}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                    Add New Link Log
+                  </h2>
+                  {selectedProduct && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-white/15 text-white border border-white/20 flex items-center gap-1 shrink-0">
+                      <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white/80" />
+                      <span className="truncate max-w-[140px] sm:max-w-none">
+                        {selectedProduct.site?.name || "Unassigned"}
+                      </span>
+                    </span>
+                  )}
+                  {selectedProduct?.name && (
+                    <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-white/15 text-white border border-white/20 truncate max-w-[200px]">
+                      {selectedProduct.name}
+                    </span>
+                  )}
                 </div>
-              )}
-
-              <p className="hidden md:block text-[11px] text-white/80 font-normal mt-0.5">
-                Configure affiliate links, bridge page, and buy now links via dropdown selections
-              </p>
+                <p className="hidden md:block text-[11px] text-white/70 font-normal mt-0.5">
+                  Configure affiliate links, bridge page, and buy now links via dropdown selections
+                </p>
+              </div>
             </div>
+
+            <button
+              onClick={onClose}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer shrink-0"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer shrink-0"
-            aria-label="Close modal"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* Full-width dedicated site switcher row */}
+          {availableSitesForProduct.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-2 border-t border-white/10">
+              <span className="text-[10px] sm:text-[11px] text-white/70 font-bold shrink-0 uppercase tracking-wider flex items-center gap-1">
+                <Globe className="w-3 h-3 text-white/60" />
+                Switch Site:
+              </span>
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1">
+                {availableSitesForProduct.map((s) => (
+                  <button
+                    key={s.siteId}
+                    type="button"
+                    onClick={() => handleSwitchSite(s.productId)}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer border shrink-0 whitespace-nowrap flex items-center gap-1.5 shadow-2xs ${
+                      s.isSelected
+                        ? "bg-white text-slate-800 border-white shadow-sm ring-2 ring-white/30"
+                        : s.hasLogs
+                        ? "bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-100 border-emerald-400/30"
+                        : "bg-white/15 hover:bg-white/25 text-white border-white/20"
+                    }`}
+                    title={`Switch to ${s.siteName} for ${selectedProduct?.name}`}
+                  >
+                    <span>{s.siteName}</span>
+                    {s.hasLogs ? (
+                      <span className={`text-[9px] px-1 py-0.2 rounded font-extrabold ${s.isSelected ? "bg-emerald-100 text-emerald-800" : "bg-emerald-500/40 text-emerald-100"}`}>
+                        ✓ Configured
+                      </span>
+                    ) : (
+                      <span className={`text-[9px] px-1 py-0.2 rounded font-extrabold ${s.isSelected ? "bg-amber-100 text-amber-800" : "bg-amber-400/20 text-amber-200 border border-amber-300/30"}`}>
+                        Pending
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Modal Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 bg-[#FAF9F5]/60 dark:bg-slate-950">
+          {saveSuccessNotification && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs flex items-center justify-between gap-3 shadow-xs animate-fadeIn">
+              <div className="flex items-center gap-2 min-w-0">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="font-semibold">
+                  Saved links for <strong>{saveSuccessNotification.siteName}</strong>!
+                  {saveSuccessNotification.nextSite
+                    ? " Switch to other sites above to continue adding links:"
+                    : " All sites for this product are now configured."}
+                </span>
+              </div>
+              {saveSuccessNotification.nextSite && (
+                <button
+                  type="button"
+                  onClick={() => handleSwitchSite(saveSuccessNotification.nextSite!.productId)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shrink-0 cursor-pointer transition shadow-xs flex items-center gap-1.5"
+                >
+                  <span>Switch to {saveSuccessNotification.nextSite.siteName}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+
           {error && (
             <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2.5 shadow-xs">
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-500" />
@@ -845,12 +917,12 @@ export default function AddLinkModal({
                         : null;
                       const firstUnlinked = matchOpt.group.find((p) => !p.linkLogs || p.linkLogs.length === 0);
                       const target = sameSite || firstUnlinked || matchOpt.group[0];
-                      setSelectedProductId(target.id);
+                      handleSwitchSite(target.id);
                       setIsChangingProduct(false);
                     } else {
                       const directNum = Number(val);
                       if (!isNaN(directNum)) {
-                        setSelectedProductId(directNum);
+                        handleSwitchSite(directNum);
                         setIsChangingProduct(false);
                       }
                     }
@@ -985,7 +1057,7 @@ export default function AddLinkModal({
                           <button
                             key={siteItem.siteId}
                             type="button"
-                            onClick={() => setSelectedProductId(siteItem.productId)}
+                            onClick={() => handleSwitchSite(siteItem.productId)}
                             className={`group px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
                               isCurrent
                                 ? "bg-[#6D8196] text-white border-[#6D8196] shadow-sm ring-2 ring-[#6D8196]/25 font-bold"
