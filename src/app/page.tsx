@@ -1932,11 +1932,10 @@ function LinkerOperationsStudio({
         onClose={() => {
           setIsAddLinkModalOpen(false);
           setSelectedProductIdForLink(null);
+          if (onRefresh) onRefresh();
         }}
         preselectedProductId={selectedProductIdForLink}
         onSuccess={() => {
-          setIsAddLinkModalOpen(false);
-          setSelectedProductIdForLink(null);
           if (onRefresh) onRefresh();
         }}
       />

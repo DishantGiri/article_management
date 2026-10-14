@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -186,11 +188,22 @@ export default function AssignmentDetailsModal({
   onReportIssue,
   onUpdate,
 }: AssignmentDetailsModalProps) {
+  const { data: session } = useSession();
   const router = useRouter();
+  const [mounted, setMounted] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [activeLogIndex, setActiveLogIndex] = useState<number>(0);
   const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
   const [startingWriting, setStartingWriting] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   // Site Network Availability & Publishing states
   const [siteAvailability, setSiteAvailability] = useState<SiteAvailabilityItem[]>([]);
@@ -220,9 +233,9 @@ export default function AssignmentDetailsModal({
     return null;
   }, [product]);
 
-  const fetchSiteAvailability = useCallback(async () => {
+  const fetchSiteAvailability = useCallback(async (silent = false) => {
     if (!product?.id) return;
-    setLoadingSites(true);
+    if (!silent) setLoadingSites(true);
     try {
       const res = await fetch(`/api/products/${product.id}/site-availability`);
       if (res.ok) {
@@ -232,7 +245,7 @@ export default function AssignmentDetailsModal({
     } catch (err) {
       console.error("Failed to load site availability:", err);
     } finally {
-      setLoadingSites(false);
+      if (!silent) setLoadingSites(false);
     }
   }, [product?.id]);
 
@@ -253,7 +266,39 @@ export default function AssignmentDetailsModal({
         throw new Error(data.error || "Failed to add product to site");
       }
       toast.success(`Successfully added "${product.name}" to ${targetSiteName}! Assigned for writing.`);
-      fetchSiteAvailability();
+
+      // Optimistic / smooth in-place update of site card
+      setSiteAvailability((prev) =>
+        prev.map((s) => {
+          if (s.siteId === targetSiteId) {
+            const createdItem = data.created?.find((c: any) => c.product?.siteId === targetSiteId);
+            const prod = createdItem?.product;
+            return {
+              ...s,
+              isAvailable: true,
+              product: {
+                id: prod?.id || s.product?.id || 0,
+                name: prod?.name || s.product?.name || product.name,
+                addedBy: session?.user?.name || "You",
+                addedToSiteBy: session?.user?.name || "You",
+                researchedBy: s.product?.researchedBy || originalResearcher || product.researchedBy || null,
+                linkCount: 0,
+                article: createdItem?.article
+                  ? {
+                      id: createdItem.article.id,
+                      status: createdItem.article.status || "PENDING",
+                      writerName: "Unassigned",
+                    }
+                  : null,
+              },
+            };
+          }
+          return s;
+        })
+      );
+
+      // Silent background refresh to guarantee clean data without showing the full loader
+      await fetchSiteAvailability(true);
       onUpdate?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to add product to site");
@@ -277,7 +322,39 @@ export default function AssignmentDetailsModal({
         throw new Error(data.error || "Failed to add product to sites");
       }
       toast.success(`Successfully added "${product.name}" to ${data.createdCount} sites!`);
-      fetchSiteAvailability();
+
+      // Optimistic / smooth in-place update
+      setSiteAvailability((prev) =>
+        prev.map((s) => {
+          if (missingSiteIds.includes(s.siteId)) {
+            const createdItem = data.created?.find((c: any) => c.product?.siteId === s.siteId);
+            const prod = createdItem?.product;
+            return {
+              ...s,
+              isAvailable: true,
+              product: {
+                id: prod?.id || s.product?.id || 0,
+                name: prod?.name || s.product?.name || product.name,
+                addedBy: session?.user?.name || "You",
+                addedToSiteBy: session?.user?.name || "You",
+                researchedBy: s.product?.researchedBy || originalResearcher || product.researchedBy || null,
+                linkCount: 0,
+                article: createdItem?.article
+                  ? {
+                      id: createdItem.article.id,
+                      status: createdItem.article.status || "PENDING",
+                      writerName: "Unassigned",
+                    }
+                  : null,
+              },
+            };
+          }
+          return s;
+        })
+      );
+
+      // Silent background refresh
+      await fetchSiteAvailability(true);
       onUpdate?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to add to all missing sites");
@@ -399,9 +476,11 @@ export default function AssignmentDetailsModal({
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -1530,6 +1609,7 @@ export default function AssignmentDetailsModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

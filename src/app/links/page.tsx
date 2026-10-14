@@ -1270,13 +1270,9 @@ function LinksPageContent() {
           if (urlProductId) {
             router.replace("/links");
           }
+          refreshLinksData(false);
         }}
         onSuccess={() => {
-          setIsAddLinkOpen(false);
-          setPreselectedProductId(null);
-          if (urlProductId) {
-            router.replace("/links");
-          }
           refreshLinksData(false);
         }}
         preselectedProductId={preselectedProductId}

@@ -2,7 +2,7 @@
 "use client";
 
 import CustomSelect from "@/components/CustomSelect";
-import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, Copy } from "lucide-react";
+import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, Copy, CheckCircle2, ArrowRight } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -97,6 +97,11 @@ export default function AddLinkModal({
   const [batchLinkUrl, setBatchLinkUrl] = useState("");
   const [defaultAffiliateName, setDefaultAffiliateName] = useState("");
   const [countrySearchQuery, setCountrySearchQuery] = useState("");
+
+  const [saveSuccessNotification, setSaveSuccessNotification] = useState<{
+    siteName: string;
+    nextSite: { productId: number; siteName: string } | null;
+  } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -333,11 +338,83 @@ export default function AddLinkModal({
     );
   };
 
+  const loadProductLogs = (prod: Product) => {
+    if (!prod.linkLogs || prod.linkLogs.length === 0) return;
+    const latestLog = prod.linkLogs[prod.linkLogs.length - 1];
+    if (latestLog.bridgePageLink) setBridgePageLink(latestLog.bridgePageLink);
+    if (latestLog.buyLink) setBuyLink(latestLog.buyLink);
+    if (latestLog.status) setStatus(latestLog.status);
+    if (latestLog.linkerRemarks) setLinkerRemarks(latestLog.linkerRemarks);
+
+    if (latestLog.geos && Array.isArray(latestLog.geos) && latestLog.geos.length > 0) {
+      const targetGeos = latestLog.geos.map((g: any) => (typeof g === "string" ? g : g.geo || ""));
+      const uniqueGeos = Array.from(new Set(targetGeos.filter(Boolean) as string[]));
+      if (uniqueGeos.length > 0) {
+        setGeos(uniqueGeos);
+      }
+    }
+
+    if (latestLog.affiliateName || latestLog.affiliateLink) {
+      setAffiliateEntries([
+        {
+          affiliateName: latestLog.affiliateName || allAffiliates[0] || "",
+          affiliateLink: latestLog.affiliateLink || "",
+        },
+      ]);
+    }
+  };
+
+  const handleSwitchSite = (targetProductId: number) => {
+    if (targetProductId === selectedProductId) return;
+
+    const currentProd = selectedProduct;
+    const targetProd = products.find((p) => p.id === targetProductId);
+    if (!targetProd) return;
+
+    const isSameProductName = Boolean(
+      currentProd?.name &&
+      targetProd.name &&
+      currentProd.name.trim().toLowerCase() === targetProd.name.trim().toLowerCase()
+    );
+
+    if (targetProd.linkLogs && targetProd.linkLogs.length > 0) {
+      loadProductLogs(targetProd);
+    } else if (isSameProductName) {
+      // Preserve current affiliate link, country links, geos, remarks, status for the same product!
+      const currentSiteUrl = currentProd?.site?.url?.replace(/\/+$/, "");
+      const targetSiteUrl = targetProd?.site?.url?.replace(/\/+$/, "");
+      const pSlug = targetProd.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+      if (currentSiteUrl && targetSiteUrl && bridgePageLink.startsWith(currentSiteUrl)) {
+        setBridgePageLink(bridgePageLink.replace(currentSiteUrl, targetSiteUrl));
+      } else if (!bridgePageLink && targetSiteUrl && pSlug) {
+        setBridgePageLink(`${targetSiteUrl}/${pSlug}`);
+      }
+
+      if (currentSiteUrl && targetSiteUrl && buyLink.startsWith(currentSiteUrl)) {
+        setBuyLink(buyLink.replace(currentSiteUrl, targetSiteUrl));
+      } else if (!buyLink && targetSiteUrl && pSlug) {
+        setBuyLink(`${targetSiteUrl}/${pSlug}`);
+      }
+    } else {
+      // Switched to a totally different product name:
+      setBridgePageLink("");
+      setBuyLink("");
+      setAffiliateEntries([{ affiliateName: allAffiliates[0] || "", affiliateLink: "" }]);
+    }
+
+    setBridgeLinkError("");
+    setBuyLinkError("");
+    setError("");
+    setSelectedProductId(targetProductId);
+  };
+
   useEffect(() => {
     if (isOpen) {
       setIsSitesExpanded(false);
       setLoadingProducts(true);
       setError("");
+      setSaveSuccessNotification(null);
       setStatus("REQUESTED");
       setLinkerRemarks("Standard affiliate setup - links verified active");
       setBridgePageLink("");
@@ -360,10 +437,18 @@ export default function AddLinkModal({
           if (preselectedProductId) {
             setSelectedProductId(preselectedProductId);
             setIsChangingProduct(false);
+            const found = prods.find((p) => p.id === preselectedProductId);
+            if (found && found.linkLogs && found.linkLogs.length > 0) {
+              loadProductLogs(found);
+            }
           } else if (prods.length > 0) {
             const firstUnlinked = prods.find((p) => !p.linkLogs || p.linkLogs.length === 0);
-            setSelectedProductId(firstUnlinked ? firstUnlinked.id : prods[0].id);
+            const initialProd = firstUnlinked || prods[0];
+            setSelectedProductId(initialProd.id);
             setIsChangingProduct(false);
+            if (initialProd.linkLogs && initialProd.linkLogs.length > 0) {
+              loadProductLogs(initialProd);
+            }
           }
         })
         .catch((err) => {
@@ -373,33 +458,6 @@ export default function AddLinkModal({
         .finally(() => setLoadingProducts(false));
     }
   }, [isOpen, preselectedProductId]);
-
-  // Keep link inputs empty on product select (do NOT auto-fill fake links)
-  useEffect(() => {
-    if (!selectedProduct) return;
-
-    setBridgePageLink("");
-    setBuyLink("");
-    setBridgeLinkError("");
-    setBuyLinkError("");
-
-    setAffiliateEntries((prev) => {
-      const defaultAffName = allAffiliates[0] || "";
-      if (prev.length === 0) {
-        return [{ affiliateName: defaultAffName, affiliateLink: "" }];
-      }
-      return prev.map((entry, idx) => {
-        if (idx === 0) {
-          return {
-            ...entry,
-            affiliateName: entry.affiliateName || defaultAffName,
-            affiliateLink: "",
-          };
-        }
-        return { ...entry, affiliateLink: "" };
-      });
-    });
-  }, [selectedProduct, allAffiliates]);
 
   // Synchronize countryLinks whenever geos change - do NOT auto-fill fake links
   useEffect(() => {
@@ -420,7 +478,7 @@ export default function AddLinkModal({
         };
       });
     });
-  }, [geos, defaultAffiliateName, allAffiliates, selectedProduct]);
+  }, [geos, defaultAffiliateName, allAffiliates]);
 
   const toggleGeo = (geo: string) => {
     setGeos((prev) => (prev.includes(geo) ? prev.filter((g) => g !== geo) : [...prev, geo]));

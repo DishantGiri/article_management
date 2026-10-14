@@ -113,9 +113,9 @@ export default function DuplicateProductPreviewModal({
     }
   }, [isOpen]);
 
-  const fetchAvailability = useCallback(async () => {
+  const fetchAvailability = useCallback(async (silent = false) => {
     if (!productName && !productId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const url = productId
@@ -130,9 +130,9 @@ export default function DuplicateProductPreviewModal({
       setData(json);
     } catch (e: any) {
       console.error("Duplicate preview load failed:", e);
-      setError(e.message || "Failed to load product details");
+      if (!silent) setError(e.message || "Failed to load product details");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [productId, productName]);
 
@@ -166,7 +166,23 @@ export default function DuplicateProductPreviewModal({
       }
 
       toast.success(`Successfully added "${data?.productName || productName}" to ${siteName}!`);
-      await fetchAvailability();
+
+      // Optimistic in-place update:
+      setData((prev) => {
+        if (!prev) return prev;
+        const newSites = prev.sites.map((s) =>
+          s.siteId === siteId ? { ...s, isAvailable: true } : s
+        );
+        const avail = newSites.filter((s) => s.isAvailable).length;
+        return {
+          ...prev,
+          availableCount: avail,
+          missingCount: newSites.length - avail,
+          sites: newSites,
+        };
+      });
+
+      await fetchAvailability(true);
       onProductAddedToSite?.(siteId, siteName);
     } catch (err: any) {
       toast.error(err.message || "Failed to add product to site");
@@ -200,7 +216,20 @@ export default function DuplicateProductPreviewModal({
       toast.success(
         `Successfully published "${data.productName}" to ${resData.createdCount || missingSiteIds.length} site(s)!`
       );
-      await fetchAvailability();
+
+      // Optimistic in-place update:
+      setData((prev) => {
+        if (!prev) return prev;
+        const newSites = prev.sites.map((s) => ({ ...s, isAvailable: true }));
+        return {
+          ...prev,
+          availableCount: newSites.length,
+          missingCount: 0,
+          sites: newSites,
+        };
+      });
+
+      await fetchAvailability(true);
       missingSiteIds.forEach((sId) => {
         const site = data.sites.find((s) => s.siteId === sId);
         onProductAddedToSite?.(sId, site?.siteName || "");
