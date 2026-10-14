@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { getActiveWorkspace } from "@/lib/workspace";
 import { toast } from "react-hot-toast";
@@ -138,6 +139,21 @@ export default function AddProductModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [successState, setSuccessState] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   const [customAffiliate, setCustomAffiliate] = useState("");
   const [showCustomAffiliate, setShowCustomAffiliate] = useState(false);
@@ -1286,10 +1302,10 @@ export default function AddProductModal({
     sessionRoles.includes("SUPER_ADMIN") ||
     sessionRoles.includes("PRODUCT_RESEARCHER");
 
-  if (!isOpen || !canAddProduct) return null;
+  if (!isOpen || !canAddProduct || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/60 dark:bg-black/75 backdrop-blur-sm animate-fadeIn">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-3 bg-black/60 dark:bg-black/75 backdrop-blur-sm animate-fadeIn">
       <div className={`bg-white dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 transition-all duration-300 ${entryMode === "bulk" && step === 1
         ? "w-[98vw] max-w-[1550px] h-[95vh] max-h-[96vh]"
         : "w-[96vw] max-w-4xl max-h-[92vh]"
@@ -3306,6 +3322,7 @@ export default function AddProductModal({
           spreadsheetRowData={directEditProduct.spreadsheetRowData}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

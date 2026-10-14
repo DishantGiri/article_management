@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import CustomSelect from "@/components/CustomSelect";
@@ -625,10 +626,26 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
     }
   };
 
-  if (!isOpen || !link) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-fadeIn">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !link || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-fadeIn">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[88vh] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200">
         {/* Header */}
         <div className="px-6 py-4 bg-[#4A4A4A] dark:bg-slate-800 text-white flex items-center justify-between shrink-0">
@@ -1497,6 +1514,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

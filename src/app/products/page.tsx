@@ -1645,7 +1645,7 @@ function ProductsPageContent() {
         const hasAnyBeforeRemark = linkLogsWithRemarks.length > 0;
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 border border-slate-100 dark:border-slate-800 animate-scaleIn max-h-[92vh] overflow-y-auto">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2.5">

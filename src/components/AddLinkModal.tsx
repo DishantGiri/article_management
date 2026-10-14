@@ -5,6 +5,7 @@ import CustomSelect from "@/components/CustomSelect";
 import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { LATAM_CODES, COUNTRY_NAMES, getGeoDisplayName, getCountryFlag } from "@/lib/geo-constants";
 
@@ -650,10 +651,26 @@ export default function AddLinkModal({
     }
   };
 
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-fadeIn">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-fadeIn">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[88vh] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-200">
         {/* Header */}
         <div className="px-3.5 py-2.5 sm:px-6 sm:py-3.5 bg-[#4A4A4A] dark:bg-slate-800 text-white flex items-center justify-between shrink-0 border-b border-white/10 dark:border-slate-700/60">
@@ -1673,6 +1690,7 @@ export default function AddLinkModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "react-hot-toast";
 import {
   X,
@@ -96,6 +97,21 @@ export default function DuplicateProductPreviewModal({
   const [filterMode, setFilterMode] = useState<"all" | "missing" | "available">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditingProduct, setIsEditingProduct] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   const fetchAvailability = useCallback(async () => {
     if (!productName && !productId) return;
@@ -228,8 +244,10 @@ export default function DuplicateProductPreviewModal({
       ? Math.round((data.availableCount / data.totalSites) * 100)
       : 0;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-5 md:p-6 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
       <div
         className="bg-white dark:bg-[#0c1427] border border-slate-200/90 dark:border-slate-800/90 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-5xl xl:max-w-6xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp transition-all"
         onClick={(e) => e.stopPropagation()}
@@ -753,6 +771,7 @@ export default function DuplicateProductPreviewModal({
           spreadsheetRowData={spreadsheetRowData}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

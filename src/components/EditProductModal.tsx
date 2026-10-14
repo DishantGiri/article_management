@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
@@ -103,6 +104,21 @@ export default function EditProductModal({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -327,7 +343,7 @@ export default function EditProductModal({
     toast.success("Applied spreadsheet row values!");
   };
 
-  if (!isOpen || !product) return null;
+  if (!isOpen || !product || !mounted) return null;
 
   const isMultiSite = Boolean(
     product &&
@@ -335,8 +351,8 @@ export default function EditProductModal({
         (product.allProductIds && product.allProductIds.length > 1))
   );
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-md animate-fadeIn">
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-md animate-fadeIn">
       <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl w-full max-w-2xl sm:max-w-[700px] overflow-hidden max-h-[92vh] flex flex-col border border-zinc-100 dark:border-zinc-800 animate-scaleIn">
         {/* Modal Header */}
         <div className="px-6 py-4 bg-zinc-950 dark:bg-zinc-900 text-white flex items-center justify-between shrink-0 border-b border-transparent dark:border-zinc-800">
@@ -759,6 +775,7 @@ export default function EditProductModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

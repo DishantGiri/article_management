@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, Info, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -141,7 +142,23 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
     errors: string[];
   } | null>(null);
 
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -297,8 +314,8 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
     document.body.removeChild(link);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
@@ -543,6 +560,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
