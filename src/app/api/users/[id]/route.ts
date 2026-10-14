@@ -2,7 +2,177 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { validateUserName } from "@/lib/user-validation";
+import { validateUserName, sanitizeUserName } from "@/lib/user-validation";
+
+// Cascades display name updates across all notifications, link logs, history records, and products
+async function cascadeUserNameUpdate(
+  userId: number,
+  oldName: string,
+  newName: string,
+  email: string
+) {
+  const emailPrefix = email ? email.split("@")[0].trim() : "";
+  const oldAliases = Array.from(
+    new Set([oldName, emailPrefix].filter((n) => n && n !== newName))
+  );
+
+  if (oldAliases.length === 0) return;
+
+  const replaceName = (text: string): string => {
+    let result = text;
+    for (const old of oldAliases) {
+      if (!old || old.length < 2) continue;
+      const escaped = old.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}([^\\p{L}\\p{N}]|$)`, "gu");
+      result = result.replace(regex, `$1${newName}$2`);
+    }
+    return result;
+  };
+
+  try {
+    // 1. Notifications: where senderId === userId or message mentions old names
+    const notifications = await prisma.notification.findMany({
+      where: {
+        OR: [
+          { senderId: userId },
+          ...oldAliases.map((alias) => ({ message: { contains: alias } })),
+        ],
+      },
+      select: { id: true, message: true, senderId: true },
+    });
+
+    for (const notif of notifications) {
+      let updatedMessage = replaceName(notif.message);
+      if (notif.senderId === userId) {
+        // Handle "oldName (ROLE) reported an issue..."
+        updatedMessage = updatedMessage.replace(
+          /^([^\s(]+)\s*\(((?:WRITER|TEAM LEAD|LINKER|ADMIN|SUPER ADMIN|PRODUCT RESEARCHER|USER)[^)]*)\)/i,
+          `${newName} ($2)`
+        );
+        // Handle "...resolved by oldName"
+        updatedMessage = updatedMessage.replace(
+          /(has been resolved by\s+)[^.]+?(\.|$)/i,
+          `$1${newName}$2`
+        );
+      }
+
+      if (updatedMessage !== notif.message) {
+        await prisma.notification.update({
+          where: { id: notif.id },
+          data: { message: updatedMessage },
+        });
+      }
+    }
+
+    // 2. LinkLog: remarks
+    const linkLogs = await prisma.linkLog.findMany({
+      where: {
+        OR: [
+          { addedById: userId },
+          { updatedById: userId },
+          ...oldAliases.map((alias) => ({ linkerRemarks: { contains: alias } })),
+        ],
+      },
+      select: { id: true, linkerRemarks: true },
+    });
+
+    for (const log of linkLogs) {
+      if (!log.linkerRemarks) continue;
+      const updatedRemarks = replaceName(log.linkerRemarks);
+      if (updatedRemarks !== log.linkerRemarks) {
+        await prisma.linkLog.update({
+          where: { id: log.id },
+          data: { linkerRemarks: updatedRemarks },
+        });
+      }
+    }
+
+    // 3. LinkHistory: newRemarks and oldRemarks
+    const linkHistories = await prisma.linkHistory.findMany({
+      where: {
+        OR: [
+          { updatedById: userId },
+          ...oldAliases.map((alias) => ({ newRemarks: { contains: alias } })),
+          ...oldAliases.map((alias) => ({ oldRemarks: { contains: alias } })),
+        ],
+      },
+      select: { id: true, newRemarks: true, oldRemarks: true },
+    });
+
+    for (const hist of linkHistories) {
+      const updatedNew = hist.newRemarks ? replaceName(hist.newRemarks) : hist.newRemarks;
+      const updatedOld = hist.oldRemarks ? replaceName(hist.oldRemarks) : hist.oldRemarks;
+      if (updatedNew !== hist.newRemarks || updatedOld !== hist.oldRemarks) {
+        await prisma.linkHistory.update({
+          where: { id: hist.id },
+          data: {
+            ...(updatedNew !== hist.newRemarks ? { newRemarks: updatedNew } : {}),
+            ...(updatedOld !== hist.oldRemarks ? { oldRemarks: updatedOld } : {}),
+          },
+        });
+      }
+    }
+
+    // 4. ArticleHistory: notes
+    const articleHistories = await prisma.articleHistory.findMany({
+      where: {
+        OR: [
+          { updatedById: userId },
+          ...oldAliases.map((alias) => ({ notes: { contains: alias } })),
+        ],
+      },
+      select: { id: true, notes: true },
+    });
+
+    for (const ah of articleHistories) {
+      if (!ah.notes) continue;
+      const updatedNotes = replaceName(ah.notes);
+      if (updatedNotes !== ah.notes) {
+        await prisma.articleHistory.update({
+          where: { id: ah.id },
+          data: { notes: updatedNotes },
+        });
+      }
+    }
+
+    // 5. Product: remarks
+    const products = await prisma.product.findMany({
+      where: {
+        OR: [
+          { addedById: userId },
+          ...oldAliases.map((alias) => ({ remarks: { contains: alias } })),
+        ],
+      },
+      select: { id: true, remarks: true },
+    });
+
+    for (const prod of products) {
+      if (!prod.remarks) continue;
+      const updatedRemarks = replaceName(prod.remarks);
+      if (updatedRemarks !== prod.remarks) {
+        await prisma.product.update({
+          where: { id: prod.id },
+          data: { remarks: updatedRemarks },
+        });
+      }
+    }
+
+    // 6. SpecialApproval: writerName
+    await prisma.specialApproval.updateMany({
+      where: {
+        OR: [
+          { article: { writerId: userId } },
+          { writerName: { in: oldAliases } },
+        ],
+      },
+      data: {
+        writerName: newName,
+      },
+    });
+  } catch (cascadeErr) {
+    console.error("Failed to cascade user name update to logs and notifications:", cascadeErr);
+  }
+}
 
 // GET /api/users/[id] - get user profile details
 export async function GET(
@@ -81,7 +251,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, role, image, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany, commissionToPartyFund } = body;
+    const { name, email, role, image, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany, commissionToPartyFund } = body;
 
     const callerId = Number(session.user.id);
     const callerRole = session.user.role || "";
@@ -92,26 +262,47 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Validate name if provided
+    // Get target user details first
+    const targetUser = await prisma.user.findUnique({
+      where: { id: parseInt(id) },
+      select: { id: true, name: true, email: true, role: true },
+    });
+    if (!targetUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Login email immutability: reject any attempt to modify login email
+    if (email !== undefined && email !== null) {
+      const trimmedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+      if (trimmedEmail && targetUser.email && trimmedEmail !== targetUser.email.toLowerCase()) {
+        return NextResponse.json(
+          { error: "Login email is managed via OAuth authentication and cannot be changed." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate and sanitize name if provided
+    let finalSanitizedName: string | undefined = undefined;
     if (name !== undefined) {
-      const nameValidation = validateUserName(name);
-      if (!nameValidation.isValid) {
-        return NextResponse.json({ error: nameValidation.error }, { status: 400 });
+      if (typeof name !== "string") {
+        return NextResponse.json({ error: "Full name must be a string." }, { status: 400 });
+      }
+      // Strict check on raw input: rejects numbers, symbols, and special characters (e.g. test1, @, #, etc.)
+      const rawValidation = validateUserName(name);
+      if (!rawValidation.isValid) {
+        return NextResponse.json({ error: rawValidation.error }, { status: 400 });
+      }
+      finalSanitizedName = sanitizeUserName(name);
+      const sanitizedValidation = validateUserName(finalSanitizedName);
+      if (!sanitizedValidation.isValid) {
+        return NextResponse.json({ error: sanitizedValidation.error }, { status: 400 });
       }
     }
 
     // Non-admin cannot modify role, approval, or site access
     if (!isAdmin && (role || approved !== undefined || siteIds !== undefined || allowLinkLogAccess !== undefined || hasLeftCompany !== undefined || commissionToPartyFund !== undefined)) {
       return NextResponse.json({ error: "Forbidden: Only administrators can modify roles and permissions." }, { status: 403 });
-    }
-
-    // Get target user role
-    const targetUser = await prisma.user.findUnique({
-      where: { id: parseInt(id) },
-      select: { role: true },
-    });
-    if (!targetUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Only SUPER_ADMIN can modify other SUPER_ADMIN users
@@ -210,7 +401,7 @@ export async function PATCH(
     const updated = await prisma.user.update({
       where: { id: parseInt(id) },
       data: {
-        ...(name ? { name: name.trim() } : {}),
+        ...(finalSanitizedName ? { name: finalSanitizedName } : {}),
         ...(image !== undefined ? { image } : {}),
         ...(role ? { role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" } : {}),
         allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,
@@ -230,6 +421,11 @@ export async function PATCH(
         teamMembers: { select: { id: true, name: true } },
       },
     });
+
+    // Cascade display name update across notifications, link logs, history records, and products
+    if (finalSanitizedName && targetUser.name && finalSanitizedName !== targetUser.name) {
+      await cascadeUserNameUpdate(targetUser.id, targetUser.name, finalSanitizedName, targetUser.email || "");
+    }
 
     // If commissionToPartyFund is turned on, divert any existing pending commissions for this user to Party Fund
     if (commissionToPartyFund === true) {

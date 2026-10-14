@@ -583,15 +583,16 @@ export default function SettingsPage() {
                   required
                 />
                 <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-1.5">
-                  Only letters, spaces, hyphens, and apostrophes are allowed (no numbers or symbols like @, #, $, %, &).
+                  Only letters, spaces, hyphens, and apostrophes are allowed (no numbers or symbols). Updating will reflect consistently across notifications, activity logs, and your profile.
                 </p>
               </div>
 
               {/* Email Address (Read-Only) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider">
-                    Email Address
+                  <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Login Email (Read-Only)</span>
                   </label>
                   <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Google OAuth Verified
@@ -603,12 +604,12 @@ export default function SettingsPage() {
                     value={email}
                     readOnly
                     disabled
-                    className="w-full px-4 py-2.5 bg-[#FAF9F5] border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-500 focus:outline-none cursor-not-allowed"
+                    className="w-full px-4 py-2.5 bg-[#FAF9F5] border border-[#CBCBCB] rounded-xl text-sm font-semibold text-slate-500 focus:outline-none cursor-not-allowed select-none"
                   />
                   <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Managed via OAuth authentication. To change your primary email, contact system administration.
+                  Login email is permanently linked to your company Google account (@fishtailinfosolutions.com) and cannot be changed.
                 </p>
               </div>
 

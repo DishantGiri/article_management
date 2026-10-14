@@ -33,9 +33,9 @@ import {
   Building2,
   Eye,
   CheckSquare,
-  Square,
   AlertCircle,
   Clock,
+  Lock,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import CustomSelect from "@/components/CustomSelect";
@@ -625,10 +625,13 @@ export default function UsersPage() {
       const payload: any = {
         ...form,
         name: trimmedName,
-        email: form.email.trim().toLowerCase(),
         creatorId: currentUserId,
         siteAccess,
       };
+
+      if (!editingUserId) {
+        payload.email = trimmedEmail;
+      }
 
       if (payload.hasLeftCompany) {
         payload.approved = false;
@@ -2090,7 +2093,7 @@ export default function UsersPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                    Full Name <span className="text-rose-500">*</span>
+                    {editingUserId ? "Display Name" : "Full Name"} <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -2123,15 +2126,17 @@ export default function UsersPage() {
                     </p>
                   ) : (
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                      Only letters, spaces, hyphens, and apostrophes are allowed (no special characters).
+                      Only letters, spaces, hyphens, and apostrophes are allowed (no numbers or symbols). {editingUserId ? "Updates will cascade to notifications and logs." : ""}
                     </p>
                   )}
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Email Address <span className="text-rose-500">*</span>
+                    <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      {editingUserId && <Lock className="w-3.5 h-3.5 text-slate-400" />}
+                      <span>{editingUserId ? "Login Email (Read-Only)" : "Email Address"}</span>
+                      <span className="text-rose-500">*</span>
                     </label>
                     {!editingUserId && form.email.trim() && !form.email.toLowerCase().endsWith("@fishtailinfosolutions.com") && (
                       <button
@@ -2156,12 +2161,14 @@ export default function UsersPage() {
                       type="email"
                       value={form.email}
                       disabled={!!editingUserId}
+                      readOnly={!!editingUserId}
                       onChange={(e) => {
+                        if (editingUserId) return;
                         setForm({ ...form, email: e.target.value });
                         if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
                         if (error) setError("");
                       }}
-                      className={`w-full px-3.5 py-2.5 bg-[#FAF9F5] dark:bg-slate-850 border rounded-xl text-xs font-semibold text-slate-800 dark:text-white focus:outline-none transition disabled:opacity-60 pr-9 placeholder:text-slate-400 ${!editingUserId && (
+                      className={`w-full px-3.5 py-2.5 ${editingUserId ? "bg-[#F5F4EF] dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed select-none" : "bg-[#FAF9F5] dark:bg-slate-850 text-slate-800 dark:text-white"} border rounded-xl text-xs font-semibold focus:outline-none transition pr-9 placeholder:text-slate-400 ${!editingUserId && (
                           ((formSubmitted || fieldErrors.email) && !form.email.trim()) ||
                           fieldErrors.email ||
                           (form.email.trim() && emailValidationError)
@@ -2173,7 +2180,11 @@ export default function UsersPage() {
                         }`}
                       placeholder="name@fishtailinfosolutions.com"
                     />
-                    {!editingUserId && (
+                    {editingUserId ? (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <Lock className="w-4 h-4 text-slate-400" />
+                      </div>
+                    ) : (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                         {((formSubmitted || fieldErrors.email) && !form.email.trim()) ||
                           fieldErrors.email ||
@@ -2211,7 +2222,7 @@ export default function UsersPage() {
                   )}
                   {editingUserId && (
                     <p className="text-[10px] text-slate-400 font-medium mt-1">
-                      Email address cannot be changed after account creation.
+                      Login email is managed via company Google OAuth and cannot be changed.
                     </p>
                   )}
                 </div>
