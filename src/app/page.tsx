@@ -53,6 +53,12 @@ import {
   GitCompare,
   Edit,
   Compass,
+  LayoutGrid,
+  List,
+  ArrowRight,
+  BookOpen,
+  SlidersHorizontal,
+  Tag,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartPieInteractive } from "@/components/ChartPieInteractive";
@@ -3855,6 +3861,19 @@ function WriterActiveFocusWorkspace({
   );
 }
 
+function getFlagEmoji(countryCode?: string | null): string {
+  if (!countryCode) return "";
+  const code = countryCode.trim().toUpperCase();
+  if (code.length !== 2) return "";
+  const iso = code === "UK" ? "GB" : code;
+  try {
+    const codePoints = iso.split("").map((c) => 127397 + c.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
+  } catch {
+    return "";
+  }
+}
+
 function WriterAvailableAssignments({
   pendingArticles,
   completedArticles,
@@ -3874,6 +3893,9 @@ function WriterAvailableAssignments({
 }) {
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState(globalSearchQuery || "");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [quickFilter, setQuickFilter] = useState<"ALL" | "WITH_LINKS" | "HIGH_PRIORITY" | "NEEDS_LINKS">("ALL");
+  const [sortBy, setSortBy] = useState<"DEFAULT" | "NEWEST" | "NAME" | "LINKS" | "PRIORITY">("DEFAULT");
 
   useEffect(() => {
     if (globalSearchQuery !== undefined) {
@@ -3906,125 +3928,293 @@ function WriterAvailableAssignments({
     return Array.from(c).sort();
   }, [pendingArticles]);
 
+  const totalCount = pendingArticles.length;
+  const withLinksCount = useMemo(
+    () => pendingArticles.filter((a) => (a.product?.linkLogs?.length || 0) > 0).length,
+    [pendingArticles]
+  );
+  const highPriorityCount = useMemo(
+    () => pendingArticles.filter((a) => a.priority === "HIGH").length,
+    [pendingArticles]
+  );
+  const needsLinksCount = useMemo(
+    () => pendingArticles.filter((a) => !a.product?.linkLogs || a.product.linkLogs.length === 0).length,
+    [pendingArticles]
+  );
+
   const filteredArticles = useMemo(() => {
-    const list = pendingArticles.filter((a) => {
+    let list = pendingArticles.filter((a) => {
       const matchSearch =
         !searchQuery.trim() ||
         fuzzyMatchAny([a.product?.name, a.product?.slug, a.product?.site?.name, a.product?.category?.name], searchQuery);
       const matchSite = siteFilter === "ALL" || a.product?.site?.name === siteFilter;
       const matchCategory = categoryFilter === "ALL" || a.product?.category?.name === categoryFilter;
-      return matchSearch && matchSite && matchCategory;
+
+      let matchQuick = true;
+      if (quickFilter === "WITH_LINKS") {
+        matchQuick = Boolean(a.product?.linkLogs && a.product.linkLogs.length > 0);
+      } else if (quickFilter === "HIGH_PRIORITY") {
+        matchQuick = a.priority === "HIGH";
+      } else if (quickFilter === "NEEDS_LINKS") {
+        matchQuick = !a.product?.linkLogs || a.product.linkLogs.length === 0;
+      }
+
+      return matchSearch && matchSite && matchCategory && matchQuick;
     });
 
-    if (!searchQuery.trim()) return list;
-    const q = searchQuery.trim().toLowerCase();
-    return [...list].sort((a, b) => {
-      const aName = (a.product?.name || "").toLowerCase();
-      const bName = (b.product?.name || "").toLowerCase();
-      const aExact = aName === q ? 3 : aName.startsWith(q) ? 2 : (a.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
-      const bExact = bName === q ? 3 : bName.startsWith(q) ? 2 : (b.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
-      if (aExact !== bExact) return bExact - aExact;
-      return 0;
-    });
-  }, [pendingArticles, searchQuery, siteFilter, categoryFilter]);
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = [...list].sort((a, b) => {
+        const aName = (a.product?.name || "").toLowerCase();
+        const bName = (b.product?.name || "").toLowerCase();
+        const aExact = aName === q ? 3 : aName.startsWith(q) ? 2 : (a.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+        const bExact = bName === q ? 3 : bName.startsWith(q) ? 2 : (b.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
+        if (aExact !== bExact) return bExact - aExact;
+        return 0;
+      });
+    } else if (sortBy === "NEWEST") {
+      list = [...list].sort((a, b) => new Date(b.product?.addedAt || b.createdAt).getTime() - new Date(a.product?.addedAt || a.createdAt).getTime());
+    } else if (sortBy === "NAME") {
+      list = [...list].sort((a, b) => (a.product?.name || "").localeCompare(b.product?.name || ""));
+    } else if (sortBy === "LINKS") {
+      list = [...list].sort((a, b) => (b.product?.linkLogs?.length || 0) - (a.product?.linkLogs?.length || 0));
+    } else if (sortBy === "PRIORITY") {
+      list = [...list].sort((a, b) => (b.priority === "HIGH" ? 1 : 0) - (a.priority === "HIGH" ? 1 : 0));
+    }
+
+    return list;
+  }, [pendingArticles, searchQuery, siteFilter, categoryFilter, quickFilter, sortBy]);
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-all">
         {/* Header & Filter Controls */}
-        <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                Available Products ({filteredArticles.length})
-              </h2>
-              {filteredArticles.length !== pendingArticles.length && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#6D8196]/15 text-[#3D4F61] dark:text-slate-300">
-                  filtered from {pendingArticles.length}
+        <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-inner">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  Available Products
+                </h2>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {filteredArticles.length} Ready to Write
                 </span>
-              )}
+                {filteredArticles.length !== pendingArticles.length && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    filtered from {pendingArticles.length}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Select any ready product to inspect affiliate links, guidelines, target markets, and claim your assignment.
+              </p>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Select any ready product to inspect links, guidelines, and claim it
-            </p>
+
+            {/* Quick Actions & View Toggle */}
+            <div className="flex items-center gap-2.5 self-start lg:self-auto flex-wrap">
+              {/* View Switcher: Grid vs List */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/70 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`p-1.5 rounded-lg transition cursor-pointer ${
+                    viewMode === "grid"
+                      ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`p-1.5 rounded-lg transition cursor-pointer ${
+                    viewMode === "list"
+                      ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                  title="List View"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Sort Dropdown */}
+              <CustomSelect
+                value={sortBy}
+                onChange={(val) => setSortBy(val as any)}
+                options={[
+                  { value: "DEFAULT", label: "Default Order" },
+                  { value: "NEWEST", label: "Newest Added" },
+                  { value: "NAME", label: "Product Name (A-Z)" },
+                  { value: "LINKS", label: "Most Links First" },
+                  { value: "PRIORITY", label: "High Priority First" },
+                ]}
+                className="w-44"
+                triggerClassName="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-400 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+                portal={true}
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Search Input */}
-            <div className="relative min-w-[200px] flex-1 sm:flex-initial">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search by name, site, category..."
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#6D8196] text-slate-800 dark:text-slate-200"
-              />
-              {searchQuery && (
+          {/* Quick Filter Tabs & Search Row */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+            {/* Quick Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <button
+                type="button"
+                onClick={() => setQuickFilter("ALL")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  quickFilter === "ALL"
+                    ? "bg-[#6D8196] text-white shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span>All Products</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${quickFilter === "ALL" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                  {totalCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setQuickFilter("WITH_LINKS")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  quickFilter === "WITH_LINKS"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 hover:bg-emerald-100/60"
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Links Ready</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${quickFilter === "WITH_LINKS" ? "bg-white/20 text-white" : "bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"}`}>
+                  {withLinksCount}
+                </span>
+              </button>
+
+              {highPriorityCount > 0 && (
                 <button
-                  onClick={() => handleSearchChange("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  type="button"
+                  onClick={() => setQuickFilter("HIGH_PRIORITY")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                    quickFilter === "HIGH_PRIORITY"
+                      ? "bg-amber-500 text-white shadow-xs"
+                      : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 hover:bg-amber-100/60"
+                  }`}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                  <span>High Priority</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${quickFilter === "HIGH_PRIORITY" ? "bg-white/20 text-white" : "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200"}`}>
+                    {highPriorityCount}
+                  </span>
+                </button>
+              )}
+
+              {needsLinksCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setQuickFilter("NEEDS_LINKS")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                    quickFilter === "NEEDS_LINKS"
+                      ? "bg-slate-700 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <span>In Queue</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-extrabold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                    {needsLinksCount}
+                  </span>
                 </button>
               )}
             </div>
 
-            {/* Site Filter */}
-            {sites.length > 1 && (
-              <CustomSelect
-                value={siteFilter}
-                onChange={(val) => setSiteFilter(val)}
-                options={[
-                  { value: "ALL", label: "All Sites" },
-                  ...sites.map((site) => ({ value: site, label: site })),
-                ]}
-                className="w-36"
-                triggerClassName="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
-                portal={true}
-              />
-            )}
+            {/* Filter inputs row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Search Input */}
+              <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search name, slug, site..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="w-full pl-8 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#6D8196] text-slate-800 dark:text-slate-200"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => handleSearchChange("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-            {/* Category Filter */}
-            {categories.length > 1 && (
-              <CustomSelect
-                value={categoryFilter}
-                onChange={(val) => setCategoryFilter(val)}
-                options={[
-                  { value: "ALL", label: "All Categories" },
-                  ...categories.map((cat) => ({ value: cat, label: cat })),
-                ]}
-                className="w-36"
-                triggerClassName="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
-                portal={true}
-              />
-            )}
+              {/* Site Filter */}
+              {sites.length > 1 && (
+                <CustomSelect
+                  value={siteFilter}
+                  onChange={(val) => setSiteFilter(val)}
+                  options={[
+                    { value: "ALL", label: "All Sites" },
+                    ...sites.map((site) => ({ value: site, label: site })),
+                  ]}
+                  className="w-36"
+                  triggerClassName="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+                  portal={true}
+                />
+              )}
 
-            {/* Reset Filters */}
-            {(searchQuery || siteFilter !== "ALL" || categoryFilter !== "ALL") && (
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setSiteFilter("ALL");
-                  setCategoryFilter("ALL");
-                }}
-                className="px-2.5 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
-              >
-                Reset
-              </button>
-            )}
+              {/* Category Filter */}
+              {categories.length > 1 && (
+                <CustomSelect
+                  value={categoryFilter}
+                  onChange={(val) => setCategoryFilter(val)}
+                  options={[
+                    { value: "ALL", label: "All Categories" },
+                    ...categories.map((cat) => ({ value: cat, label: cat })),
+                  ]}
+                  className="w-36"
+                  triggerClassName="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#6D8196] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
+                  portal={true}
+                />
+              )}
+
+              {/* Reset Filters */}
+              {(searchQuery || siteFilter !== "ALL" || categoryFilter !== "ALL" || quickFilter !== "ALL" || sortBy !== "DEFAULT") && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSiteFilter("ALL");
+                    setCategoryFilter("ALL");
+                    setQuickFilter("ALL");
+                    setSortBy("DEFAULT");
+                  }}
+                  className="px-2.5 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Product Cards Grid */}
+        {/* Product Cards Grid or List View */}
         {filteredArticles.length === 0 ? (
           <div className="p-16 text-center text-slate-400 text-xs">
-            <Package className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-            <p className="font-semibold text-slate-600 dark:text-slate-400">No matching products found</p>
-            <p className="text-[11px] mt-1 text-slate-400">Try adjusting your search query or active site/category filters.</p>
+            <Package className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
+            <p className="font-bold text-sm text-slate-700 dark:text-slate-300">No matching products found</p>
+            <p className="text-xs mt-1 text-slate-400 max-w-sm mx-auto">
+              Try adjusting your search query, or clear active site and category filters to view available assignments.
+            </p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-5 sm:p-6 bg-slate-50/50 dark:bg-slate-950/30">
+        ) : viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-5 sm:p-6 bg-slate-50/50 dark:bg-slate-950/30">
             {filteredArticles.map((a: any) => {
               const linkCount = a.product.linkLogs?.length || 0;
               const geosSet = new Set<string>();
@@ -4032,74 +4222,282 @@ function WriterAvailableAssignments({
 
               a.product.linkLogs?.forEach((l: any) => {
                 if (l.affiliateName) affiliateSet.add(l.affiliateName);
-                l.geos?.forEach((g: any) => geosSet.add(g.geo));
+                l.geos?.forEach((g: any) => {
+                  const geoStr = typeof g === "string" ? g : g?.geo;
+                  if (geoStr) geosSet.add(geoStr.toUpperCase());
+                });
               });
+
+              if (a.product.country) {
+                geosSet.add(a.product.country.toUpperCase());
+              }
 
               const affiliateNames = Array.from(affiliateSet);
               const geos = Array.from(geosSet);
+              const productSlug = a.product.slug || a.product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
               return (
                 <div
                   key={a.id}
                   onClick={() => setSelectedArticle(a)}
-                  className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-[#6D8196] dark:hover:border-[#6D8196] shadow-2xs card-hover-effect cursor-pointer flex flex-col justify-between transition-all group min-h-[175px]"
+                  className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden group cursor-pointer"
                 >
-                  <div className="space-y-2.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold border border-slate-200/60 dark:border-slate-700">
-                          {a.product.site.name}
+                  {/* Subtle top gradient accent */}
+                  <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 opacity-70 group-hover:opacity-100 transition-opacity" />
+
+                  <div className="p-5 space-y-3.5 flex-1 flex flex-col">
+                    {/* Top Row: Site & Category Badges, Priority / ID */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/70 dark:border-slate-700 shadow-2xs truncate max-w-[150px]">
+                          <Globe className="w-3 h-3 text-blue-500 shrink-0" />
+                          <span className="truncate">{a.product.site.name}</span>
                         </span>
                         {a.product.category?.name && (
-                          <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-2.5 py-0.5 rounded-lg text-[10px] font-bold border border-indigo-200/50 dark:border-indigo-900/40">
-                            {a.product.category.name}
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-900/40 truncate max-w-[130px]">
+                            <Tag className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">{a.product.category.name}</span>
                           </span>
                         )}
                       </div>
-                      {a.priority === "HIGH" && (
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center gap-1 shrink-0">
-                          <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> High Priority
-                        </span>
-                      )}
+
+                      <div className="shrink-0 flex items-center gap-1.5">
+                        {a.priority === "HIGH" ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300/60 flex items-center gap-1 shadow-2xs animate-pulse">
+                            <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> High Priority
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-800">
+                            #{a.product.id}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <h3 className="font-extrabold text-slate-900 dark:text-white text-sm line-clamp-2 leading-snug group-hover:text-[#6D8196] transition-colors">
-                      {a.product.name}
-                    </h3>
-
-                    {/* Affiliate Networks & Geos Tags */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {affiliateNames.slice(0, 2).map((aff) => (
-                        <span
-                          key={aff}
-                          className="text-[10px] font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md border border-slate-200/50 dark:border-slate-700"
-                        >
-                          {aff}
+                    {/* Product Title & Slug */}
+                    <div>
+                      <h3 className="font-extrabold text-slate-900 dark:text-white text-base line-clamp-1 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight">
+                        {a.product.name}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/70 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-800 truncate max-w-[190px]">
+                          /{productSlug}
                         </span>
-                      ))}
-                      {affiliateNames.length > 2 && (
-                        <span className="text-[10px] text-slate-400">+{affiliateNames.length - 2}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(productSlug);
+                            toast.success("Product slug copied!");
+                          }}
+                          className="text-slate-400 hover:text-indigo-600 p-0.5 transition cursor-pointer"
+                          title="Copy slug"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Link Readiness Status Bar */}
+                    {linkCount > 0 ? (
+                      <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/50 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                          <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 truncate">
+                            {linkCount} Link{linkCount > 1 ? "s" : ""} Verified & Ready
+                          </span>
+                        </div>
+                        {affiliateNames.length > 0 && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100/80 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 shrink-0">
+                            {affiliateNames.slice(0, 2).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/50 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span className="text-xs font-semibold text-amber-800 dark:text-amber-300 truncate">
+                            Affiliate Links Pending Setup
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100/80 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 shrink-0">
+                          In Queue
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Target Market / Countries */}
+                    <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 pt-0.5">
+                      <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
+                        <Globe className="w-3.5 h-3.5 text-slate-400" /> Target Markets:
+                      </span>
+                      <div className="flex items-center gap-1 flex-wrap justify-end">
+                        {geos.length > 0 ? (
+                          geos.slice(0, 4).map((g) => (
+                            <span
+                              key={g}
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-mono border border-slate-200/60 dark:border-slate-700"
+                            >
+                              {getFlagEmoji(g)} {g}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                            {a.product.country ? `${getFlagEmoji(a.product.country)} ${a.product.country}` : "🌍 Tier-1 / Global"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Feature Badges & Guidelines */}
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      {a.product.previewLink && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200/50 dark:border-indigo-900/40">
+                          <Eye className="w-2.5 h-2.5" /> Preview Link
+                        </span>
                       )}
-                      {geos.length > 0 && (
-                        <span className="text-[10px] text-slate-400 font-mono ml-auto">
-                          {geos.slice(0, 3).join(", ")}
+                      {a.product.trendLink && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 px-2 py-0.5 rounded-md border border-sky-200/50 dark:border-sky-900/40">
+                          <TrendingUp className="w-2.5 h-2.5" /> Trend Specs
+                        </span>
+                      )}
+                      {a.product.remarks && (
+                        <span className="text-[10px] text-slate-400 truncate max-w-[200px] italic">
+                          &ldquo;{a.product.remarks}&rdquo;
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs mt-3">
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
-                      <LinkIcon className="w-3 h-3 text-slate-400" />
-                      {linkCount} link{linkCount === 1 ? "" : "s"} ready
+                  {/* Card Action Footer */}
+                  <div className="px-5 py-3.5 bg-slate-50/70 dark:bg-slate-850/60 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <LinkIcon className={`w-3.5 h-3.5 ${linkCount > 0 ? "text-emerald-500" : "text-amber-500"}`} />
+                      <span>{linkCount} link{linkCount === 1 ? "" : "s"} ready</span>
                     </span>
-                    <span className="font-bold text-[#6D8196] group-hover:text-[#5A6D81] flex items-center gap-1 text-xs">
-                      Inspect & Claim <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                    </span>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedArticle(a);
+                      }}
+                      className="px-4 py-1.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer group-hover:scale-[1.02]"
+                    >
+                      <span>Inspect & Claim</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
                   </div>
                 </div>
               );
             })}
+          </div>
+        ) : (
+          /* List View for High Velocity scanning */
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                  <th className="px-5 py-3">Product Name & Slug</th>
+                  <th className="px-4 py-3">Site & Category</th>
+                  <th className="px-4 py-3">Target Markets</th>
+                  <th className="px-4 py-3">Link Readiness</th>
+                  <th className="px-5 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filteredArticles.map((a: any) => {
+                  const linkCount = a.product.linkLogs?.length || 0;
+                  const geosSet = new Set<string>();
+                  a.product.linkLogs?.forEach((l: any) => {
+                    l.geos?.forEach((g: any) => {
+                      const geoStr = typeof g === "string" ? g : g?.geo;
+                      if (geoStr) geosSet.add(geoStr.toUpperCase());
+                    });
+                  });
+                  if (a.product.country) geosSet.add(a.product.country.toUpperCase());
+                  const geos = Array.from(geosSet);
+
+                  return (
+                    <tr
+                      key={a.id}
+                      onClick={() => setSelectedArticle(a)}
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-850/60 transition cursor-pointer group"
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-extrabold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                              {a.product.name}
+                            </p>
+                            <p className="font-mono text-[10px] text-slate-400 mt-0.5">
+                              /{a.product.slug || a.product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+                            </p>
+                          </div>
+                          {a.priority === "HIGH" && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                              HIGH
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">
+                            {a.product.site.name}
+                          </span>
+                          {a.product.category?.name && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
+                              {a.product.category.name}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {geos.length > 0 ? (
+                            geos.slice(0, 3).map((g) => (
+                              <span key={g} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold">
+                                {getFlagEmoji(g)} {g}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[11px] text-slate-400">🌍 Tier-1 Global</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {linkCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200/60 dark:border-emerald-800/60">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            {linkCount} Links Ready
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-lg border border-amber-200/60 dark:border-amber-800/60">
+                            <Clock className="w-3 h-3 text-amber-500" />
+                            Pending Setup
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedArticle(a);
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1 ml-auto cursor-pointer"
+                        >
+                          <span>Claim</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

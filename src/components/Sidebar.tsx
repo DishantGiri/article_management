@@ -827,6 +827,7 @@ export default function Sidebar() {
                                   if (r) {
                                     window.dispatchEvent(new CustomEvent("workspace-changed", { detail: { role: r } }));
                                   }
+                                  window.location.href = "/";
                                 }
                               } catch (err) {
                                 console.error("Failed to switch role:", err);
@@ -851,6 +852,7 @@ export default function Sidebar() {
                               if (res.ok) {
                                 await update({ role: null });
                                 window.dispatchEvent(new CustomEvent("workspace-changed", { detail: { role: null } }));
+                                window.location.href = "/";
                               }
                             } catch (err) {
                               console.error("Failed to switch role:", err);

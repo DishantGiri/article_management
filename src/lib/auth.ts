@@ -152,6 +152,10 @@ export const authOptions: NextAuthOptions = {
       if (trigger === "update" && session) {
         if (session.name) token.name = session.name;
         if (session.image !== undefined) token.image = session.image;
+        if (session.role !== undefined) {
+          token.role = session.role;
+          token.roles = session.role ? [session.role] : [];
+        }
       }
       return token;
     },
