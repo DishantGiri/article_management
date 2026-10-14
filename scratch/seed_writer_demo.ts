@@ -58,7 +58,7 @@ async function main() {
           name: item.name,
           slug,
           siteId: item.siteId,
-          categoryId: item.categoryId,
+          categoryId: item.categoryId || germanNutra?.id || 27,
           country: item.country,
           addedById,
           previewLink: "https://example.com/preview/" + slug,
