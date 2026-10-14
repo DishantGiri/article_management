@@ -135,8 +135,8 @@ export default function ProductTypesAndCategoriesPage() {
     const trimmed = typeName.trim().replace(/\s+/g, " ");
     if (!trimmed) return;
 
-    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
-      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted.");
+    if (!/^[a-zA-Z0-9 &'\-/]+$/.test(trimmed)) {
+      setError("Special characters are not allowed. Only letters, numbers, spaces, and (&, -, ', /) are permitted.");
       return;
     }
 
@@ -168,8 +168,8 @@ export default function ProductTypesAndCategoriesPage() {
     const trimmed = typeName.trim().replace(/\s+/g, " ");
     if (!trimmed) return;
 
-    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
-      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted.");
+    if (!/^[a-zA-Z0-9 &'\-/]+$/.test(trimmed)) {
+      setError("Special characters are not allowed. Only letters, numbers, spaces, and (&, -, ', /) are permitted.");
       return;
     }
 
@@ -234,8 +234,8 @@ export default function ProductTypesAndCategoriesPage() {
     const trimmed = catName.trim().replace(/\s+/g, " ");
     if (!trimmed) return;
 
-    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
-      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted.");
+    if (!/^[a-zA-Z0-9 &'\-/]+$/.test(trimmed)) {
+      setError("Special characters are not allowed. Only letters, numbers, spaces, and (&, -, ', /) are permitted.");
       return;
     }
 
@@ -267,8 +267,8 @@ export default function ProductTypesAndCategoriesPage() {
     const trimmed = catName.trim().replace(/\s+/g, " ");
     if (!trimmed) return;
 
-    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
-      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted.");
+    if (!/^[a-zA-Z0-9 &'\-/]+$/.test(trimmed)) {
+      setError("Special characters are not allowed. Only letters, numbers, spaces, and (&, -, ', /) are permitted.");
       return;
     }
 
