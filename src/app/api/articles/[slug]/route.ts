@@ -56,33 +56,41 @@ export async function GET(
   // Authorize check: WRITER is restricted by SiteAccess; TEAM_LEAD can only view team articles or pending pool
   const userId = Number(session.user.id);
   const userRole = session.user.role;
+  const userRoles: string[] = (session.user as any)?.roles || [];
+  const isSuperOrAdmin =
+    userRole === "SUPER_ADMIN" ||
+    userRole === "ADMIN" ||
+    userRoles.includes("SUPER_ADMIN") ||
+    userRoles.includes("ADMIN");
 
-  const canReviewSite = await canUserReviewOnSite(userId, userRole, article.product.siteId);
-  const canWriteSite = await canUserWriteOnSite(userId, userRole, article.product.siteId);
+  if (!isSuperOrAdmin) {
+    const canReviewSite = await canUserReviewOnSite(userId, userRole, article.product.siteId);
+    const canWriteSite = await canUserWriteOnSite(userId, userRole, article.product.siteId);
 
-  if (userRole === "WRITER" || canWriteSite) {
-    const isAssignedWriter = article.writerId === userId;
-    if (!isAssignedWriter && !canWriteSite) {
-      const access = await prisma.siteAccess.findUnique({
-        where: {
-          userId_siteId: {
-            userId,
-            siteId: article.product.siteId,
+    if (userRole === "WRITER" || canWriteSite) {
+      const isAssignedWriter = article.writerId === userId;
+      if (!isAssignedWriter && !canWriteSite) {
+        const access = await prisma.siteAccess.findUnique({
+          where: {
+            userId_siteId: {
+              userId,
+              siteId: article.product.siteId,
+            },
           },
-        },
-      });
-      if (!access) {
-        return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+        });
+        if (!access) {
+          return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+        }
       }
-    }
-  } else if (userRole === "TEAM_LEAD" || canReviewSite) {
-    const isUnderTL =
-      article.status === "PENDING" ||
-      article.writerId === userId ||
-      article.writer?.teamLeadId === userId ||
-      canReviewSite;
-    if (!isUnderTL) {
-      return NextResponse.json({ error: "Access denied: This article is not under your team." }, { status: 403 });
+    } else if (userRole === "TEAM_LEAD" || canReviewSite) {
+      const isUnderTL =
+        article.status === "PENDING" ||
+        article.writerId === userId ||
+        article.writer?.teamLeadId === userId ||
+        canReviewSite;
+      if (!isUnderTL) {
+        return NextResponse.json({ error: "Access denied: This article is not under your team." }, { status: 403 });
+      }
     }
   }
 

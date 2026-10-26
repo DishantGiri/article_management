@@ -163,33 +163,43 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   };
 
   useEffect(() => {
+    const handleWorkspaceChanged = (e: any) => {
+      if (e.detail?.role) {
+        setCurrentUserRole(e.detail.role.toUpperCase());
+      }
+    };
+    window.addEventListener("workspace-changed", handleWorkspaceChanged);
+    window.addEventListener("workspaceRoleChanged", handleWorkspaceChanged);
+    return () => {
+      window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+      window.removeEventListener("workspaceRoleChanged", handleWorkspaceChanged);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!session?.user?.id) return;
     const uId = session.user.id;
     setCurrentUserId(uId);
-    const uRole = session.user.role || "WRITER";
+    const storedRole = typeof window !== "undefined" ? localStorage.getItem("active_workspace_role") : null;
+    const uRole = (storedRole || session.user.role || "WRITER").toUpperCase();
     setCurrentUserRole(uRole);
 
-    if (uRole === "WRITER" || uRole === "LINKER") {
-      router.push("/");
-      return;
-    }
-
-      fetch(`/api/articles/${id}?userId=${uId}`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.error) {
-            setError(data.error);
-            setArticle(null);
-          } else {
-            setArticle(data);
-            if (data.priority) {
-              setRedoPriority(data.priority);
-            }
+    fetch(`/api/articles/${id}?userId=${uId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) {
+          setError(data.error);
+          setArticle(null);
+        } else {
+          setArticle(data);
+          if (data.priority) {
+            setRedoPriority(data.priority);
           }
-        })
-        .catch(() => setError("Failed to fetch article details"))
-        .finally(() => setLoading(false));
-    }, [id, router, session?.user?.id]);
+        }
+      })
+      .catch(() => setError("Failed to fetch article details"))
+      .finally(() => setLoading(false));
+  }, [id, router, session?.user?.id]);
 
   useEffect(() => {
     if (article?.articleLink) {
