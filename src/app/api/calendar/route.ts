@@ -415,7 +415,17 @@ export async function GET(req: NextRequest) {
     });
 
     // Process Link Histories
-    linkHistories.forEach((hist) => {
+    const validLinkHistories = linkHistories.filter((hist) => {
+      const isNoChangeHistory =
+        hist.oldBridgeLink === hist.newBridgeLink &&
+        hist.oldBuyLink === hist.newBuyLink &&
+        hist.oldAffiliateLink === hist.newAffiliateLink &&
+        hist.oldStatus === hist.newStatus &&
+        (hist.oldRemarks || "").trim() === (hist.newRemarks || "").trim();
+      return !isNoChangeHistory;
+    });
+
+    validLinkHistories.forEach((hist) => {
       addActivity(hist.updatedAt, {
         id: `linkhist-${hist.id}`,
         time: toNpt(hist.updatedAt).format("hh:mm A"),
@@ -467,7 +477,7 @@ export async function GET(req: NextRequest) {
     let totalWorkingDays = 0;
     let totalNonWorkingDays = 0;
     const totalMonthArticles = articlesCompleted.length;
-    const totalMonthLinks = linksAdded.length + linkHistories.length;
+    const totalMonthLinks = linksAdded.length + validLinkHistories.length;
     const totalMonthWritingTime = articlesCompleted.reduce((acc, a) => acc + (a.writingTimeMin || 0), 0);
 
     const days = [];

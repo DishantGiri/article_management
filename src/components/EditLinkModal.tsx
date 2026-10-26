@@ -497,6 +497,120 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
     affiliateEntries,
   ]);
 
+  // Check if any fields actually changed compared to the original link
+  const hasChanges = useMemo(() => {
+    if (!link) return false;
+
+    const originalBridge = (link.bridgePageLink || "").trim();
+    const newBridge = (bridgePageLink || "").trim();
+
+    const originalBuy = (link.buyLink || "").trim();
+    const newBuy = (buyLink || "").trim();
+
+    const countryAffNames = countryLinks.map((c) => c.affiliateName.trim()).filter(Boolean);
+    const uniqueAffNames = Array.from(new Set(countryAffNames));
+
+    const primaryAffName = useCountrySpecificLinks
+      ? countryLinks[0]?.affiliateName.trim() || defaultAffiliateName || allAffiliates[0] || "Standard"
+      : affiliateEntries[0]?.affiliateName.trim() || "Standard";
+
+    const displayAffiliateName = uniqueAffNames.length > 1
+      ? uniqueAffNames.join(", ")
+      : primaryAffName;
+
+    const primaryAffLink = useCountrySpecificLinks
+      ? countryLinks[0]?.affiliateLink.trim() || ""
+      : affiliateEntries[0]?.affiliateLink.trim() || "";
+
+    const originalAffName = (link.affiliateName || "").trim();
+    const newAffName = (displayAffiliateName || "").trim();
+
+    const originalAffLink = (link.affiliateLink || "").trim();
+    const newAffLink = (primaryAffLink || "").trim();
+
+    const originalStatus = link.status || "REQUESTED";
+    const newStatus = status || "REQUESTED";
+
+    const originalRemarks = (link.linkerRemarks || "").trim();
+    const cleanRemarks = originalRemarks
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("[Flagged by"))
+      .join("\n")
+      .trim();
+    const newRemarks = (linkerRemarks || "").trim();
+
+    const remarksChanged =
+      newRemarks !== originalRemarks &&
+      newRemarks !== cleanRemarks;
+
+    const productChanged = Number(productId) !== Number(link.productId);
+    const statusChanged = newStatus !== originalStatus;
+    const bridgeChanged = newBridge !== originalBridge;
+    const buyChanged = newBuy !== originalBuy;
+    const affNameChanged = newAffName !== originalAffName;
+    const affLinkChanged = newAffLink !== originalAffLink;
+
+    const currentGeos = useCountrySpecificLinks
+      ? countryLinks.map((c) => ({
+          geo: c.geo.trim().toUpperCase(),
+          affiliateLink: c.affiliateLink.trim(),
+          affiliateName: c.affiliateName.trim(),
+        }))
+      : geos.map((g) => ({
+          geo: g.trim().toUpperCase(),
+          affiliateLink: primaryAffLink.trim(),
+          affiliateName: primaryAffName.trim(),
+        }));
+
+    const originalGeos = (link.geos || [])
+      .map((g) => ({
+        geo: g.geo.trim().toUpperCase(),
+        affiliateLink: (g.affiliateLink || link.affiliateLink || "").trim(),
+        affiliateName: (g.affiliateName || link.affiliateName || "").trim(),
+      }))
+      .sort((a, b) => a.geo.localeCompare(b.geo));
+
+    const newGeosSorted = [...currentGeos].sort((a, b) => a.geo.localeCompare(b.geo));
+
+    let geosChanged = originalGeos.length !== newGeosSorted.length;
+    if (!geosChanged) {
+      for (let i = 0; i < originalGeos.length; i++) {
+        if (
+          originalGeos[i].geo !== newGeosSorted[i].geo ||
+          originalGeos[i].affiliateLink !== newGeosSorted[i].affiliateLink ||
+          originalGeos[i].affiliateName !== newGeosSorted[i].affiliateName
+        ) {
+          geosChanged = true;
+          break;
+        }
+      }
+    }
+
+    return (
+      productChanged ||
+      statusChanged ||
+      bridgeChanged ||
+      buyChanged ||
+      affNameChanged ||
+      affLinkChanged ||
+      remarksChanged ||
+      geosChanged
+    );
+  }, [
+    link,
+    productId,
+    status,
+    bridgePageLink,
+    buyLink,
+    linkerRemarks,
+    useCountrySpecificLinks,
+    countryLinks,
+    affiliateEntries,
+    defaultAffiliateName,
+    allAffiliates,
+    geos,
+  ]);
+
   const handleSubmit = async () => {
     if (!link) return;
     if (!productId) {
@@ -557,6 +671,12 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       }
     }
 
+    if (!hasChanges) {
+      toast("No changes made", { icon: "ℹ️" });
+      onClose();
+      return;
+    }
+
     setSubmitting(true);
     setError("");
 
@@ -610,6 +730,14 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Failed to update link");
+      }
+
+      const resData = await res.json().catch(() => ({}));
+      if (resData.noChanges || resData.message === "No changes made") {
+        toast("No changes made", { icon: "ℹ️" });
+        if (onSuccess) onSuccess();
+        onClose();
+        return;
       }
 
       toast.success(
@@ -1501,7 +1629,9 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                   ? !bridgePageLink?.trim() || !buyLink?.trim()
                     ? "Bridge Page Link and Buy Link (Buy Now) are both required before saving"
                     : "Please configure all required fields (Product, GEOs, Country Links, Bridge Link, Buy Link)"
-                  : undefined
+                  : !hasChanges
+                    ? "No changes made"
+                    : undefined
               }
               className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
             >

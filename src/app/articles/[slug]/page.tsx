@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState, use, useRef } from "react";
+import { useEffect, useState, use, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileText,
@@ -33,6 +33,7 @@ import {
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
+import { consolidateLinkLogs } from "@/lib/utils";
 import LoadingScreen from "@/components/LoadingScreen";
 import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
@@ -381,6 +382,10 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   }
 
   const { product } = article;
+  const consolidatedLinkLogs = useMemo(() => {
+    return consolidateLinkLogs(product?.linkLogs);
+  }, [product?.linkLogs]);
+
   const isManager =
     currentUserRole === "TEAM_LEAD" ||
     currentUserRole === "ADMIN" ||
@@ -1059,7 +1064,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <LinkIcon className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
-              Tracked Links & GEO Networks ({product.linkLogs?.length || 0})
+              Tracked Links & GEO Networks ({consolidatedLinkLogs.length})
             </h3>
 
             {/* Dedicated Product Preview Link if present */}
@@ -1101,9 +1106,9 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
               </div>
             )}
 
-            {product.linkLogs?.length > 0 ? (
+            {consolidatedLinkLogs.length > 0 ? (
               <div className="space-y-3">
-                {product.linkLogs.map((log: any) => (
+                {consolidatedLinkLogs.map((log: any) => (
                   <div key={log.id} className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{log.affiliateName}</span>

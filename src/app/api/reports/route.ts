@@ -299,7 +299,17 @@ export async function GET(req: NextRequest) {
       addedAt: l.addedAt,
     }));
 
-    const linkerOtherWorkList = linkerHistories.map((h) => ({
+    const linkerOtherWorkList = linkerHistories
+      .filter((h) => {
+        const isNoChangeHistory =
+          h.oldBridgeLink === h.newBridgeLink &&
+          h.oldBuyLink === h.newBuyLink &&
+          h.oldAffiliateLink === h.newAffiliateLink &&
+          h.oldStatus === h.newStatus &&
+          (h.oldRemarks || "").trim() === (h.newRemarks || "").trim();
+        return !isNoChangeHistory;
+      })
+      .map((h) => ({
       id: `linkhist-${h.id}`,
       linkId: h.linkLogId,
       productName: h.linkLog?.product?.name || "Untitled Product",

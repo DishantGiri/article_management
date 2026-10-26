@@ -14,7 +14,16 @@ export async function GET(
       },
       orderBy: { updatedAt: "desc" },
     });
-    return NextResponse.json(history);
+    const validHistory = history.filter((hist) => {
+      const isNoChangeHistory =
+        hist.oldBridgeLink === hist.newBridgeLink &&
+        hist.oldBuyLink === hist.newBuyLink &&
+        hist.oldAffiliateLink === hist.newAffiliateLink &&
+        hist.oldStatus === hist.newStatus &&
+        (hist.oldRemarks || "").trim() === (hist.newRemarks || "").trim();
+      return !isNoChangeHistory;
+    });
+    return NextResponse.json(validHistory);
   } catch (err) {
     console.error("[GET /api/links/:id/history]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -5,6 +5,7 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canUserReviewOnSite, canUserWriteOnSite } from "@/lib/permissions";
+import { consolidateLinkLogs } from "@/lib/utils";
 
 // GET /api/articles/[slug]
 export async function GET(
@@ -83,6 +84,10 @@ export async function GET(
     if (!isUnderTL) {
       return NextResponse.json({ error: "Access denied: This article is not under your team." }, { status: 403 });
     }
+  }
+
+  if (article?.product?.linkLogs) {
+    (article.product as any).linkLogs = consolidateLinkLogs(article.product.linkLogs);
   }
 
   return NextResponse.json(article);
@@ -983,6 +988,10 @@ export async function PATCH(
       }
     } catch (historyErr) {
       console.error("Failed to write article history:", historyErr);
+    }
+
+    if (updated?.product?.linkLogs) {
+      (updated.product as any).linkLogs = consolidateLinkLogs(updated.product.linkLogs);
     }
 
     return NextResponse.json(updated);

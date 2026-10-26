@@ -75,6 +75,7 @@ import AddProductModal from "@/components/AddProductModal";
 import EditProductModal from "@/components/EditProductModal";
 import AddLinkModal from "@/components/AddLinkModal";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
+import { consolidateLinkLogs } from "@/lib/utils";
 
 interface DashboardData {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER";
@@ -3329,16 +3330,21 @@ function WriterActiveFocusWorkspace({
                   </p>
                 </div>
               </div>
-              {article.product.linkLogs?.length > 0 && (
-                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                  {article.product.linkLogs.length} {article.product.linkLogs.length === 1 ? "Link" : "Links"} Configured
-                </span>
-              )}
+              {(() => {
+                const count = consolidateLinkLogs(article.product.linkLogs).length;
+                return count > 0 ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                    {count} {count === 1 ? "Link" : "Links"} Configured
+                  </span>
+                ) : null;
+              })()}
             </div>
 
-            {article.product.linkLogs?.length > 0 ? (
-              <div className="space-y-4">
-                {article.product.linkLogs.map((log: any) => {
+            {(() => {
+              const consolidatedLogs = consolidateLinkLogs(article.product.linkLogs);
+              return consolidatedLogs.length > 0 ? (
+                <div className="space-y-4">
+                  {consolidatedLogs.map((log: any) => {
                   const hasGeos = log.geos && log.geos.length > 0;
                   return (
                     <div
@@ -3605,7 +3611,10 @@ function WriterActiveFocusWorkspace({
                   The linking team is preparing the tracking links for this product. You can continue writing your article in the meantime.
                 </p>
               </div>
-            )}
+            );
+          })()}
+
+
           </div>
         </div>
 
@@ -4574,13 +4583,16 @@ function WriterAvailableAssignments({
               )}
 
               {/* Configured Links Preview */}
-              {selectedArticle.product.linkLogs && selectedArticle.product.linkLogs.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-                    Configured Links ({selectedArticle.product.linkLogs.length})
-                  </span>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {selectedArticle.product.linkLogs.map((log: any) => (
+              {(() => {
+                const drawerLogs = consolidateLinkLogs(selectedArticle.product.linkLogs);
+                if (!drawerLogs || drawerLogs.length === 0) return null;
+                return (
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Configured Links ({drawerLogs.length})
+                    </span>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {drawerLogs.map((log: any) => (
                       <div
                         key={log.id}
                         className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs flex items-center justify-between gap-3"
@@ -4617,9 +4629,10 @@ function WriterAvailableAssignments({
                         </div>
                       </div>
                     ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {selectedArticle.product.remarks && (
                 <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-xl border border-amber-200/80 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200">

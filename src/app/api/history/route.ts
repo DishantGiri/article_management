@@ -139,7 +139,17 @@ export async function GET() {
       };
     });
 
-    const formattedLinks = linkHistories.map((h) => {
+    const formattedLinks = linkHistories
+      .filter((h) => {
+        const isNoChangeHistory =
+          h.oldBridgeLink === h.newBridgeLink &&
+          h.oldBuyLink === h.newBuyLink &&
+          h.oldAffiliateLink === h.newAffiliateLink &&
+          h.oldStatus === h.newStatus &&
+          (h.oldRemarks || "").trim() === (h.newRemarks || "").trim();
+        return !isNoChangeHistory;
+      })
+      .map((h) => {
       const oldL = h.oldBridgeLink || h.oldBuyLink || h.oldAffiliateLink;
       const newL = h.newBridgeLink || h.newBuyLink || h.newAffiliateLink;
       const isFlaggedIssue =

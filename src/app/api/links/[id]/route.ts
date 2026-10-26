@@ -84,6 +84,7 @@ export async function PATCH(
     const existing = await prisma.linkLog.findUnique({
       where: { id: parseInt(id) },
       include: {
+        geos: true,
         product: {
           select: {
             id: true,
@@ -130,17 +131,45 @@ export async function PATCH(
       }).filter((item: any) => Boolean(item.geo));
     }
 
-    if (geosToSet !== null) {
-      await prisma.linkGeo.deleteMany({
-        where: { linkLogId: parseInt(id) },
-      });
-    }
-
     let targetAffiliateName = affiliateName !== undefined ? affiliateName : existing.affiliateName;
     if (!targetAffiliateName && geosToSet && geosToSet.length > 0) {
       const distinctNames = Array.from(new Set(geosToSet.map((g) => g.affiliateName).filter(Boolean)));
       if (distinctNames.length > 0) {
         targetAffiliateName = distinctNames.join(", ");
+      }
+    }
+
+    let geosChanged = false;
+    if (geosToSet !== null) {
+      const existingGeos = (existing.geos || [])
+        .map((g) => ({
+          geo: g.geo.trim().toUpperCase(),
+          affiliateLink: (g.affiliateLink || existing.affiliateLink || "").trim(),
+          affiliateName: (g.affiliateName || existing.affiliateName || "").trim(),
+        }))
+        .sort((a, b) => a.geo.localeCompare(b.geo));
+
+      const newGeos = geosToSet
+        .map((g) => ({
+          geo: g.geo.trim().toUpperCase(),
+          affiliateLink: (g.affiliateLink || affiliateLink || existing.affiliateLink || "").trim(),
+          affiliateName: (g.affiliateName || targetAffiliateName || existing.affiliateName || "").trim(),
+        }))
+        .sort((a, b) => a.geo.localeCompare(b.geo));
+
+      if (existingGeos.length !== newGeos.length) {
+        geosChanged = true;
+      } else {
+        for (let i = 0; i < existingGeos.length; i++) {
+          if (
+            existingGeos[i].geo !== newGeos[i].geo ||
+            existingGeos[i].affiliateLink !== newGeos[i].affiliateLink ||
+            existingGeos[i].affiliateName !== newGeos[i].affiliateName
+          ) {
+            geosChanged = true;
+            break;
+          }
+        }
       }
     }
 
@@ -166,6 +195,40 @@ export async function PATCH(
       formattedRemarks = `[Flagged by ${callerLabel} • ${dateStr}]: ${issueText}${currentRemarks ? `\n${currentRemarks}` : ""}`;
     }
 
+    const hasChanges =
+      (updatedBridge !== undefined && (updatedBridge || "") !== (existing.bridgePageLink || "")) ||
+      (updatedBuy !== undefined && (updatedBuy || "") !== (existing.buyLink || "")) ||
+      (targetAffiliateName !== undefined && (targetAffiliateName || "").trim() !== (existing.affiliateName || "").trim()) ||
+      (affiliateLink !== undefined && (affiliateLink || "").trim() !== (existing.affiliateLink || "").trim()) ||
+      (targetStatus !== undefined && targetStatus !== existing.status) ||
+      (formattedRemarks !== undefined && (formattedRemarks || "").trim() !== (existing.linkerRemarks || "").trim()) ||
+      (productId !== undefined && Number(productId) !== existing.productId) ||
+      geosChanged ||
+      isRaisingIssue;
+
+    if (!hasChanges) {
+      // Prune duplicate sibling records for the same product and affiliate network
+      await prisma.linkLog.deleteMany({
+        where: {
+          id: { not: parseInt(id) },
+          productId: existing.productId,
+          affiliateName: existing.affiliateName,
+        },
+      });
+
+      return NextResponse.json({
+        ...existing,
+        message: "No changes made",
+        noChanges: true,
+      });
+    }
+
+    if (geosToSet !== null && geosChanged) {
+      await prisma.linkGeo.deleteMany({
+        where: { linkLogId: parseInt(id) },
+      });
+    }
+
     const updated = await prisma.linkLog.update({
       where: { id: parseInt(id) },
       data: {
@@ -177,7 +240,7 @@ export async function PATCH(
         ...(productId !== undefined ? { productId: Number(productId) } : {}),
         ...(targetAffiliateName !== undefined ? { affiliateName: targetAffiliateName } : {}),
         ...(affiliateLink !== undefined ? { affiliateLink } : {}),
-        ...(geosToSet !== null
+        ...(geosToSet !== null && geosChanged
           ? {
             geos: {
               create: geosToSet.map((item) => ({
@@ -201,18 +264,17 @@ export async function PATCH(
       },
     });
 
-    // Record History Log
-    const hasChanges =
-      updated.bridgePageLink !== existing.bridgePageLink ||
-      updated.buyLink !== existing.buyLink ||
-      updated.affiliateName !== existing.affiliateName ||
-      updated.affiliateLink !== existing.affiliateLink ||
-      updated.status !== existing.status ||
-      updated.linkerRemarks !== existing.linkerRemarks ||
-      geosToSet !== null ||
-      isRaisingIssue;
+    // Prune duplicate sibling records for the same product and affiliate network
+    await prisma.linkLog.deleteMany({
+      where: {
+        id: { not: parseInt(id) },
+        productId: updated.productId,
+        affiliateName: updated.affiliateName,
+      },
+    });
 
-    if (hasChanges && activeUserId) {
+
+    if (activeUserId) {
       await prisma.linkHistory.create({
         data: {
           linkLogId: updated.id,

@@ -249,32 +249,70 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Buy Link is required before saving links." }, { status: 400 });
     }
 
-    const createdLinks = await prisma.$transaction(
-      entriesToCreate.map((entry) => {
-        return prisma.linkLog.create({
-          data: {
+    const createdLinks = await prisma.$transaction(async (tx) => {
+      const results = [];
+      for (const entry of entriesToCreate) {
+        const existingLink = await tx.linkLog.findFirst({
+          where: {
             productId: parseInt(productId),
-            addedById: addedById,
-            bridgePageLink: bridgePageLink?.trim() || null,
-            buyLink: buyLink?.trim() || null,
             affiliateName: entry.affiliateName.trim(),
-            affiliateLink: entry.affiliateLink.trim(),
-            status: targetStatus as any,
-            linkerRemarks: linkerRemarks?.trim() || null,
-            geos: {
-              create: entry.geos.map((g) => ({
-                geo: g.geo,
-                affiliateLink: g.affiliateLink || entry.affiliateLink.trim(),
-                affiliateName: g.affiliateName || entry.affiliateName.trim(),
-              })),
-            },
           },
-          include: { geos: true, addedBy: { select: { name: true } } },
+          include: { geos: true },
         });
-      })
-    );
 
-    // Log creation history for each created link log
+        if (existingLink) {
+          await tx.linkGeo.deleteMany({
+            where: { linkLogId: existingLink.id },
+          });
+          const updated = await tx.linkLog.update({
+            where: { id: existingLink.id },
+            data: {
+              updatedById: addedById,
+              bridgePageLink: bridgePageLink?.trim() || null,
+              buyLink: buyLink?.trim() || null,
+              affiliateName: entry.affiliateName.trim(),
+              affiliateLink: entry.affiliateLink.trim(),
+              status: targetStatus as any,
+              linkerRemarks: linkerRemarks?.trim() || existingLink.linkerRemarks,
+              geos: {
+                create: entry.geos.map((g) => ({
+                  geo: g.geo,
+                  affiliateLink: g.affiliateLink || entry.affiliateLink.trim(),
+                  affiliateName: g.affiliateName || entry.affiliateName.trim(),
+                })),
+              },
+            },
+            include: { geos: true, addedBy: { select: { name: true } } },
+          });
+          results.push(updated);
+        } else {
+          const created = await tx.linkLog.create({
+            data: {
+              productId: parseInt(productId),
+              addedById: addedById,
+              bridgePageLink: bridgePageLink?.trim() || null,
+              buyLink: buyLink?.trim() || null,
+              affiliateName: entry.affiliateName.trim(),
+              affiliateLink: entry.affiliateLink.trim(),
+              status: targetStatus as any,
+              linkerRemarks: linkerRemarks?.trim() || null,
+              geos: {
+                create: entry.geos.map((g) => ({
+                  geo: g.geo,
+                  affiliateLink: g.affiliateLink || entry.affiliateLink.trim(),
+                  affiliateName: g.affiliateName || entry.affiliateName.trim(),
+                })),
+              },
+            },
+            include: { geos: true, addedBy: { select: { name: true } } },
+          });
+          results.push(created);
+        }
+      }
+      return results;
+    });
+
+    // Log history for each created or updated link log
     await prisma.$transaction(
       createdLinks.map((link) =>
         prisma.linkHistory.create({

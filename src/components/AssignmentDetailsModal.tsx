@@ -37,6 +37,7 @@ import {
 import { toast } from "react-hot-toast";
 import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
+import { consolidateLinkLogs } from "@/lib/utils";
 
 export interface AssignmentProduct {
   id: number;
@@ -378,7 +379,9 @@ export default function AssignmentDetailsModal({
     });
   }, [siteAvailability, siteFilterTab, siteSearchQuery]);
 
-  const linkLogs = product.linkLogs || [];
+  const linkLogs = useMemo(() => {
+    return consolidateLinkLogs(product.linkLogs || []);
+  }, [product.linkLogs]);
   const hasLinkLogs = linkLogs.length > 0;
   const currentLog = linkLogs[activeLogIndex] || linkLogs[0];
 

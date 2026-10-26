@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { consolidateLinkLogs } from "@/lib/utils";
 
 // GET /api/articles - list articles
 export async function GET(req: NextRequest) {
@@ -73,6 +74,12 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { updatedAt: "desc" },
   });
+
+  for (const a of articles) {
+    if (a.product?.linkLogs) {
+      (a.product as any).linkLogs = consolidateLinkLogs(a.product.linkLogs);
+    }
+  }
 
   return NextResponse.json(articles);
 }
