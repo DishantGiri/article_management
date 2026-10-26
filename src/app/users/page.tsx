@@ -119,9 +119,9 @@ const ROLE_STYLES: Record<string, { badge: string; avatar: string; border: strin
     border: "border-rose-200 dark:border-rose-900/60",
   },
   PRODUCT_RESEARCHER: {
-    badge: "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
-    avatar: "from-amber-500 to-yellow-600 text-white shadow-amber-500/20",
-    border: "border-amber-200 dark:border-amber-900/60",
+    badge: "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
+    avatar: "from-indigo-500 to-sky-600 text-white shadow-indigo-500/20",
+    border: "border-indigo-200 dark:border-indigo-900/60",
   },
 };
 
@@ -1219,16 +1219,32 @@ export default function UsersPage() {
                                   {roles.map((r) => (
                                     <span
                                       key={r}
-                                      title={r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "Team Lead"}
+                                      title={
+                                        r === "LINKER"
+                                          ? "Linker"
+                                          : r === "WRITER"
+                                          ? "Writer"
+                                          : r === "PRODUCT_RESEARCHER"
+                                          ? "Product Researcher"
+                                          : "Team Lead"
+                                      }
                                       className={`px-1 py-0.2 rounded text-[8px] font-extrabold ${
                                         r === "LINKER"
                                           ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
                                           : r === "WRITER"
                                           ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                                          : r === "PRODUCT_RESEARCHER"
+                                          ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
                                           : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                                       }`}
                                     >
-                                      {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "TL"}
+                                      {r === "LINKER"
+                                        ? "Linker"
+                                        : r === "WRITER"
+                                        ? "Writer"
+                                        : r === "PRODUCT_RESEARCHER"
+                                        ? "Researcher"
+                                        : "TL"}
                                     </span>
                                   ))}
                                 </span>
@@ -1460,15 +1476,32 @@ export default function UsersPage() {
                                     {roles.map((r) => (
                                       <span
                                         key={r}
+                                        title={
+                                          r === "LINKER"
+                                            ? "Linker"
+                                            : r === "WRITER"
+                                            ? "Writer"
+                                            : r === "PRODUCT_RESEARCHER"
+                                            ? "Product Researcher"
+                                            : "Team Lead"
+                                        }
                                         className={`px-1 py-0.2 rounded text-[8px] font-extrabold ${
                                           r === "LINKER"
                                             ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
                                             : r === "WRITER"
                                             ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                                            : r === "PRODUCT_RESEARCHER"
+                                            ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
                                             : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                                         }`}
                                       >
-                                        {r === "LINKER" ? "Linker" : r === "WRITER" ? "Writer" : "TL"}
+                                        {r === "LINKER"
+                                          ? "Linker"
+                                          : r === "WRITER"
+                                          ? "Writer"
+                                          : r === "PRODUCT_RESEARCHER"
+                                          ? "Researcher"
+                                          : "TL"}
                                       </span>
                                     ))}
                                   </span>
