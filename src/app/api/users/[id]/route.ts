@@ -328,10 +328,47 @@ export async function PATCH(
       }
     }
 
-    // Handle site access sync if siteAccess or siteIds is provided
-    const newRole = role || targetUser.role;
-    let siteAccessUpdate = undefined;
+    if (hasLeftCompany === true && approved === true) {
+      return NextResponse.json(
+        { error: "A former employee (who has left the company) cannot be granted active login access." },
+        { status: 400 }
+      );
+    }
+
+    // Enforce mutual exclusion: if hasLeftCompany is true, approved must be false (and commissionToPartyFund false)
+    // If approved is true, hasLeftCompany must be false
+    let finalApproved = typeof approved === 'boolean' ? approved : undefined;
+    let finalHasLeftCompany = typeof hasLeftCompany === 'boolean' ? hasLeftCompany : undefined;
+    let finalCommissionToPartyFund = typeof commissionToPartyFund === 'boolean' ? commissionToPartyFund : undefined;
+
+    if (finalHasLeftCompany === true) {
+      finalApproved = false;
+      finalCommissionToPartyFund = false;
+    } else if (finalApproved === true) {
+      finalHasLeftCompany = false;
+    }
+
     const incomingSiteAccess = body.siteAccess;
+
+    // Handle site access sync if siteAccess or siteIds is provided
+    let resolvedRole = role;
+    if (!resolvedRole && !targetUser.role) {
+      if (incomingSiteAccess && Array.isArray(incomingSiteAccess) && incomingSiteAccess.length > 0) {
+        const firstSa = incomingSiteAccess[0];
+        const firstRoles = Array.isArray(firstSa.roles)
+          ? firstSa.roles
+          : typeof firstSa.roles === "string"
+          ? firstSa.roles.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : [];
+        resolvedRole = firstSa.role || firstRoles[0] || "WRITER";
+      } else if (siteIds && Array.isArray(siteIds) && siteIds.length > 0) {
+        resolvedRole = "WRITER";
+      } else if (finalApproved === true) {
+        resolvedRole = "WRITER";
+      }
+    }
+    const newRole = resolvedRole || targetUser.role;
+    let siteAccessUpdate = undefined;
 
     if (incomingSiteAccess !== undefined && Array.isArray(incomingSiteAccess)) {
       siteAccessUpdate = {
@@ -378,32 +415,12 @@ export async function PATCH(
       resolvedTeamLeadId = teamLeadId && teamLeadId !== "none" && teamLeadId !== "" ? Number(teamLeadId) : null;
     }
 
-    if (hasLeftCompany === true && approved === true) {
-      return NextResponse.json(
-        { error: "A former employee (who has left the company) cannot be granted active login access." },
-        { status: 400 }
-      );
-    }
-
-    // Enforce mutual exclusion: if hasLeftCompany is true, approved must be false (and commissionToPartyFund false)
-    // If approved is true, hasLeftCompany must be false
-    let finalApproved = typeof approved === 'boolean' ? approved : undefined;
-    let finalHasLeftCompany = typeof hasLeftCompany === 'boolean' ? hasLeftCompany : undefined;
-    let finalCommissionToPartyFund = typeof commissionToPartyFund === 'boolean' ? commissionToPartyFund : undefined;
-
-    if (finalHasLeftCompany === true) {
-      finalApproved = false;
-      finalCommissionToPartyFund = false;
-    } else if (finalApproved === true) {
-      finalHasLeftCompany = false;
-    }
-
     const updated = await prisma.user.update({
       where: { id: parseInt(id) },
       data: {
         ...(finalSanitizedName ? { name: finalSanitizedName } : {}),
         ...(image !== undefined ? { image } : {}),
-        ...(role ? { role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" } : {}),
+        ...(resolvedRole ? { role: resolvedRole as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" } : {}),
         allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,
         ...(resolvedTeamLeadId !== undefined
           ? resolvedTeamLeadId

@@ -220,7 +220,7 @@ export default function Sidebar() {
       id: session.user.id,
       name: profileOverride.name ?? session.user.name ?? "User",
       email: session.user.email || "",
-      role: session.user.role as Role | null,
+      role: (session.user.role || (session.user as any)?.roles?.[0] || null) as Role | null,
       image: profileOverride.image !== undefined ? profileOverride.image : (session.user.image || null),
     }
     : null;
@@ -470,6 +470,20 @@ export default function Sidebar() {
       }
     }
   }, [session?.user, currentWorkspaceRole]);
+
+  // If session shows no role, poll user profile once in case admin just approved/assigned role
+  useEffect(() => {
+    if (session?.user?.id && !session.user.role && rawRoles.length === 0) {
+      fetch(`/api/users/${session.user.id}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((fresh) => {
+          if (fresh && (fresh.role || (fresh.siteAccess && fresh.siteAccess.length > 0))) {
+            update();
+          }
+        })
+        .catch(() => {});
+    }
+  }, [session?.user?.id, session?.user?.role, rawRoles.length, update]);
 
   useEffect(() => {
     const handleWorkspaceChanged = (e: any) => {
@@ -805,12 +819,22 @@ export default function Sidebar() {
                   {sessionRoles.length > 1 ? (
                     <div className="flex items-center gap-1 mt-0.5">
                       <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400">
-                        {effectiveWorkspace === "TEAM_LEAD" ? "TL Workspace" : effectiveWorkspace === "LINKER" ? "Linker Workspace" : "Writer Workspace"}
+                        {effectiveWorkspace === "TEAM_LEAD"
+                          ? "TL Workspace"
+                          : effectiveWorkspace === "LINKER"
+                          ? "Linker Workspace"
+                          : effectiveWorkspace === "PRODUCT_RESEARCHER"
+                          ? "PR Workspace"
+                          : effectiveWorkspace === "ADMIN"
+                          ? "Admin Workspace"
+                          : effectiveWorkspace === "SUPER_ADMIN"
+                          ? "Super Admin"
+                          : "Writer Workspace"}
                       </span>
                     </div>
-                  ) : currentUser.role ? (
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${ROLE_COLORS[currentUser.role as Role]}`}>
-                      {currentUser.role.replace("_", " ")}
+                  ) : (currentUser.role || sessionRoles[0] || userRole) ? (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${ROLE_COLORS[((currentUser.role || sessionRoles[0] || userRole) as Role)] || "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200"}`}>
+                      {(currentUser.role || sessionRoles[0] || userRole).replace("_", " ")}
                     </span>
                   ) : (
                     <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-full inline-block mt-0.5">

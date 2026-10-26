@@ -130,8 +130,6 @@ export const authOptions: NextAuthOptions = {
             token.name = dbUser.name;
             token.approved = dbUser.approved;
             token.image = dbUser.image;
-            token.role = dbUser.role; // Always authoritative from DB
-
             const roleSet = new Set<string>();
             if (dbUser.role) roleSet.add(dbUser.role.toUpperCase());
             (dbUser.siteAccess || []).forEach((sa) => {
@@ -143,7 +141,17 @@ export const authOptions: NextAuthOptions = {
                 });
               }
             });
+            const computedRole = dbUser.role || (roleSet.size > 0 ? Array.from(roleSet)[0] : null);
+            token.role = computedRole;
             token.roles = Array.from(roleSet);
+
+            // If user role is null in DB but site roles were assigned, persist the primary role to the User table
+            if (!dbUser.role && computedRole) {
+              prisma.user.update({
+                where: { id: dbUser.id },
+                data: { role: computedRole as any },
+              }).catch(() => {});
+            }
           }
         } catch (err) {
           console.error("Error in jwt callback fetching user:", err);
@@ -163,8 +171,9 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.name = token.name;
-        session.user.role = token.role;
-        session.user.roles = token.roles || (token.role ? [token.role] : []);
+        const fallbackRole = token.role || (token.roles && token.roles.length > 0 ? token.roles[0] : null);
+        session.user.role = fallbackRole;
+        session.user.roles = token.roles || (fallbackRole ? [fallbackRole] : []);
         session.user.approved = token.approved;
         session.user.image = token.image as string | null | undefined;
       }

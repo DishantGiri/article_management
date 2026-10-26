@@ -354,12 +354,18 @@ export default function UsersPage() {
         roles: selectedSiteRolesMap[siteId] || [migrateSitesUser.role || "WRITER"],
       }));
 
+      const primaryInferredRole =
+        migrateSitesUser.role ||
+        (selectedSiteIds.length > 0 && selectedSiteRolesMap[selectedSiteIds[0]]?.[0]) ||
+        "WRITER";
+
       const res = await fetch(`/api/users/${migrateSitesUser.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           siteAccess,
           siteIds: selectedSiteIds,
+          role: primaryInferredRole,
         }),
       });
       if (!res.ok) {
@@ -427,6 +433,10 @@ export default function UsersPage() {
       const payload: any = { approved: nextApproved };
       if (nextApproved) {
         payload.hasLeftCompany = false;
+        if (!u.role) {
+          const siteRole = u.siteAccess?.[0]?.roles?.split(",")?.[0]?.trim() || u.siteAccess?.[0]?.role;
+          payload.role = siteRole || "WRITER";
+        }
       }
       const res = await fetch(`/api/users/${u.id}`, {
         method: "PATCH",
