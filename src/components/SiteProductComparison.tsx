@@ -103,11 +103,46 @@ interface CompareData {
 }
 
 export default function SiteProductComparison({
-  currentUserRole = "LINKER",
+  currentUserRole = "",
 }: {
   currentUserRole?: string;
 }) {
   const { data: session } = useSession();
+  const [activeRole, setActiveRole] = useState<string>(() => {
+    if (currentUserRole) return currentUserRole.toUpperCase();
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("active_workspace_role");
+      if (stored) return stored.toUpperCase();
+    }
+    return "";
+  });
+
+  useEffect(() => {
+    if (currentUserRole) {
+      setActiveRole(currentUserRole.toUpperCase());
+    }
+  }, [currentUserRole]);
+
+  useEffect(() => {
+    const handleWorkspaceChanged = (e: any) => {
+      if (e.detail?.role) {
+        setActiveRole(e.detail.role.toUpperCase());
+      }
+    };
+    window.addEventListener("workspace-changed", handleWorkspaceChanged);
+    window.addEventListener("workspaceRoleChanged", handleWorkspaceChanged);
+    return () => {
+      window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+      window.removeEventListener("workspaceRoleChanged", handleWorkspaceChanged);
+    };
+  }, []);
+
+  const effectiveRole = (activeRole || currentUserRole || (session?.user?.role || "")).toUpperCase();
+  const canAddProducts =
+    effectiveRole === "LINKER" ||
+    effectiveRole === "ADMIN" ||
+    effectiveRole === "SUPER_ADMIN";
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<CompareData | null>(null);
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
@@ -716,7 +751,7 @@ export default function SiteProductComparison({
             Export CSV
           </button>
 
-          {(currentUserRole === "LINKER" || currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN") && (
+          {canAddProducts && (
             <button
               onClick={() => openBatchSync()}
               disabled={!data || data.stats.differentCount === 0}
@@ -1112,19 +1147,21 @@ export default function SiteProductComparison({
                             <span className="text-[10px] text-slate-400">
                               Writer: {prodA.writerName || "Unassigned"}
                             </span>
-                            <button
-                              onClick={() => handleQuickAdd(p, selectedSitesList[1].id)}
-                              disabled={isAdding}
-                              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 shadow-2xs transition cursor-pointer disabled:opacity-50"
-                              title={`Add to ${selectedSitesList[1].name}`}
-                            >
-                              {isAdding ? (
-                                <RefreshCw className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Plus className="w-3 h-3" />
-                              )}
-                              + Add to {selectedSitesList[1].name}
-                            </button>
+                            {canAddProducts && (
+                              <button
+                                onClick={() => handleQuickAdd(p, selectedSitesList[1].id)}
+                                disabled={isAdding}
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 shadow-2xs transition cursor-pointer disabled:opacity-50"
+                                title={`Add to ${selectedSitesList[1].name}`}
+                              >
+                                {isAdding ? (
+                                  <RefreshCw className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Plus className="w-3 h-3" />
+                                )}
+                                + Add to {selectedSitesList[1].name}
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -1226,19 +1263,21 @@ export default function SiteProductComparison({
                             <span className="text-[10px] text-slate-400">
                               Writer: {prodB.writerName || "Unassigned"}
                             </span>
-                            <button
-                              onClick={() => handleQuickAdd(p, selectedSitesList[0].id)}
-                              disabled={isAdding}
-                              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 shadow-2xs transition cursor-pointer disabled:opacity-50"
-                              title={`Add to ${selectedSitesList[0].name}`}
-                            >
-                              {isAdding ? (
-                                <RefreshCw className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Plus className="w-3 h-3" />
-                              )}
-                              + Add to {selectedSitesList[0].name}
-                            </button>
+                            {canAddProducts && (
+                              <button
+                                onClick={() => handleQuickAdd(p, selectedSitesList[0].id)}
+                                disabled={isAdding}
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 shadow-2xs transition cursor-pointer disabled:opacity-50"
+                                title={`Add to ${selectedSitesList[0].name}`}
+                              >
+                                {isAdding ? (
+                                  <RefreshCw className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Plus className="w-3 h-3" />
+                                )}
+                                + Add to {selectedSitesList[0].name}
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -1435,9 +1474,7 @@ export default function SiteProductComparison({
                                       Missing
                                     </span>
 
-                                    {(currentUserRole === "LINKER" ||
-                                      currentUserRole === "ADMIN" ||
-                                      currentUserRole === "SUPER_ADMIN") && (
+                                    {canAddProducts && (
                                       <div className="flex items-center gap-1">
                                         <button
                                           onClick={() => handleQuickAdd(p, site.id)}
@@ -1480,9 +1517,11 @@ export default function SiteProductComparison({
                 <span>
                   Showing <strong>{filteredProducts.length}</strong> of <strong>{data.comparedProducts.length}</strong> compared products
                 </span>
-                <span className="text-[11px] text-slate-400">
-                  Tip: Click <strong>&quot;+ Add&quot;</strong> to instantly clone a product onto that site. Click the slider icon to customize details.
-                </span>
+                {canAddProducts && (
+                  <span className="text-[11px] text-slate-400">
+                    Tip: Click <strong>&quot;+ Add&quot;</strong> to instantly clone a product onto that site. Click the slider icon to customize details.
+                  </span>
+                )}
               </div>
             </div>
           )}
