@@ -41,6 +41,7 @@ import {
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import AddProductModal, { InitialProductData } from "@/components/AddProductModal";
+import { getActiveWorkspace } from "@/lib/workspace";
 
 interface TrendmapProductItem {
   id: number;
@@ -218,11 +219,111 @@ export default function TrendmapProductsPage() {
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
 
   const userRole = (session?.user?.role || "").toUpperCase();
+  const rawRoles: string[] = (session?.user as any)?.roles || [];
+  const sessionRoles = useMemo(() => {
+    const list = [...rawRoles, userRole].filter(Boolean).map((r) => r.toUpperCase());
+    return Array.from(new Set(list));
+  }, [rawRoles, userRole]);
+
+  const [currentUserRole, setCurrentUserRole] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("active_workspace_role")?.toUpperCase() || "";
+    }
+    return "";
+  });
+
+  const [dbHasResearcherAccess, setDbHasResearcherAccess] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const handleWorkspaceChanged = (e: any) => {
+      if (e.detail?.role) {
+        setCurrentUserRole(e.detail.role.toUpperCase());
+      }
+    };
+    window.addEventListener("workspace-changed", handleWorkspaceChanged);
+    window.addEventListener("workspaceRoleChanged", handleWorkspaceChanged);
+    return () => {
+      window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+      window.removeEventListener("workspaceRoleChanged", handleWorkspaceChanged);
+    };
+  }, []);
+
+  const activeRole = useMemo(() => {
+    if (currentUserRole) return currentUserRole.toUpperCase();
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("active_workspace_role")?.toUpperCase();
+      if (stored) return stored;
+    }
+    return getActiveWorkspace(userRole, sessionRoles);
+  }, [currentUserRole, userRole, sessionRoles]);
+
+  // Check database siteAccess if session token has not updated yet
+  useEffect(() => {
+    if (session?.user?.id) {
+      const alreadyHasAccess =
+        userRole === "SUPER_ADMIN" ||
+        userRole === "ADMIN" ||
+        userRole === "LINKER" ||
+        userRole === "PRODUCT_RESEARCHER" ||
+        activeRole === "SUPER_ADMIN" ||
+        activeRole === "ADMIN" ||
+        activeRole === "LINKER" ||
+        activeRole === "PRODUCT_RESEARCHER" ||
+        sessionRoles.includes("SUPER_ADMIN") ||
+        sessionRoles.includes("ADMIN") ||
+        sessionRoles.includes("LINKER") ||
+        sessionRoles.includes("PRODUCT_RESEARCHER");
+
+      if (alreadyHasAccess) {
+        setDbHasResearcherAccess(true);
+        return;
+      }
+
+      fetch(`/api/users/${session.user.id}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (!data) {
+            setDbHasResearcherAccess(false);
+            return;
+          }
+          const siteRoles = (data.siteAccess || []).flatMap((sa: any) => {
+            const arr: string[] = [];
+            if (sa.role) arr.push(sa.role.toUpperCase());
+            if (sa.roles) {
+              sa.roles.split(",").forEach((r: string) => arr.push(r.trim().toUpperCase()));
+            }
+            if (sa.canAddProduct) arr.push("PRODUCT_RESEARCHER");
+            return arr;
+          });
+          const hasAccess =
+            data.role === "SUPER_ADMIN" ||
+            data.role === "ADMIN" ||
+            data.role === "LINKER" ||
+            data.role === "PRODUCT_RESEARCHER" ||
+            siteRoles.includes("PRODUCT_RESEARCHER") ||
+            siteRoles.includes("LINKER");
+          setDbHasResearcherAccess(Boolean(hasAccess));
+        })
+        .catch(() => {
+          setDbHasResearcherAccess(false);
+        });
+    }
+  }, [session?.user?.id, userRole, activeRole, sessionRoles]);
+
   const canAccess =
     userRole === "SUPER_ADMIN" ||
     userRole === "ADMIN" ||
     userRole === "LINKER" ||
-    userRole === "PRODUCT_RESEARCHER";
+    userRole === "PRODUCT_RESEARCHER" ||
+    activeRole === "SUPER_ADMIN" ||
+    activeRole === "ADMIN" ||
+    activeRole === "LINKER" ||
+    activeRole === "PRODUCT_RESEARCHER" ||
+    sessionRoles.includes("SUPER_ADMIN") ||
+    sessionRoles.includes("ADMIN") ||
+    sessionRoles.includes("LINKER") ||
+    sessionRoles.includes("PRODUCT_RESEARCHER") ||
+    dbHasResearcherAccess === true;
 
   // Fetch products
   const fetchProducts = useCallback(async (isSilent = false) => {
@@ -484,11 +585,11 @@ export default function TrendmapProductsPage() {
     toast.success("CSV exported!");
   };
 
-  if (authStatus === "loading") {
+  if (authStatus === "loading" || (dbHasResearcherAccess === null && !canAccess && session?.user)) {
     return <LoadingScreen />;
   }
 
-  if (authStatus === "unauthenticated" || (!canAccess && userRole)) {
+  if (authStatus === "unauthenticated" || (!canAccess && userRole && dbHasResearcherAccess === false)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center">
         <Compass className="w-16 h-16 text-zinc-400 mb-4 stroke-1 animate-pulse" />

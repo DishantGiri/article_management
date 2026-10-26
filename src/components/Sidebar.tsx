@@ -510,9 +510,12 @@ export default function Sidebar() {
   const effectiveWorkspace = currentWorkspaceRole || userRole || "WRITER";
 
   const visibleNavItems = effectiveWorkspace
-    ? NAV_ITEMS.filter((item) =>
-      item.roles.some((r) => r.toUpperCase() === effectiveWorkspace.toUpperCase())
-    )
+    ? NAV_ITEMS.filter((item) => {
+      if (item.href === "/trendmap-products" && sessionRoles.includes("PRODUCT_RESEARCHER")) {
+        return true;
+      }
+      return item.roles.some((r) => r.toUpperCase() === effectiveWorkspace.toUpperCase());
+    })
     : [];
 
   const activeHref = visibleNavItems.reduce((best, item) => {
@@ -629,7 +632,7 @@ export default function Sidebar() {
               <div className="flex items-center justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 px-0.5">
                 <span>Active Workspace</span>
               </div>
-              <div className="grid grid-cols-3 gap-1">
+              <div className="grid grid-cols-2 gap-1">
                 {sessionRoles.includes("TEAM_LEAD") && (
                   <button
                     type="button"
@@ -673,6 +676,21 @@ export default function Sidebar() {
                   >
                     <Link2 className="w-3 h-3" />
                     <span>Linker</span>
+                  </button>
+                )}
+                {sessionRoles.includes("PRODUCT_RESEARCHER") && (
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchWorkspace("PRODUCT_RESEARCHER")}
+                    className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                      effectiveWorkspace === "PRODUCT_RESEARCHER"
+                        ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-2xs border border-zinc-950 dark:border-white"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                    }`}
+                    title="Switch to Product Researcher Workspace"
+                  >
+                    <Compass className="w-3 h-3" />
+                    <span>PR</span>
                   </button>
                 )}
               </div>
