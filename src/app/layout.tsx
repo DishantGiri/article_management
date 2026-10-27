@@ -104,7 +104,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
       </head>
-      <body className={`${plusJakartaSans.className} h-full bg-white text-zinc-950 dark:bg-[#09090B] dark:text-zinc-50 antialiased selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black`} suppressHydrationWarning>
+      <body className="font-sans h-full bg-white text-zinc-950 dark:bg-[#09090B] dark:text-zinc-50 antialiased selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black" suppressHydrationWarning>
         <Providers session={session}>
           <AppShell initialSession={session}>
             {children}
