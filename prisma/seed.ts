@@ -86,19 +86,20 @@ async function main() {
 
   // 4. Seed Sites
   console.log("Creating Sites...");
-  const siteDefinitions = [
-    { name: "Health Supplement Bucket", url: "https://healthsupplementbucket.com" },
-    { name: "Supplements and Powders", url: "https://supplementsandpowders.com" },
-    { name: "Justin Reviews", url: "https://justinreviews.org" },
-    { name: "Guru Review Club", url: "https://gurureviewclub.com" },
-    { name: "Ryans Best Reviews", url: "https://ryansbestreviews.com" },
-    { name: "The Buyers Reviews", url: "https://thebuyersreviews.com" },
-    { name: "Supplement Vibes", url: "https://supplementvibes.com" },
-    { name: "Supplement Dolphin", url: "https://supplementdolphin.com" },
-    { name: "Supplement Tiger", url: "https://supplementtiger.com" },
-    { name: "Supplement Mag", url: "https://supplementmag.com" },
-    { name: "Supplement Coach", url: "https://supplementcoach.de" },
-    { name: "Daily Health Supplement", url: "https://dailyhealthsupplement.com" },
+  const siteDefinitions: Array<{ name: string; url: string; bridgeUrl: string | null }> = [
+    { name: "The Buyers Reviews", url: "https://thebuyersreviews.com", bridgeUrl: "https://bestproductpicks.com" },
+    { name: "Supplement Mag", url: "https://supplementmag.com", bridgeUrl: "https://supplementexpose.com" },
+    { name: "Guru Review Club", url: "https://gurureviewclub.com", bridgeUrl: "https://productcomparelab.com" },
+    { name: "Daily Health Supplement", url: "https://dailyhealthsupplement.com", bridgeUrl: "https://getbestsupplement.com" },
+    { name: "Supplement Tiger", url: "https://supplementtiger.com", bridgeUrl: "https://supplementdealshub.com" },
+    { name: "Supplement Coach", url: "https://supplementcoach.de", bridgeUrl: "https://bestsupplementscoach.com" },
+    { name: "Supplement Vibes", url: "https://supplementvibes.com", bridgeUrl: "https://trackyoursupplement.com" },
+    { name: "Supplement Dolphin", url: "https://supplementdolphin.com", bridgeUrl: "https://supplementanlayst.com" },
+    { name: "Ryans Best Reviews", url: "https://ryansbestreviews.com", bridgeUrl: null },
+    { name: "Justin Reviews", url: "https://justinreviews.org", bridgeUrl: "https://theunbiasedreviews.org" },
+    { name: "Health Supplement Bucket", url: "https://healthsupplementbucket.com", bridgeUrl: null },
+    { name: "Supplements and Powders", url: "https://supplementsandpowders.com", bridgeUrl: null },
+    { name: "Health Supplements Expert", url: "https://healthsupplementsexpert.com", bridgeUrl: "https://healthysupplementstalk.com" },
   ];
 
   const createdSites = [];
@@ -107,6 +108,7 @@ async function main() {
       data: {
         name: s.name,
         url: s.url,
+        bridgeUrl: s.bridgeUrl,
       },
     });
     createdSites.push(site);
@@ -211,7 +213,7 @@ async function main() {
   const superAdmin = await prisma.user.create({
     data: {
       name: "Super Admin",
-      email: "superadmin@fishtailinfosolutions.com",
+      email: "abishekkhadka@fishtailinfosolutions.com",
       role: "SUPER_ADMIN",
       approved: true,
       allowLinkLogAccess: true,
@@ -222,24 +224,16 @@ async function main() {
   const superAdminAlias = await prisma.user.create({
     data: {
       name: "Super Admin (articlemgmt)",
-      email: "superadmin@articlemgmt.com",
+      email: "abishekkhadka@articlemgmt.com",
       role: "SUPER_ADMIN",
       approved: true,
       allowLinkLogAccess: true,
     },
   });
 
-  const user = await prisma.user.create({
-    data: {
-      name: "User",
-      email: "user@fishtailinfosolutions.com",
-      role: "ADMIN",
-      approved: true,
-      allowLinkLogAccess: true,
-    },
-  });
 
-  const allUsers = [superAdmin, superAdminAlias, user];
+
+  const allUsers = [superAdmin, superAdminAlias];
 
   // 7. Site Access: Assign all 12 sites with all permissions to the users
   console.log("Assigning Site Access to Super Admin and User...");
@@ -263,7 +257,9 @@ async function main() {
   console.log("✅ Seed completed successfully!");
   console.log("-----------------------------------------");
   console.log(`Created ${createdSites.length} Sites:`);
-  siteDefinitions.forEach((s) => console.log(`   - ${s.name} (${s.url})`));
+  siteDefinitions.forEach((s) =>
+    console.log(`   - ${s.name} (${s.url}) [Bridge: ${s.bridgeUrl || "None"}]`)
+  );
   console.log(`Created ${affiliateNames.length} Affiliates:`);
   affiliateNames.forEach((a) => console.log(`   - ${a}`));
   console.log(`Created ${productTypes.length} Product Types:`);
