@@ -38,6 +38,7 @@ interface SiteData {
   name: string;
   slug?: string;
   url: string | null;
+  bridgeUrl?: string | null;
   allowCountrySpecific?: boolean;
   productsCount: number;
   categoriesCount: number;
@@ -77,10 +78,12 @@ export default function SitesPage() {
   const [form, setForm] = useState({
     name: "",
     url: "",
+    bridgeUrl: "",
     allowCountrySpecific: false,
     categoryIds: [] as number[],
   });
   const [urlError, setUrlError] = useState("");
+  const [bridgeUrlError, setBridgeUrlError] = useState("");
 
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
 
@@ -116,11 +119,34 @@ export default function SitesPage() {
     fetchCategories();
   }, []);
 
+  const getBridgeUrlsList = (input?: string | null): string[] => {
+    if (!input) return [];
+    return input
+      .split(/[\n,]+/)
+      .map((u) => u.trim())
+      .filter(Boolean);
+  };
+
+  const validateBridgeUrls = (input: string): string => {
+    if (!input || !input.trim()) return "";
+    const urls = input
+      .split(/[\n,]+/)
+      .map((u) => u.trim())
+      .filter(Boolean);
+    for (const u of urls) {
+      if (!isValidUrl(u)) {
+        return `"${u}" is not a valid URL (must start with http:// or https://)`;
+      }
+    }
+    return "";
+  };
+
   const openAddModal = () => {
     setEditingSiteId(null);
-    setForm({ name: "", url: "", allowCountrySpecific: false, categoryIds: [] });
+    setForm({ name: "", url: "", bridgeUrl: "", allowCountrySpecific: false, categoryIds: [] });
     setError("");
     setUrlError("");
+    setBridgeUrlError("");
     setShowModal(true);
   };
 
@@ -129,11 +155,13 @@ export default function SitesPage() {
     setForm({
       name: s.name,
       url: s.url || "",
+      bridgeUrl: s.bridgeUrl || "",
       allowCountrySpecific: Boolean(s.allowCountrySpecific),
       categoryIds: s.categories?.map((c) => c.id) || [],
     });
     setError("");
     setUrlError("");
+    setBridgeUrlError("");
     setShowModal(true);
     setActiveDropdown(null);
   };
@@ -170,7 +198,11 @@ export default function SitesPage() {
 
   const handleSaveSite = async () => {
     if (urlError) {
-      setError("Please fix the URL validation error before saving.");
+      setError("Please fix the Site URL validation error before saving.");
+      return;
+    }
+    if (bridgeUrlError) {
+      setError("Please fix the Bridge Site URL validation error before saving.");
       return;
     }
     const trimmedName = form.name.trim();
@@ -184,7 +216,14 @@ export default function SitesPage() {
       return;
     }
     if (form.url && !isValidUrl(form.url)) {
-      setError("Please enter a valid URL (must start with http:// or https://)");
+      setError("Please enter a valid Site URL (must start with http:// or https://)");
+      return;
+    }
+
+    const bridgeErr = validateBridgeUrls(form.bridgeUrl);
+    if (bridgeErr) {
+      setError(bridgeErr);
+      setBridgeUrlError(bridgeErr);
       return;
     }
 
@@ -193,6 +232,7 @@ export default function SitesPage() {
       if (currentSite) {
         const nameSame = form.name.trim() === (currentSite.name || "").trim();
         const urlSame = (form.url || "").trim() === (currentSite.url || "").trim();
+        const bridgeUrlSame = (form.bridgeUrl || "").trim() === (currentSite.bridgeUrl || "").trim();
 
         const currentCatIds = (currentSite.categories || []).map((c) => c.id).sort((a, b) => a - b);
         const formCatIds = [...form.categoryIds].sort((a, b) => a - b);
@@ -201,7 +241,7 @@ export default function SitesPage() {
           currentCatIds.every((id, idx) => id === formCatIds[idx]);
         const countrySpecificSame = Boolean(form.allowCountrySpecific) === Boolean(currentSite.allowCountrySpecific);
 
-        if (nameSame && urlSame && categoriesSame && countrySpecificSame) {
+        if (nameSame && urlSame && bridgeUrlSame && categoriesSame && countrySpecificSame) {
           toast.error("No changes made.");
           setShowModal(false);
           return;
@@ -344,6 +384,26 @@ export default function SitesPage() {
                           <span className="truncate max-w-[150px]">{site.url.replace(/^https?:\/\//, "")}</span>
                           <ExternalLink className="w-2.5 h-2.5 opacity-60" />
                         </a>
+                      )}
+                      {site.bridgeUrl && (
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Bridge:</span>
+                          {getBridgeUrlsList(site.bridgeUrl).map((bUrl, idx) => (
+                            <a
+                              key={idx}
+                              href={bUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-1.5 py-0.5 rounded-md font-semibold inline-flex items-center gap-1 transition"
+                              title={`Bridge Site URL: ${bUrl}`}
+                            >
+                              <Link2 className="w-2.5 h-2.5 text-emerald-600" />
+                              <span className="truncate max-w-[120px]">{bUrl.replace(/^https?:\/\//, "")}</span>
+                              <ExternalLink className="w-2 h-2 opacity-60" />
+                            </a>
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -516,6 +576,55 @@ export default function SitesPage() {
                     placeholder="https://example.com"
                   />
                   {urlError && <p className="text-xs font-semibold text-rose-500">{urlError}</p>}
+                </div>
+
+                {/* Bridge Site URL */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-[#4A4A4A] uppercase tracking-wider flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-[#6D8196]" />
+                      Bridge Site URL
+                    </label>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      Optional &bull; Multiple URLs allowed
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={form.bridgeUrl}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForm({ ...form, bridgeUrl: val });
+                      setBridgeUrlError(validateBridgeUrls(val));
+                    }}
+                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-900 focus:outline-none transition-all shadow-2xs ${bridgeUrlError
+                        ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/10"
+                        : "border-[#CBCBCB] focus:ring-2 focus:ring-[#6D8196]/20 focus:border-[#6D8196]"
+                      }`}
+                    placeholder="https://presell.example.com, https://bridge.example.com"
+                  />
+                  {bridgeUrlError && <p className="text-xs font-semibold text-rose-500">{bridgeUrlError}</p>}
+
+                  {/* Preset Pills Preview */}
+                  {form.bridgeUrl.trim() && !bridgeUrlError && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                        Configured Presets:
+                      </span>
+                      {getBridgeUrlsList(form.bridgeUrl).map((bUrl, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 rounded-lg"
+                        >
+                          <Link2 className="w-2.5 h-2.5 text-emerald-600" />
+                          <span className="truncate max-w-[220px]">{bUrl}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[11px] text-[#737373] font-medium leading-relaxed">
+                    Bridge or presell domain(s) used as quick-select presets for Bridge Page Links when linking products. Separate multiple URLs with commas.
+                  </p>
                 </div>
               </div>
 

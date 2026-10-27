@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
         select: {
           name: true,
           slug: true,
-          site: { select: { name: true } },
+          site: { select: { id: true, name: true, url: true, bridgeUrl: true } },
           article: { select: { articleLink: true } }
         }
       },

@@ -495,7 +495,7 @@ export async function POST(req: NextRequest) {
         prisma.product.create({
           data: p,
           include: {
-            site: { select: { name: true, url: true, allowCountrySpecific: true } },
+            site: { select: { name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
             category: { select: { name: true } },
             addedBy: { select: { id: true, name: true, role: true } },
             updatedBy: { select: { id: true, name: true, role: true } },
@@ -611,7 +611,7 @@ export async function GET(req: NextRequest) {
         : {}),
     },
     include: {
-      site: { select: { id: true, name: true, url: true, allowCountrySpecific: true } },
+      site: { select: { id: true, name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
       category: { select: { id: true, name: true } },
       addedBy: { select: { id: true, name: true, role: true } },
       updatedBy: { select: { id: true, name: true, role: true } },

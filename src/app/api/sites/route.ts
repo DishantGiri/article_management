@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         id: true,
         name: true,
         url: true,
+        bridgeUrl: true,
         allowCountrySpecific: true,
         categories: {
           select: { id: true, name: true }
@@ -61,6 +62,7 @@ export async function GET(req: NextRequest) {
         name: site.name,
         slug: slugifySite(site.name),
         url: site.url,
+        bridgeUrl: site.bridgeUrl,
         allowCountrySpecific: site.allowCountrySpecific ?? false,
         categories: site.categories,
         productsCount: site._count.products,
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, url, categoryIds, allowCountrySpecific } = body;
+    const { name, url, bridgeUrl, categoryIds, allowCountrySpecific } = body;
 
     const trimmedName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
 
@@ -105,10 +107,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const trimmedBridgeUrl = typeof bridgeUrl === "string" ? bridgeUrl.trim() : null;
+
     const site = await prisma.site.create({
       data: {
         name: trimmedName,
-        url,
+        url: typeof url === "string" && url.trim() ? url.trim() : null,
+        bridgeUrl: trimmedBridgeUrl || null,
         allowCountrySpecific: Boolean(allowCountrySpecific),
         categories: {
           connect: Array.isArray(categoryIds) ? categoryIds.map((id: number) => ({ id })) : []

@@ -150,6 +150,7 @@ export async function GET(
         name: site.name,
         slug: slugifySite(site.name),
         url: site.url,
+        bridgeUrl: site.bridgeUrl,
         allowCountrySpecific: site.allowCountrySpecific ?? false,
         categories: site.categories,
         createdAt: site.createdAt,
@@ -189,7 +190,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { name, url, categoryIds, allowCountrySpecific } = body;
+    const { name, url, bridgeUrl, categoryIds, allowCountrySpecific } = body;
 
     const currentSite = await prisma.site.findUnique({
       where: { id: siteId },
@@ -215,6 +216,7 @@ export async function PATCH(
 
     const trimmedName = name !== undefined ? (typeof name === "string" ? name.trim().replace(/\s+/g, " ") : currentSite.name) : currentSite.name;
     const trimmedUrl = url !== undefined ? (url ? url.trim() : null) : currentSite.url;
+    const trimmedBridgeUrl = bridgeUrl !== undefined ? (typeof bridgeUrl === "string" && bridgeUrl.trim() ? bridgeUrl.trim() : null) : currentSite.bridgeUrl;
     const currentCatIds = currentSite.categories.map((c) => c.id).sort((a, b) => a - b);
     const newCatIds = Array.isArray(categoryIds)
       ? [...categoryIds].sort((a: number, b: number) => a - b)
@@ -222,6 +224,7 @@ export async function PATCH(
 
     const nameSame = trimmedName === currentSite.name;
     const urlSame = (trimmedUrl || null) === (currentSite.url || null);
+    const bridgeUrlSame = (trimmedBridgeUrl || null) === (currentSite.bridgeUrl || null);
     const categoriesSame =
       currentCatIds.length === newCatIds.length &&
       currentCatIds.every((cid, idx) => cid === newCatIds[idx]);
@@ -229,7 +232,7 @@ export async function PATCH(
       allowCountrySpecific === undefined ||
       Boolean(allowCountrySpecific) === Boolean(currentSite.allowCountrySpecific);
 
-    if (nameSame && urlSame && categoriesSame && countrySpecificSame) {
+    if (nameSame && urlSame && bridgeUrlSame && categoriesSame && countrySpecificSame) {
       return NextResponse.json({ error: "No changes made." }, { status: 400 });
     }
 
@@ -238,6 +241,7 @@ export async function PATCH(
       data: {
         ...(name ? { name: trimmedName } : {}),
         ...(url !== undefined ? { url: trimmedUrl } : {}),
+        ...(bridgeUrl !== undefined ? { bridgeUrl: trimmedBridgeUrl } : {}),
         ...(allowCountrySpecific !== undefined ? { allowCountrySpecific: Boolean(allowCountrySpecific) } : {}),
         ...(Array.isArray(categoryIds)
           ? { categories: { set: categoryIds.map((cid: number) => ({ id: cid })) } }

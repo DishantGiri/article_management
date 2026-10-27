@@ -24,6 +24,7 @@ import {
   ArrowUpRight,
   Filter,
   X,
+  Link2,
 } from "lucide-react";
 import SiteLogo from "@/components/SiteLogo";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -41,6 +42,7 @@ interface SiteInfo {
   name: string;
   slug: string;
   url: string | null;
+  bridgeUrl?: string | null;
   categories: SiteCategory[];
   createdAt: string;
 }
@@ -456,6 +458,31 @@ export default function SiteDetailPage() {
                 </a>
               ) : (
                 <p className="text-xs text-[#737373] dark:text-slate-400 mt-1 italic">No domain URL configured</p>
+              )}
+
+              {site.bridgeUrl && (
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Bridge URL:
+                  </span>
+                  {site.bridgeUrl
+                    .split(/[\n,]+/)
+                    .map((u) => u.trim())
+                    .filter(Boolean)
+                    .map((bUrl, idx) => (
+                      <a
+                        key={idx}
+                        href={bUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded-lg hover:underline transition"
+                      >
+                        <Link2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>{bUrl}</span>
+                        <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                      </a>
+                    ))}
+                </div>
               )}
 
               {/* Category Pills */}

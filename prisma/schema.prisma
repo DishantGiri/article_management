@@ -134,6 +134,7 @@ model Site {
   id          Int         @id @default(autoincrement())
   name        String
   url         String?
+  bridgeUrl   String?     @db.Text
   allowCountrySpecific Boolean @default(false)
 
   createdAt   DateTime    @default(now())

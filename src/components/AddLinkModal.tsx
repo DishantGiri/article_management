@@ -20,6 +20,7 @@ interface Product {
     id: number;
     name: string;
     url?: string | null;
+    bridgeUrl?: string | null;
   };
   article?: {
     articleLink?: string | null;
@@ -219,6 +220,27 @@ export default function AddLinkModal({
   // Dropdown options for Bridge Page Link
   const bridgeLinkOptions = useMemo(() => {
     const opts: Array<{ value: string; label: string }> = [];
+
+    // Configured Bridge Site URLs for this site
+    if (selectedProduct?.site?.bridgeUrl) {
+      const bridgeList = selectedProduct.site.bridgeUrl
+        .split(/[\n,]+/)
+        .map((u) => u.trim().replace(/\/+$/, ""))
+        .filter(Boolean);
+      for (const bUrl of bridgeList) {
+        if (productSlug) {
+          opts.push({
+            value: `${bUrl}/${productSlug}`,
+            label: `Bridge Landing: ${bUrl}/${productSlug}`,
+          });
+        }
+        opts.push({
+          value: bUrl,
+          label: `Bridge Site: ${bUrl}`,
+        });
+      }
+    }
+
     if (siteBaseUrl && productSlug) {
       opts.push({
         value: `${siteBaseUrl}/${productSlug}`,
