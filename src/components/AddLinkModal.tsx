@@ -2,9 +2,9 @@
 "use client";
 
 import CustomSelect from "@/components/CustomSelect";
-import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, Copy, CheckCircle2, ArrowRight } from "lucide-react";
+import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Copy, CheckCircle2, ArrowRight } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { LATAM_CODES, COUNTRY_NAMES, getGeoDisplayName, getCountryFlag } from "@/lib/geo-constants";
@@ -111,6 +111,19 @@ export default function AddLinkModal({
 
   const [dbAffiliates, setDbAffiliates] = useState<DbAffiliate[]>([]);
   const [dbGeos, setDbGeos] = useState<string[]>([]);
+
+  // Horizontal scroll navigation for site switcher bar
+  const sitesScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollSites = (direction: "left" | "right") => {
+    if (sitesScrollRef.current) {
+      const scrollAmount = 260;
+      sitesScrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
 
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedProductId),
@@ -829,16 +842,33 @@ export default function AddLinkModal({
 
           {/* Full-width dedicated site switcher row */}
           {availableSitesForProduct.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-2 border-t border-white/10">
-              <span className="text-[10px] sm:text-[11px] text-white/70 font-bold shrink-0 uppercase tracking-wider flex items-center gap-1">
+            <div className="flex items-center gap-1.5 pt-2 border-t border-white/10">
+              <span className="text-[10px] sm:text-[11px] text-white/70 font-bold shrink-0 uppercase tracking-wider flex items-center gap-1 mr-1">
                 <Globe className="w-3 h-3 text-white/60" />
                 Switch Site:
               </span>
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1">
+
+              {/* Left arrow to scroll sites right-to-left */}
+              <button
+                type="button"
+                onClick={() => scrollSites("left")}
+                aria-label="Scroll sites left"
+                className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 active:bg-white/30 text-white flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-2xs border border-white/15"
+                title="Scroll left"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Horizontal scrollable sites container */}
+              <div
+                ref={sitesScrollRef}
+                className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1 scroll-smooth"
+              >
                 {availableSitesForProduct.map((s) => (
                   <button
                     key={s.siteId}
                     type="button"
+                    data-selected={s.isSelected ? "true" : "false"}
                     onClick={() => handleSwitchSite(s.productId)}
                     className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer border shrink-0 whitespace-nowrap flex items-center gap-1.5 shadow-2xs ${
                       s.isSelected
@@ -862,6 +892,17 @@ export default function AddLinkModal({
                   </button>
                 ))}
               </div>
+
+              {/* Right arrow to scroll sites left-to-right */}
+              <button
+                type="button"
+                onClick={() => scrollSites("right")}
+                aria-label="Scroll sites right"
+                className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 active:bg-white/30 text-white flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-2xs border border-white/15"
+                title="Scroll right"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
         </div>
