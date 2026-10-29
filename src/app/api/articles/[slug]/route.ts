@@ -12,93 +12,106 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const { slug: rawSlug } = await params;
-  const id = parseInt(rawSlug.split("-")[0]);
+    const { slug: rawSlug } = await params;
+    if (!rawSlug) {
+      return NextResponse.json({ error: "Article ID is required" }, { status: 400 });
+    }
 
-  const article = await prisma.article.findUnique({
-    where: { id },
-    include: {
-      product: {
-        include: {
-          site: true,
-          category: true,
-          addedBy: { select: { name: true } },
-          linkLogs: {
-            include: { geos: true, addedBy: { select: { name: true } } },
-            orderBy: { addedAt: "desc" },
-          },
-        },
-      },
-      writer: { select: { id: true, name: true, email: true, image: true, teamLeadId: true } },
-      reviews: {
-        include: { reviewedBy: { select: { id: true, name: true } } },
-        orderBy: { reviewedAt: "desc" },
-      },
-      specialApproval: {
-        include: { approvedBy: { select: { name: true } } },
-      },
-      history: {
-        include: { updatedBy: { select: { id: true, name: true } } },
-        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      },
-    },
-  });
+    const id = parseInt(rawSlug.split("-")[0], 10);
+    if (isNaN(id)) {
+      return NextResponse.json({ error: "Invalid article ID specified" }, { status: 400 });
+    }
 
-  if (!article) {
-    return NextResponse.json({ error: "Article not found" }, { status: 404 });
-  }
-
-  // Authorize check: WRITER is restricted by SiteAccess; TEAM_LEAD can only view team articles or pending pool
-  const userId = Number(session.user.id);
-  const userRole = session.user.role;
-  const userRoles: string[] = (session.user as any)?.roles || [];
-  const isSuperOrAdmin =
-    userRole === "SUPER_ADMIN" ||
-    userRole === "ADMIN" ||
-    userRoles.includes("SUPER_ADMIN") ||
-    userRoles.includes("ADMIN");
-
-  if (!isSuperOrAdmin) {
-    const canReviewSite = await canUserReviewOnSite(userId, userRole, article.product.siteId);
-    const canWriteSite = await canUserWriteOnSite(userId, userRole, article.product.siteId);
-
-    if (userRole === "WRITER" || canWriteSite) {
-      const isAssignedWriter = article.writerId === userId;
-      if (!isAssignedWriter && !canWriteSite) {
-        const access = await prisma.siteAccess.findUnique({
-          where: {
-            userId_siteId: {
-              userId,
-              siteId: article.product.siteId,
+    const article = await prisma.article.findUnique({
+      where: { id },
+      include: {
+        product: {
+          include: {
+            site: true,
+            category: true,
+            addedBy: { select: { name: true } },
+            linkLogs: {
+              include: { geos: true, addedBy: { select: { name: true } } },
+              orderBy: { addedAt: "desc" },
             },
           },
-        });
-        if (!access) {
-          return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+        },
+        writer: { select: { id: true, name: true, email: true, image: true, teamLeadId: true } },
+        reviews: {
+          include: { reviewedBy: { select: { id: true, name: true } } },
+          orderBy: { reviewedAt: "desc" },
+        },
+        specialApproval: {
+          include: { approvedBy: { select: { name: true } } },
+        },
+        history: {
+          include: { updatedBy: { select: { id: true, name: true } } },
+          orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        },
+      },
+    });
+
+    if (!article) {
+      return NextResponse.json({ error: "Article not found" }, { status: 404 });
+    }
+
+    // Authorize check: WRITER is restricted by SiteAccess; TEAM_LEAD can only view team articles or pending pool
+    const userId = Number(session.user.id);
+    const userRole = session.user.role;
+    const userRoles: string[] = (session.user as any)?.roles || [];
+    const isSuperOrAdmin =
+      userRole === "SUPER_ADMIN" ||
+      userRole === "ADMIN" ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("ADMIN");
+
+    if (!isSuperOrAdmin && article.product?.siteId) {
+      const siteId = article.product.siteId;
+      const canReviewSite = await canUserReviewOnSite(userId, userRole, siteId);
+      const canWriteSite = await canUserWriteOnSite(userId, userRole, siteId);
+
+      if (userRole === "WRITER" || canWriteSite) {
+        const isAssignedWriter = article.writerId === userId;
+        if (!isAssignedWriter && !canWriteSite) {
+          const access = await prisma.siteAccess.findUnique({
+            where: {
+              userId_siteId: {
+                userId,
+                siteId,
+              },
+            },
+          });
+          if (!access) {
+            return NextResponse.json({ error: "You are not assigned to this site" }, { status: 403 });
+          }
+        }
+      } else if (userRole === "TEAM_LEAD" || canReviewSite) {
+        const isUnderTL =
+          article.status === "PENDING" ||
+          article.writerId === userId ||
+          article.writer?.teamLeadId === userId ||
+          canReviewSite;
+        if (!isUnderTL) {
+          return NextResponse.json({ error: "Access denied: This article is not under your team." }, { status: 403 });
         }
       }
-    } else if (userRole === "TEAM_LEAD" || canReviewSite) {
-      const isUnderTL =
-        article.status === "PENDING" ||
-        article.writerId === userId ||
-        article.writer?.teamLeadId === userId ||
-        canReviewSite;
-      if (!isUnderTL) {
-        return NextResponse.json({ error: "Access denied: This article is not under your team." }, { status: 403 });
-      }
     }
-  }
 
-  if (article?.product?.linkLogs) {
-    (article.product as any).linkLogs = consolidateLinkLogs(article.product.linkLogs);
-  }
+    if (article?.product?.linkLogs) {
+      (article.product as any).linkLogs = consolidateLinkLogs(article.product.linkLogs);
+    }
 
-  return NextResponse.json(article);
+    return NextResponse.json(article);
+  } catch (err: any) {
+    console.error("[GET /api/articles/:slug]", err);
+    return NextResponse.json({ error: err?.message || "Failed to retrieve article details" }, { status: 500 });
+  }
 }
 
 // PATCH /api/articles/[slug] - update status, writer, article link, priority, special approval request

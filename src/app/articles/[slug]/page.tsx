@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState, use, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { useRouter, useParams } from "next/navigation";
 import {
   FileText,
   LayoutGrid,
@@ -97,11 +97,22 @@ interface Article {
   }[];
 }
 
-const ensureExternalUrl = (url: string | null | undefined) => {
-  if (!url) return "";
+const ensureExternalUrl = (url: unknown) => {
+  if (!url || typeof url !== "string") return "";
   const trimmed = url.trim();
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+};
+
+const safeFormatDate = (d?: string | Date | null) => {
+  if (!d) return "-";
+  try {
+    const parsed = new Date(d);
+    if (isNaN(parsed.getTime())) return "-";
+    return parsed.toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return "-";
+  }
 };
 
 const getInitials = (name?: string) => {
@@ -114,10 +125,24 @@ const getInitials = (name?: string) => {
     .toUpperCase();
 };
 
-export default function ArticleDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const resolvedParams = use(params);
-  const id = parseInt(resolvedParams.slug.split("-")[0]);
+export default function ArticleDetailPage({ params }: { params?: Promise<{ slug: string }> | { slug: string } } = {}) {
+  const routeParams = useParams();
   const router = useRouter();
+
+  // Safely extract raw slug from useParams or params prop without suspending or crashing
+  const rawSlug = useMemo(() => {
+    if (typeof routeParams?.slug === "string") return routeParams.slug;
+    if (Array.isArray(routeParams?.slug)) return routeParams.slug[0] || "";
+    if (params && typeof (params as any).slug === "string") return (params as any).slug;
+    return "";
+  }, [routeParams, params]);
+
+  const id = useMemo(() => {
+    if (!rawSlug) return NaN;
+    const firstPart = String(rawSlug).split("-")[0];
+    const parsed = parseInt(firstPart, 10);
+    return isNaN(parsed) ? NaN : parsed;
+  }, [rawSlug]);
 
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,7 +161,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [flagReason, setFlagReason] = useState("");
   const [submittingFlag, setSubmittingFlag] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const handleCountryChange = async (newCountry: string) => {
     setUpdatingCountry(true);
@@ -177,7 +202,22 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   }, []);
 
   useEffect(() => {
-    if (!session?.user?.id) return;
+    if (status === "loading") return;
+
+    if (status === "unauthenticated" || !session?.user) {
+      // Cleanly redirect unauthenticated visitors to sign in
+      const currentPath = typeof window !== "undefined" ? window.location.pathname : "/articles";
+      router.push(`/auth/signin?callbackUrl=${encodeURIComponent(currentPath)}`);
+      return;
+    }
+
+    if (isNaN(id)) {
+      setError("Invalid article link or ID specified in URL");
+      setArticle(null);
+      setLoading(false);
+      return;
+    }
+
     const uId = session.user.id;
     setCurrentUserId(uId);
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("active_workspace_role") : null;
@@ -185,10 +225,16 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
     setCurrentUserRole(uRole);
 
     fetch(`/api/articles/${id}?userId=${uId}`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(data.error || `Failed to fetch article details (Status ${r.status})`);
+        }
+        return data;
+      })
       .then((data) => {
-        if (data.error) {
-          setError(data.error);
+        if (!data || data.error) {
+          setError(data?.error || "Failed to fetch article details");
           setArticle(null);
         } else {
           setArticle(data);
@@ -197,9 +243,12 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
           }
         }
       })
-      .catch(() => setError("Failed to fetch article details"))
+      .catch((err: any) => {
+        setError(err.message || "Failed to fetch article details");
+        setArticle(null);
+      })
       .finally(() => setLoading(false));
-  }, [id, router, session?.user?.id]);
+  }, [id, router, session?.user, status]);
 
   useEffect(() => {
     if (article?.articleLink) {
@@ -222,6 +271,11 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
       }
     };
   }, []);
+
+  // Consolidate link logs using hook at component top-level to obey Rules of Hooks
+  const consolidatedLinkLogs = useMemo(() => {
+    return consolidateLinkLogs(article?.product?.linkLogs);
+  }, [article?.product?.linkLogs]);
 
   const handleSetRedoPriority = (newPriority: "LOW" | "MEDIUM" | "HIGH") => {
     if (newPriority === redoPriority && newPriority === article?.priority) return;
@@ -391,10 +445,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
     );
   }
 
-  const { product } = article;
-  const consolidatedLinkLogs = useMemo(() => {
-    return consolidateLinkLogs(product?.linkLogs);
-  }, [product?.linkLogs]);
+  const product = article.product || ({} as any);
 
   const isManager =
     currentUserRole === "TEAM_LEAD" ||
@@ -424,7 +475,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
             <Link href="/articles" className="hover:text-slate-700 dark:hover:text-slate-200 transition">Articles</Link>
             <span>/</span>
-            <span className="text-slate-700 dark:text-slate-100 font-bold truncate max-w-[200px] sm:max-w-none">{product.name}</span>
+            <span className="text-slate-700 dark:text-slate-100 font-bold truncate max-w-[200px] sm:max-w-none">{product.name || `Article #${article.id}`}</span>
           </div>
         </div>
 
@@ -488,11 +539,11 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1.5">
                 <Globe className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
-                {product.site.name}
+                {product.site?.name || "Unassigned Site"}
               </span>
               <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1.5">
                 <LayoutGrid className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
-                {product.category.name}
+                {product.category?.name || "Uncategorized"}
               </span>
               {product.productCategory && (
                 <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold">
@@ -507,21 +558,21 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
               )}
               {(article.country || product.country) && (
                 <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/60 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
-                  <span>{getCountryFlag(article.country || product.country || "")}</span>
-                  <span className="uppercase">{article.country || product.country}</span>
-                  <span className="opacity-75 font-medium">({COUNTRY_NAMES[(article.country || product.country || "").toUpperCase()] || (article.country || product.country)})</span>
+                  <span>{getCountryFlag(String(article.country || product.country || ""))}</span>
+                  <span className="uppercase">{String(article.country || product.country)}</span>
+                  <span className="opacity-75 font-medium">({COUNTRY_NAMES[String(article.country || product.country || "").toUpperCase()] || String(article.country || product.country)})</span>
                 </span>
               )}
             </div>
 
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                {product.name}
+                {product.name || `Article #${article.id}`}
               </h1>
               <p className="text-xs text-slate-400 font-medium mt-1 flex items-center gap-2">
-                <span>Added by {product.addedBy.name}</span>
+                <span>Added by {product.addedBy?.name || "Team"}</span>
                 <span>·</span>
-                <span>{new Date(product.addedAt).toLocaleDateString()}</span>
+                <span>{safeFormatDate(product.addedAt)}</span>
               </p>
             </div>
           </div>
@@ -1203,24 +1254,26 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
                     {log.geos?.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {log.geos.map((g: any) => {
-                          const geoLink = g.affiliateLink || log.affiliateLink;
+                        {log.geos.map((g: any, gIdx: number) => {
+                          const geoCode = typeof g === "string" ? g : (g?.geo || "");
+                          if (!geoCode) return null;
+                          const geoLink = typeof g === "object" && g?.affiliateLink ? g.affiliateLink : log.affiliateLink;
                           return (
                             <span
-                              key={g.geo}
+                              key={geoCode || gIdx}
                               className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[10px] font-bold text-slate-600 dark:text-slate-200 shadow-2xs"
                             >
-                              <span>{g.geo}</span>
+                              <span>{geoCode}</span>
                               {geoLink && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigator.clipboard.writeText(geoLink);
-                                    toast.success(`${g.geo} affiliate link copied!`);
+                                    toast.success(`${geoCode} affiliate link copied!`);
                                   }}
                                   className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-sky-400 transition cursor-pointer"
-                                  title={`Copy ${g.geo} link`}
+                                  title={`Copy ${geoCode} link`}
                                 >
                                   <Copy className="w-3 h-3" />
                                 </button>
@@ -1260,7 +1313,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                       <span>Special Exemption Granted</span>
                     </div>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold border border-emerald-300 dark:border-emerald-800">
-                      Approved by {article.specialApproval.approvedBy.name}
+                      Approved by {article.specialApproval.approvedBy?.name || "Team Lead"}
                     </span>
                   </div>
                   <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-emerald-100 dark:border-emerald-900/40">
@@ -1356,14 +1409,14 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Started At</p>
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                    {article.startedAt ? new Date(article.startedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "-"}
+                    {safeFormatDate(article.startedAt)}
                   </p>
                 </div>
 
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Completed At</p>
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                    {article.completedAt ? new Date(article.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "-"}
+                    {safeFormatDate(article.completedAt)}
                   </p>
                 </div>
 
@@ -1409,10 +1462,10 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-md bg-slate-200 dark:bg-slate-750 text-slate-700 dark:text-slate-200 flex items-center justify-center text-[10px] font-bold">
-                          {r.reviewedBy.name.charAt(0).toUpperCase()}
+                          {(r.reviewedBy?.name || "R").charAt(0).toUpperCase()}
                         </div>
                         <span className="text-xs font-bold text-slate-900 dark:text-white">
-                          {r.reviewedBy.name}
+                          {r.reviewedBy?.name || "Reviewer"}
                         </span>
                       </div>
                       <span
@@ -1431,7 +1484,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                       </div>
                     )}
                     <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block text-right">
-                      {new Date(r.reviewedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                      {safeFormatDate(r.reviewedAt)}
                     </span>
                   </div>
                 ))}
@@ -1458,9 +1511,9 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
                     <div key={h.id} className="relative pl-4 border-l-2 border-slate-200 dark:border-slate-700 py-0.5 text-left">
                       <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-slate-400 border border-white dark:border-slate-900" />
                       <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{h.updatedBy.name}</p>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{h.updatedBy?.name || "System"}</p>
                         <span className="text-[10px] text-slate-400 font-semibold">
-                          {new Date(h.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          {safeFormatDate(h.updatedAt)}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-normal">{parts[0]}</p>
