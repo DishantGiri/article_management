@@ -2,8 +2,9 @@
 "use client";
 
 import { useEffect, useState, useMemo, Suspense } from "react";
-import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check, GitCompare } from "lucide-react";
+import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check, GitCompare, Users } from "lucide-react";
 import SiteProductComparison from "@/components/SiteProductComparison";
+import UserLinksView from "@/components/UserLinksView";
 import { toast } from "react-hot-toast";
 import AddLinkModal from "@/components/AddLinkModal";
 import FormattedRemarks from "@/components/FormattedRemarks";
@@ -79,8 +80,8 @@ function LinksPageContent() {
   const urlTab = searchParams.get("tab");
   const urlExact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
 
-  const [activeMainTab, setActiveMainTab] = useState<"links" | "compare">(
-    urlTab === "compare" ? "compare" : "links"
+  const [activeMainTab, setActiveMainTab] = useState<"links" | "by-user" | "compare">(
+    urlTab === "compare" ? "compare" : urlTab === "by-user" ? "by-user" : "links"
   );
   const [links, setLinks] = useState<LinkLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -542,11 +543,17 @@ function LinksPageContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#4A4A4A] tracking-tight">
-            {activeMainTab === "compare" ? "Product Comparison" : "Link Logs"}
+            {activeMainTab === "compare"
+              ? "Product Comparison"
+              : activeMainTab === "by-user"
+              ? "Links by User"
+              : "Link Logs"}
           </h1>
           <p className="text-[#737373] text-sm mt-0.5 font-medium">
             {activeMainTab === "compare"
               ? "Cross-site product comparison & synchronization"
+              : activeMainTab === "by-user"
+              ? `Grouped link configurations across ${uniqueAdders.length} active users`
               : `${links.length} link entries`}
           </p>
         </div>
@@ -726,6 +733,23 @@ function LinksPageContent() {
         </button>
         <button
           onClick={() => {
+            setActiveMainTab("by-user");
+            router.replace("/links?tab=by-user");
+          }}
+          className={`px-3 sm:px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
+            activeMainTab === "by-user"
+              ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 font-bold"
+              : "border-transparent text-slate-500 dark:text-slate-400 hover:text-[#4A4A4A] dark:hover:text-slate-200"
+          }`}
+        >
+          <Users className="w-4 h-4 text-blue-500" />
+          <span>By User</span>
+          <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+            {uniqueAdders.length}
+          </span>
+        </button>
+        <button
+          onClick={() => {
             setActiveMainTab("compare");
             router.replace("/links?tab=compare");
           }}
@@ -745,6 +769,14 @@ function LinksPageContent() {
 
       {activeMainTab === "compare" ? (
         <SiteProductComparison currentUserRole={currentUserRole} />
+      ) : activeMainTab === "by-user" ? (
+        <UserLinksView
+          links={links}
+          onEditLink={(link) => setEditingLink(link)}
+          onViewHistory={(link) => setHistoryLinkLog(link)}
+          onViewRemarks={(data) => setViewingRemarks(data)}
+          currentUserRole={currentUserRole}
+        />
       ) : (
         <>
       {/* Unlinked Products Section (Only on All Links or Pending Requests tabs) */}
