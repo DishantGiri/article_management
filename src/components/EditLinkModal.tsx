@@ -156,50 +156,34 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
     return selectedProduct.site.url.replace(/\/+$/, "");
   }, [selectedProduct]);
 
-  // Dropdown options for Bridge Page Link
+  // Dropdown options for Bridge Page Link - Bridge URLs ONLY
   const bridgeLinkOptions = useMemo(() => {
     const opts: Array<{ value: string; label: string }> = [];
 
-    // Configured Bridge Site URLs for this site
+    // Configured Bridge Page URLs for this site ONLY
     if (selectedProduct?.site?.bridgeUrl) {
       const bridgeList = selectedProduct.site.bridgeUrl
         .split(/[\n,]+/)
         .map((u: string) => u.trim().replace(/\/+$/, ""))
         .filter(Boolean);
       for (const bUrl of bridgeList) {
-        if (productSlug) {
-          opts.push({
-            value: `${bUrl}/${productSlug}`,
-            label: `Bridge Landing: ${bUrl}/${productSlug}`,
-          });
+        let domainSuffix = "";
+        if (bridgeList.length > 1) {
+          try {
+            domainSuffix = ` (${new URL(bUrl).hostname.replace(/^www\./, "")})`;
+          } catch {
+            domainSuffix = "";
+          }
         }
         opts.push({
           value: bUrl,
-          label: `Bridge Site: ${bUrl}`,
+          label: `Bridge Page${domainSuffix}: ${bUrl}`,
         });
       }
     }
 
-    if (siteBaseUrl && productSlug) {
-      opts.push({
-        value: `${siteBaseUrl}/${productSlug}`,
-        label: `Landing Page: ${siteBaseUrl}/${productSlug}`,
-      });
-    }
-    if (selectedProduct?.article?.articleLink) {
-      opts.push({
-        value: selectedProduct.article.articleLink,
-        label: `Writer Article Link: ${selectedProduct.article.articleLink}`,
-      });
-    }
-    if (siteBaseUrl) {
-      opts.push({
-        value: siteBaseUrl,
-        label: `Site Root URL: ${siteBaseUrl}`,
-      });
-    }
     return opts;
-  }, [siteBaseUrl, productSlug, selectedProduct]);
+  }, [selectedProduct]);
 
   // Dropdown options for Buy Link
   const buyLinkOptions = useMemo(() => {
@@ -1425,7 +1409,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                         setBridgePageLinkError("");
                       }
                     }}
-                    placeholder={productSlug ? `https://example.com/${productSlug}` : "https://example.com/..."}
+                    placeholder={selectedProduct?.site?.bridgeUrl ? selectedProduct.site.bridgeUrl.split(/[\n,]+/)[0].trim() : "https://example-bridge.com"}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400 transition"
                   />
                   {bridgeLinkOptions.length > 0 && (
@@ -1448,7 +1432,11 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                   {bridgePageLinkError ? (
                     <p className="text-[10px] font-semibold text-rose-500">{bridgePageLinkError}</p>
                   ) : (
-                    <p className="text-[10px] text-slate-400">Required. Enter bridge page link or pick a preset above.</p>
+                    <p className="text-[10px] text-slate-400">
+                      {bridgeLinkOptions.length > 0
+                        ? "Required. Enter bridge page link or pick a preset above."
+                        : "Required. Enter bridge page link (no bridge URL configured for this site)."}
+                    </p>
                   )}
                 </div>
 
