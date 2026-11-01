@@ -216,6 +216,8 @@ export default function AssignmentDetailsModal({
   const [siteAvailability, setSiteAvailability] = useState<SiteAvailabilityItem[]>([]);
   const [loadingSites, setLoadingSites] = useState<boolean>(false);
   const [addingSiteId, setAddingSiteId] = useState<number | null>(null);
+  const [removingSiteId, setRemovingSiteId] = useState<number | null>(null);
+  const [siteToRemove, setSiteToRemove] = useState<SiteAvailabilityItem | null>(null);
   const [batchAdding, setBatchAdding] = useState<boolean>(false);
   const [siteFilterTab, setSiteFilterTab] = useState<"all" | "available" | "missing">("all");
   const [siteSearchQuery, setSiteSearchQuery] = useState<string>("");
@@ -367,6 +369,57 @@ export default function AssignmentDetailsModal({
       toast.error(err.message || "Failed to add to all missing sites");
     } finally {
       setBatchAdding(false);
+    }
+  };
+
+  const handleRemoveFromSite = async (targetSite: SiteAvailabilityItem, force: boolean = false) => {
+    setRemovingSiteId(targetSite.siteId);
+    try {
+      const res = await fetch(`/api/products/${product.id}/site-availability`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetSiteId: targetSite.siteId,
+          targetProductId: targetSite.product?.id,
+          force,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.requiresConfirmation) {
+          setSiteToRemove(targetSite);
+          return;
+        }
+        throw new Error(data.error || "Failed to remove product from site");
+      }
+
+      toast.success(`Removed "${product.name}" from ${targetSite.siteName}!`);
+      setSiteToRemove(null);
+
+      // In-place optimistic update
+      setSiteAvailability((prev) =>
+        prev.map((s) =>
+          s.siteId === targetSite.siteId
+            ? { ...s, isAvailable: false, product: null }
+            : s
+        )
+      );
+
+      // If this was the current modal product itself
+      if (data.wasCurrentModalProduct || targetSite.siteId === product.siteId) {
+        toast("Current product was removed from this site. Closing details.", { icon: "ℹ️" });
+        onUpdate?.();
+        onClose();
+        return;
+      }
+
+      await fetchSiteAvailability(true);
+      onUpdate?.();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to remove product from site");
+    } finally {
+      setRemovingSiteId(null);
     }
   };
 
