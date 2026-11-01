@@ -115,6 +115,9 @@ export interface SiteAvailabilityItem {
       id: number;
       status: string;
       writerName?: string;
+      writerId?: number | null;
+      articleLink?: string | null;
+      isWritten?: boolean;
     } | null;
     linkCount?: number;
   } | null;
