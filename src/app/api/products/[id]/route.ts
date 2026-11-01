@@ -303,6 +303,7 @@ export async function DELETE(
       );
     }
 
+    const { id } = await params;
     const numericId = parseInt(id, 10);
     if (isNaN(numericId)) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
