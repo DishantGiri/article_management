@@ -94,9 +94,12 @@ export async function GET(req: NextRequest) {
         },
       }),
 
-      // Unlinked products (Alerts for Linkers/Admins)
+      // Unlinked products (Alerts for Linkers/Admins) - only for products assigned to publishing sites
       prisma.product.findMany({
-        where: { linkLogs: { none: {} } },
+        where: {
+          linkLogs: { none: {} },
+          site: { name: { notIn: ["Product Research", "Product Research Hub"] } },
+        },
         select: { id: true, name: true, site: { select: { name: true } } },
         take: 5,
       }),

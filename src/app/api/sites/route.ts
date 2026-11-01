@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
       where: {
         ...(categoryId ? { categories: { some: { id: parseInt(categoryId) } } } : {}),
         ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
+        name: { notIn: ["Product Research", "Product Research Hub"] },
       },
       select: {
         id: true,

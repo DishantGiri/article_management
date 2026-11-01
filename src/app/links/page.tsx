@@ -21,6 +21,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getCountryFlag } from "@/lib/geo-constants";
 import { getActiveWorkspace } from "@/lib/workspace";
+import { isResearchSite } from "@/lib/researchSiteUtils";
 
 const ensureExternalUrl = (url: string | null | undefined) => {
   if (!url) return "";
@@ -297,7 +298,9 @@ function LinksPageContent() {
       setStats(dashboardData);
 
       const prods = Array.isArray(productsData) ? productsData : [];
-      const unlinked = prods.filter((p: any) => !p.linkLogs || p.linkLogs.length === 0);
+      const unlinked = prods.filter(
+        (p: any) => (!p.linkLogs || p.linkLogs.length === 0) && p.site && !isResearchSite(p.site.name)
+      );
       setUnlinkedProducts(unlinked);
 
       const editIdParam = searchParams.get("editLinkId");

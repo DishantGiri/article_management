@@ -16,6 +16,7 @@ import {
   Check,
 } from "lucide-react";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
+import { isResearchSite } from "@/lib/researchSiteUtils";
 
 interface PendingProduct {
   id: number;
@@ -526,20 +527,27 @@ export default function PendingLinkLogsSection({
   const [isGrouped, setIsGrouped] = useState<boolean>(true);
   const [displayLimit, setDisplayLimit] = useState<number>(12);
 
-  // Extract all unique site names across all products so site pills remain consistent
+  // Filter out products with No Site / Product Research (links can only be added to real sites)
+  const validProducts = useMemo(() => {
+    return products.filter((p) => p.site && !isResearchSite(p.site.name));
+  }, [products]);
+
+  // Extract all unique site names across all valid publishing site products
   const allUniqueSites = useMemo(() => {
     const set = new Set<string>();
-    products.forEach((p) => {
-      set.add(p.site?.name || "Unassigned");
+    validProducts.forEach((p) => {
+      if (p.site?.name && !isResearchSite(p.site.name)) {
+        set.add(p.site.name);
+      }
     });
     return Array.from(set).sort();
-  }, [products]);
+  }, [validProducts]);
 
   // Products matching search query (before site filtering)
   const searchFilteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return products;
-    return products
+    if (!q) return validProducts;
+    return validProducts
       .filter((p) => fuzzyMatchAny([p.name], q))
       .sort((a, b) => {
         const aName = (a.name || "").toLowerCase().trim();
@@ -549,7 +557,7 @@ export default function PendingLinkLogsSection({
         if (aExact !== bExact) return bExact - aExact;
         return 0;
       });
-  }, [products, searchQuery]);
+  }, [validProducts, searchQuery]);
 
   // Extract site counts dynamically based on search-filtered products
   const siteCounts = useMemo(() => {
@@ -569,7 +577,7 @@ export default function PendingLinkLogsSection({
   // Filter individual product records (search query + selected site)
   const filteredProducts = useMemo(() => {
     return searchFilteredProducts.filter((p) => {
-      return selectedSite === "ALL" || (p.site?.name || "Unassigned") === selectedSite;
+      return selectedSite === "ALL" || p.site?.name === selectedSite;
     });
   }, [searchFilteredProducts, selectedSite]);
 

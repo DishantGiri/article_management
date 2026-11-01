@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canUserAddLinkOnSite, getUserAuthorizedSiteIds, isAdmin } from "@/lib/permissions";
+import { isResearchSite } from "@/lib/researchSite";
 
 // GET /api/links?productId=X
 export async function GET(req: NextRequest) {
@@ -78,10 +79,20 @@ export async function POST(req: NextRequest) {
 
     const product = await prisma.product.findUnique({
       where: { id: parseInt(productId) },
-      select: { siteId: true },
+      select: {
+        siteId: true,
+        site: { select: { id: true, name: true } },
+      },
     });
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    if (!product.siteId || isResearchSite(product.site?.name)) {
+      return NextResponse.json(
+        { error: "Cannot add links: This product has No Site assigned. Please add the product to a website first." },
+        { status: 400 }
+      );
     }
 
     const canAddLink = await canUserAddLinkOnSite(Number(session.user.id), session.user.role, product.siteId);

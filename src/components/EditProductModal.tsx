@@ -630,7 +630,7 @@ export default function EditProductModal({
                       placeholder="Select Site..."
                       options={sites.map((s) => ({
                         value: String(s.id),
-                        label: s.name === "Product Research" ? "Research Pool (Unassigned)" : s.name,
+                        label: (s.name === "Product Research" || s.name === "Product Research Hub") ? "No Site" : s.name,
                       }))}
                     />
                   )}

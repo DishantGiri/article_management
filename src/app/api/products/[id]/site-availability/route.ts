@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sendRealtimeNotification } from "@/lib/notifier";
+import { isResearchSite } from "@/lib/researchSite";
 
 // GET /api/products/[id]/site-availability
 // Returns all sites and indicates which ones have this product available
@@ -80,8 +81,11 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // Retrieve all active sites
+    // Retrieve all active publishing sites (excluding internal Product Research catalog)
     const allSites = await prisma.site.findMany({
+      where: {
+        name: { notIn: ["Product Research", "Product Research Hub"] },
+      },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -207,7 +211,7 @@ export async function GET(
     return NextResponse.json({
       productName: baseProduct.name,
       baseProductId: baseProduct.id,
-      isUnassigned: baseProduct.siteId === null || baseProduct.site?.name === "Product Research",
+      isUnassigned: baseProduct.siteId === null || isResearchSite(baseProduct.site?.name),
       targetSites: baseProduct.targetSites,
       researchedBy: baseResearcher || baseProduct.addedBy?.name || null,
       researchedByRole: baseResearcher ? "Product Researcher" : (baseProduct.addedBy?.role || null),
@@ -431,7 +435,8 @@ export async function POST(
 
       // Create or assign product on target site
       let newProduct;
-      if (sourceProduct.siteId === null && createdList.length === 0) {
+      const isSourceInResearch = sourceProduct.siteId === null || isResearchSite(sourceProduct.site?.name);
+      if (isSourceInResearch && createdList.length === 0) {
         newProduct = await prisma.product.update({
           where: { id: sourceProduct.id },
           data: {
@@ -478,14 +483,19 @@ export async function POST(
         });
       }
 
-      // Auto-create PENDING article for writers on that site
-      const newArticle = await prisma.article.create({
-        data: {
-          productId: newProduct.id,
-          status: "PENDING",
-          country: newProduct.country || null,
-        },
+      // Check if article already exists for this product to prevent unique constraint error
+      let newArticle = await prisma.article.findUnique({
+        where: { productId: newProduct.id },
       });
+      if (!newArticle) {
+        newArticle = await prisma.article.create({
+          data: {
+            productId: newProduct.id,
+            status: "PENDING",
+            country: newProduct.country || null,
+          },
+        });
+      }
 
       // Record in ArticleHistory for audit trail / site activity
       const adderName = session.user.name || "User";

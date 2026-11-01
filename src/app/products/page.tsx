@@ -171,7 +171,7 @@ function ProductsPageContent() {
     const rows = filtered.map((p) => [
       p.id.toString(),
       p.name,
-      p.site?.name || p.targetSites || "Research Pool",
+      (!p.site?.name || p.site.name === "Product Research" || p.site.name === "Product Research Hub") ? "No Site" : p.site.name,
       p.category?.name || "",
       p.trendLink || "",
       p.previewLink || "",

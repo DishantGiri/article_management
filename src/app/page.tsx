@@ -2603,7 +2603,7 @@ function ProductResearcherHubStudio({
                         {p.name}
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        {p.site?.name || "Global"}
+                        {(!p.site?.name || p.site.name === "Product Research" || p.site.name === "Product Research Hub") ? "No Site" : p.site.name}
                       </p>
                     </div>
                     <Link

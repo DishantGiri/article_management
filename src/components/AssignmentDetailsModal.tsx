@@ -38,6 +38,7 @@ import { toast } from "react-hot-toast";
 import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 import { consolidateLinkLogs } from "@/lib/utils";
+import { isResearchSite } from "@/lib/researchSiteUtils";
 
 export interface AssignmentProduct {
   id: number;
@@ -576,7 +577,7 @@ export default function AssignmentDetailsModal({
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
                     <Building2 className="w-3.5 h-3.5 text-[#6D8196]" />
-                    <span>{(!product.site?.name || product.site.name === "Product Research") ? "Research Pool (Unassigned)" : product.site.name}</span>
+                    <span>{(!product.site?.name || isResearchSite(product.site.name)) ? "No Site" : product.site.name}</span>
                   </span>
 
                   {product.targetSites && (
@@ -660,7 +661,7 @@ export default function AssignmentDetailsModal({
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
                       <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       <span>
-                        {(!product.site?.name || product.site.name === "Product Research") ? "Modified by: " : "Added to site by: "}
+                        {(!product.site?.name || isResearchSite(product.site.name)) ? "Modified by: " : "Added to site by: "}
                         <strong>{product.updatedBy.name}</strong>
                         {product.updatedBy.role && (
                           <span className="text-[10px] text-slate-400 ml-1">
@@ -994,10 +995,20 @@ export default function AssignmentDetailsModal({
                       {/* Right: Actions */}
                       <div className="shrink-0 flex items-center gap-1.5">
                         {site.isAvailable ? (
-                          <div className="flex items-center gap-1">
-                            <span className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/60">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/60" title="Published on site">
                               <Check className="w-3.5 h-3.5" />
                             </span>
+                            {canManageSites && site.product && (
+                              <Link
+                                href={`/links?productId=${site.product.id}`}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white dark:bg-emerald-950/60 dark:hover:bg-emerald-600 dark:text-emerald-300 dark:hover:text-white border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-bold transition shadow-2xs cursor-pointer"
+                                title={`Add or configure links for ${site.siteName}`}
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>{site.product.linkCount && site.product.linkCount > 0 ? "Edit Link" : "Add Link"}</span>
+                              </Link>
+                            )}
                           </div>
                         ) : (
                           canManageSites && (
@@ -1166,15 +1177,27 @@ export default function AssignmentDetailsModal({
                   </div>
                 )}
 
-                <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                  <Link2 className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    No affiliate links or bridge pages configured for this product yet.
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Linkers will configure routing URLs and target country geos shortly.
-                  </p>
-                </div>
+                {(!product.site?.name || isResearchSite(product.site.name)) ? (
+                  <div className="p-8 text-center bg-amber-50/60 dark:bg-amber-950/30 rounded-2xl border border-dashed border-amber-300 dark:border-amber-800 space-y-1.5">
+                    <Link2 className="w-8 h-8 text-amber-500/70 mx-auto mb-1" />
+                    <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                      Cannot add links: This product has No Site assigned
+                    </p>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300 max-w-md mx-auto">
+                      Links can only be configured once this product is added/published to a website. Use the <strong>&quot;Website Network Availability&quot;</strong> section above to add it to a website first.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                    <Link2 className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      No affiliate links or bridge pages configured for this product yet.
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Linkers will configure routing URLs and target country geos shortly.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="p-5 bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4 shadow-2xs">

@@ -8,6 +8,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { LATAM_CODES, COUNTRY_NAMES, getGeoDisplayName, getCountryFlag } from "@/lib/geo-constants";
+import { isResearchSite } from "@/lib/researchSiteUtils";
 
 interface Product {
   id: number;
@@ -130,6 +131,10 @@ export default function AddLinkModal({
     [products, selectedProductId]
   );
 
+  const isNoSite = useMemo(() => {
+    return Boolean(!selectedProduct?.site || isResearchSite(selectedProduct.site.name));
+  }, [selectedProduct]);
+
   // Find all instances of this product across all sites (matching exact product name)
   const matchingProductsForName = useMemo(() => {
     if (!selectedProduct?.name) return [];
@@ -137,14 +142,14 @@ export default function AddLinkModal({
     return products.filter((p) => p.name?.trim().toLowerCase() === currentName);
   }, [products, selectedProduct]);
 
-  // Sites where this product actually exists (strictly deduplicated by siteId)
+  // Sites where this product actually exists (strictly deduplicated by siteId, excluding research catalog)
   // "is that product on that site then only display that site"
   const availableSitesForProduct = useMemo(() => {
     if (!matchingProductsForName.length) return [];
 
     const siteMap = new Map<number, typeof matchingProductsForName[0]>();
     for (const p of matchingProductsForName) {
-      if (!p.site || !p.site.id) continue;
+      if (!p.site || !p.site.id || isResearchSite(p.site.name)) continue;
       const existing = siteMap.get(p.site.id);
       if (!existing) {
         siteMap.set(p.site.id, p);
@@ -180,6 +185,13 @@ export default function AddLinkModal({
     });
   }, [matchingProductsForName, selectedProduct, selectedProductId]);
 
+  // If currently selected product is in No Site but instances on real sites exist, auto-switch to first real site
+  useEffect(() => {
+    if (isNoSite && availableSitesForProduct.length > 0) {
+      setSelectedProductId(availableSitesForProduct[0].productId);
+    }
+  }, [isNoSite, availableSitesForProduct]);
+
   // Group all products by distinct product name for clean dropdown display
   const productOptions = useMemo(() => {
     const grouped = new Map<string, Product[]>();
@@ -193,20 +205,29 @@ export default function AddLinkModal({
 
     return Array.from(grouped.entries()).map(([key, group]) => {
       const primary = group[0];
-      const siteNames = Array.from(new Set(group.map((p) => p.site?.name).filter(Boolean)));
-      const unlinkedCount = group.filter((p) => !p.linkLogs || p.linkLogs.length === 0).length;
+      const siteNames = Array.from(
+        new Set(
+          group
+            .map((p) => p.site?.name)
+            .filter((name): name is string => Boolean(name && !isResearchSite(name)))
+        )
+      );
+      const realSitesGroup = group.filter((p) => p.site && !isResearchSite(p.site.name));
+      const unlinkedCount = realSitesGroup.filter((p) => !p.linkLogs || p.linkLogs.length === 0).length;
       const hasUnlinked = unlinkedCount > 0;
 
-      const sitesLabel = siteNames.length > 0 ? `(${siteNames.join(", ")})` : "";
-      const statusLabel = hasUnlinked
-        ? `(${unlinkedCount}/${group.length} site${group.length > 1 ? "s" : ""} need links)`
+      const sitesLabel = siteNames.length > 0 ? `(${siteNames.join(", ")})` : "(No Site)";
+      const statusLabel = siteNames.length === 0
+        ? "(No Site - Add to site first)"
+        : hasUnlinked
+        ? `(${unlinkedCount}/${realSitesGroup.length} site${realSitesGroup.length > 1 ? "s" : ""} need links)`
         : "(All sites linked)";
 
       return {
         value: key,
         productName: primary.name,
         group,
-        label: `${primary.name} — ${group.length} ${group.length === 1 ? "Site" : "Sites"} ${sitesLabel} ${statusLabel}`,
+        label: `${primary.name} — ${siteNames.length > 0 ? `${siteNames.length} ${siteNames.length === 1 ? "Site" : "Sites"} ${sitesLabel}` : "No Site"} ${statusLabel}`,
       };
     });
   }, [products]);
@@ -577,6 +598,7 @@ export default function AddLinkModal({
   };
 
   const isFormValid =
+    !isNoSite &&
     !!selectedProductId &&
     geos.length > 0 &&
     (useCountrySpecificLinks
@@ -604,6 +626,11 @@ export default function AddLinkModal({
     !buyLinkError;
 
   const handleSubmit = async () => {
+    if (isNoSite) {
+      setError("Cannot add links: This product has No Site assigned. Please add the product to a website first.");
+      return;
+    }
+
     if (!selectedProductId || !selectedProduct) {
       setError("Product is required.");
       return;
@@ -815,7 +842,7 @@ export default function AddLinkModal({
                     <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-white/15 text-white border border-white/20 flex items-center gap-1 shrink-0">
                       <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white/80" />
                       <span className="truncate max-w-[140px] sm:max-w-none">
-                        {selectedProduct.site?.name || "Unassigned"}
+                        {isNoSite ? "No Site" : (selectedProduct.site?.name || "No Site")}
                       </span>
                     </span>
                   )}
@@ -1054,6 +1081,19 @@ export default function AddLinkModal({
               </div>
             )}
 
+            {/* No Site Warning Banner */}
+            {selectedProduct && isNoSite && (
+              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-start gap-3 shadow-xs">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-xs sm:text-sm font-bold">Cannot Add Links: Product has No Site assigned</p>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                    This product is currently in research mode with no website assigned. Linkers can only configure links once this product has been added to an active website.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Collapsible Site List for this Product (Collapsed by Default) */}
             {selectedProduct && availableSitesForProduct.length > 0 && (
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
@@ -1064,8 +1104,8 @@ export default function AddLinkModal({
                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Assigned Site:
                     </span>
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#6D8196] text-white shadow-2xs">
-                      {selectedProduct.site?.name || "None"}
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shadow-2xs ${isNoSite ? "bg-amber-600 text-white" : "bg-[#6D8196] text-white"}`}>
+                      {isNoSite ? "No Site" : (selectedProduct.site?.name || "No Site")}
                     </span>
                     {selectedProduct.linkLogs && selectedProduct.linkLogs.length > 0 ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
@@ -1841,7 +1881,7 @@ export default function AddLinkModal({
                   {useCountrySpecificLinks
                     ? `${countryLinks.length} country link${countryLinks.length !== 1 ? "s" : ""} ready for `
                     : `${affiliateEntries.length} link entry ready for `}
-                  <strong className="underline decoration-blue-500 font-extrabold">{selectedProduct.site?.name || "Active Site"}</strong>
+                  <strong className="underline decoration-blue-500 font-extrabold">{isNoSite ? "No Site" : (selectedProduct.site?.name || "Active Site")}</strong>
                 </span>
               </span>
             ) : (
@@ -1859,10 +1899,12 @@ export default function AddLinkModal({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={submitting || !isFormValid}
+              disabled={submitting || !isFormValid || isNoSite}
               type="button"
               title={
-                !isFormValid
+                isNoSite
+                  ? "Cannot add links: This product has No Site assigned. Please add the product to a website first."
+                  : !isFormValid
                   ? !bridgePageLink?.trim() || !buyLink?.trim()
                     ? "Bridge Page Link and Buy Link (Buy Now) are both required before saving"
                     : "Please configure all required fields (Product, GEOs, Country Links, Bridge Link, Buy Link)"
@@ -1872,6 +1914,8 @@ export default function AddLinkModal({
             >
               {submitting ? (
                 "Saving..."
+              ) : isNoSite ? (
+                <span>Add to Site First</span>
               ) : (
                 <>
                   <span>Save</span>

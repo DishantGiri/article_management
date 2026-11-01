@@ -2503,7 +2503,7 @@ export default function AddProductModal({
                           Product Research Mode
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-600 text-white ml-auto">
-                          Research Pool
+                          No Site
                         </span>
                       </div>
                       <p className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
@@ -2535,7 +2535,7 @@ export default function AddProductModal({
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold">1 Site (Product Research)</span>
+                            <span className="text-xs font-bold">No Site (Product Research)</span>
                             <span className="text-[9px] px-1.5 py-0.5 rounded font-extrabold bg-blue-600 text-white uppercase">
                               Recommended
                             </span>

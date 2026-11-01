@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { PRODUCT_RESEARCH_SITE_NAME, isResearchSite } from "./researchSiteUtils";
 
-export const PRODUCT_RESEARCH_SITE_NAME = "Product Research";
+export { PRODUCT_RESEARCH_SITE_NAME, isResearchSite };
 
 export async function getOrCreateResearchSite() {
   let site = await prisma.site.findFirst({
@@ -19,10 +20,4 @@ export async function getOrCreateResearchSite() {
   }
 
   return site;
-}
-
-export function isResearchSite(siteName?: string | null): boolean {
-  if (!siteName) return false;
-  const lower = siteName.toLowerCase().trim();
-  return lower === "product research" || lower === "product research hub";
 }
