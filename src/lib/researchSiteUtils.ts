@@ -5,3 +5,4 @@ export function isResearchSite(siteName?: string | null): boolean {
   const lower = siteName.toLowerCase().trim();
   return lower === "product research" || lower === "product research hub";
 }
+
