@@ -18,6 +18,7 @@ import {
   LayoutGrid,
   TrendingUp,
   AlertTriangle,
+  AlertCircle,
   PlayCircle,
   FileText,
   User,
@@ -33,6 +34,7 @@ import {
   Loader2,
   Layers,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";

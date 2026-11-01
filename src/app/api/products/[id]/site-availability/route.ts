@@ -114,6 +114,10 @@ export async function GET(
           select: {
             id: true,
             status: true,
+            articleLink: true,
+            completedAt: true,
+            startedAt: true,
+            writerId: true,
             writer: { select: { id: true, name: true } },
           },
         },
@@ -177,6 +181,17 @@ export async function GET(
                     id: match.article.id,
                     status: match.article.status,
                     writerName: match.article.writer?.name || "Unassigned",
+                    writerId: match.article.writer?.id || null,
+                    articleLink: match.article.articleLink || null,
+                    isWritten: Boolean(
+                      match.article.status === "COMPLETED" ||
+                      match.article.status === "APPROVED" ||
+                      match.article.status === "IN_PROGRESS" ||
+                      match.article.status === "REDO" ||
+                      match.article.articleLink ||
+                      match.article.completedAt ||
+                      match.article.writerId
+                    ),
                   }
                 : null,
               linkCount: match.linkLogs.length,
@@ -549,6 +564,162 @@ export async function POST(
     });
   } catch (err: any) {
     console.error("[POST /api/products/:id/site-availability]", err);
+    return NextResponse.json(
+      { error: err.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/products/[id]/site-availability
+// Linker / Admin action to unselect/remove product from a target site
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const role = session.user.role;
+    const userRoles: string[] = (session.user as any)?.roles || (role ? [role] : []);
+    const canManage =
+      role === "LINKER" ||
+      role === "ADMIN" ||
+      role === "SUPER_ADMIN" ||
+      role === "PRODUCT_RESEARCHER" ||
+      userRoles.includes("LINKER") ||
+      userRoles.includes("ADMIN") ||
+      userRoles.includes("SUPER_ADMIN") ||
+      userRoles.includes("PRODUCT_RESEARCHER");
+
+    if (!canManage) {
+      return NextResponse.json(
+        { error: "Access Denied: You do not have permission to remove products from sites." },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await params;
+    const baseProductId = parseInt(id, 10);
+    const body = await req.json();
+    const { targetSiteId, targetProductId, force } = body;
+
+    let prodToDelete: any = null;
+    if (targetProductId) {
+      prodToDelete = await prisma.product.findUnique({
+        where: { id: Number(targetProductId) },
+        include: {
+          site: { select: { id: true, name: true } },
+          article: {
+            select: {
+              id: true,
+              status: true,
+              articleLink: true,
+              completedAt: true,
+              startedAt: true,
+              writerId: true,
+              writer: { select: { id: true, name: true } },
+            },
+          },
+          linkLogs: { select: { id: true } },
+        },
+      });
+    } else if (targetSiteId) {
+      const baseProduct = await prisma.product.findUnique({
+        where: { id: baseProductId },
+        select: { name: true },
+      });
+      if (baseProduct) {
+        const trimmed = baseProduct.name.trim();
+        prodToDelete = await prisma.product.findFirst({
+          where: {
+            siteId: Number(targetSiteId),
+            OR: [
+              { name: trimmed },
+              { name: trimmed.toLowerCase() },
+              { name: trimmed.toUpperCase() },
+            ],
+          },
+          include: {
+            site: { select: { id: true, name: true } },
+            article: {
+              select: {
+                id: true,
+                status: true,
+                articleLink: true,
+                completedAt: true,
+                startedAt: true,
+                writerId: true,
+                writer: { select: { id: true, name: true } },
+              },
+            },
+            linkLogs: { select: { id: true } },
+          },
+        });
+      }
+    }
+
+    if (!prodToDelete) {
+      return NextResponse.json(
+        { error: "Product not found on this site." },
+        { status: 404 }
+      );
+    }
+
+    const art = prodToDelete.article;
+    const isArticleWritten = Boolean(
+      art && (
+        art.status === "COMPLETED" ||
+        art.status === "APPROVED" ||
+        art.status === "IN_PROGRESS" ||
+        art.status === "REDO" ||
+        art.articleLink ||
+        art.completedAt ||
+        art.writerId
+      )
+    );
+
+    if (isArticleWritten && !force) {
+      return NextResponse.json(
+        {
+          requiresConfirmation: true,
+          isArticleWritten: true,
+          articleStatus: art?.status,
+          articleWriter: art?.writer?.name || "Unassigned",
+          articleLink: art?.articleLink || null,
+          siteName: prodToDelete.site?.name || "Site",
+          productName: prodToDelete.name,
+          targetProductId: prodToDelete.id,
+          message: `An article is already ${
+            art?.status === "COMPLETED" || art?.status === "APPROVED"
+              ? "written/completed"
+              : "in progress or assigned"
+          } on ${prodToDelete.site?.name}. Removal requires confirming on own risk.`,
+        },
+        { status: 409 }
+      );
+    }
+
+    const siteName = prodToDelete.site?.name || "site";
+    const productName = prodToDelete.name;
+
+    // Delete the product on this site (cascades article, reviews, link logs)
+    await prisma.product.delete({
+      where: { id: prodToDelete.id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully removed "${productName}" from ${siteName}.`,
+      deletedProductId: prodToDelete.id,
+      deletedSiteId: prodToDelete.siteId,
+      wasCurrentModalProduct: prodToDelete.id === baseProductId,
+    });
+  } catch (err: any) {
+    console.error("[DELETE /api/products/:id/site-availability]", err);
     return NextResponse.json(
       { error: err.message || "Internal server error" },
       { status: 500 }

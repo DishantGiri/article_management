@@ -303,10 +303,30 @@ export async function DELETE(
       );
     }
 
-    return NextResponse.json(
-      { error: "Product deletion is disabled. Added products cannot be deleted because it affects multiple places across sites, articles, link logs, and commissions." },
-      { status: 400 }
-    );
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) {
+      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
+    }
+
+    const existing = await prisma.product.findUnique({
+      where: { id: numericId },
+      include: {
+        site: { select: { name: true } },
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    await prisma.product.delete({
+      where: { id: numericId },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Product "${existing.name}" removed successfully.`,
+    });
   } catch (err) {
     console.error("[DELETE /api/products/:id]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
