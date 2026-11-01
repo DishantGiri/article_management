@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { action, ids } = await req.json();
+
+    if (action === "clear-all") {
+      // Clear all Trendmap products.
+      // ONLY removes from TrendmapProduct; NEVER removes or affects the catalog Product table!
+      const res = await prisma.trendmapProduct.deleteMany({});
+      return NextResponse.json({
+        success: true,
+        message: `Cleared all ${res.count} products from Trendmap`,
+        count: res.count,
+      });
+    }
 
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: "No product IDs provided" }, { status: 400 });
@@ -12,10 +30,16 @@ export async function POST(req: NextRequest) {
     const numericIds = ids.map((id) => Number(id)).filter((id) => !isNaN(id));
 
     if (action === "delete") {
-      return NextResponse.json(
-        { error: "Product deletion is disabled. Added products cannot be deleted because it affects multiple places." },
-        { status: 400 }
-      );
+      // Remove selected items from Trendmap.
+      // ONLY removes from TrendmapProduct; NEVER removes or affects the catalog Product table!
+      const res = await prisma.trendmapProduct.deleteMany({
+        where: { id: { in: numericIds } },
+      });
+      return NextResponse.json({
+        success: true,
+        message: `Removed ${res.count} product(s) from Trendmap`,
+        count: res.count,
+      });
     }
 
     if (action === "mark-added") {

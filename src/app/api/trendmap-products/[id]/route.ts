@@ -104,19 +104,29 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const numericId = parseInt(id, 10);
     if (isNaN(numericId)) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
     }
 
-    return NextResponse.json(
-      { error: "Product deletion is disabled. Added products cannot be deleted because it affects multiple places." },
-      { status: 400 }
-    );
+    // ONLY removes from TrendmapProduct; NEVER removes or affects the catalog Product table!
+    await prisma.trendmapProduct.delete({
+      where: { id: numericId },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Removed opportunity from Trendmap",
+    });
   } catch (error: any) {
     return NextResponse.json(
-      { error: "Failed to process request", details: error.message },
+      { error: "Failed to remove product from Trendmap", details: error.message },
       { status: 500 }
     );
   }

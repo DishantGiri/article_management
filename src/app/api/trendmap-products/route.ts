@@ -394,3 +394,29 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+// DELETE /api/trendmap-products
+// Clear all Trendmap products.
+// ONLY removes from TrendmapProduct; NEVER removes or affects the catalog Product table!
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const res = await prisma.trendmapProduct.deleteMany({});
+
+    return NextResponse.json({
+      success: true,
+      message: `Cleared all ${res.count} products from Trendmap. Catalog products remain untouched.`,
+      count: res.count,
+    });
+  } catch (error: any) {
+    console.error("Failed to clear Trendmap products:", error);
+    return NextResponse.json(
+      { error: "Failed to clear Trendmap products", details: error.message },
+      { status: 500 }
+    );
+  }
+}
