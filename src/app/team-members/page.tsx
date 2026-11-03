@@ -689,8 +689,8 @@ export default function TeamMembersPage() {
       ) : (
         /* ─── LIST / TABLE VIEW ─── */
         <div className="bg-white dark:bg-slate-850 rounded-2xl border border-[#CBCBCB]/70 dark:border-slate-700/70 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700/60">
+          <div className="overflow-x-auto scroll-smooth">
+            <table className="w-full divide-y divide-slate-100 dark:divide-slate-700/60 min-w-[850px]">
               <thead className="bg-[#FAF9F5] dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-700">
                 <tr>
                   <th scope="col" className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">

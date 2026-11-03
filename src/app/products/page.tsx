@@ -1100,8 +1100,8 @@ function ProductsPageContent() {
               <p className="text-slate-500 dark:text-slate-400 font-medium">No products found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto scroll-smooth">
+              <table className="w-full text-left border-collapse min-w-[1000px]">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/40">
                     <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Name</th>
@@ -1422,8 +1422,8 @@ function ProductsPageContent() {
               <p className="text-slate-400 text-xs">Switch to &ldquo;All Products&rdquo; above and click &ldquo;Write&rdquo; to start your first article!</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto scroll-smooth">
+              <table className="w-full text-left border-collapse min-w-[1000px]">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-800/40">
                     <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Article / Product</th>

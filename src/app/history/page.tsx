@@ -488,8 +488,8 @@ export default function HistoryPage() {
             <p className="text-slate-400 dark:text-slate-500 text-xs">Try adjusting your search criteria or date ranges.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto p-2">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto scroll-smooth p-2">
+            <table className="w-full text-left border-collapse min-w-[950px]">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-700 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-800/60">
                   <th className="px-4 py-3.5 w-[13%]">Type / Action</th>

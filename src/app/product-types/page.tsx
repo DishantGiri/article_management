@@ -407,8 +407,8 @@ export default function ProductTypesAndCategoriesPage() {
             </p>
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden mt-3">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto scroll-smooth">
+                <table className="w-full text-left border-collapse min-w-[550px]">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-800 bg-[#F8F9FA] dark:bg-slate-800/60">
                       <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Type</th>
@@ -477,8 +477,8 @@ export default function ProductTypesAndCategoriesPage() {
             </p>
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden mt-3 max-w-[480px]">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto scroll-smooth">
+                <table className="w-full text-left border-collapse min-w-[550px]">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-800 bg-[#F8F9FA] dark:bg-slate-800/60">
                       <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Categories</th>

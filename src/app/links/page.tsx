@@ -794,6 +794,30 @@ function LinksPageContent() {
         />
       )}
 
+      {/* ─── ALREADY ADDED PRODUCT LINKS HEADING ────────────────── */}
+      <div className="mb-4 bg-white dark:bg-slate-900 border border-[#CBCBCB]/70 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-800/50 shadow-xs shrink-0">
+              <Link2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h3 className="text-base font-bold text-[#4A4A4A] dark:text-slate-100 tracking-tight">
+                  Already Added Product Links
+                </h3>
+                <span className="px-2.5 py-0.5 text-xs font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full shrink-0">
+                  {sortedFiltered.length} {sortedFiltered.length === 1 ? "Link Entry" : "Link Entries"}
+                </span>
+              </div>
+              <p className="text-xs text-[#737373] dark:text-slate-400 font-medium mt-0.5">
+                Configured product links, affiliate networks, bridge URLs, and geo destinations
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Filters Bar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-[#CBCBCB]/60 dark:border-slate-800 shadow-xs mb-6">
         <div className="flex flex-wrap items-center gap-3">
@@ -903,7 +927,7 @@ function LinksPageContent() {
           </div>
         ) : (
           <div className="overflow-x-auto p-4">
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[950px]">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
                   <th className="px-3.5 py-3 text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Product</th>

@@ -573,8 +573,8 @@ function UserCommissionsContent() {
 
       {/* ─── MAIN USER COMMISSIONS TABLE ──────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto scroll-smooth">
+          <table className="w-full text-left text-xs min-w-[900px]">
             <thead className="bg-[#FAF9F5] dark:bg-slate-850/80 border-b border-[#CBCBCB]/50 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-[#737373] dark:text-slate-400">
               <tr>
                 <th className="py-3.5 px-4">User Details</th>

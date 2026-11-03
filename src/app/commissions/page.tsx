@@ -1169,8 +1169,8 @@ export default function CommissionsPage() {
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto scroll-smooth">
+            <table className="w-full text-left text-xs min-w-[1050px]">
               <thead className="bg-[#FAF9F5] dark:bg-slate-850/80 border-b border-[#CBCBCB]/50 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-[#737373] dark:text-slate-400">
                 <tr>
                   <th className="py-3.5 px-4"># / Date</th>
@@ -1425,8 +1425,8 @@ export default function CommissionsPage() {
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto scroll-smooth">
+            <table className="w-full text-left text-xs min-w-[1050px]">
               <thead className="bg-[#FAF9F5] dark:bg-slate-850/80 border-b border-[#CBCBCB]/50 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-[#737373] dark:text-slate-400">
                 <tr>
                   <th className="py-3.5 px-4">Product & Site</th>

@@ -1410,8 +1410,8 @@ export default function UsersPage() {
         /* TABLE VIEW                                                    */
         /* ───────────────────────────────────────────────────────────── */
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto p-4">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto scroll-smooth p-4">
+            <table className="w-full text-left text-xs min-w-[850px]">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="px-4 py-3.5">User</th>

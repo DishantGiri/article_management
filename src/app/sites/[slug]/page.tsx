@@ -736,8 +736,8 @@ export default function SiteDetailPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto scroll-smooth">
+            <table className="w-full text-left border-collapse min-w-[850px]">
               <thead>
                 <tr className="border-b border-[#CBCBCB]/60 dark:border-slate-800 bg-[#FAF9F5] dark:bg-slate-850/60 text-[11px] font-bold uppercase tracking-wider text-[#737373] dark:text-slate-400">
                   <th className="py-3 px-4 w-12 text-center">#</th>
