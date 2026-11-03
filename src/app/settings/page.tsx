@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
   User,
@@ -30,6 +30,8 @@ import {
   Moon,
   Cloud,
   Key,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
@@ -89,6 +91,49 @@ export default function SettingsPage() {
       setActiveTab("profile");
     }
   }, [session, activeTab]);
+
+  // Horizontal scroll navigation for tabs
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTabScroll = useCallback(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
+  }, []);
+
+  const scrollTabs = (direction: "left" | "right") => {
+    if (tabsScrollRef.current) {
+      const scrollAmount = 260;
+      tabsScrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+      setTimeout(checkTabScroll, 280);
+    }
+  };
+
+  useEffect(() => {
+    checkTabScroll();
+    const handleResize = () => checkTabScroll();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [checkTabScroll]);
+
+  // Auto scroll active tab into view if needed
+  useEffect(() => {
+    const el = tabsScrollRef.current;
+    if (el) {
+      const activeEl = el.querySelector<HTMLElement>('[data-active="true"]');
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+      }
+      setTimeout(checkTabScroll, 200);
+    }
+  }, [activeTab, checkTabScroll]);
 
   // User Profile
   const [userData, setUserData] = useState<any>(null);
@@ -528,47 +573,79 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ─── TAB NAVIGATION ────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 mt-6 pt-5 border-t border-[#CBCBCB]/40 overflow-x-auto no-scrollbar">
-          {[
-            { id: "profile", label: "Profile & Identity", icon: User },
-            { id: "appearance", label: "Appearance & Theme", icon: Sparkles, badge: resolvedTheme === "dark" ? "Dark" : "Light" },
-            { id: "notifications", label: "Notification Alerts", icon: Bell, badge: soundEnabled ? "Active" : "Muted" },
-            { id: "workspace", label: "Workspace & Display", icon: Sliders },
-            { id: "security", label: "Security & Session", icon: Shield },
-            ...(session?.user?.role === "SUPER_ADMIN"
-              ? [
-                  { id: "backup", label: "Google Drive & Backups", icon: Cloud, badge: "Super Admin" },
-                  { id: "commission-password", label: "Commissions Password", icon: Key, badge: "Super Admin" },
-                ]
-              : []),
-          ].map((t) => {
-            const Icon = t.icon;
-            const isActive = activeTab === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id as any)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
-                  isActive
-                    ? "bg-[#6D8196] text-white shadow-2xs"
-                    : "bg-[#FAF9F5] text-[#737373] hover:text-[#4A4A4A] border border-[#CBCBCB]/60 hover:bg-slate-100"
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{t.label}</span>
-                {t.badge && (
-                  <span
-                    className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-md uppercase ${
-                      isActive ? "bg-white/20 text-white" : "bg-[#6D8196]/10 text-[#6D8196]"
-                    }`}
-                  >
-                    {t.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* ─── TAB NAVIGATION WITH HORIZONTAL SCROLL ARROWS ────────────────── */}
+        <div className="flex items-center gap-1.5 sm:gap-2 mt-6 pt-5 border-t border-[#CBCBCB]/40 dark:border-slate-800">
+          {/* Scroll Left Arrow */}
+          <button
+            type="button"
+            onClick={() => scrollTabs("left")}
+            disabled={!canScrollLeft}
+            aria-label="Scroll tabs left"
+            className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-[#CBCBCB]/70 dark:border-slate-700 text-[#4A4A4A] dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-[#6D8196] flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-2xs disabled:opacity-25 disabled:cursor-not-allowed disabled:hover:bg-white disabled:dark:hover:bg-slate-800"
+            title="Scroll tabs left"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          {/* Horizontal Scrollable Tabs Container */}
+          <div
+            ref={tabsScrollRef}
+            onScroll={checkTabScroll}
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-1 py-1"
+          >
+            {[
+              { id: "profile", label: "Profile & Identity", icon: User },
+              { id: "appearance", label: "Appearance & Theme", icon: Sparkles, badge: resolvedTheme === "dark" ? "Dark" : "Light" },
+              { id: "notifications", label: "Notification Alerts", icon: Bell, badge: soundEnabled ? "Active" : "Muted" },
+              { id: "workspace", label: "Workspace & Display", icon: Sliders },
+              { id: "security", label: "Security & Session", icon: Shield },
+              ...(session?.user?.role === "SUPER_ADMIN"
+                ? [
+                    { id: "backup", label: "Google Drive & Backups", icon: Cloud, badge: "Super Admin" },
+                    { id: "commission-password", label: "Commissions Password", icon: Key, badge: "Super Admin" },
+                  ]
+                : []),
+            ].map((t) => {
+              const Icon = t.icon;
+              const isActive = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  data-active={isActive ? "true" : "false"}
+                  onClick={() => setActiveTab(t.id as any)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer shrink-0 ${
+                    isActive
+                      ? "bg-[#6D8196] text-white shadow-2xs"
+                      : "bg-[#FAF9F5] text-[#737373] hover:text-[#4A4A4A] border border-[#CBCBCB]/60 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{t.label}</span>
+                  {t.badge && (
+                    <span
+                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-md uppercase ${
+                        isActive ? "bg-white/20 text-white" : "bg-[#6D8196]/10 text-[#6D8196] dark:bg-[#6D8196]/20 dark:text-sky-300"
+                      }`}
+                    >
+                      {t.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Scroll Right Arrow */}
+          <button
+            type="button"
+            onClick={() => scrollTabs("right")}
+            disabled={!canScrollRight}
+            aria-label="Scroll tabs right"
+            className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-[#CBCBCB]/70 dark:border-slate-700 text-[#4A4A4A] dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-[#6D8196] flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-2xs disabled:opacity-25 disabled:cursor-not-allowed disabled:hover:bg-white disabled:dark:hover:bg-slate-800"
+            title="Scroll tabs right"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
