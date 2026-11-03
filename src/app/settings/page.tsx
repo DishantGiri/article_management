@@ -29,12 +29,14 @@ import {
   Sun,
   Moon,
   Cloud,
+  Key,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import CustomSelect from "@/components/CustomSelect";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useTheme } from "@/context/ThemeContext";
 import GoogleDriveBackupSettings from "@/components/GoogleDriveBackupSettings";
+import CommissionPasswordSettings from "@/components/CommissionPasswordSettings";
 import { validateUserName, filterNameInput, handleNameKeyDown } from "@/lib/user-validation";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -65,16 +67,28 @@ const PRESET_AVATARS = [
 export default function SettingsPage() {
   const { data: session, update } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<"profile" | "appearance" | "notifications" | "workspace" | "security" | "backup">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "appearance" | "notifications" | "workspace" | "security" | "backup" | "commission-password">("profile");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
       if (p.get("tab") === "backup") {
         setActiveTab("backup");
+      } else if (p.get("tab") === "commission-password") {
+        setActiveTab("commission-password");
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (
+      session &&
+      session.user?.role !== "SUPER_ADMIN" &&
+      (activeTab === "backup" || activeTab === "commission-password")
+    ) {
+      setActiveTab("profile");
+    }
+  }, [session, activeTab]);
 
   // User Profile
   const [userData, setUserData] = useState<any>(null);
@@ -523,7 +537,10 @@ export default function SettingsPage() {
             { id: "workspace", label: "Workspace & Display", icon: Sliders },
             { id: "security", label: "Security & Session", icon: Shield },
             ...(session?.user?.role === "SUPER_ADMIN"
-              ? [{ id: "backup", label: "Google Drive & Backups", icon: Cloud, badge: "Super Admin" }]
+              ? [
+                  { id: "backup", label: "Google Drive & Backups", icon: Cloud, badge: "Super Admin" },
+                  { id: "commission-password", label: "Commissions Password", icon: Key, badge: "Super Admin" },
+                ]
               : []),
           ].map((t) => {
             const Icon = t.icon;
@@ -1409,6 +1426,13 @@ export default function SettingsPage() {
       {activeTab === "backup" && session?.user?.role === "SUPER_ADMIN" && (
         <div className="animate-fadeIn">
           <GoogleDriveBackupSettings />
+        </div>
+      )}
+
+      {/* ─── TAB 7: COMMISSIONS PASSWORD (SUPER ADMIN) ────────────────── */}
+      {activeTab === "commission-password" && session?.user?.role === "SUPER_ADMIN" && (
+        <div className="animate-fadeIn">
+          <CommissionPasswordSettings />
         </div>
       )}
     </div>

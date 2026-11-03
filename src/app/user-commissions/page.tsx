@@ -33,6 +33,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import CustomSelect from "@/components/CustomSelect";
 import DateRangePicker from "@/components/DateRangePicker";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import CommissionPasswordGate from "@/components/CommissionPasswordGate";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 interface UserSaleItem {
@@ -75,7 +76,7 @@ interface SiteOption {
   name: string;
 }
 
-export default function UserCommissionsPage() {
+function UserCommissionsContent() {
   const { data: session, status } = useSession();
 
   const [loading, setLoading] = useState(true);
@@ -915,5 +916,13 @@ export default function UserCommissionsPage() {
         onCancel={() => setPayoutTargetUser(null)}
       />
     </div>
+  );
+}
+
+export default function UserCommissionsPage() {
+  return (
+    <CommissionPasswordGate pageTitle="User Commissions">
+      <UserCommissionsContent />
+    </CommissionPasswordGate>
   );
 }

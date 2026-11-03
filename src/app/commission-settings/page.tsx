@@ -34,6 +34,7 @@ import {
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import CommissionPasswordGate from "@/components/CommissionPasswordGate";
 
 interface CommissionTier {
   id?: number;
@@ -239,7 +240,7 @@ function areSettingsEqual(
   return true;
 }
 
-export default function CommissionSettingsPage() {
+function CommissionSettingsContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -805,6 +806,14 @@ export default function CommissionSettingsPage() {
         onCancel={() => setShowResetConfirm(false)}
       />
     </div>
+  );
+}
+
+export default function CommissionSettingsPage() {
+  return (
+    <CommissionPasswordGate pageTitle="Commission Settings">
+      <CommissionSettingsContent />
+    </CommissionPasswordGate>
   );
 }
 
