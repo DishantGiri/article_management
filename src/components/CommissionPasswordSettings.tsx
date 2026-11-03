@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Key,
   Lock,
@@ -17,10 +17,10 @@ import {
   Coins,
   Users,
   Clock,
-  Sparkles,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface PasswordStatus {
   isSet: boolean;
@@ -33,17 +33,29 @@ export default function CommissionPasswordSettings() {
   const [status, setStatus] = useState<PasswordStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toggling, setToggling] = useState(false);
 
   // Form fields
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Confirm delete modal
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Toggle protection modal (requires current password)
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [togglePassword, setTogglePassword] = useState("");
+  const [showTogglePassword, setShowTogglePassword] = useState(false);
+  const [toggling, setToggling] = useState(false);
+
+  // Delete modal (requires current password)
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const toggleInputRef = useRef<HTMLInputElement>(null);
+  const deleteInputRef = useRef<HTMLInputElement>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -65,8 +77,27 @@ export default function CommissionPasswordSettings() {
     fetchStatus();
   }, [fetchStatus]);
 
+  // Auto-focus modals
+  useEffect(() => {
+    if (showToggleModal) {
+      setTimeout(() => toggleInputRef.current?.focus(), 80);
+    }
+  }, [showToggleModal]);
+
+  useEffect(() => {
+    if (showDeleteModal) {
+      setTimeout(() => deleteInputRef.current?.focus(), 80);
+    }
+  }, [showDeleteModal]);
+
+  // Handle Save / Change Password
   const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (status?.isSet && !currentPassword.trim()) {
+      toast.error("Please enter your current commission password");
+      return;
+    }
 
     if (!newPassword.trim()) {
       toast.error("Please enter a new password");
@@ -74,12 +105,12 @@ export default function CommissionPasswordSettings() {
     }
 
     if (newPassword.trim().length < 4) {
-      toast.error("Password must be at least 4 characters long");
+      toast.error("New password must be at least 4 characters long");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error("New passwords do not match");
       return;
     }
 
@@ -91,6 +122,7 @@ export default function CommissionPasswordSettings() {
         body: JSON.stringify({
           action: "set",
           password: newPassword.trim(),
+          currentPassword: status?.isSet ? currentPassword.trim() : undefined,
           enabled: true,
         }),
       });
@@ -101,6 +133,7 @@ export default function CommissionPasswordSettings() {
       }
 
       toast.success(data.message || "Commission password saved!");
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       // Clear current tab unlocked flag so the user tests with new password
@@ -113,7 +146,16 @@ export default function CommissionPasswordSettings() {
     }
   };
 
-  const handleToggle = async (newEnabled: boolean) => {
+  // Handle Pause / Enable Protection with Password Verification
+  const handleConfirmToggle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!togglePassword.trim()) {
+      toast.error("Please enter the current commission password");
+      return;
+    }
+
+    const newEnabled = !status?.enabled;
+
     try {
       setToggling(true);
       const res = await fetch("/api/settings/commission-password", {
@@ -122,15 +164,18 @@ export default function CommissionPasswordSettings() {
         body: JSON.stringify({
           action: "toggle",
           enabled: newEnabled,
+          currentPassword: togglePassword.trim(),
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to toggle password protection");
+        throw new Error(data.error || "Failed to update protection status");
       }
 
-      toast.success(data.message || `Password protection ${newEnabled ? "enabled" : "disabled"}`);
+      toast.success(data.message || `Password protection ${newEnabled ? "enabled" : "paused"}`);
+      setShowToggleModal(false);
+      setTogglePassword("");
       await fetchStatus();
     } catch (err: any) {
       toast.error(err.message || "An error occurred");
@@ -139,13 +184,23 @@ export default function CommissionPasswordSettings() {
     }
   };
 
-  const handleRemovePassword = async () => {
+  // Handle Remove Password with Password Verification
+  const handleConfirmDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deletePassword.trim()) {
+      toast.error("Please enter the current commission password");
+      return;
+    }
+
     try {
       setDeleting(true);
       const res = await fetch("/api/settings/commission-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "remove" }),
+        body: JSON.stringify({
+          action: "remove",
+          currentPassword: deletePassword.trim(),
+        }),
       });
 
       const data = await res.json();
@@ -153,8 +208,10 @@ export default function CommissionPasswordSettings() {
         throw new Error(data.error || "Failed to remove password");
       }
 
-      toast.success("Commission password removed");
-      setShowDeleteConfirm(false);
+      toast.success("Commission password removed successfully");
+      setShowDeleteModal(false);
+      setDeletePassword("");
+      setCurrentPassword("");
       sessionStorage.removeItem("commission_access_unlocked");
       await fetchStatus();
     } catch (err: any) {
@@ -299,7 +356,9 @@ export default function CommissionPasswordSettings() {
                   Enforce Password Requirement
                 </p>
                 <p className="text-[11px] text-[#737373] dark:text-slate-400">
-                  When enabled, visitors must enter the password to view User Commissions and Commission Settings.
+                  {status.enabled
+                    ? "Visitors must enter the commission password to view User Commissions and Commission Settings."
+                    : "Password protection is paused. Visitors can view both commission tabs without a password."}
                 </p>
               </div>
             </div>
@@ -307,15 +366,17 @@ export default function CommissionPasswordSettings() {
             <div className="flex items-center gap-2 self-end sm:self-center">
               <button
                 type="button"
-                onClick={() => handleToggle(!status.enabled)}
-                disabled={toggling}
+                onClick={() => {
+                  setTogglePassword("");
+                  setShowToggleModal(true);
+                }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                   status.enabled
                     ? "bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-950/60 dark:hover:bg-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                     : "bg-emerald-600 hover:bg-emerald-700 text-white"
                 }`}
               >
-                {toggling && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                {status.enabled ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                 <span>{status.enabled ? "Pause Protection" : "Enable Protection"}</span>
               </button>
             </div>
@@ -332,16 +393,46 @@ export default function CommissionPasswordSettings() {
           </h3>
           <p className="text-xs text-[#737373] dark:text-slate-400 font-medium mt-1">
             {status?.isSet
-              ? "Enter a new password below to replace the existing commission password."
+              ? "To change the password, enter your current password followed by your new password."
               : "Choose a secure password. Anyone trying to access User Commissions or Commission Settings will need this password."}
           </p>
         </div>
 
         <form onSubmit={handleSavePassword} className="space-y-4 max-w-xl">
+          {/* Current Password (ONLY required if password is already set) */}
+          {status?.isSet && (
+            <div>
+              <label className="block text-xs font-bold text-[#4A4A4A] dark:text-slate-200 uppercase tracking-wider mb-2">
+                Current Commission Password <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  required
+                  className="w-full px-4 py-2.5 pr-11 bg-white dark:bg-slate-800 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-sm font-semibold text-[#4A4A4A] dark:text-slate-100 focus:outline-none focus:border-[#6D8196] focus:ring-2 focus:ring-[#6D8196]/20 transition shadow-2xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                  title={showCurrentPassword ? "Hide password" : "Show password"}
+                >
+                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Required for security verification before updating the password.
+              </p>
+            </div>
+          )}
+
           {/* New Password */}
           <div>
             <label className="block text-xs font-bold text-[#4A4A4A] dark:text-slate-200 uppercase tracking-wider mb-2">
-              New Commission Password
+              {status?.isSet ? "New Commission Password" : "Set Commission Password"} <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -367,14 +458,14 @@ export default function CommissionPasswordSettings() {
           {/* Confirm Password */}
           <div>
             <label className="block text-xs font-bold text-[#4A4A4A] dark:text-slate-200 uppercase tracking-wider mb-2">
-              Confirm New Password
+              Confirm New Password <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repeat password"
+                placeholder="Repeat new password"
                 minLength={4}
                 required
                 className="w-full px-4 py-2.5 pr-11 bg-white dark:bg-slate-800 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-sm font-semibold text-[#4A4A4A] dark:text-slate-100 focus:outline-none focus:border-[#6D8196] focus:ring-2 focus:ring-[#6D8196]/20 transition shadow-2xs"
@@ -426,13 +517,16 @@ export default function CommissionPasswordSettings() {
                 <span>Remove Password Protection</span>
               </h3>
               <p className="text-xs text-[#737373] dark:text-slate-400 mt-1 max-w-xl">
-                Removing the password will allow all authorized team roles to access User Commissions and Commission Settings without a password prompt.
+                Removing the password will allow all authorized team roles to access User Commissions and Commission Settings without a password prompt. Requires current password verification.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={() => {
+                setDeletePassword("");
+                setShowDeleteModal(true);
+              }}
               className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -442,18 +536,185 @@ export default function CommissionPasswordSettings() {
         </div>
       )}
 
-      {/* Confirmation Modal */}
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        title="Remove Commission Password"
-        message="Are you sure you want to remove the commission password? Once removed, the User Commissions and Commission Settings pages will no longer be locked behind a password."
-        confirmLabel={deleting ? "Removing..." : "Yes, Remove Password"}
-        cancelLabel="Cancel"
-        variant="danger"
-        onConfirm={handleRemovePassword}
-        onCancel={() => setShowDeleteConfirm(false)}
-      />
+      {/* ─── MODAL: PAUSE / ENABLE PROTECTION PASSWORD CONFIRMATION ────────────────── */}
+      {showToggleModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fadeIn"
+            onClick={() => !toggling && setShowToggleModal(false)}
+          />
+          <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden animate-scaleIn">
+            <button
+              type="button"
+              onClick={() => !toggling && setShowToggleModal(false)}
+              className="absolute top-3.5 right-3.5 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <form onSubmit={handleConfirmToggle}>
+              <div className="px-6 pt-6 pb-5 flex gap-4">
+                <div
+                  className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${
+                    status?.enabled
+                      ? "bg-amber-50 dark:bg-amber-950/50 border-amber-200 text-amber-600"
+                      : "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 text-emerald-600"
+                  }`}
+                >
+                  {status?.enabled ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                </div>
+
+                <div className="flex-1 pt-0.5">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+                    {status?.enabled ? "Pause Password Protection" : "Enable Password Protection"}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    {status?.enabled
+                      ? "Enter the current commission password to pause password protection."
+                      : "Enter the current commission password to enable password protection."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div className="px-6 pb-4">
+                <label className="block text-xs font-bold text-[#4A4A4A] dark:text-slate-200 uppercase tracking-wider mb-2">
+                  Current Password
+                </label>
+                <div className="relative">
+                  <input
+                    ref={toggleInputRef}
+                    type={showTogglePassword ? "text" : "password"}
+                    value={togglePassword}
+                    onChange={(e) => setTogglePassword(e.target.value)}
+                    placeholder="Enter current password"
+                    required
+                    className="w-full px-4 py-2.5 pr-11 bg-white dark:bg-slate-800 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-sm font-semibold text-[#4A4A4A] dark:text-slate-100 focus:outline-none focus:border-[#6D8196] focus:ring-2 focus:ring-[#6D8196]/20 transition shadow-2xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTogglePassword(!showTogglePassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    title={showTogglePassword ? "Hide password" : "Show password"}
+                  >
+                    {showTogglePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-100 dark:bg-slate-800 mx-6" />
+
+              <div className="px-6 py-4 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowToggleModal(false)}
+                  disabled={toggling}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={toggling}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer text-white ${
+                    status?.enabled
+                      ? "bg-amber-600 hover:bg-amber-700"
+                      : "bg-emerald-600 hover:bg-emerald-700"
+                  }`}
+                >
+                  {toggling && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{status?.enabled ? "Confirm Pause" : "Confirm Enable"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: REMOVE PASSWORD CONFIRMATION ─────────────────────────────── */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fadeIn"
+            onClick={() => !deleting && setShowDeleteModal(false)}
+          />
+          <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden animate-scaleIn">
+            <button
+              type="button"
+              onClick={() => !deleting && setShowDeleteModal(false)}
+              className="absolute top-3.5 right-3.5 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <form onSubmit={handleConfirmDelete}>
+              <div className="px-6 pt-6 pb-5 flex gap-4">
+                <div className="w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 bg-rose-50 dark:bg-rose-950/50 border-rose-200 text-rose-600">
+                  <Trash2 className="w-5 h-5 text-rose-500" />
+                </div>
+
+                <div className="flex-1 pt-0.5">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+                    Remove Commission Password
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    This will permanently remove the commission access password. Both User Commissions and Commission Settings will be unlocked. Enter the current password to confirm.
+                  </p>
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div className="px-6 pb-4">
+                <label className="block text-xs font-bold text-[#4A4A4A] dark:text-slate-200 uppercase tracking-wider mb-2">
+                  Current Password <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    ref={deleteInputRef}
+                    type={showDeletePassword ? "text" : "password"}
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Enter current password to remove"
+                    required
+                    className="w-full px-4 py-2.5 pr-11 bg-white dark:bg-slate-800 border border-[#CBCBCB] dark:border-slate-700 rounded-xl text-sm font-semibold text-[#4A4A4A] dark:text-slate-100 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition shadow-2xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDeletePassword(!showDeletePassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    title={showDeletePassword ? "Hide password" : "Show password"}
+                  >
+                    {showDeletePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-100 dark:bg-slate-800 mx-6" />
+
+              <div className="px-6 py-4 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={deleting}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {deleting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Yes, Remove Password</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
