@@ -326,6 +326,19 @@ function CommissionSettingsContent() {
 
       const updated = { ...current, [field]: value };
 
+      // Convert pool amounts when toggling currency (USD vs NPR)
+      if (field === "currency" && value !== current.currency) {
+        const toCurr = value as string;
+        // Exchange conversion rate: 1 USD = 135 NPR
+        const factor = toCurr === "USD" ? 1 / 135 : 135;
+        const pools = ["linker", "writer", "tl", "seo", "bonusPool", "partyFund"] as const;
+        pools.forEach((p) => {
+          updated[p] = parseFloat(((Number(current[p]) || 0) * factor).toFixed(2));
+        });
+        const sum = pools.reduce((acc, p) => acc + Number(updated[p] || 0), 0);
+        updated.total = parseFloat(sum.toFixed(2));
+      }
+
       // Recalculate total if any pool field changed
       if (
         ["linker", "writer", "tl", "seo", "bonusPool", "partyFund"].includes(
@@ -1091,11 +1104,13 @@ function PoolInputCard({
           <Minus className="w-3.5 h-3.5" />
         </button>
 
-        {/* Value Display with Currency Symbol */}
+        {/* Value Display with Currency Symbol (prefix for currency, suffix for percentage) */}
         <div className="flex-1 flex items-center justify-center gap-1.5 px-2">
-          <span className="text-xs font-black text-slate-400 dark:text-slate-500 select-none">
-            {unitSymbol}
-          </span>
+          {isFixed && (
+            <span className="text-xs font-black text-slate-400 dark:text-slate-500 select-none">
+              {unitSymbol}
+            </span>
+          )}
           <input
             type="number"
             min="0"
@@ -1107,6 +1122,11 @@ function PoolInputCard({
             }}
             className="w-full text-center bg-transparent text-base sm:text-lg font-black text-slate-900 dark:text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none tracking-tight"
           />
+          {!isFixed && (
+            <span className="text-xs font-black text-slate-400 dark:text-slate-500 select-none">
+              %
+            </span>
+          )}
         </div>
 
         {/* Increment Button */}

@@ -83,12 +83,6 @@ async function ensureDefaultTiers(userId?: number | null) {
       });
     }
   }
-
-  // Migrate any legacy "USD" rows to "NPR" so stored currency matches user-facing labels
-  await prisma.commissionSetting.updateMany({
-    where: { currency: "USD" },
-    data: { currency: "NPR" },
-  });
 }
 
 // GET /api/commission-settings - Retrieve all commission settings (Super Admin only)
