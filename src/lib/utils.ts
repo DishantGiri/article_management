@@ -43,3 +43,34 @@ export function consolidateLinkLogs<T extends { id?: number; affiliateName?: str
   return Array.from(map.values());
 }
 
+/**
+ * Priority order for affiliates requested to be listed at the top:
+ * 1. SmashLoud / Smashload
+ * 2. MediaScalers
+ * 3. SmartADV
+ */
+export function getTopAffiliatePriority(name: string): number {
+  const norm = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (norm === "smashloud" || norm === "smashload" || norm.startsWith("smashloud") || norm.startsWith("smashload")) {
+    return 1;
+  }
+  if (norm === "mediascalers" || norm === "mediascaler" || norm.startsWith("mediascaler")) {
+    return 2;
+  }
+  if (norm === "smartadv" || (norm.startsWith("smartadv") && !norm.includes("rajan"))) {
+    return 3;
+  }
+  return 999;
+}
+
+export function sortAffiliatesWithTopPriority<T extends { name: string }>(list: T[]): T[] {
+  return [...list].sort((a, b) => {
+    const pA = getTopAffiliatePriority(a.name);
+    const pB = getTopAffiliatePriority(b.name);
+    if (pA !== pB) {
+      return pA - pB;
+    }
+    return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+  });
+}
+

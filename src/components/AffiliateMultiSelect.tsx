@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Search, X, Check, Plus, Ban, Building2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { getTopAffiliatePriority, sortAffiliatesWithTopPriority } from "@/lib/utils";
 
 export interface AffiliateOption {
   id?: number | string;
@@ -226,14 +227,18 @@ export default function AffiliateMultiSelect({
     }
   };
 
-  // Filter options based on search query
+  // Filter and sort options based on search query, keeping top affiliates (Smashload/Smashloud, Mediascalers, Smartadv) at top
   const searchLower = search.trim().toLowerCase();
   const showNoAffiliate = !searchLower || NO_AFFILIATE.toLowerCase().includes(searchLower);
 
-  const filteredAffiliates = affiliates.filter((aff) => {
-    if (!searchLower) return true;
-    return aff.name.toLowerCase().includes(searchLower);
-  });
+  const sortedAffiliates = useMemo(() => {
+    return sortAffiliatesWithTopPriority(affiliates);
+  }, [affiliates]);
+
+  const filteredAffiliates = useMemo(() => {
+    if (!searchLower) return sortedAffiliates;
+    return sortedAffiliates.filter((aff) => aff.name.toLowerCase().includes(searchLower));
+  }, [sortedAffiliates, searchLower]);
 
   const exactMatchExists =
     affiliates.some((a) => a.name.toLowerCase() === searchLower) ||
@@ -310,35 +315,48 @@ export default function AffiliateMultiSelect({
         )}
 
         {/* Regular Affiliate Networks */}
-        {filteredAffiliates.map((aff) => {
+        {filteredAffiliates.map((aff, index) => {
           const isSelected =
             !isNoAffiliateSelected &&
             selectedList.some((s) => s.toLowerCase() === aff.name.toLowerCase());
+          const priority = getTopAffiliatePriority(aff.name);
+          const isTopNetwork = priority < 999;
+          const showTopDivider = !searchLower && isTopNetwork && index === 2 && filteredAffiliates.length > 3;
+
           return (
-            <button
-              key={aff.id || aff.name}
-              type="button"
-              onClick={() => toggleAffiliate(aff.name)}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition cursor-pointer ${
-                isSelected
-                  ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold"
-                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              <div className="flex items-center gap-2 truncate">
-                <div
-                  className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition ${
-                    isSelected
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : "border-slate-300 dark:border-slate-700"
-                  }`}
-                >
-                  {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+            <div key={aff.id || aff.name}>
+              <button
+                type="button"
+                onClick={() => toggleAffiliate(aff.name)}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition cursor-pointer ${
+                  isSelected
+                    ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <div
+                    className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition ${
+                      isSelected
+                        ? "bg-blue-600 border-blue-600 text-white"
+                        : "border-slate-300 dark:border-slate-700"
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span className="truncate">{aff.name}</span>
+                  {isTopNetwork && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 shrink-0">
+                      Top
+                    </span>
+                  )}
                 </div>
-                <span className="truncate">{aff.name}</span>
-              </div>
-              {isSelected && <span className="text-[10px] text-blue-500 font-bold shrink-0">Selected</span>}
-            </button>
+                {isSelected && <span className="text-[10px] text-blue-500 font-bold shrink-0">Selected</span>}
+              </button>
+              {showTopDivider && (
+                <div className="my-1 border-t border-slate-100 dark:border-slate-800/80" />
+              )}
+            </div>
           );
         })}
 

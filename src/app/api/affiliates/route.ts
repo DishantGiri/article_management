@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { sortAffiliatesWithTopPriority } from "@/lib/utils";
 
 const DEFAULT_AFFILIATES = [
   "Admitad",
@@ -39,7 +40,8 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json(affiliates);
+    const sorted = sortAffiliatesWithTopPriority(affiliates);
+    return NextResponse.json(sorted);
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Failed to fetch affiliates" },
