@@ -21,6 +21,7 @@ enum Role {
   WRITER
   TEAM_LEAD
   PRODUCT_RESEARCHER
+  GUEST
 }
 
 

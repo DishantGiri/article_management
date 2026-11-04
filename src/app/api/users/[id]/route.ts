@@ -420,7 +420,7 @@ export async function PATCH(
       data: {
         ...(finalSanitizedName ? { name: finalSanitizedName } : {}),
         ...(image !== undefined ? { image } : {}),
-        ...(resolvedRole ? { role: resolvedRole as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" } : {}),
+        ...(resolvedRole ? { role: resolvedRole as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST" } : {}),
         allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,
         ...(resolvedTeamLeadId !== undefined
           ? resolvedTeamLeadId

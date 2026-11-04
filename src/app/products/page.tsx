@@ -115,6 +115,11 @@ function ProductsPageContent() {
     activeRole === "PRODUCT_RESEARCHER" ||
     sessionRoles.includes("PRODUCT_RESEARCHER");
 
+  // GUEST = users waiting for approval with read-only access to products and commissions
+  const isGuest =
+    activeRole === "GUEST" ||
+    sessionRoles.includes("GUEST");
+
   const canAddProduct =
     activeRole === "SUPER_ADMIN" ||
     activeRole === "ADMIN" ||
@@ -796,6 +801,23 @@ function ProductsPageContent() {
         }}
         searchPlaceholder="Search products by name, category, site..."
       />
+
+      {/* ─── GUEST READ-ONLY NOTICE ────────────────── */}
+      {isGuest && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-blue-200 dark:border-blue-800/60 bg-blue-50/70 dark:bg-blue-950/30">
+          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
+            <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wide">
+              Account Pending Activation (Guest View)
+            </p>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
+              You are exploring the system in guest viewing mode. You can browse the Product List and Commission List while an administrator reviews and approves your account.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ─── PRODUCT RESEARCHER READ-ONLY NOTICE ────────────────── */}
       {isProductResearcher && (

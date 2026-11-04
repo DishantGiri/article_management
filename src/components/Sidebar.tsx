@@ -14,7 +14,7 @@ import { isUserTargeted } from "@/lib/noticeUtils";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 import { getActiveWorkspace, setActiveWorkspace } from "@/lib/workspace";
 
-type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER";
+type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST";
 
 const MOCK_USERS = [
   { id: 5, name: "Super Admin", role: "SUPER_ADMIN" as Role, email: "superadmin@articlemgmt.com" },
@@ -31,6 +31,7 @@ const ROLE_COLORS: Record<Role, string> = {
   WRITER: "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700",
   TEAM_LEAD: "bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-600",
   PRODUCT_RESEARCHER: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700",
+  GUEST: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700",
 };
 
 interface NavItem {
@@ -56,7 +57,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/products",
     label: "Products",
-    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER"],
+    roles: ["SUPER_ADMIN", "ADMIN", "LINKER", "WRITER", "TEAM_LEAD", "PRODUCT_RESEARCHER", "GUEST"],
     icon: Package,
   },
   {
@@ -129,7 +130,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/commissions",
     label: "Commissions",
-    roles: ["SUPER_ADMIN"],
+    roles: ["SUPER_ADMIN", "GUEST"],
     icon: ReceiptText,
   },
   {
@@ -714,6 +715,18 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 py-5 space-y-1 overflow-y-auto pr-1">
+          {effectiveWorkspace === "GUEST" && (
+            <div className="mx-3 mb-3 p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs">
+              <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 mb-1">
+                <Clock className="w-3.5 h-3.5 shrink-0" />
+                <span>Pending Approval</span>
+              </div>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-snug">
+                Guest view mode. You can view the Product List and Commission List while waiting for admin activation.
+              </p>
+            </div>
+          )}
+
           {status === "loading" || !isMounted ? (
             <div className="space-y-2 px-4">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -723,6 +736,10 @@ export default function Sidebar() {
           ) : visibleNavItems.length > 0 ? (
             visibleNavItems.map((item) => {
               const active = isActive(item.href);
+              const displayLabel =
+                item.href === "/commissions" && effectiveWorkspace === "GUEST"
+                  ? "Commission List"
+                  : item.label;
               return (
                 <Link
                   key={item.href}
@@ -737,7 +754,7 @@ export default function Sidebar() {
                     <item.icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
                   </span>
                   <div className="flex-1 flex items-center justify-between">
-                    <span>{item.label}</span>
+                    <span>{displayLabel}</span>
                     {item.label === "Notifications" && unreadCount > 0 && (
                       <span className="bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold text-[9px] px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px] shadow-sm mr-2">
                         {unreadCount}

@@ -116,8 +116,10 @@ export default function TopHeader({
         return "Focused Writing Station & Assignment Delivery.";
       case "PRODUCT_RESEARCHER":
         return "Research Hub — Browse and analyze products across all sites.";
+      case "GUEST":
+        return "Guest Portal — Browse products and commission list while awaiting admin activation.";
       default:
-        return "Affiliate Gateway & Link Log Operations.";
+        return "Article Flow Operations.";
     }
   };
 

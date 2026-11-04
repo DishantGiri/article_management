@@ -38,7 +38,7 @@ const providers: any[] = [
           data: {
             name: initialName,
             email: email,
-            role: null,
+            role: "GUEST",
             approved: false,
           },
         });
@@ -87,18 +87,18 @@ export const authOptions: NextAuthOptions = {
             });
           }
         } else {
-          // Auto-create unrecognized Google logins with null role and pending approval (approved: false)
+          // Auto-create unrecognized Google logins with GUEST role and pending approval (approved: false)
           const initialName = sanitizeUserName(user.name || "") || "Google User";
           dbUser = await prisma.user.create({
             data: {
               name: initialName,
               email: user.email,
-              role: null, // No role assigned initially
+              role: "GUEST", // Auto-assigned GUEST role upon registration
               approved: false, // Wait for admin approval
               image: user.image || null,
             },
           });
-          console.log(`Auto-created user for Google sign-in: ${user.email} with null role (pending approval)`);
+          console.log(`Auto-created user for Google sign-in: ${user.email} with GUEST role (pending approval)`);
         }
         return true;
       } catch (err) {
@@ -141,15 +141,16 @@ export const authOptions: NextAuthOptions = {
                 });
               }
             });
-            const computedRole = dbUser.role || (roleSet.size > 0 ? Array.from(roleSet)[0] : null);
+            const computedRole = dbUser.role || (roleSet.size > 0 ? Array.from(roleSet)[0] : "GUEST");
+            if (roleSet.size === 0) roleSet.add("GUEST");
             token.role = computedRole;
             token.roles = Array.from(roleSet);
 
-            // If user role is null in DB but site roles were assigned, persist the primary role to the User table
-            if (!dbUser.role && computedRole) {
+            // If user role is null in DB, persist GUEST role to User table
+            if (!dbUser.role) {
               prisma.user.update({
                 where: { id: dbUser.id },
-                data: { role: computedRole as any },
+                data: { role: "GUEST" },
               }).catch(() => {});
             }
           }
@@ -171,9 +172,9 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.name = token.name;
-        const fallbackRole = token.role || (token.roles && token.roles.length > 0 ? token.roles[0] : null);
+        const fallbackRole = token.role || (token.roles && token.roles.length > 0 ? token.roles[0] : "GUEST");
         session.user.role = fallbackRole;
-        session.user.roles = token.roles || (fallbackRole ? [fallbackRole] : []);
+        session.user.roles = token.roles || (fallbackRole ? [fallbackRole] : ["GUEST"]);
         session.user.approved = token.approved;
         session.user.image = token.image as string | null | undefined;
       }

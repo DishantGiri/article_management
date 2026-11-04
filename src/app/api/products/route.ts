@@ -606,6 +606,9 @@ export async function GET(req: NextRequest) {
       if (effectiveRole === "WRITER") {
         excludeCompletedForWriter = true;
       }
+    } else if (effectiveRole === "GUEST") {
+      // GUEST users have read-only access to view published products
+      allowedSiteIds = undefined;
     } else {
       const accesses = await prisma.siteAccess.findMany({
         where: { userId },

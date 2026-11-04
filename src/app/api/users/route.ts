@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: trimmedName,
         email: trimmedEmail,
-        role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER",
+        role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST",
         allowLinkLogAccess: role === "WRITER" ? !!allowLinkLogAccess : false,
         ...(role === "WRITER" && teamLeadId
           ? { teamLead: { connect: { id: Number(teamLeadId) } } }

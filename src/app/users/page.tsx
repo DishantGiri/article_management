@@ -53,7 +53,7 @@ interface User {
   id: number;
   name: string;
   email: string;
-  role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | null;
+  role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST" | null;
   allowLinkLogAccess: boolean;
   approved: boolean;
   hasLeftCompany?: boolean;
@@ -90,6 +90,7 @@ const ROLE_LABELS: Record<string, string> = {
   WRITER: "Writer",
   TEAM_LEAD: "Team Lead",
   PRODUCT_RESEARCHER: "Product Researcher",
+  GUEST: "Guest / Pending",
 };
 
 const ROLE_STYLES: Record<string, { badge: string; avatar: string; border: string }> = {
@@ -122,6 +123,11 @@ const ROLE_STYLES: Record<string, { badge: string; avatar: string; border: strin
     badge: "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
     avatar: "from-indigo-500 to-sky-600 text-white shadow-indigo-500/20",
     border: "border-indigo-200 dark:border-indigo-900/60",
+  },
+  GUEST: {
+    badge: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700",
+    avatar: "from-slate-500 to-zinc-600 text-white shadow-slate-500/20",
+    border: "border-slate-300 dark:border-slate-800",
   },
 };
 
@@ -989,6 +995,7 @@ export default function UsersPage() {
                   { value: "WRITER", label: "Writer" },
                   { value: "LINKER", label: "Linker" },
                   { value: "PRODUCT_RESEARCHER", label: "Product Researcher" },
+                  { value: "GUEST", label: "Guest / Pending" },
                 ]}
                 className="w-auto"
                 triggerClassName="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FAF9F5] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196] shadow-2xs whitespace-nowrap min-w-[130px]"
@@ -2007,6 +2014,12 @@ export default function UsersPage() {
                       desc: "Can add, edit, and manage products across all sites. No link management, articles, or commission access.",
                       color: "text-amber-500",
                     },
+                    {
+                      role: "GUEST",
+                      label: "Guest / Pending",
+                      desc: "Pending approval. Read-only access to products and commission rates.",
+                      color: "text-slate-500",
+                    },
                     ...(isSuperAdmin
                       ? [
                         {
@@ -2286,6 +2299,7 @@ export default function UsersPage() {
                       { value: "LINKER", label: "Linker" },
                       { value: "PRODUCT_RESEARCHER", label: "Product Researcher" },
                       { value: "TEAM_LEAD", label: "Team Lead" },
+                      { value: "GUEST", label: "Guest / Pending" },
                       ...(isSuperAdmin
                         ? [
                           { value: "ADMIN", label: "Admin" },

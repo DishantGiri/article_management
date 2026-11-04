@@ -8,6 +8,7 @@ const ROLE_ROUTES: Record<string, string[]> = {
   LINKER: ["/", "/products", "/trendmap-products", "/links", "/affiliates", "/sites", "/categories", "/product-categories", "/product-types", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
   WRITER: ["/", "/products", "/articles", "/reports", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
   PRODUCT_RESEARCHER: ["/", "/products", "/trendmap-products", "/product-types", "/product-categories", "/notifications", "/notices", "/settings", "/calendar", "/user-commissions"],
+  GUEST: ["/products", "/commission-list", "/commissions"],
 };
 
 function isRouteAllowed(pathname: string, role: string | null | undefined, roles?: string[]): boolean {
@@ -60,8 +61,35 @@ export default withAuth(
     // 3. Check if user is approved and has an assigned role
     const isApproved = token && token.approved === true;
     const hasRole = token && (!!token.role || (Array.isArray(token.roles) && token.roles.length > 0));
+    const isGuest = token && (token.role === "GUEST" || (Array.isArray(token.roles) && token.roles.includes("GUEST")));
 
     if (token && (!isApproved || !hasRole)) {
+      if (isGuest) {
+        // GUEST users (pending admin activation) can access Products and Commission List in read-only mode
+        const allowedGuestPages = ["/products", "/commission-list", "/commissions", "/auth/pending"];
+        const isAllowedGuestPage = allowedGuestPages.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
+        if (!isAllowedGuestPage) {
+          if (pathname.startsWith("/api/")) {
+            const allowedGuestApis = [
+              "/api/products",
+              "/api/commissions",
+              "/api/commission-settings",
+              "/api/categories",
+              "/api/notifications",
+              "/api/settings/commission-password",
+            ];
+            const isAllowedApi = req.method === "GET" && allowedGuestApis.some((p) => pathname === p || pathname.startsWith(p + "/"));
+            if (!isAllowedApi) {
+              return NextResponse.json({ error: "Access Denied: Pending Activation" }, { status: 403 });
+            }
+            return NextResponse.next();
+          }
+          return NextResponse.redirect(new URL("/products", req.url));
+        }
+        return NextResponse.next();
+      }
+
       if (pathname !== "/auth/pending") {
         if (pathname.startsWith("/api/")) {
           return NextResponse.json({ error: "Access Denied: Pending Activation" }, { status: 403 });
@@ -71,8 +99,8 @@ export default withAuth(
       return NextResponse.next();
     }
 
-    // 4. Prevent access to pending page for approved/activated users
-    if (token && isApproved && hasRole && pathname === "/auth/pending") {
+    // 4. Prevent access to pending page for approved/activated non-guest users
+    if (token && isApproved && hasRole && !isGuest && pathname === "/auth/pending") {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Access Denied" }, { status: 403 });
       }

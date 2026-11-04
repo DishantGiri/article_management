@@ -95,8 +95,13 @@ export async function GET(req: NextRequest) {
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (session.user.role !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Forbidden: Super Admin access required" }, { status: 403 });
+    const userRole = session.user.role;
+    const rawRoles: string[] = (session.user as any)?.roles || [];
+    const normalizedRoles = new Set([...rawRoles, userRole].filter(Boolean).map((r: any) => r.toUpperCase()));
+    const isAllowed = normalizedRoles.has("SUPER_ADMIN") || normalizedRoles.has("GUEST");
+
+    if (!isAllowed) {
+      return NextResponse.json({ error: "Forbidden: Super Admin or Guest access required" }, { status: 403 });
     }
 
     // Auto-normalize any legacy duplicate first sales across database

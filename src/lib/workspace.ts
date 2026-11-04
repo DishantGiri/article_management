@@ -33,6 +33,11 @@ export const WORKSPACE_LABELS: Record<string, { label: string; iconName: string;
     iconName: "Search",
     badgeColor: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800",
   },
+  GUEST: {
+    label: "Guest / Pending Approval",
+    iconName: "Eye",
+    badgeColor: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700",
+  },
 };
 
 /**
@@ -47,10 +52,10 @@ export function getActiveWorkspace(userRole?: string | null, userRoles?: string[
     });
   }
   const available = Array.from(roleSet);
-  if (available.length === 0) available.push("WRITER");
+  if (available.length === 0) available.push("GUEST");
 
   if (typeof window === "undefined") {
-    return available[0] || "WRITER";
+    return available[0] || "GUEST";
   }
 
   // If user is Admin or Super Admin, their workspace is global
@@ -62,13 +67,14 @@ export function getActiveWorkspace(userRole?: string | null, userRoles?: string[
     return stored;
   }
 
-  // Priority fallback: TEAM_LEAD -> LINKER -> WRITER -> PRODUCT_RESEARCHER
+  // Priority fallback: TEAM_LEAD -> LINKER -> WRITER -> PRODUCT_RESEARCHER -> GUEST
   if (available.includes("TEAM_LEAD")) return "TEAM_LEAD";
   if (available.includes("LINKER")) return "LINKER";
   if (available.includes("WRITER")) return "WRITER";
   if (available.includes("PRODUCT_RESEARCHER")) return "PRODUCT_RESEARCHER";
+  if (available.includes("GUEST")) return "GUEST";
 
-  return available[0] || "WRITER";
+  return available[0] || "GUEST";
 }
 
 /**
