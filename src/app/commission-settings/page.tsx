@@ -18,7 +18,6 @@ import {
   Award,
   Search,
   PartyPopper,
-  Calculator,
   Info,
   ArrowRight,
   TrendingUp,
@@ -256,9 +255,6 @@ function CommissionSettingsContent() {
   const [settings, setSettings] = useState<Record<string, CommissionTier>>({});
   const [initialSettings, setInitialSettings] = useState<Record<string, CommissionTier>>({});
 
-  // Simulator state
-  const [simulationPrice, setSimulationPrice] = useState<number>(100);
-
   // Track if changes have been made compared to saved baseline
   const hasChanges = useMemo(() => {
     if (Object.keys(initialSettings).length === 0) return false;
@@ -325,19 +321,6 @@ function CommissionSettingsContent() {
       };
 
       const updated = { ...current, [field]: value };
-
-      // Convert pool amounts when toggling currency (USD vs NPR)
-      if (field === "currency" && value !== current.currency) {
-        const toCurr = value as string;
-        // Exchange conversion rate: 1 USD = 135 NPR
-        const factor = toCurr === "USD" ? 1 / 135 : 135;
-        const pools = ["linker", "writer", "tl", "seo", "bonusPool", "partyFund"] as const;
-        pools.forEach((p) => {
-          updated[p] = parseFloat(((Number(current[p]) || 0) * factor).toFixed(2));
-        });
-        const sum = pools.reduce((acc, p) => acc + Number(updated[p] || 0), 0);
-        updated.total = parseFloat(sum.toFixed(2));
-      }
 
       // Recalculate total if any pool field changed
       if (
@@ -493,17 +476,6 @@ function CommissionSettingsContent() {
   const activeFirstSale = activeCategory === "NUTRA" ? nutraFirst : ecomFirst;
   const activeResale = activeCategory === "NUTRA" ? nutraResale : ecomResale;
 
-  // Simulator calculations for current tab
-  const simFirstTotal =
-    activeFirstSale.rateType === "PERCENTAGE"
-      ? (simulationPrice * activeFirstSale.total) / 100
-      : activeFirstSale.total;
-
-  const simResaleTotal =
-    activeResale.rateType === "PERCENTAGE"
-      ? (simulationPrice * activeResale.total) / 100
-      : activeResale.total;
-
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-100 space-y-6">
       {/* ─── HEADER BANNER ─────────────────────────────────────────── */}
@@ -576,7 +548,7 @@ function CommissionSettingsContent() {
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Nutra Resale</span>
               <span className="text-sm font-black text-blue-600 dark:text-blue-400">
-                {nutraResale.rateType === "FIXED" ? `${getCurrencySymbol(nutraResale.currency)}${nutraResale.total.toFixed(2)}` : `${nutraResale.total}%`}
+                {nutraResale.rateType === "FIXED" ? `${getCurrencySymbol(nutraResale.currency)}${nutraResale.total.toFixed(2)}` : `${nutraResale.total.toFixed(2)}%`}
               </span>
             </div>
             <Pill className="w-4 h-4 text-blue-500 opacity-60" />
@@ -586,7 +558,7 @@ function CommissionSettingsContent() {
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Ecom 1st Sale</span>
               <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                {ecomFirst.rateType === "FIXED" ? `${getCurrencySymbol(ecomFirst.currency)}${ecomFirst.total.toFixed(2)}` : `${ecomFirst.total}%`}
+                {ecomFirst.rateType === "FIXED" ? `${getCurrencySymbol(ecomFirst.currency)}${ecomFirst.total.toFixed(2)}` : `${ecomFirst.total.toFixed(2)}%`}
               </span>
             </div>
             <ShoppingBag className="w-4 h-4 text-emerald-500 opacity-60" />
@@ -596,7 +568,7 @@ function CommissionSettingsContent() {
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Ecom Resale</span>
               <span className="text-sm font-black text-blue-600 dark:text-blue-400">
-                {ecomResale.rateType === "FIXED" ? `${getCurrencySymbol(ecomResale.currency)}${ecomResale.total.toFixed(2)}` : `${ecomResale.total}%`}
+                {ecomResale.rateType === "FIXED" ? `${getCurrencySymbol(ecomResale.currency)}${ecomResale.total.toFixed(2)}` : `${ecomResale.total.toFixed(2)}%`}
               </span>
             </div>
             <ShoppingBag className="w-4 h-4 text-blue-500 opacity-60" />
@@ -620,7 +592,7 @@ function CommissionSettingsContent() {
                   : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
                 }`}
             >
-              1st: {getCurrencySymbol(nutraFirst.currency)}{nutraFirst.total.toFixed(2)} | Resale: {getCurrencySymbol(nutraResale.currency)}{nutraResale.total.toFixed(2)}
+              1st: {nutraFirst.rateType === "FIXED" ? `${getCurrencySymbol(nutraFirst.currency)}${nutraFirst.total.toFixed(2)}` : `${nutraFirst.total.toFixed(2)}%`} | Resale: {nutraResale.rateType === "FIXED" ? `${getCurrencySymbol(nutraResale.currency)}${nutraResale.total.toFixed(2)}` : `${nutraResale.total.toFixed(2)}%`}
             </span>
           </button>
 
@@ -639,7 +611,7 @@ function CommissionSettingsContent() {
                   : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
                 }`}
             >
-              1st: {getCurrencySymbol(ecomFirst.currency)}{ecomFirst.total.toFixed(2)} | Resale: {getCurrencySymbol(ecomResale.currency)}{ecomResale.total.toFixed(2)}
+              1st: {ecomFirst.rateType === "FIXED" ? `${getCurrencySymbol(ecomFirst.currency)}${ecomFirst.total.toFixed(2)}` : `${ecomFirst.total.toFixed(2)}%`} | Resale: {ecomResale.rateType === "FIXED" ? `${getCurrencySymbol(ecomResale.currency)}${ecomResale.total.toFixed(2)}` : `${ecomResale.total.toFixed(2)}%`}
             </span>
           </button>
         </div>
@@ -670,141 +642,6 @@ function CommissionSettingsContent() {
             handleFieldChange(activeCategory, "RESALE", field, val)
           }
         />
-      </div>
-
-      {/* ─── LIVE PAYOUT CALCULATOR SIMULATOR ─────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#CBCBCB]/40 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#6D8196]/15 dark:bg-[#6D8196]/30 text-[#6D8196] dark:text-slate-200 flex items-center justify-center font-bold">
-              <Calculator className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-[#4A4A4A] dark:text-white flex items-center gap-2">
-                <span>Live Payout Simulator</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {activeCategory} Simulation
-                </span>
-              </h2>
-              <p className="text-xs text-[#737373] dark:text-slate-400 mt-0.5">
-                Test commission payout distributions for any product sale amount in real time
-              </p>
-            </div>
-          </div>
-
-          {/* Sample Product Price Input */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-xs font-bold text-[#737373] dark:text-slate-400">
-              Sample Sale Amount:
-            </span>
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-black text-[#737373]">
-                {getCurrencyShort(activeFirstSale.currency)}
-              </span>
-              <input
-                type="number"
-                min="0"
-                step="50"
-                value={simulationPrice}
-                onChange={(e) => setSimulationPrice(Math.max(0, Number(e.target.value) || 0))}
-                className="pl-9 pr-3 py-1.5 w-32 bg-[#FAF9F5] dark:bg-slate-800 border border-[#CBCBCB]/80 dark:border-slate-700 rounded-xl text-xs font-bold text-[#4A4A4A] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Side by side comparison of 1st Sale vs Resale Payouts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Simulation: 1st Sale */}
-          <div className="p-5 rounded-2xl bg-[#FAF9F5] dark:bg-slate-850/70 border border-[#CBCBCB]/60 dark:border-slate-800 space-y-3">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                  1st Sale Payout (Sale: {getCurrencySymbol(activeFirstSale.currency)}{simulationPrice})
-                </span>
-              </div>
-              <span className="text-sm font-black text-[#4A4A4A] dark:text-white">
-                Total: {getCurrencySymbol(activeFirstSale.currency)}{simFirstTotal.toFixed(2)}
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              {POOL_CONFIG.map((pool) => {
-                const val = activeFirstSale[pool.key] || 0;
-                const payout =
-                  activeFirstSale.rateType === "PERCENTAGE"
-                    ? (simulationPrice * val) / 100
-                    : val;
-                const pct =
-                  activeFirstSale.total > 0
-                    ? ((val / activeFirstSale.total) * 100).toFixed(1)
-                    : "0.0";
-
-                return (
-                  <div
-                    key={pool.key}
-                    className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800/60"
-                  >
-                    <span className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                      <pool.icon className={`w-3.5 h-3.5 ${pool.color}`} />
-                      <span>{pool.label}</span>
-                      <span className="text-[10px] opacity-60">({pct}%)</span>
-                    </span>
-                    <span className="font-bold text-[#4A4A4A] dark:text-white">
-                      {getCurrencySymbol(activeFirstSale.currency)}{payout.toFixed(2)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Simulation: Resale */}
-          <div className="p-5 rounded-2xl bg-[#FAF9F5] dark:bg-slate-850/70 border border-[#CBCBCB]/60 dark:border-slate-800 space-y-3">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                <span className="text-xs font-extrabold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
-                  Resale Payout (Sale: {getCurrencySymbol(activeResale.currency)}{simulationPrice})
-                </span>
-              </div>
-              <span className="text-sm font-black text-[#4A4A4A] dark:text-white">
-                Total: {getCurrencySymbol(activeResale.currency)}{simResaleTotal.toFixed(2)}
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              {POOL_CONFIG.map((pool) => {
-                const val = activeResale[pool.key] || 0;
-                const payout =
-                  activeResale.rateType === "PERCENTAGE"
-                    ? (simulationPrice * val) / 100
-                    : val;
-                const pct =
-                  activeResale.total > 0
-                    ? ((val / activeResale.total) * 100).toFixed(1)
-                    : "0.0";
-
-                return (
-                  <div
-                    key={pool.key}
-                    className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800/60"
-                  >
-                    <span className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                      <pool.icon className={`w-3.5 h-3.5 ${pool.color}`} />
-                      <span>{pool.label}</span>
-                      <span className="text-[10px] opacity-60">({pct}%)</span>
-                    </span>
-                    <span className="font-bold text-[#4A4A4A] dark:text-white">
-                      {getCurrencySymbol(activeResale.currency)}{payout.toFixed(2)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Custom Confirmation Dialog for Resetting Defaults */}
@@ -879,48 +716,46 @@ function CommissionCard({
 
           {/* Rate Type & Currency Switchers */}
           <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
-            {/* Currency Selector when Fixed */}
-            {isFixed && (
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => onChangeField("currency", "NPR")}
-                  className={`px-2 py-1 rounded-lg transition cursor-pointer ${
-                    tier.currency === "NPR" || !tier.currency
-                      ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
-                      : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
-                  }`}
-                  title="Nepalese Rupee (Rs.)"
-                >
-                  NPR (Rs)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChangeField("currency", "USD")}
-                  className={`px-2 py-1 rounded-lg transition cursor-pointer ${
-                    tier.currency === "USD"
-                      ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
-                      : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
-                  }`}
-                  title="US Dollar ($)"
-                >
-                  USD ($)
-                </button>
-              </div>
-            )}
+            {/* Currency Selector */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => onChangeField("currency", "NPR")}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  tier.currency === "NPR" || !tier.currency
+                    ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
+                    : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
+                }`}
+                title="Nepalese Rupee (Rs)"
+              >
+                NPR (Rs)
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeField("currency", "USD")}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  tier.currency === "USD"
+                    ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
+                    : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
+                }`}
+                title="US Dollar ($)"
+              >
+                USD ($)
+              </button>
+            </div>
 
-            {/* Rate Type Switcher: Fixed vs Percentage (%) */}
+            {/* Rate Type Switcher: Fixed vs Percentage */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
               <button
                 type="button"
                 onClick={() => onChangeField("rateType", "FIXED")}
                 className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
                   isFixed
-                    ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
+                    ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                     : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
                 }`}
               >
-                <Coins className="w-3 h-3" />
+                <Coins className="w-3.5 h-3.5" />
                 <span>Fixed ({currencyShort})</span>
               </button>
               <button
@@ -928,11 +763,11 @@ function CommissionCard({
                 onClick={() => onChangeField("rateType", "PERCENTAGE")}
                 className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
                   !isFixed
-                    ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs"
+                    ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-extrabold"
                     : "text-[#737373] dark:text-slate-400 hover:text-[#4A4A4A]"
                 }`}
               >
-                <Percent className="w-3 h-3" />
+                <Percent className="w-3.5 h-3.5" />
                 <span>Percentage</span>
               </button>
             </div>
@@ -1024,8 +859,7 @@ function CommissionCard({
           Total Combined Allocation:
         </span>
         <span className="text-lg font-black text-[#6D8196] dark:text-sky-400 tracking-tight">
-          {unitSymbol}
-          {tier.total.toFixed(2)}
+          {isFixed ? `${currencySymbol}${tier.total.toFixed(2)}` : `${tier.total.toFixed(2)}%`}
         </span>
       </div>
     </div>
@@ -1058,11 +892,9 @@ function PoolInputCard({
     onUpdate(nextVal);
   };
 
-  const presets = isFixed ? [0.5, 1, 2.5, 5] : [5, 10, 20];
-
   return (
     <div
-      className={`group relative p-4 rounded-2xl border transition-all duration-200 bg-white dark:bg-slate-850/90 ${pool.border} ${pool.accentLight} hover:shadow-md flex flex-col justify-between space-y-3`}
+      className={`group relative p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 bg-white dark:bg-slate-850/90 ${pool.border} ${pool.accentLight} hover:shadow-md flex flex-col justify-between space-y-3`}
     >
       {/* Card Header: Icon, Name & Share Badge */}
       <div className="flex items-center justify-between gap-2">
@@ -1082,23 +914,23 @@ function PoolInputCard({
           </div>
         </div>
 
-        {/* Share Pill with Glowing Pulse Dot */}
+        {/* Share Pill */}
         <div
           className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black border flex items-center gap-1 shadow-2xs ${pool.bg} ${pool.color} ${pool.border}`}
         >
-          <span className={`w-1.5 h-1.5 rounded-full ${pool.barColor} animate-pulse`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${pool.barColor}`} />
           <span>{pctShare}%</span>
         </div>
       </div>
 
       {/* Center: Tactile Stepper & Amount Input */}
-      <div className="bg-[#FAF9F5] dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-1 flex items-center justify-between gap-1 shadow-inner focus-within:ring-2 focus-within:ring-[#6D8196]/40 focus-within:border-[#6D8196]">
+      <div className="bg-[#FAF9F5] dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-1 flex items-center justify-between gap-1 shadow-inner focus-within:ring-2 focus-within:ring-[#6D8196]/40 focus-within:border-[#6D8196] transition-all">
         {/* Decrement Button */}
         <button
           type="button"
           onClick={() => handleStep(-step)}
           disabled={val <= 0}
-          className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent text-slate-600 dark:text-slate-200 flex items-center justify-center font-black text-sm transition-transform active:scale-90 shadow-2xs cursor-pointer"
+          className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-25 disabled:hover:bg-transparent text-slate-600 dark:text-slate-200 flex items-center justify-center font-black text-sm transition-transform active:scale-90 shadow-2xs cursor-pointer"
           title={`Decrease by ${step}`}
         >
           <Minus className="w-3.5 h-3.5" />
@@ -1108,7 +940,7 @@ function PoolInputCard({
         <div className="flex-1 flex items-center justify-center gap-1.5 px-2">
           {isFixed && (
             <span className="text-xs font-black text-slate-400 dark:text-slate-500 select-none">
-              {unitSymbol}
+              {unitSymbol.trim()}
             </span>
           )}
           <input
@@ -1138,35 +970,6 @@ function PoolInputCard({
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
-      </div>
-
-      {/* Quick Nudge Preset Pills */}
-      <div className="flex items-center justify-between pt-0.5">
-        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-          Quick Nudge:
-        </span>
-        <div className="flex items-center gap-1">
-          {presets.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => handleStep(p)}
-              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 hover:bg-[#6D8196]/20 text-slate-600 dark:text-slate-300 hover:text-[#6D8196] dark:hover:text-sky-300 transition active:scale-95 cursor-pointer"
-            >
-              +{isFixed ? `${unitSymbol}${p}` : `${p}%`}
-            </button>
-          ))}
-          {val > 0 && (
-            <button
-              type="button"
-              onClick={() => onUpdate(0)}
-              className="px-1.5 py-0.5 rounded-md text-[10px] font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-              title="Reset to 0"
-            >
-              Zero
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
