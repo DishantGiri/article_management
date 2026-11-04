@@ -886,10 +886,60 @@ function PoolInputCard({
   onUpdate: (newVal: number) => void;
 }) {
   const step = isFixed ? 0.5 : 1;
+  const [inputValue, setInputValue] = useState<string>(val === 0 ? "0" : String(val));
+
+  useEffect(() => {
+    setInputValue((prev) => {
+      const parsed = parseFloat(prev);
+      if (!isNaN(parsed) && parsed === val) {
+        return prev;
+      }
+      return val === 0 ? "0" : String(val);
+    });
+  }, [val]);
 
   const handleStep = (delta: number) => {
     const nextVal = Math.max(0, parseFloat((val + delta).toFixed(2)));
+    setInputValue(nextVal === 0 ? "0" : String(nextVal));
     onUpdate(nextVal);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value;
+
+    // Allow only digits and at most one decimal point
+    raw = raw.replace(/[^0-9.]/g, "");
+    const parts = raw.split(".");
+    if (parts.length > 2) {
+      raw = parts[0] + "." + parts.slice(1).join("");
+    }
+
+    // Auto prepend 0 if user enters starting with a decimal point like ".5"
+    if (raw.startsWith(".")) {
+      raw = "0" + raw;
+    }
+
+    // Strip leading zeros before a non-zero digit: e.g. "06" -> "6", "06456" -> "6456"
+    if (/^0+[1-9]/.test(raw)) {
+      raw = raw.replace(/^0+/, "");
+    } else if (/^0{2,}$/.test(raw)) {
+      // Multiple zeros like "00" becomes "0"
+      raw = "0";
+    }
+
+    setInputValue(raw);
+    const parsed = parseFloat(raw);
+    onUpdate(isNaN(parsed) ? 0 : Math.max(0, parsed));
+  };
+
+  const handleBlur = () => {
+    if (!inputValue || isNaN(parseFloat(inputValue))) {
+      setInputValue("0");
+      onUpdate(0);
+    } else {
+      const parsed = parseFloat(inputValue);
+      setInputValue(parsed === 0 ? "0" : String(parsed));
+    }
   };
 
   return (
@@ -944,15 +994,14 @@ function PoolInputCard({
             </span>
           )}
           <input
-            type="number"
-            min="0"
-            step="any"
-            value={val === 0 ? "0" : val}
-            onChange={(e) => {
-              const parsed = parseFloat(e.target.value);
-              onUpdate(isNaN(parsed) ? 0 : Math.max(0, parsed));
-            }}
-            className="w-full text-center bg-transparent text-base sm:text-lg font-black text-slate-900 dark:text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none tracking-tight"
+            type="text"
+            inputMode="decimal"
+            placeholder="0"
+            value={inputValue}
+            onFocus={(e) => e.target.select()}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            className="w-full text-center bg-transparent text-base sm:text-lg font-black text-slate-900 dark:text-white focus:outline-none tracking-tight"
           />
           {!isFixed && (
             <span className="text-xs font-black text-slate-400 dark:text-slate-500 select-none">
