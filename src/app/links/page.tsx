@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, Suspense } from "react";
-import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check, GitCompare, Users } from "lucide-react";
+import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check, GitCompare, Users, Link2 } from "lucide-react";
 import SiteProductComparison from "@/components/SiteProductComparison";
 import UserLinksView from "@/components/UserLinksView";
 import { toast } from "react-hot-toast";
