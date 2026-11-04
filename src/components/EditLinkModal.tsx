@@ -175,15 +175,16 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
             domainSuffix = "";
           }
         }
+        const fullBridgeUrl = productSlug ? `${bUrl}/${productSlug}` : bUrl;
         opts.push({
-          value: bUrl,
-          label: `Bridge Page${domainSuffix}: ${bUrl}`,
+          value: fullBridgeUrl,
+          label: `Bridge Page${domainSuffix}: ${fullBridgeUrl}`,
         });
       }
     }
 
     return opts;
-  }, [selectedProduct]);
+  }, [selectedProduct, productSlug]);
 
   // Dropdown options for Buy Link
   const buyLinkOptions = useMemo(() => {
@@ -209,12 +210,6 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       opts.push({
         value: selectedProduct.trendLink,
         label: `Product Trend Link: ${selectedProduct.trendLink}`,
-      });
-    }
-    if (selectedProduct?.previewLink) {
-      opts.push({
-        value: selectedProduct.previewLink,
-        label: `Product Preview Link: ${selectedProduct.previewLink}`,
       });
     }
     return opts;
@@ -1409,7 +1404,11 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                         setBridgePageLinkError("");
                       }
                     }}
-                    placeholder={selectedProduct?.site?.bridgeUrl ? selectedProduct.site.bridgeUrl.split(/[\n,]+/)[0].trim() : "https://example-bridge.com"}
+                    placeholder={
+                      selectedProduct?.site?.bridgeUrl
+                        ? `${selectedProduct.site.bridgeUrl.split(/[\n,]+/)[0].trim().replace(/\/+$/, "")}${productSlug ? `/${productSlug}` : ""}`
+                        : "https://example-bridge.com"
+                    }
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-slate-400 transition"
                   />
                   {bridgeLinkOptions.length > 0 && (
