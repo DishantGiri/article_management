@@ -116,11 +116,6 @@ export async function canUserReviewOnSite(
     if (siteRoles.includes("TEAM_LEAD")) return true;
   }
 
-  if (userGlobalRole === "TEAM_LEAD") {
-    const totalAccesses = await prisma.siteAccess.count({ where: { userId } });
-    if (totalAccesses === 0) return true;
-  }
-
   return false;
 }
 
@@ -162,8 +157,6 @@ export async function getUserAuthorizedSiteIds(
     if (action === "ADD_LINK") {
       if (userGlobalRole === "LINKER" || (userRoles && userRoles.includes("LINKER"))) return null; // all sites
     }
-    if (action === "WRITE" && (userGlobalRole === "WRITER" || (userRoles && userRoles.includes("WRITER")))) return null;
-    if (action === "REVIEW" && (userGlobalRole === "TEAM_LEAD" || (userRoles && userRoles.includes("TEAM_LEAD")))) return null;
     return [];
   }
 

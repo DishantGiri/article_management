@@ -20,15 +20,29 @@ export async function GET(req: NextRequest) {
   const userId = Number(session.user.id);
   const userRole = session.user.role;
 
-  if (userRole === "TEAM_LEAD") {
+  const rawRoles: string[] = (session.user as any)?.roles || [];
+  const candidateRoles: string[] = [...rawRoles, userRole || ""].filter(Boolean);
+  const normalizedUserRoles = Array.from(new Set(candidateRoles.map((r) => r.toUpperCase())));
+  const requestedRole = searchParams.get("role") || searchParams.get("viewRole") || req.cookies.get("active_workspace_role")?.value;
+  const effectiveRole = (requestedRole && (normalizedUserRoles.includes(requestedRole.toUpperCase()) || userRole === "SUPER_ADMIN" || userRole === "ADMIN"))
+    ? requestedRole.toUpperCase()
+    : (userRole || "");
+
+  if (effectiveRole === "TEAM_LEAD") {
+    const accesses = await prisma.siteAccess.findMany({
+      where: { userId },
+      select: { siteId: true },
+    });
+    const siteIds = accesses.map((a) => a.siteId);
     allowedFilter = {
+      product: { siteId: { in: siteIds } },
       OR: [
         { writerId: userId },
         { writer: { teamLeadId: userId } },
-        { status: "PENDING" }
-      ]
+        { status: "PENDING" },
+      ],
     };
-  } else if (userRole === "WRITER") {
+  } else if (effectiveRole === "WRITER") {
     const accesses = await prisma.siteAccess.findMany({
       where: { userId },
       select: { siteId: true },

@@ -581,25 +581,63 @@ export async function GET(req: NextRequest) {
   const userId = session.user.id;
   const userRole = session.user.role;
 
-  if (!isAdmin(userRole)) {
-    const accesses = await prisma.siteAccess.findMany({
-      where: { userId },
-      select: { siteId: true },
-    });
-    if (accesses.length > 0) {
+  const rawRoles: string[] = (session.user as any)?.roles || [];
+  const candidateRoles: string[] = [...rawRoles, userRole || ""].filter(Boolean);
+  const normalizedUserRoles = Array.from(new Set(candidateRoles.map((r) => r.toUpperCase())));
+  const requestedRole =
+    searchParams.get("role") ||
+    searchParams.get("viewRole") ||
+    req.cookies.get("active_workspace_role")?.value;
+  const effectiveRole =
+    requestedRole &&
+    (normalizedUserRoles.includes(requestedRole.toUpperCase()) ||
+      userRole === "SUPER_ADMIN" ||
+      userRole === "ADMIN")
+      ? requestedRole.toUpperCase()
+      : (userRole || "");
+
+  if (!isAdmin(effectiveRole)) {
+    if (effectiveRole === "WRITER" || effectiveRole === "TEAM_LEAD") {
+      const accesses = await prisma.siteAccess.findMany({
+        where: { userId },
+        select: { siteId: true },
+      });
       allowedSiteIds = accesses.map((a) => a.siteId);
-      if (userRole === "WRITER") excludeCompletedForWriter = true;
-    } else if (userRole === "WRITER") {
-      excludeCompletedForWriter = true;
-      allowedSiteIds = [];
+      if (effectiveRole === "WRITER") {
+        excludeCompletedForWriter = true;
+      }
+    } else {
+      const accesses = await prisma.siteAccess.findMany({
+        where: { userId },
+        select: { siteId: true },
+      });
+      if (accesses.length > 0) {
+        allowedSiteIds = accesses.map((a) => a.siteId);
+      }
     }
+  }
+
+  const parsedSiteId = siteId ? parseInt(siteId) : undefined;
+  let siteFilterCondition: any = undefined;
+
+  if (allowedSiteIds !== undefined) {
+    if (parsedSiteId !== undefined) {
+      if (allowedSiteIds.includes(parsedSiteId)) {
+        siteFilterCondition = parsedSiteId;
+      } else {
+        siteFilterCondition = { in: [] }; // Not authorized for requested site
+      }
+    } else {
+      siteFilterCondition = { in: allowedSiteIds };
+    }
+  } else if (parsedSiteId !== undefined) {
+    siteFilterCondition = parsedSiteId;
   }
 
   const products = await prisma.product.findMany({
     where: {
-      ...(siteId ? { siteId: parseInt(siteId) } : {}),
+      ...(siteFilterCondition !== undefined ? { siteId: siteFilterCondition } : {}),
       ...(categoryId ? { categoryId: parseInt(categoryId) } : {}),
-      ...(allowedSiteIds !== undefined ? { siteId: { in: allowedSiteIds } } : {}),
       ...(excludeCompletedForWriter
         ? {
           OR: [
@@ -623,7 +661,10 @@ export async function GET(req: NextRequest) {
 
   // Get total live publishing sites (excluding internal "Product Research" catalog)
   const totalPublishingSites = await prisma.site.count({
-    where: { name: { not: "Product Research" } },
+    where: {
+      name: { not: "Product Research" },
+      ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
+    },
   });
 
   const productNames = Array.from(new Set(products.map((p) => p.name.trim()).filter(Boolean)));
@@ -632,6 +673,7 @@ export async function GET(req: NextRequest) {
     productSiteOccurrences = await prisma.product.findMany({
       where: {
         site: { name: { not: "Product Research" } },
+        ...(allowedSiteIds !== undefined ? { siteId: { in: allowedSiteIds } } : {}),
         OR: productNames.flatMap((n) => [
           { name: { equals: n } },
           { name: { equals: n.toLowerCase() } },

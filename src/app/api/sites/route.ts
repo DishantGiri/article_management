@@ -8,20 +8,27 @@ import { slugifySite } from "@/lib/siteUtils";
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const role = session?.user?.role;
+    const userRole = session?.user?.role;
     const userId = Number(session?.user?.id);
+
+    const { searchParams } = new URL(req.url);
+    const rawRoles: string[] = (session?.user as any)?.roles || [];
+    const candidateRoles: string[] = [...rawRoles, userRole || ""].filter(Boolean);
+    const normalizedUserRoles = Array.from(new Set(candidateRoles.map((r) => r.toUpperCase())));
+    const requestedRole = searchParams.get("role") || searchParams.get("viewRole") || req.cookies.get("active_workspace_role")?.value;
+    const effectiveRole = (requestedRole && (normalizedUserRoles.includes(requestedRole.toUpperCase()) || userRole === "SUPER_ADMIN" || userRole === "ADMIN"))
+      ? requestedRole.toUpperCase()
+      : (userRole || "");
 
     let allowedSiteIds: number[] | undefined = undefined;
     // WRITER and TEAM_LEAD can only view their assigned sites
-    if (role === "WRITER" || role === "TEAM_LEAD") {
+    if (effectiveRole === "WRITER" || effectiveRole === "TEAM_LEAD") {
       const accesses = await prisma.siteAccess.findMany({
         where: { userId },
         select: { siteId: true },
       });
       allowedSiteIds = accesses.map((a) => a.siteId);
     }
-
-    const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get("categoryId");
 
     const sites = await prisma.site.findMany({

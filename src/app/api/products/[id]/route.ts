@@ -9,6 +9,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const product = await prisma.product.findUnique({
       where: { id: parseInt(id) },
@@ -22,6 +27,34 @@ export async function GET(
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Role site-access check for WRITER and TEAM_LEAD
+    const userId = Number(session.user.id);
+    const userRole = session.user.role;
+    const rawRoles: string[] = (session.user as any)?.roles || [];
+    const candidateRoles: string[] = [...rawRoles, userRole || ""].filter(Boolean);
+    const normalizedUserRoles = Array.from(new Set(candidateRoles.map((r) => r.toUpperCase())));
+    const requestedRole = req.nextUrl.searchParams.get("role") || req.nextUrl.searchParams.get("viewRole") || req.cookies.get("active_workspace_role")?.value;
+    const effectiveRole = (requestedRole && (normalizedUserRoles.includes(requestedRole.toUpperCase()) || userRole === "SUPER_ADMIN" || userRole === "ADMIN"))
+      ? requestedRole.toUpperCase()
+      : (userRole || "");
+
+    if (effectiveRole === "WRITER" || effectiveRole === "TEAM_LEAD") {
+      const hasAccess = await prisma.siteAccess.findUnique({
+        where: {
+          userId_siteId: {
+            userId,
+            siteId: product.siteId,
+          },
+        },
+      });
+      if (!hasAccess) {
+        return NextResponse.json(
+          { error: "Access Denied: You do not have access to products on this site." },
+          { status: 403 }
+        );
+      }
     }
 
     return NextResponse.json(product);

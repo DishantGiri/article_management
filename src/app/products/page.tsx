@@ -237,10 +237,10 @@ function ProductsPageContent() {
 
     if (showLoading && products.length === 0) setLoading(true);
     Promise.all([
-      fetch(`/api/products?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/products?userId=${mockUserId}&role=${uRole}`).then((r) => (r.ok ? r.json() : [])),
       fetch("/api/categories").then((r) => (r.ok ? r.json() : [])),
-      fetch(`/api/dashboard?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/articles?writerId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/dashboard?userId=${mockUserId}&role=${uRole}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/articles?writerId=${mockUserId}&role=${uRole}`).then((r) => (r.ok ? r.json() : [])),
       fetch(`/api/notifications?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
     ])
       .then(([productsData, categoriesData, dashboardData, articlesData, notifsData]) => {

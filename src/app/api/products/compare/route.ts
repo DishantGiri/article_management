@@ -20,8 +20,16 @@ export async function GET(req: NextRequest) {
     const userRole = session.user.role;
     const userId = Number(session.user.id);
 
+    const rawRoles: string[] = (session.user as any)?.roles || [];
+    const candidateRoles: string[] = [...rawRoles, userRole || ""].filter(Boolean);
+    const normalizedUserRoles = Array.from(new Set(candidateRoles.map((r) => r.toUpperCase())));
+    const requestedRole = searchParams.get("role") || searchParams.get("viewRole") || req.cookies.get("active_workspace_role")?.value;
+    const effectiveRole = (requestedRole && (normalizedUserRoles.includes(requestedRole.toUpperCase()) || userRole === "SUPER_ADMIN" || userRole === "ADMIN"))
+      ? requestedRole.toUpperCase()
+      : (userRole || "");
+
     let allowedSiteIds: number[] | undefined = undefined;
-    if (userRole === "WRITER" || userRole === "TEAM_LEAD") {
+    if (effectiveRole === "WRITER" || effectiveRole === "TEAM_LEAD") {
       const accesses = await prisma.siteAccess.findMany({
         where: { userId },
         select: { siteId: true },

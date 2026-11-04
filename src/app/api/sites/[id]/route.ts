@@ -16,8 +16,16 @@ export async function GET(
     }
 
     const { id: identifier } = await params;
-    const role = session.user.role;
+    const userRole = session.user.role;
     const userId = Number(session.user.id);
+
+    const rawRoles: string[] = (session.user as any)?.roles || [];
+    const candidateRoles: string[] = [...rawRoles, userRole || ""].filter(Boolean);
+    const normalizedUserRoles = Array.from(new Set(candidateRoles.map((r) => r.toUpperCase())));
+    const requestedRole = req.nextUrl.searchParams.get("role") || req.nextUrl.searchParams.get("viewRole") || req.cookies.get("active_workspace_role")?.value;
+    const effectiveRole = (requestedRole && (normalizedUserRoles.includes(requestedRole.toUpperCase()) || userRole === "SUPER_ADMIN" || userRole === "ADMIN"))
+      ? requestedRole.toUpperCase()
+      : (userRole || "");
 
     // 1. Locate the site either by numeric ID or by slug/name
     let site = null;
@@ -53,7 +61,7 @@ export async function GET(
     // 2. Permission Check:
     // Admin & Super Admin can view all sites.
     // Team Lead and Writer can only view their assigned sites.
-    if (role === "WRITER" || role === "TEAM_LEAD") {
+    if (effectiveRole === "WRITER" || effectiveRole === "TEAM_LEAD") {
       const access = await prisma.siteAccess.findUnique({
         where: {
           userId_siteId: {
@@ -68,7 +76,7 @@ export async function GET(
           {
             error: "Access Denied: You are not assigned to this site.",
             siteName: site.name,
-            role,
+            role: effectiveRole,
           },
           { status: 403 }
         );

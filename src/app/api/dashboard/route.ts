@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
         ? prisma.article.findMany({
           where: {
             status: "PENDING",
-            ...(role === "WRITER" ? { product: { siteId: { in: allowedSiteIds } } } : {}),
+            ...(role === "WRITER" || role === "TEAM_LEAD" ? { product: { siteId: { in: allowedSiteIds } } } : {}),
           },
           include: {
             product: {
