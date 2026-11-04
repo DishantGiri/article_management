@@ -171,7 +171,14 @@ export default function CommissionsPage() {
   const [endDate, setEndDate] = useState<string>("");
   const [saleTypeFilter, setSaleTypeFilter] = useState<string>("ALL"); // "ALL" | "FIRST_SALE" | "RESALE"
   const [statusFilter, setStatusFilter] = useState<string>("ALL");     // "ALL" | "PAID" | "PENDING"
-  const [assignmentFilter, setAssignmentFilter] = useState<string>("ALL"); // "ALL" | "ASSIGNED" | "UNASSIGNED"
+  const assignmentParam = searchParams.get("assignment")?.toUpperCase();
+  const initialAssignment =
+    assignmentParam && ["ALL", "ASSIGNED", "UNASSIGNED"].includes(assignmentParam)
+      ? assignmentParam
+      : initialTab === "PRODUCTS"
+      ? "ASSIGNED"
+      : "ALL";
+  const [assignmentFilter, setAssignmentFilter] = useState<string>(initialAssignment); // "ALL" | "ASSIGNED" | "UNASSIGNED"
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL"); // "ALL" | "NUTRA" | "ECOM"
   const [sortBy, setSortBy] = useState<string>("dateDesc");
   const [productSortBy, setProductSortBy] = useState<string>("salesDesc");
@@ -200,6 +207,9 @@ export default function CommissionsPage() {
   // Handle Tab Change with URL sync (pure client-side toggle without triggering App Router loading transitions)
   const handleTabChange = (tab: "LIST" | "PRODUCTS") => {
     setActiveViewTab(tab);
+    if (tab === "PRODUCTS") {
+      setAssignmentFilter("ASSIGNED");
+    }
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       if (tab === "PRODUCTS") {
@@ -1158,7 +1168,7 @@ export default function CommissionsPage() {
             startDate ||
             endDate ||
             statusFilter !== "ALL" ||
-            assignmentFilter !== "ALL" ||
+            assignmentFilter !== (activeViewTab === "PRODUCTS" ? "ASSIGNED" : "ALL") ||
             categoryFilter !== "ALL" ||
             saleTypeFilter !== "ALL") && (
               <button
@@ -1167,7 +1177,7 @@ export default function CommissionsPage() {
                   setStartDate("");
                   setEndDate("");
                   setStatusFilter("ALL");
-                  setAssignmentFilter("ALL");
+                  setAssignmentFilter(activeViewTab === "PRODUCTS" ? "ASSIGNED" : "ALL");
                   setCategoryFilter("ALL");
                   setSaleTypeFilter("ALL");
                 }}
