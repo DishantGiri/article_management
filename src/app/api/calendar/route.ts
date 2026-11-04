@@ -383,16 +383,27 @@ export async function GET(req: NextRequest) {
 
       if (isDuplicateOfCompletion) return;
 
+      const isProductAddedToSite = Boolean(
+        hist.notes && (
+          hist.notes.toLowerCase().includes("product added to site") ||
+          hist.notes.toLowerCase().includes("added to site")
+        )
+      );
+
       const rawDetails = hist.notes || (hist.oldStatus && hist.newStatus ? `Status: ${hist.oldStatus} → ${hist.newStatus}` : "Updated article record");
       addActivity(hist.updatedAt, {
         id: `arthist-${hist.id}`,
         time: toNpt(hist.updatedAt).format("hh:mm A"),
-        category: "ARTICLE",
-        badge: hist.newStatus === "REDO" ? "Revision Required" : "Article Updated",
+        category: isProductAddedToSite ? "PRODUCT" : "ARTICLE",
+        badge: isProductAddedToSite
+          ? "Product Added to Site"
+          : hist.newStatus === "REDO"
+            ? "Revision Required"
+            : "Article Updated",
         title: hist.article.product.name,
         subtitle: `Site: ${hist.article.product.site.name}`,
         details: sanitizeActivityDetails(rawDetails),
-        status: hist.newStatus,
+        status: isProductAddedToSite ? null : hist.newStatus,
         link: hist.newLink,
         rawTimestamp: hist.updatedAt.toISOString(),
       });
