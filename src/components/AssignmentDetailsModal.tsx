@@ -964,7 +964,7 @@ export default function AssignmentDetailsModal({
                 No sites match the current filter.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-80 overflow-y-auto pr-1">
                 {filteredSites.map((site) => {
                   const isCurrentModalSite = site.siteId === product.siteId;
                   const isAdding = addingSiteId === site.siteId;
@@ -972,7 +972,7 @@ export default function AssignmentDetailsModal({
                   return (
                     <div
                       key={site.siteId}
-                      className={`p-3 rounded-xl border transition flex items-center justify-between gap-2.5 ${
+                      className={`p-3.5 rounded-xl border transition flex flex-col justify-between gap-2.5 ${
                         site.isAvailable
                           ? isCurrentModalSite
                             ? "bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 shadow-2xs"
@@ -980,39 +980,58 @@ export default function AssignmentDetailsModal({
                           : "bg-slate-100/50 dark:bg-slate-900/40 border-dashed border-slate-200 dark:border-slate-800"
                       }`}
                     >
-                      {/* Left: Site Info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-2 h-2 rounded-full shrink-0 ${
-                              site.isAvailable
-                                ? "bg-emerald-500 ring-2 ring-emerald-500/20"
-                                : "bg-slate-300 dark:bg-slate-600"
-                            }`}
-                          />
-                          <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                            {site.siteName}
-                          </span>
-                          {isCurrentModalSite && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                              Current
-                            </span>
-                          )}
+                      {/* Top: Site Name & Status */}
+                      <div className="space-y-1.5 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2 min-w-0 flex-1">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 mt-1 ${
+                                site.isAvailable
+                                  ? "bg-emerald-500 ring-2 ring-emerald-500/20"
+                                  : "bg-slate-300 dark:bg-slate-600"
+                              }`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h4
+                                  className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white break-words leading-tight"
+                                  title={site.siteName}
+                                >
+                                  {site.siteName}
+                                </h4>
+                                {isCurrentModalSite && (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 shrink-0">
+                                    Current
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Top-right Status Badge */}
+                          <div className="shrink-0">
+                            {site.isAvailable ? (
+                              <span className="font-extrabold text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-200/50 dark:border-emerald-800/50">
+                                Available
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
+                                Not Added
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Status detail line */}
-                        <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px]">
+                        <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-500 dark:text-slate-400 pl-4">
                           {site.isAvailable ? (
                             <>
-                              <span className="font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-200/50 dark:border-emerald-800/50">
-                                Available
-                              </span>
                               {site.product?.article ? (
                                 <span className="font-semibold text-slate-600 dark:text-slate-300">
-                                  • Article: {site.product.article.status} ({site.product.article.writerName})
+                                  Article: <strong>{site.product.article.status}</strong> ({site.product.article.writerName})
                                 </span>
                               ) : (
-                                <span className="text-slate-400">• Ready for Writer</span>
+                                <span className="text-slate-400 font-medium">Ready for Writer</span>
                               )}
                               {site.product?.linkCount !== undefined && (
                                 <span className="text-slate-400 font-mono">
@@ -1050,10 +1069,10 @@ export default function AssignmentDetailsModal({
                         </div>
                       </div>
 
-                      {/* Right: Actions */}
-                      <div className="shrink-0 flex items-center gap-1.5 flex-wrap justify-end">
+                      {/* Bottom Actions Row */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-1.5 flex-wrap">
                         {site.isAvailable ? (
-                          <div className="flex items-center gap-1.5">
+                          <>
                             {/* Toggle / Unselect button */}
                             {canManageSites ? (
                               <button
@@ -1061,13 +1080,13 @@ export default function AssignmentDetailsModal({
                                 disabled={removingSiteId === site.siteId}
                                 onClick={() => setSiteToRemove(site)}
                                 className="w-6 h-6 rounded-lg bg-emerald-50 hover:bg-rose-50 dark:bg-emerald-950/80 dark:hover:bg-rose-950/80 text-emerald-600 hover:text-rose-600 dark:text-emerald-400 dark:hover:text-rose-400 flex items-center justify-center border border-emerald-200/60 hover:border-rose-300 dark:border-emerald-800/60 dark:hover:border-rose-800 transition cursor-pointer group shrink-0"
-                                title="Published on site. Click to unselect / remove"
+                                title={`Published on ${site.siteName}. Click to unselect / remove`}
                               >
                                 <Check className="w-3.5 h-3.5 group-hover:hidden" />
                                 <X className="w-3.5 h-3.5 hidden group-hover:block" />
                               </button>
                             ) : (
-                              <span className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/60 shrink-0" title="Published on site">
+                              <span className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/60 shrink-0" title={`Published on ${site.siteName}`}>
                                 <Check className="w-3.5 h-3.5" />
                               </span>
                             )}
@@ -1078,7 +1097,7 @@ export default function AssignmentDetailsModal({
                                 type="button"
                                 disabled={removingSiteId === site.siteId}
                                 onClick={() => setSiteToRemove(site)}
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/60 dark:text-slate-300 dark:hover:text-rose-300 border border-slate-200 hover:border-rose-300 dark:border-slate-750 dark:hover:border-rose-800 text-[11px] font-bold transition shadow-2xs cursor-pointer disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/60 dark:text-slate-300 dark:hover:text-rose-300 border border-slate-200 hover:border-rose-300 dark:border-slate-750 dark:hover:border-rose-800 text-[11px] font-bold transition shadow-2xs cursor-pointer disabled:opacity-50"
                                 title={`Unselect / Remove ${product.name} from ${site.siteName}`}
                               >
                                 {removingSiteId === site.siteId ? (
@@ -1094,21 +1113,21 @@ export default function AssignmentDetailsModal({
                             {canManageSites && site.product && (
                               <Link
                                 href={`/links?productId=${site.product.id}`}
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white dark:bg-emerald-950/60 dark:hover:bg-emerald-600 dark:text-emerald-300 dark:hover:text-white border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-bold transition shadow-2xs cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white dark:bg-emerald-950/60 dark:hover:bg-emerald-600 dark:text-emerald-300 dark:hover:text-white border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-bold transition shadow-2xs cursor-pointer"
                                 title={`Add or configure links for ${site.siteName}`}
                               >
                                 <Plus className="w-3 h-3" />
                                 <span>{site.product.linkCount && site.product.linkCount > 0 ? "Edit Link" : "Add Link"}</span>
                               </Link>
                             )}
-                          </div>
+                          </>
                         ) : (
                           canManageSites && (
                             <button
                               type="button"
                               disabled={isAdding || batchAdding}
                               onClick={() => handleAddToSite(site.siteId, site.siteName)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white dark:bg-indigo-950/60 dark:hover:bg-indigo-600 dark:text-indigo-300 dark:hover:text-white border border-indigo-200 dark:border-indigo-800/60 text-xs font-bold transition shadow-2xs disabled:opacity-50 cursor-pointer"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white dark:bg-indigo-950/60 dark:hover:bg-indigo-600 dark:text-indigo-300 dark:hover:text-white border border-indigo-200 dark:border-indigo-800/60 text-xs font-bold transition shadow-2xs disabled:opacity-50 cursor-pointer"
                               title={`Add ${product.name} to ${site.siteName}`}
                             >
                               {isAdding ? (
