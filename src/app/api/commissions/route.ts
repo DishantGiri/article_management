@@ -173,6 +173,7 @@ export async function GET(req: NextRequest) {
         article: {
           select: {
             id: true,
+            writerId: true,
             status: true,
             articleLink: true,
             completedAt: true,
@@ -263,10 +264,10 @@ export async function GET(req: NextRequest) {
       const linkerId = prod.addedBy?.id || prod.linkLogs[0]?.addedBy?.id || null;
       const writerName = prod.article?.writer?.name || "Unassigned";
       const writerId = prod.article?.writer?.id || null;
+      const isUnassigned = !prod.article?.writerId || !prod.article?.writer;
       const writerHasLeft = Boolean(
         prod.article?.writer?.hasLeftCompany ||
-        (prod.article?.writer && !prod.article?.writer?.approved) ||
-        !prod.article?.writer
+        (prod.article?.writer && !prod.article?.writer?.approved)
       );
       const writerToPartyFund = Boolean(prod.article?.writer?.commissionToPartyFund);
 
@@ -321,6 +322,7 @@ export async function GET(req: NextRequest) {
         linkerName,
         writerId,
         writerName,
+        isUnassigned,
         writerHasLeft,
         writerToPartyFund,
         articleStatus: prod.article?.status || "PENDING",
@@ -477,6 +479,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    // Enforce: Commission cannot be recorded or calculated for an unassigned article
+    if (!product.article || !product.article.writerId || !product.article.writer) {
+      return NextResponse.json(
+        { error: "Assign this article to a user before recording commission" },
+        { status: 400 }
+      );
+    }
+
     // Enforce: A product can only have ONE genuine first sale.
     // Every sale after that MUST be classified as a RESALE.
     const existingFirstSale = await prisma.commissionSale.findFirst({
@@ -549,7 +559,7 @@ export async function POST(req: NextRequest) {
     const isWriterLeft =
       writerLeftCompany !== undefined
         ? Boolean(writerLeftCompany)
-        : Boolean(writer?.hasLeftCompany || (writer && !writer.approved) || !writer);
+        : Boolean(writer?.hasLeftCompany || !writer?.approved);
 
     const isWriterToParty = isWriterLeft || Boolean(writer?.commissionToPartyFund);
 

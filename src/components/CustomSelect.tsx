@@ -10,6 +10,7 @@ export interface CustomSelectOption {
   value: string;
   label: string | ReactNode;
   isAction?: boolean;
+  disabled?: boolean;
 }
 
 export interface CustomSelectProps {
@@ -201,7 +202,10 @@ export default function CustomSelect({
                 } else if (e.key === "Enter") {
                   e.preventDefault();
                   if (filteredOptions.length > 0) {
-                    handleSelect(filteredOptions[0].value);
+                    const firstEnabled = filteredOptions.find((o) => !o.disabled);
+                    if (firstEnabled) {
+                      handleSelect(firstEnabled.value);
+                    }
                   } else if (allowCustom && search.trim()) {
                     handleSelect(search.trim());
                   }
@@ -236,6 +240,17 @@ export default function CustomSelect({
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{opt.label}</span>
+                </div>
+              );
+            }
+            if (opt.disabled) {
+              return (
+                <div
+                  key={opt.value || idx}
+                  className="mx-1 my-0.5 px-3 py-2 text-xs font-semibold rounded-lg text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-800/40 cursor-not-allowed flex items-center justify-between opacity-60 select-none"
+                  title="Disabled"
+                >
+                  <div className="truncate flex-1 min-w-0">{opt.label}</div>
                 </div>
               );
             }

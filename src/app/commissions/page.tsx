@@ -94,6 +94,7 @@ export interface ProductCommissionRow {
   linkerName: string;
   writerId: number | null;
   writerName: string;
+  isUnassigned?: boolean;
   writerHasLeft?: boolean;
   articleStatus: string;
   articleLink: string | null;
@@ -269,7 +270,28 @@ export default function CommissionsPage() {
     product?: ProductCommissionRow | null,
     defaultType: "FIRST_SALE" | "RESALE" = "FIRST_SALE"
   ) => {
-    const targetProduct = product || (products[0] || null);
+    if (product) {
+      const isUnassigned =
+        product.isUnassigned ||
+        !product.writerId ||
+        product.writerName.trim().toLowerCase() === "unassigned" ||
+        product.writerName.trim().toLowerCase() === "n/a";
+      if (isUnassigned) {
+        toast.error("Assign this article to a user before recording commission");
+        return;
+      }
+    }
+
+    const firstAssignedProduct =
+      products.find(
+        (p) =>
+          !p.isUnassigned &&
+          p.writerId &&
+          p.writerName.trim().toLowerCase() !== "unassigned" &&
+          p.writerName.trim().toLowerCase() !== "n/a"
+      ) || null;
+
+    const targetProduct = product || firstAssignedProduct || (products[0] || null);
     setSelectedProductForSale(targetProduct);
     setModalProductId(targetProduct ? String(targetProduct.id) : "");
     setModalWriterLeftCompany(Boolean(targetProduct?.writerHasLeft));
@@ -295,6 +317,16 @@ export default function CommissionsPage() {
     }
 
     const currentProd = selectedProductForSale || products.find((p) => p.id === prodId);
+    const isUnassigned =
+      currentProd?.isUnassigned ||
+      !currentProd?.writerId ||
+      currentProd?.writerName?.trim().toLowerCase() === "unassigned" ||
+      currentProd?.writerName?.trim().toLowerCase() === "n/a";
+    if (isUnassigned) {
+      toast.error("Assign this article to a user before recording commission");
+      return;
+    }
+
     const alreadyHasFirst = (currentProd?.firstSalesCount || 0) >= 1;
     const effectiveSaleType = alreadyHasFirst ? "RESALE" : modalSaleType;
 
@@ -1452,6 +1484,12 @@ export default function CommissionsPage() {
                   filteredProducts.map((prod) => {
                     const hasSales = prod.totalSalesCount > 0;
                     const isNutra = prod.categoryKey === "NUTRA";
+                    const isRowUnassigned = Boolean(
+                      prod.isUnassigned ||
+                      !prod.writerId ||
+                      prod.writerName.trim().toLowerCase() === "unassigned" ||
+                      prod.writerName.trim().toLowerCase() === "n/a"
+                    );
 
                     return (
                       <tr
@@ -1513,15 +1551,23 @@ export default function CommissionsPage() {
                         {/* Writer Name */}
                         <td className="py-3.5 px-3 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
-                            <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                              isRowUnassigned
+                                ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
+                                : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400"
+                            }`}>
                               <PenTool className="w-3 h-3" />
                             </div>
                             <div className="min-w-0">
-                              <span className="font-semibold text-slate-700 dark:text-slate-200 text-xs block">
+                              <span className={`font-semibold text-xs block ${
+                                isRowUnassigned
+                                  ? "text-amber-600 dark:text-amber-400 italic"
+                                  : "text-slate-700 dark:text-slate-200"
+                              }`}>
                                 {prod.writerName}
                               </span>
                               <span className="text-[10px] text-slate-400">
-                                {prod.articleStatus}
+                                {isRowUnassigned ? "Unassigned" : prod.articleStatus}
                               </span>
                             </div>
                           </div>
@@ -1541,8 +1587,17 @@ export default function CommissionsPage() {
                             {prod.firstSalesCount === 0 ? (
                               <button
                                 onClick={() => handleOpenRecordSale(prod, "FIRST_SALE")}
-                                className="p-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
-                                title="Log 1st Sale"
+                                disabled={isRowUnassigned}
+                                className={`p-1 rounded-lg transition ${
+                                  isRowUnassigned
+                                    ? "opacity-30 cursor-not-allowed text-slate-400"
+                                    : "hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-400 hover:text-emerald-600 cursor-pointer"
+                                }`}
+                                title={
+                                  isRowUnassigned
+                                    ? "Assign this article to a user before recording commission"
+                                    : "Log 1st Sale"
+                                }
                               >
                                 <Plus className="w-3.5 h-3.5" />
                               </button>
@@ -1570,8 +1625,17 @@ export default function CommissionsPage() {
                             </span>
                             <button
                               onClick={() => handleOpenRecordSale(prod, "RESALE")}
-                              className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-400 hover:text-blue-600 transition cursor-pointer"
-                              title="Log Resale"
+                              disabled={isRowUnassigned}
+                              className={`p-1 rounded-lg transition ${
+                                isRowUnassigned
+                                  ? "opacity-30 cursor-not-allowed text-slate-400"
+                                  : "hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-400 hover:text-blue-600 cursor-pointer"
+                              }`}
+                              title={
+                                isRowUnassigned
+                                  ? "Assign this article to a user before recording commission"
+                                  : "Log Resale"
+                              }
                             >
                               <Plus className="w-3.5 h-3.5" />
                             </button>
@@ -1641,10 +1705,16 @@ export default function CommissionsPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="text-[10px] text-slate-400 mt-0.5">
-                              <span>
-                                1st: Rs.{prod.rates.firstSaleTotal} | Re: Rs.{prod.rates.resaleTotal}
-                              </span>
+                            <div className="text-[10px] mt-0.5">
+                              {isRowUnassigned ? (
+                                <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                  Unassigned — Commission blocked
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">
+                                  1st: Rs.{prod.rates.firstSaleTotal} | Re: Rs.{prod.rates.resaleTotal}
+                                </span>
+                              )}
                             </div>
                           )}
                         </td>
@@ -1654,7 +1724,17 @@ export default function CommissionsPage() {
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => handleOpenRecordSale(prod)}
-                              className="px-2.5 py-1 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white text-[11px] font-bold shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                              disabled={isRowUnassigned}
+                              className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-2xs transition flex items-center gap-1 ${
+                                isRowUnassigned
+                                  ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60"
+                                  : "bg-[#6D8196] hover:bg-[#5A6D81] text-white cursor-pointer"
+                              }`}
+                              title={
+                                isRowUnassigned
+                                  ? "Assign this article to a user before recording commission"
+                                  : "Record Sale"
+                              }
                             >
                               <Plus className="w-3 h-3" />
                               <span>Sale</span>
@@ -1719,10 +1799,20 @@ export default function CommissionsPage() {
                       setModalSaleType("RESALE");
                     }
                   }}
-                  options={products.map((p) => ({
-                    value: String(p.id),
-                    label: `${p.name} (${p.siteName} • ${p.categoryName})`,
-                  }))}
+                  options={products.map((p) => {
+                    const isUnassigned =
+                      p.isUnassigned ||
+                      !p.writerId ||
+                      p.writerName.trim().toLowerCase() === "unassigned" ||
+                      p.writerName.trim().toLowerCase() === "n/a";
+                    return {
+                      value: String(p.id),
+                      label: isUnassigned
+                        ? `${p.name} (${p.siteName}) — [Unassigned Article - Cannot record commission]`
+                        : `${p.name} (${p.siteName} • ${p.categoryName})`,
+                      disabled: isUnassigned,
+                    };
+                  })}
                   placeholder="Select a product..."
                   searchable={true}
                   searchPlaceholder="Search product by name or site..."
@@ -1730,6 +1820,25 @@ export default function CommissionsPage() {
                   triggerClassName="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white font-semibold focus:outline-none hover:border-[#6D8196] shadow-2xs"
                 />
               </div>
+
+              {/* Warning if unassigned */}
+              {selectedProductForSale &&
+                (selectedProductForSale.isUnassigned ||
+                  !selectedProductForSale.writerId ||
+                  selectedProductForSale.writerName?.trim().toLowerCase() === "unassigned" ||
+                  selectedProductForSale.writerName?.trim().toLowerCase() === "n/a") && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800/80 flex items-start gap-2.5 animate-in fade-in">
+                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                        Cannot Record Commission (Unassigned Article)
+                      </p>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
+                        Commission cannot be recorded or calculated for an unassigned article. Assign this article to a user before recording commission.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
               {/* Sale Type Selector: 1st Sale vs Resale */}
               <div>
@@ -1772,7 +1881,11 @@ export default function CommissionsPage() {
               </div>
 
               {/* Rate & Pool Preview */}
-              {selectedProductForSale && (
+              {selectedProductForSale &&
+                !selectedProductForSale.isUnassigned &&
+                selectedProductForSale.writerId &&
+                selectedProductForSale.writerName?.trim().toLowerCase() !== "unassigned" &&
+                selectedProductForSale.writerName?.trim().toLowerCase() !== "n/a" && (
                 <div className="p-3 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-500 uppercase">
@@ -1964,8 +2077,25 @@ export default function CommissionsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingSale}
-                  className="px-5 py-2 rounded-xl bg-[#6D8196] hover:bg-[#5A6D81] text-white font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  disabled={
+                    submittingSale ||
+                    Boolean(
+                      selectedProductForSale &&
+                        (selectedProductForSale.isUnassigned ||
+                          !selectedProductForSale.writerId ||
+                          selectedProductForSale.writerName?.trim().toLowerCase() === "unassigned" ||
+                          selectedProductForSale.writerName?.trim().toLowerCase() === "n/a")
+                    )
+                  }
+                  className={`px-5 py-2 rounded-xl font-bold transition shadow-xs flex items-center gap-1.5 ${
+                    selectedProductForSale &&
+                    (selectedProductForSale.isUnassigned ||
+                      !selectedProductForSale.writerId ||
+                      selectedProductForSale.writerName?.trim().toLowerCase() === "unassigned" ||
+                      selectedProductForSale.writerName?.trim().toLowerCase() === "n/a")
+                      ? "bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed"
+                      : "bg-[#6D8196] hover:bg-[#5A6D81] text-white cursor-pointer"
+                  }`}
                 >
                   {submittingSale ? "Recording..." : "Confirm & Save"}
                 </button>
