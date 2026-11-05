@@ -1778,7 +1778,7 @@ export default function AssignmentDetailsModal({
                   className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   <PlayCircle className="w-4 h-4" />
-                  <span>{startingWriting ? "Starting..." : "Start Writing"}</span>
+                  <span>{startingWriting ? "Starting..." : `Start Writing on ${product.site?.name || "Site"}`}</span>
                 </button>
               )}
 
