@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
         productName: string;
         siteId: number;
         siteName: string;
-        saleType: "FIRST_SALE" | "RESALE";
+        saleType: "FIRST_SALE" | "RESALE" | "REDIRECT";
         saleDate: string;
         roleEarnedAs: string;
         amount: number;
@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
         }
 
         if (earned > 0) {
-          const type = sale.saleType as "FIRST_SALE" | "RESALE";
+          const type = sale.saleType as "FIRST_SALE" | "RESALE" | "REDIRECT";
           if (type === "FIRST_SALE") {
             firstSalesCount += 1;
             firstSalesAmount += earned;

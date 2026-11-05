@@ -39,6 +39,7 @@ import {
   Filter,
   Package,
   Wallet,
+  Share2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -58,7 +59,7 @@ export interface CommissionSaleItem {
   categoryKey: "NUTRA" | "ECOM";
   articleLink: string | null;
   articleStatus: string;
-  saleType: "FIRST_SALE" | "RESALE";
+  saleType: "FIRST_SALE" | "RESALE" | "REDIRECT";
   saleDate: string;
   writerId: number | null;
   writerName: string;
@@ -100,6 +101,7 @@ export interface ProductCommissionRow {
   articleLink: string | null;
   firstSalesCount: number;
   resalesCount: number;
+  redirectSalesCount?: number;
   totalSalesCount: number;
   totalCommissionAmount: number;
   paidCommissionAmount: number;
@@ -188,7 +190,7 @@ export default function CommissionsPage() {
   const [isRecordSaleModalOpen, setIsRecordSaleModalOpen] = useState(false);
   const [selectedProductForSale, setSelectedProductForSale] = useState<ProductCommissionRow | null>(null);
   const [modalProductId, setModalProductId] = useState<string>("");
-  const [modalSaleType, setModalSaleType] = useState<"FIRST_SALE" | "RESALE">("FIRST_SALE");
+  const [modalSaleType, setModalSaleType] = useState<"FIRST_SALE" | "RESALE" | "REDIRECT">("FIRST_SALE");
   const [modalSaleDate, setModalSaleDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
@@ -280,9 +282,9 @@ export default function CommissionsPage() {
   // Open Record Sale Modal
   const handleOpenRecordSale = (
     product?: ProductCommissionRow | null,
-    defaultType: "FIRST_SALE" | "RESALE" = "FIRST_SALE"
+    defaultType: "FIRST_SALE" | "RESALE" | "REDIRECT" = "FIRST_SALE"
   ) => {
-    if (product) {
+    if (product && defaultType !== "REDIRECT") {
       const isUnassigned =
         product.isUnassigned ||
         !product.writerId ||
@@ -309,9 +311,13 @@ export default function CommissionsPage() {
     setModalWriterLeftCompany(Boolean(targetProduct?.writerHasLeft));
 
     // A product can only have ONE genuine first sale.
-    // If it already has a first sale, force RESALE.
+    // If it already has a first sale, force RESALE unless REDIRECT is explicitly requested.
     const alreadyHasFirst = (targetProduct?.firstSalesCount || 0) >= 1;
-    setModalSaleType(alreadyHasFirst ? "RESALE" : defaultType);
+    if (defaultType === "REDIRECT") {
+      setModalSaleType("REDIRECT");
+    } else {
+      setModalSaleType(alreadyHasFirst ? "RESALE" : defaultType);
+    }
 
     setModalSaleDate(new Date().toISOString().split("T")[0]);
     setModalPaymentStatus("PENDING");
@@ -329,18 +335,35 @@ export default function CommissionsPage() {
     }
 
     const currentProd = selectedProductForSale || products.find((p) => p.id === prodId);
-    const isUnassigned =
-      currentProd?.isUnassigned ||
-      !currentProd?.writerId ||
-      currentProd?.writerName?.trim().toLowerCase() === "unassigned" ||
-      currentProd?.writerName?.trim().toLowerCase() === "n/a";
-    if (isUnassigned) {
-      toast.error("Assign this article to a user before recording commission");
-      return;
+    const isRedirect = modalSaleType === "REDIRECT";
+
+    if (!isRedirect) {
+      const isUnassigned =
+        currentProd?.isUnassigned ||
+        !currentProd?.writerId ||
+        currentProd?.writerName?.trim().toLowerCase() === "unassigned" ||
+        currentProd?.writerName?.trim().toLowerCase() === "n/a";
+      if (isUnassigned) {
+        toast.error("Assign this article to a user before recording commission");
+        return;
+      }
+    } else {
+      const hasLinker =
+        currentProd?.linkerId &&
+        currentProd?.linkerName &&
+        currentProd?.linkerName.trim().toLowerCase() !== "unassigned";
+      if (!hasLinker) {
+        toast.error("A linker must be assigned to this product or its affiliate links to record a redirect sale");
+        return;
+      }
     }
 
     const alreadyHasFirst = (currentProd?.firstSalesCount || 0) >= 1;
-    const effectiveSaleType = alreadyHasFirst ? "RESALE" : modalSaleType;
+    const effectiveSaleType = isRedirect
+      ? "REDIRECT"
+      : alreadyHasFirst
+      ? "RESALE"
+      : modalSaleType;
 
     setSubmittingSale(true);
     try {
@@ -353,7 +376,7 @@ export default function CommissionsPage() {
           saleDate: modalSaleDate,
           paymentStatus: modalPaymentStatus,
           notes: modalNotes,
-          writerLeftCompany: modalWriterLeftCompany,
+          writerLeftCompany: isRedirect ? false : modalWriterLeftCompany,
         }),
       });
 
@@ -365,7 +388,11 @@ export default function CommissionsPage() {
       const resData = await res.json().catch(() => ({}));
       toast.success(
         resData.message ||
-          `${effectiveSaleType === "FIRST_SALE" ? "1st Sale" : "Resale"} logged successfully!`
+          (effectiveSaleType === "REDIRECT"
+            ? "Redirect sale logged successfully!"
+            : effectiveSaleType === "FIRST_SALE"
+            ? "1st Sale logged successfully!"
+            : "Resale logged successfully!")
       );
       setIsRecordSaleModalOpen(false);
       setSelectedProductForSale(null);
@@ -636,12 +663,14 @@ export default function CommissionsPage() {
     let totalPending = 0;
     let totalFirstSales = 0;
     let totalResales = 0;
+    let totalRedirectSales = 0;
 
     filteredSales.forEach((s) => {
       totalCommission += s.amount;
       if (s.paymentStatus === "PAID") totalPaid += s.amount;
       else totalPending += s.amount;
       if (s.saleType === "FIRST_SALE") totalFirstSales += 1;
+      else if (s.saleType === "REDIRECT") totalRedirectSales += 1;
       else totalResales += 1;
     });
 
@@ -651,6 +680,7 @@ export default function CommissionsPage() {
       totalPending,
       totalFirstSales,
       totalResales,
+      totalRedirectSales,
       totalSales: filteredSales.length,
     };
   }, [filteredSales]);
@@ -1083,6 +1113,7 @@ export default function CommissionsPage() {
                 { key: "ALL", label: "All Sales" },
                 { key: "FIRST_SALE", label: "1st Sales" },
                 { key: "RESALE", label: "Resales" },
+                { key: "REDIRECT", label: "Redirect Sales" },
               ].map((t) => (
                 <button
                   type="button"
@@ -1333,7 +1364,12 @@ export default function CommissionsPage() {
 
                         {/* Sale Type */}
                         <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                          {is1st ? (
+                          {sale.saleType === "REDIRECT" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40 shadow-2xs">
+                              <Share2 className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                              <span>Redirect</span>
+                            </span>
+                          ) : is1st ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40 shadow-2xs">
                               <Award className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                               <span>1st Sale</span>

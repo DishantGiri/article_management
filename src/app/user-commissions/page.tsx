@@ -42,7 +42,7 @@ interface UserSaleItem {
   productName: string;
   siteId: number;
   siteName: string;
-  saleType: "FIRST_SALE" | "RESALE";
+  saleType: "FIRST_SALE" | "RESALE" | "REDIRECT";
   saleDate: string;
   roleEarnedAs: string;
   amount: number;
@@ -864,12 +864,19 @@ function UserCommissionsContent() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span
-                            className={`px-2 py-0.2 rounded-full text-[9px] font-black ${sale.saleType === "FIRST_SALE"
+                            className={`px-2 py-0.2 rounded-full text-[9px] font-black ${
+                              sale.saleType === "REDIRECT"
+                                ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                : sale.saleType === "FIRST_SALE"
                                 ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
                                 : "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
-                              }`}
+                            }`}
                           >
-                            {sale.saleType === "FIRST_SALE" ? "1st" : "Re"}
+                            {sale.saleType === "REDIRECT"
+                              ? "Redirect"
+                              : sale.saleType === "FIRST_SALE"
+                              ? "1st"
+                              : "Re"}
                           </span>
                           <span className="font-bold text-slate-800 dark:text-slate-100">
                             {sale.productName}
