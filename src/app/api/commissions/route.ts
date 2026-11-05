@@ -45,42 +45,18 @@ export async function normalizeProductFirstSales() {
 
       if (sales.length <= 1) continue;
 
-      // The earliest sale (index 0) remains FIRST_SALE.
-      // Sales #2, #3, ... must be converted to RESALE.
+      // Ensure sales #2, #3, ... are classified as RESALE if they were mistakenly FIRST_SALE,
+      // while strictly PRESERVING their original recorded commission amounts and rates.
       for (let i = 1; i < sales.length; i++) {
         const sale = sales[i];
-        const catKey = resolveCategoryKey(sale.product?.category?.name);
-        const resaleSetting = settingsMap.get(`${catKey}_RESALE`);
-
-        const amount = resaleSetting?.total ?? sale.amount;
-        const baseLinker = resaleSetting?.linker ?? sale.linkerAmount;
-        const baseWriter = resaleSetting?.writer ?? sale.writerAmount;
-        const baseTl = resaleSetting?.tl ?? sale.tlAmount;
-        const seoAmount = resaleSetting?.seo ?? sale.seoAmount;
-        const bonusAmount = resaleSetting?.bonusPool ?? sale.bonusAmount;
-        const baseParty = resaleSetting?.partyFund ?? 0;
-
-        const isWriterToParty =
-          Boolean(sale.writerLeftCompany) ||
-          Boolean(sale.writerTransferredToParty > 0 && sale.writerAmount === 0);
-        const writerAmount = isWriterToParty ? 0 : baseWriter;
-        const writerTransferredToParty = isWriterToParty ? baseWriter : 0;
-        const partyAmount = baseParty + writerTransferredToParty;
-
-        await prisma.commissionSale.update({
-          where: { id: sale.id },
-          data: {
-            saleType: "RESALE",
-            amount,
-            linkerAmount: baseLinker,
-            writerAmount,
-            tlAmount: baseTl,
-            seoAmount,
-            bonusAmount,
-            partyAmount,
-            writerTransferredToParty,
-          },
-        });
+        if (sale.saleType === "FIRST_SALE") {
+          await prisma.commissionSale.update({
+            where: { id: sale.id },
+            data: {
+              saleType: "RESALE",
+            },
+          });
+        }
       }
     }
   } catch (err) {
