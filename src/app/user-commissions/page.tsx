@@ -109,6 +109,14 @@ function UserCommissionsContent() {
   const [settlingUserId, setSettlingUserId] = useState<number | null>(null);
   const [payoutTargetUser, setPayoutTargetUser] = useState<UserCommissionRow | null>(null);
 
+  // Bulk Payout Modal (By Time Period)
+  const [isBulkPayoutModalOpen, setIsBulkPayoutModalOpen] = useState<boolean>(false);
+  const [bulkTimePeriod, setBulkTimePeriod] = useState<"daily" | "weekly" | "monthly" | "custom">("monthly");
+  const [bulkCustomStart, setBulkCustomStart] = useState<string>("");
+  const [bulkCustomEnd, setBulkCustomEnd] = useState<string>("");
+  const [bulkRoles, setBulkRoles] = useState<string[]>(["WRITER", "LINKER", "TEAM_LEAD"]);
+  const [submittingBulkPayout, setSubmittingBulkPayout] = useState<boolean>(false);
+
   // Fetch Data (Only re-queries server on site or date change; role, status, search, and sort are instant client-side)
   const fetchData = async (
     targetSiteId = siteFilter,
@@ -147,6 +155,38 @@ function UserCommissionsContent() {
       fetchData(siteFilter, startDate, endDate, hasLoadedInitial);
     }
   }, [siteFilter, startDate, endDate, status]);
+
+  // Settle Bulk Payout by Time Period
+  const handleExecuteBulkPayout = async () => {
+    if (bulkRoles.length === 0) {
+      toast.error("Please select at least one role to settle");
+      return;
+    }
+    setSubmittingBulkPayout(true);
+    try {
+      const res = await fetch("/api/commissions/users/payout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          timePeriod: bulkTimePeriod,
+          startDate: bulkCustomStart || undefined,
+          endDate: bulkCustomEnd || undefined,
+          roles: bulkRoles,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to process bulk payout");
+      }
+      toast.success(data.message || "Bulk payout processed successfully!");
+      setIsBulkPayoutModalOpen(false);
+      fetchData(siteFilter, startDate, endDate, true);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to process bulk payout");
+    } finally {
+      setSubmittingBulkPayout(false);
+    }
+  };
 
   // Open Custom Confirmation Popup for Payout
   const handleOpenPayoutConfirm = (user: UserCommissionRow) => {
@@ -375,6 +415,18 @@ function UserCommissionsContent() {
                 <span>By Users</span>
               </span>
             </div>
+
+            {(session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "ADMIN") && (
+              <button
+                type="button"
+                onClick={() => setIsBulkPayoutModalOpen(true)}
+                className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-2 shadow-2xs cursor-pointer"
+                title="Bulk Payout by Time Period (Daily, Weekly, Monthly)"
+              >
+                <Coins className="w-3.5 h-3.5" />
+                <span>Bulk Payout</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -943,6 +995,140 @@ function UserCommissionsContent() {
                 className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
               >
                 Close Statement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: BULK PAYOUT BY TIME PERIOD ─────────────────────────── */}
+      {isBulkPayoutModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-black text-[#4A4A4A] dark:text-white flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-emerald-600" />
+                  <span>Bulk Commission Payout</span>
+                </h3>
+                <p className="text-xs text-[#737373] dark:text-slate-400 mt-0.5">
+                  Process payments for multiple transactions based on time period
+                </p>
+              </div>
+              <button
+                onClick={() => setIsBulkPayoutModalOpen(false)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Time Period Selector */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  Select Time Period
+                </label>
+                <div className="grid grid-cols-4 gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
+                  {(["daily", "weekly", "monthly", "custom"] as const).map((period) => (
+                    <button
+                      key={period}
+                      type="button"
+                      onClick={() => setBulkTimePeriod(period)}
+                      className={`py-1.5 rounded-lg transition capitalize cursor-pointer ${
+                        bulkTimePeriod === period
+                          ? "bg-white dark:bg-slate-700 text-[#4A4A4A] dark:text-white shadow-2xs font-black"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      {period}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Date Inputs if 'custom' */}
+              {bulkTimePeriod === "custom" && (
+                <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={bulkCustomStart}
+                      onChange={(e) => setBulkCustomStart(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={bulkCustomEnd}
+                      onChange={(e) => setBulkCustomEnd(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Roles to Settle */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  Select Roles to Settle
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { key: "WRITER", label: "Writers" },
+                    { key: "LINKER", label: "Linkers" },
+                    { key: "TEAM_LEAD", label: "Team Leads" },
+                  ].map((role) => (
+                    <label
+                      key={role.key}
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${
+                        bulkRoles.includes(role.key)
+                          ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 font-bold"
+                          : "bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={bulkRoles.includes(role.key)}
+                        onChange={(e) => {
+                          if (e.target.checked) setBulkRoles([...bulkRoles, role.key]);
+                          else setBulkRoles(bulkRoles.filter((r) => r !== role.key));
+                        }}
+                        className="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <span>{role.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-800 dark:text-amber-300">
+                Bulk payout will mark all pending commission earnings for the selected roles in the <strong>{bulkTimePeriod}</strong> window as settled.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsBulkPayoutModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={submittingBulkPayout || bulkRoles.length === 0}
+                onClick={handleExecuteBulkPayout}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-xs font-bold text-white transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                {submittingBulkPayout ? "Processing..." : "Execute Bulk Payout"}
               </button>
             </div>
           </div>

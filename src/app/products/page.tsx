@@ -434,7 +434,7 @@ function ProductsPageContent() {
     let matchStatus = true;
     const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
     const rawStatus = p.article?.status || "PENDING";
-    const isRedirected = rawStatus === "REDIRECTED" || (p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.status === "REDIRECTED"));
+    const isRedirected = Boolean(rawStatus === "REDIRECTED" || (p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.status === "REDIRECTED")));
     const currentStatus = isRedirected
       ? "REDIRECTED"
       : (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
