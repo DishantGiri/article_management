@@ -1372,6 +1372,11 @@ function ProductsPageContent() {
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   if (!p.article || status !== "PENDING") return;
+                                  if ((p.availableCount || 0) > 1) {
+                                    setSelectedProduct(p);
+                                    toast("This product is published on multiple sites. Please choose which site you want to write on from the site cards.", { icon: "🌐" });
+                                    return;
+                                  }
                                   try {
                                     const uId = session?.user?.id || 1;
                                     const res = await fetch(`/api/articles/${p.article.id}`, {
