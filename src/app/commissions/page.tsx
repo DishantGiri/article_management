@@ -106,6 +106,9 @@ export interface ProductCommissionRow {
   totalCommissionAmount: number;
   paidCommissionAmount: number;
   pendingCommissionAmount: number;
+  pendingWriterAmount?: number;
+  pendingLinkerAmount?: number;
+  pendingTlAmount?: number;
   overallPaymentStatus: "PAID" | "PENDING" | "PARTIAL" | "NO_SALES";
   latestDate: string;
   sales: any[];
@@ -206,6 +209,19 @@ export default function CommissionsPage() {
   const [historyProduct, setHistoryProduct] = useState<ProductCommissionRow | null>(null);
   const [updatingSaleId, setUpdatingSaleId] = useState<number | null>(null);
 
+  // Product-Based Payout Modal
+  const [payoutProduct, setPayoutProduct] = useState<ProductCommissionRow | null>(null);
+  const [payoutRoles, setPayoutRoles] = useState<string[]>(["WRITER", "LINKER", "TEAM_LEAD"]);
+  const [submittingPayout, setSubmittingPayout] = useState<boolean>(false);
+
+  // Bulk Payout Modal (By Time Period)
+  const [isBulkPayoutModalOpen, setIsBulkPayoutModalOpen] = useState<boolean>(false);
+  const [bulkTimePeriod, setBulkTimePeriod] = useState<"daily" | "weekly" | "monthly" | "custom">("monthly");
+  const [bulkCustomStart, setBulkCustomStart] = useState<string>("");
+  const [bulkCustomEnd, setBulkCustomEnd] = useState<string>("");
+  const [bulkRoles, setBulkRoles] = useState<string[]>(["WRITER", "LINKER", "TEAM_LEAD"]);
+  const [submittingBulkPayout, setSubmittingBulkPayout] = useState<boolean>(false);
+
   // Handle Tab Change with URL sync (pure client-side toggle without triggering App Router loading transitions)
   const handleTabChange = (tab: "LIST" | "PRODUCTS") => {
     setActiveViewTab(tab);
@@ -278,6 +294,69 @@ export default function CommissionsPage() {
       }
     }
   }, [activeSiteTab, startDate, endDate, status, canAccess]);
+
+  // Settle Product Payout
+  const handleExecuteProductPayout = async () => {
+    if (!payoutProduct) return;
+    if (payoutRoles.length === 0) {
+      toast.error("Please select at least one role to settle");
+      return;
+    }
+    setSubmittingPayout(true);
+    try {
+      const res = await fetch("/api/commissions/users/payout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: payoutProduct.id,
+          roles: payoutRoles,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to settle product commission");
+      }
+      toast.success(data.message || "Product payout settled successfully!");
+      setPayoutProduct(null);
+      fetchData(activeSiteTab, startDate, endDate, true);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to settle product payout");
+    } finally {
+      setSubmittingPayout(false);
+    }
+  };
+
+  // Settle Bulk Payout by Time Period
+  const handleExecuteBulkPayout = async () => {
+    if (bulkRoles.length === 0) {
+      toast.error("Please select at least one role to settle");
+      return;
+    }
+    setSubmittingBulkPayout(true);
+    try {
+      const res = await fetch("/api/commissions/users/payout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          timePeriod: bulkTimePeriod,
+          startDate: bulkCustomStart || undefined,
+          endDate: bulkCustomEnd || undefined,
+          roles: bulkRoles,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to process bulk payout");
+      }
+      toast.success(data.message || "Bulk payout processed successfully!");
+      setIsBulkPayoutModalOpen(false);
+      fetchData(activeSiteTab, startDate, endDate, true);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to process bulk payout");
+    } finally {
+      setSubmittingBulkPayout(false);
+    }
+  };
 
   // Open Record Sale Modal
   const handleOpenRecordSale = (
@@ -822,6 +901,18 @@ export default function CommissionsPage() {
               >
                 <Plus className="w-4 h-4" />
                 <span>Record Sale</span>
+              </button>
+            )}
+
+            {/* Bulk Payout Action */}
+            {isSuperAdmin && (
+              <button
+                onClick={() => setIsBulkPayoutModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Bulk Payout by Time Period (Daily, Weekly, Monthly)"
+              >
+                <Coins className="w-4 h-4" />
+                <span>Bulk Payout</span>
               </button>
             )}
 
