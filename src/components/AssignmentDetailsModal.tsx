@@ -513,6 +513,34 @@ export default function AssignmentDetailsModal({
     setTimeout(() => setCopiedKey(null), 1800);
   };
 
+  const [startingWritingArticleId, setStartingWritingArticleId] = useState<number | null>(null);
+
+  const handleStartWritingForArticle = async (articleId: number, targetSiteName: string) => {
+    if (!articleId) return;
+    setStartingWritingArticleId(articleId);
+    try {
+      const uId = currentUserId || 1;
+      const res = await fetch(`/api/articles/${articleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "IN_PROGRESS", writerId: uId, callerId: uId }),
+      });
+      if (res.ok) {
+        toast.success(`Started writing on ${targetSiteName}! Navigating to tracker...`);
+        onUpdate?.();
+        onClose();
+        router.push("/#writer-tracker");
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to start writing");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start writing");
+    } finally {
+      setStartingWritingArticleId(null);
+    }
+  };
+
   const handleStartWriting = async () => {
     if (!product.article) return;
     setStartingWriting(true);
@@ -1120,6 +1148,26 @@ export default function AssignmentDetailsModal({
                                 <Plus className="w-3 h-3" />
                                 <span>{site.product.linkCount && site.product.linkCount > 0 ? "Edit Link" : "Add Link"}</span>
                               </Link>
+                            )}
+
+                            {/* Site-Specific Start Writing button for Writer / Team Lead */}
+                            {(currentUserRole === "WRITER" || currentUserRole === "TEAM_LEAD") &&
+                              site.product?.article &&
+                              site.product.article.status === "PENDING" && (
+                                <button
+                                  type="button"
+                                  disabled={startingWritingArticleId === site.product.article.id}
+                                  onClick={() => handleStartWritingForArticle(site.product!.article!.id, site.siteName)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition shadow-2xs cursor-pointer disabled:opacity-50"
+                                  title={`Start writing article for ${site.siteName}`}
+                                >
+                                  {startingWritingArticleId === site.product.article.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <PlayCircle className="w-3 h-3" />
+                                  )}
+                                  <span>Start Writing</span>
+                                </button>
                             )}
                           </>
                         ) : (
