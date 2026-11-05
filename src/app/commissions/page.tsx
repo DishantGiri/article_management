@@ -1864,10 +1864,10 @@ export default function CommissionsPage() {
       {/* ─── MODAL: RECORD COMMISSION SALE ───────────────────────────── */}
       {isRecordSaleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 max-w-xl sm:max-w-2xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="text-base font-black text-[#4A4A4A] dark:text-white">
+                <h3 className="text-base sm:text-lg font-black text-[#4A4A4A] dark:text-white">
                   Record Commission Sale
                 </h3>
                 <p className="text-xs text-[#737373] dark:text-slate-400 mt-0.5">
@@ -1876,7 +1876,7 @@ export default function CommissionsPage() {
               </div>
               <button
                 onClick={() => setIsRecordSaleModalOpen(false)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1895,22 +1895,29 @@ export default function CommissionsPage() {
                     const found = products.find((p) => p.id === parseInt(val));
                     setSelectedProductForSale(found || null);
                     setModalWriterLeftCompany(Boolean(found?.writerHasLeft));
-                    if ((found?.firstSalesCount || 0) >= 1) {
+                    if (modalSaleType !== "REDIRECT" && (found?.firstSalesCount || 0) >= 1) {
                       setModalSaleType("RESALE");
                     }
                   }}
                   options={products.map((p) => {
-                    const isUnassigned =
+                    const isWriterUnassigned =
                       p.isUnassigned ||
                       !p.writerId ||
                       p.writerName.trim().toLowerCase() === "unassigned" ||
                       p.writerName.trim().toLowerCase() === "n/a";
+                    const isLinkerUnassigned =
+                      !p.linkerName ||
+                      p.linkerName.trim().toLowerCase() === "unassigned";
+                    const isDisabled =
+                      modalSaleType === "REDIRECT"
+                        ? isLinkerUnassigned
+                        : isWriterUnassigned;
                     return {
                       value: String(p.id),
-                      label: isUnassigned
-                        ? `${p.name} (${p.siteName}) — [Unassigned Article - Cannot record commission]`
+                      label: isDisabled
+                        ? `${p.name} (${p.siteName}) — [${modalSaleType === "REDIRECT" ? "No Linker Assigned" : "Unassigned Article"}]`
                         : `${p.name} (${p.siteName} • ${p.categoryName})`,
-                      disabled: isUnassigned,
+                      disabled: isDisabled,
                     };
                   })}
                   placeholder="Select a product..."
@@ -1922,7 +1929,24 @@ export default function CommissionsPage() {
               </div>
 
               {/* Warning if unassigned */}
-              {selectedProductForSale &&
+              {modalSaleType === "REDIRECT" ? (
+                selectedProductForSale &&
+                (!selectedProductForSale.linkerName ||
+                  selectedProductForSale.linkerName.trim().toLowerCase() === "unassigned") && (
+                  <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800/80 flex items-start gap-2.5 animate-in fade-in">
+                    <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-rose-900 dark:text-rose-200">
+                        Linker Required for Redirect Sale
+                      </p>
+                      <p className="text-[11px] text-rose-700 dark:text-rose-300 font-medium leading-relaxed">
+                        A linker must be assigned to this product or its affiliate links to record a redirect sale.
+                      </p>
+                    </div>
+                  </div>
+                )
+              ) : (
+                selectedProductForSale &&
                 (selectedProductForSale.isUnassigned ||
                   !selectedProductForSale.writerId ||
                   selectedProductForSale.writerName?.trim().toLowerCase() === "unassigned" ||
@@ -1938,14 +1962,15 @@ export default function CommissionsPage() {
                       </p>
                     </div>
                   </div>
-                )}
+                )
+              )}
 
-              {/* Sale Type Selector: 1st Sale vs Resale */}
+              {/* Sale Type Selector: 1st Sale vs Resale vs Redirect Sale */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                   Sale Type
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     disabled={(selectedProductForSale?.firstSalesCount || 0) >= 1}
@@ -1954,7 +1979,7 @@ export default function CommissionsPage() {
                       (selectedProductForSale?.firstSalesCount || 0) >= 1
                         ? "opacity-40 cursor-not-allowed bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
                         : modalSaleType === "FIRST_SALE"
-                        ? "bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-700 dark:text-blue-300 shadow-2xs cursor-pointer"
+                        ? "bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-700 dark:text-blue-300 shadow-2xs cursor-pointer font-extrabold"
                         : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 cursor-pointer"
                     }`}
                   >
@@ -1965,149 +1990,212 @@ export default function CommissionsPage() {
                   <button
                     type="button"
                     onClick={() => setModalSaleType("RESALE")}
-                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${modalSaleType === "RESALE"
-                        ? "bg-purple-50 dark:bg-purple-950/60 border-purple-500 text-purple-700 dark:text-purple-300 shadow-2xs"
+                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      modalSaleType === "RESALE"
+                        ? "bg-purple-50 dark:bg-purple-950/60 border-purple-500 text-purple-700 dark:text-purple-300 shadow-2xs font-extrabold"
                         : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50"
-                      }`}
+                    }`}
                   >
                     <span className="w-2 h-2 rounded-full bg-purple-500" />
                     <span>Resale</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalSaleType("REDIRECT")}
+                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      modalSaleType === "REDIRECT"
+                        ? "bg-amber-50 dark:bg-amber-950/60 border-amber-500 text-amber-700 dark:text-amber-300 shadow-2xs font-extrabold"
+                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Sale from Redirect</span>
+                  </button>
                 </div>
-                  <p className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium mt-1 flex items-center gap-1">
+
+                {modalSaleType === "REDIRECT" ? (
+                  <div className="p-3 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 mt-2 flex items-start gap-2.5">
+                    <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="text-[11px] leading-relaxed">
+                      <p className="font-extrabold text-amber-900 dark:text-amber-200">
+                        ⚡ Sale from Redirect: 100% Commission to Linker (+50% Bonus)
+                      </p>
+                      <p className="text-amber-700 dark:text-amber-300 font-medium">
+                        All commission goes exclusively to the Linker (base commission + 50% extra bonus). Writer, Team Lead, SEO, Bonus Pool, and Party Fund receive Rs. 0.00.
+                      </p>
+                    </div>
+                  </div>
+                ) : (selectedProductForSale?.firstSalesCount || 0) >= 1 ? (
+                  <p className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium mt-1.5 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3 shrink-0" />
-                    <span>1st sale is already recorded for this product. Additional sales are classified as Resales.</span>
+                    <span>1st sale is already recorded for this product. Additional standard sales are classified as Resales.</span>
                   </p>
+                ) : null}
               </div>
 
               {/* Rate & Pool Preview */}
               {selectedProductForSale &&
-                !selectedProductForSale.isUnassigned &&
-                selectedProductForSale.writerId &&
-                selectedProductForSale.writerName?.trim().toLowerCase() !== "unassigned" &&
-                selectedProductForSale.writerName?.trim().toLowerCase() !== "n/a" && (
-                <div className="p-3 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase">
-                      Total Commission ({selectedProductForSale.categoryKey}):
-                    </span>
-                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                      Rs.{" "}
-                      {modalSaleType === "FIRST_SALE"
-                        ? selectedProductForSale.rates.firstSaleTotal.toFixed(2)
-                        : selectedProductForSale.rates.resaleTotal.toFixed(2)}
-                    </span>
-                  </div>
+                (modalSaleType === "REDIRECT" ||
+                  (!selectedProductForSale.isUnassigned &&
+                    selectedProductForSale.writerId &&
+                    selectedProductForSale.writerName?.trim().toLowerCase() !== "unassigned" &&
+                    selectedProductForSale.writerName?.trim().toLowerCase() !== "n/a")) &&
+                (() => {
+                  const isRedirect = modalSaleType === "REDIRECT";
+                  const isAlreadyFirstSold = (selectedProductForSale.firstSalesCount || 0) >= 1;
+                  const brk =
+                    modalSaleType === "FIRST_SALE"
+                      ? selectedProductForSale.rates.firstSaleBreakdown
+                      : selectedProductForSale.rates.resaleBreakdown;
+                  const baseLinker = Number(brk?.linker ?? 0);
+                  const redirectBonus = parseFloat((baseLinker * 0.5).toFixed(2));
+                  const redirectLinker = parseFloat((baseLinker * 1.5).toFixed(2));
+                  const totalCommissionAmount = isRedirect
+                    ? redirectLinker
+                    : modalSaleType === "FIRST_SALE"
+                    ? selectedProductForSale.rates.firstSaleTotal
+                    : selectedProductForSale.rates.resaleTotal;
 
-                  {/* Writer departure toggle */}
-                  <div
-                    className={`p-2.5 rounded-xl border space-y-1.5 transition-all ${modalWriterLeftCompany
-                        ? "bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60"
-                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                      }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Writer:</span>
-                        <span className="font-extrabold text-slate-800 dark:text-white truncate text-xs">
-                          {selectedProductForSale.writerName || "Unassigned"}
-                        </span>
-                        {modalWriterLeftCompany && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-100 dark:bg-rose-900/80 text-rose-700 dark:text-rose-300 shrink-0">
-                            Left Company
+                  return (
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                            Total Commission ({selectedProductForSale.categoryKey}):
                           </span>
-                        )}
+                          {isRedirect && (
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                              Base Rs. {baseLinker.toFixed(2)} + 50% extra Rs. {redirectBonus.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                          Rs. {totalCommissionAmount.toFixed(2)}
+                        </span>
                       </div>
 
-                      <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={modalWriterLeftCompany}
-                          onChange={(e) => setModalWriterLeftCompany(e.target.checked)}
-                          className="w-3.5 h-3.5 text-rose-600 rounded border-slate-300 focus:ring-rose-500 cursor-pointer"
-                        />
-                        <span>Left Company</span>
-                      </label>
-                    </div>
+                      {/* Writer Box */}
+                      {isRedirect ? (
+                        <div className="p-2.5 rounded-xl border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Writer:</span>
+                            <span className="font-extrabold text-slate-600 dark:text-slate-300 truncate text-xs">
+                              {selectedProductForSale.writerName || "Not Applicable"}
+                            </span>
+                          </div>
+                          <span className="text-xs font-bold text-slate-400">
+                            Rs. 0.00 (Redirect Sale — No Writer Share)
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          className={`p-2.5 rounded-xl border space-y-1.5 transition-all ${
+                            modalWriterLeftCompany
+                              ? "bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60"
+                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">Writer:</span>
+                              <span className="font-extrabold text-slate-800 dark:text-white truncate text-xs">
+                                {selectedProductForSale.writerName || "Unassigned"}
+                              </span>
+                              {modalWriterLeftCompany && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-100 dark:bg-rose-900/80 text-rose-700 dark:text-rose-300 shrink-0">
+                                  Left Company
+                                </span>
+                              )}
+                            </div>
 
-                    {modalWriterLeftCompany && (
-                      <p className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium leading-tight">
-                        Writer commission will be transferred directly to the <strong>Office Party Fund</strong>.
-                      </p>
-                    )}
-                  </div>
+                            <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={modalWriterLeftCompany}
+                                onChange={(e) => setModalWriterLeftCompany(e.target.checked)}
+                                className="w-3.5 h-3.5 text-rose-600 rounded border-slate-300 focus:ring-rose-500 cursor-pointer"
+                              />
+                              <span>Left Company</span>
+                            </label>
+                          </div>
 
-                  {/* Linker attribution */}
-                  <div className="p-2.5 rounded-xl border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Linker:</span>
-                      <span className="font-extrabold text-slate-800 dark:text-white truncate text-xs">
-                        {selectedProductForSale.linkerName || "Unassigned"}
-                      </span>
-                    </div>
-                    {(() => {
-                      const brk =
-                        modalSaleType === "FIRST_SALE"
-                          ? selectedProductForSale.rates.firstSaleBreakdown
-                          : selectedProductForSale.rates.resaleBreakdown;
-                      return (
-                        <span className="text-xs font-black text-sky-600 dark:text-sky-400">
-                          Rs. {Number(brk?.linker ?? 0).toFixed(2)}
+                          {modalWriterLeftCompany && (
+                            <p className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium leading-tight">
+                              Writer commission will be transferred directly to the <strong>Office Party Fund</strong>.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Linker Box */}
+                      <div
+                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                          isRedirect
+                            ? "bg-amber-50/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 shadow-2xs"
+                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Linker:</span>
+                          <span className="font-extrabold text-slate-800 dark:text-white truncate text-xs">
+                            {selectedProductForSale.linkerName || "Unassigned"}
+                          </span>
+                          {isRedirect && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 shrink-0 border border-amber-300 dark:border-amber-700">
+                              +50% Extra Redirect Bonus
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-xs font-black ${isRedirect ? "text-amber-700 dark:text-amber-300" : "text-sky-600 dark:text-sky-400"}`}>
+                          Rs. {isRedirect ? redirectLinker.toFixed(2) : Number(brk?.linker ?? 0).toFixed(2)}
                         </span>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Fund Distribution Breakdown (All 6 Pools) */}
-                  {(() => {
-                    const brk =
-                      modalSaleType === "FIRST_SALE"
-                        ? selectedProductForSale.rates.firstSaleBreakdown
-                        : selectedProductForSale.rates.resaleBreakdown;
-                    if (!brk) return null;
-                    return (
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[10px]">
-                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-                          <span className="text-slate-400 block font-semibold truncate">Link / PR</span>
-                          <span className="font-extrabold text-sky-600 dark:text-sky-400">
-                            Rs. {Number(brk.linker ?? 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-                          <span className="text-slate-400 block font-semibold truncate">Writer</span>
-                          <span className={`font-extrabold ${modalWriterLeftCompany ? "text-slate-400 line-through" : "text-emerald-600 dark:text-emerald-400"}`}>
-                            Rs. {modalWriterLeftCompany ? "0.00" : Number(brk.writer ?? 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-                          <span className="text-slate-400 block font-semibold truncate">Team Lead</span>
-                          <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
-                            Rs. {Number(brk.tl ?? 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-                          <span className="text-slate-400 block font-semibold truncate">Bonus Pool</span>
-                          <span className="font-extrabold text-amber-600 dark:text-amber-400">
-                            Rs. {Number(brk.bonusPool ?? 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-                          <span className="text-slate-400 block font-semibold truncate">SEO Pool</span>
-                          <span className="font-extrabold text-teal-600 dark:text-teal-400">
-                            Rs. {Number(brk.seo ?? 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className={`p-1.5 rounded-lg border text-center ${modalWriterLeftCompany ? "bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"}`}>
-                          <span className="text-slate-400 block font-semibold truncate">Party Fund</span>
-                          <span className="font-extrabold text-rose-600 dark:text-rose-400">
-                            Rs. {(Number(brk.partyFund ?? 0) + (modalWriterLeftCompany ? Number(brk.writer ?? 0) : 0)).toFixed(2)}
-                          </span>
-                        </div>
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
+
+                      {/* Fund Distribution Breakdown (All 6 Pools) */}
+                      {brk && (
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[10px]">
+                          <div className={`p-2 rounded-xl border text-center transition ${isRedirect ? "bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 shadow-2xs" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"}`}>
+                            <span className="text-slate-400 block font-semibold truncate">Link / PR</span>
+                            <span className={`font-extrabold ${isRedirect ? "text-amber-700 dark:text-amber-300 font-black" : "text-sky-600 dark:text-sky-400"}`}>
+                              Rs. {isRedirect ? redirectLinker.toFixed(2) : Number(brk.linker ?? 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
+                            <span className="text-slate-400 block font-semibold truncate">Writer</span>
+                            <span className={`font-extrabold ${isRedirect || modalWriterLeftCompany ? "text-slate-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                              Rs. {isRedirect || modalWriterLeftCompany ? "0.00" : Number(brk.writer ?? 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
+                            <span className="text-slate-400 block font-semibold truncate">Team Lead</span>
+                            <span className={`font-extrabold ${isRedirect ? "text-slate-400" : "text-indigo-600 dark:text-indigo-400"}`}>
+                              Rs. {isRedirect ? "0.00" : Number(brk.tl ?? 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
+                            <span className="text-slate-400 block font-semibold truncate">Bonus Pool</span>
+                            <span className={`font-extrabold ${isRedirect ? "text-slate-400" : "text-amber-600 dark:text-amber-400"}`}>
+                              Rs. {isRedirect ? "0.00" : Number(brk.bonusPool ?? 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
+                            <span className="text-slate-400 block font-semibold truncate">SEO Pool</span>
+                            <span className={`font-extrabold ${isRedirect ? "text-slate-400" : "text-teal-600 dark:text-teal-400"}`}>
+                              Rs. {isRedirect ? "0.00" : Number(brk.seo ?? 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className={`p-2 rounded-xl border text-center ${!isRedirect && modalWriterLeftCompany ? "bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"}`}>
+                            <span className="text-slate-400 block font-semibold truncate">Party Fund</span>
+                            <span className={`font-extrabold ${isRedirect ? "text-slate-400" : "text-rose-600 dark:text-rose-400"}`}>
+                              Rs. {isRedirect ? "0.00" : (Number(brk.partyFund ?? 0) + (modalWriterLeftCompany ? Number(brk.writer ?? 0) : 0)).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
               {/* Date of Sale */}
               <div>
@@ -2118,7 +2206,7 @@ export default function CommissionsPage() {
                   type="date"
                   value={modalSaleDate}
                   onChange={(e) => setModalSaleDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40"
+                  className="w-full px-3 py-2 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40 font-medium"
                   required
                 />
               </div>
@@ -2132,20 +2220,22 @@ export default function CommissionsPage() {
                   <button
                     type="button"
                     onClick={() => setModalPaymentStatus("PENDING")}
-                    className={`flex-1 py-1.5 px-3 rounded-xl font-bold border transition cursor-pointer ${modalPaymentStatus === "PENDING"
-                        ? "bg-amber-50 dark:bg-amber-950/60 border-amber-400 text-amber-700 dark:text-amber-300 shadow-2xs"
+                    className={`flex-1 py-1.5 px-3 rounded-xl font-bold border transition cursor-pointer ${
+                      modalPaymentStatus === "PENDING"
+                        ? "bg-amber-50 dark:bg-amber-950/60 border-amber-400 text-amber-700 dark:text-amber-300 shadow-2xs font-extrabold"
                         : "border-slate-200 dark:border-slate-800 text-slate-500"
-                      }`}
+                    }`}
                   >
                     Pending
                   </button>
                   <button
                     type="button"
                     onClick={() => setModalPaymentStatus("PAID")}
-                    className={`flex-1 py-1.5 px-3 rounded-xl font-bold border transition cursor-pointer ${modalPaymentStatus === "PAID"
-                        ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-400 text-emerald-700 dark:text-emerald-300 shadow-2xs"
+                    className={`flex-1 py-1.5 px-3 rounded-xl font-bold border transition cursor-pointer ${
+                      modalPaymentStatus === "PAID"
+                        ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-400 text-emerald-700 dark:text-emerald-300 shadow-2xs font-extrabold"
                         : "border-slate-200 dark:border-slate-800 text-slate-500"
-                      }`}
+                    }`}
                   >
                     Paid
                   </button>
@@ -2179,25 +2269,45 @@ export default function CommissionsPage() {
                   type="submit"
                   disabled={
                     submittingSale ||
-                    Boolean(
-                      selectedProductForSale &&
+                    (modalSaleType === "REDIRECT"
+                      ? Boolean(
+                          selectedProductForSale &&
+                            (!selectedProductForSale.linkerName ||
+                              selectedProductForSale.linkerName.trim().toLowerCase() === "unassigned")
+                        )
+                      : Boolean(
+                          selectedProductForSale &&
+                            (selectedProductForSale.isUnassigned ||
+                              !selectedProductForSale.writerId ||
+                              selectedProductForSale.writerName?.trim().toLowerCase() === "unassigned" ||
+                              selectedProductForSale.writerName?.trim().toLowerCase() === "n/a")
+                        ))
+                  }
+                  className={`px-5 py-2.5 rounded-xl font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer ${
+                    submittingSale ||
+                    (modalSaleType === "REDIRECT"
+                      ? selectedProductForSale &&
+                        (!selectedProductForSale.linkerName ||
+                          selectedProductForSale.linkerName.trim().toLowerCase() === "unassigned")
+                      : selectedProductForSale &&
                         (selectedProductForSale.isUnassigned ||
                           !selectedProductForSale.writerId ||
                           selectedProductForSale.writerName?.trim().toLowerCase() === "unassigned" ||
-                          selectedProductForSale.writerName?.trim().toLowerCase() === "n/a")
-                    )
-                  }
-                  className={`px-5 py-2 rounded-xl font-bold transition shadow-xs flex items-center gap-1.5 ${
-                    selectedProductForSale &&
-                    (selectedProductForSale.isUnassigned ||
-                      !selectedProductForSale.writerId ||
-                      selectedProductForSale.writerName?.trim().toLowerCase() === "unassigned" ||
-                      selectedProductForSale.writerName?.trim().toLowerCase() === "n/a")
+                          selectedProductForSale.writerName?.trim().toLowerCase() === "n/a"))
                       ? "bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed"
-                      : "bg-[#6D8196] hover:bg-[#5A6D81] text-white cursor-pointer"
+                      : modalSaleType === "REDIRECT"
+                      ? "bg-amber-600 hover:bg-amber-500 text-white"
+                      : "bg-[#6D8196] hover:bg-[#5A6D81] text-white"
                   }`}
                 >
-                  {submittingSale ? "Recording..." : "Confirm & Save"}
+                  {submittingSale ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Recording...</span>
+                    </>
+                  ) : (
+                    <span>Confirm & Save</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -2216,12 +2326,19 @@ export default function CommissionsPage() {
                     Sale #{detailsSale.id} Details
                   </h3>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${detailsSale.saleType === "FIRST_SALE"
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      detailsSale.saleType === "REDIRECT"
+                        ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                        : detailsSale.saleType === "FIRST_SALE"
                         ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
                         : "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
-                      }`}
+                    }`}
                   >
-                    {detailsSale.saleType === "FIRST_SALE" ? "1st Sale" : "Resale"}
+                    {detailsSale.saleType === "REDIRECT"
+                      ? "Sale from Redirect"
+                      : detailsSale.saleType === "FIRST_SALE"
+                      ? "1st Sale"
+                      : "Resale"}
                   </span>
                 </div>
                 <p className="text-xs text-[#737373] dark:text-slate-400 mt-0.5">
@@ -2422,12 +2539,19 @@ export default function CommissionsPage() {
                   >
                     <div className="flex items-center gap-3">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-black ${sale.saleType === "FIRST_SALE"
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                          sale.saleType === "REDIRECT"
+                            ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                            : sale.saleType === "FIRST_SALE"
                             ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
                             : "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
-                          }`}
+                        }`}
                       >
-                        {sale.saleType === "FIRST_SALE" ? "1st Sale" : "Resale"}
+                        {sale.saleType === "REDIRECT"
+                          ? "Redirect"
+                          : sale.saleType === "FIRST_SALE"
+                          ? "1st Sale"
+                          : "Resale"}
                       </span>
                       <div>
                         <div className="font-bold text-slate-800 dark:text-slate-100">
