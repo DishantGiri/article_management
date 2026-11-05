@@ -244,6 +244,7 @@ function CommissionSettingsContent() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
+  const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -293,7 +294,10 @@ function CommissionSettingsContent() {
         console.error(err);
         toast.error(err.message || "Failed to load commission settings");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setHasLoadedInitial(true);
+      });
   }, [session, status]);
 
   // Update a single field in a tier
@@ -411,7 +415,7 @@ function CommissionSettingsContent() {
     }
   };
 
-  if (loading || status === "loading") {
+  if (!hasLoadedInitial && (loading || status === "loading")) {
     return (
       <div className="p-6 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950">
         <LoadingScreen
@@ -508,6 +512,7 @@ function CommissionSettingsContent() {
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 self-stretch sm:self-auto">
             <button
+              type="button"
               onClick={handleOpenResetConfirm}
               disabled={resetting || saving}
               className="px-4 py-2.5 rounded-xl border border-[#CBCBCB]/80 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-300 text-xs font-bold text-[#4A4A4A] dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 transition flex items-center gap-2 shadow-2xs cursor-pointer"
@@ -517,6 +522,7 @@ function CommissionSettingsContent() {
             </button>
 
             <button
+              type="button"
               onClick={handleSaveAll}
               disabled={saving || resetting || !hasChanges}
               className={`flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 ${
@@ -578,6 +584,7 @@ function CommissionSettingsContent() {
         {/* ─── VERTICAL TABS SELECTOR ─────────────────────────────────── */}
         <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[#CBCBCB]/40 dark:border-slate-800">
           <button
+            type="button"
             onClick={() => setActiveCategory("NUTRA")}
             className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${activeCategory === "NUTRA"
                 ? "bg-[#6D8196] text-white shadow-2xs"
@@ -597,6 +604,7 @@ function CommissionSettingsContent() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveCategory("ECOM")}
             className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${activeCategory === "ECOM"
                 ? "bg-[#6D8196] text-white shadow-2xs"

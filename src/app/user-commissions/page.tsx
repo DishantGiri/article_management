@@ -81,6 +81,7 @@ function UserCommissionsContent() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
 
   const [users, setUsers] = useState<UserCommissionRow[]>([]);
   const [sites, setSites] = useState<SiteOption[]>([]);
@@ -108,20 +109,21 @@ function UserCommissionsContent() {
   const [settlingUserId, setSettlingUserId] = useState<number | null>(null);
   const [payoutTargetUser, setPayoutTargetUser] = useState<UserCommissionRow | null>(null);
 
-  // Fetch Data
-  const fetchData = async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
+  // Fetch Data (Only re-queries server on site or date change; role, status, search, and sort are instant client-side)
+  const fetchData = async (
+    targetSiteId = siteFilter,
+    targetStart = startDate,
+    targetEnd = endDate,
+    isBackground = false
+  ) => {
+    if (!hasLoadedInitial && !isBackground) setLoading(true);
     else setRefreshing(true);
 
     try {
       const params = new URLSearchParams();
-      if (search) params.append("search", search);
-      if (roleFilter !== "ALL") params.append("role", roleFilter);
-      if (statusFilter !== "ALL") params.append("paymentStatus", statusFilter);
-      if (siteFilter !== "ALL") params.append("siteId", siteFilter);
-      if (startDate) params.append("startDate", startDate);
-      if (endDate) params.append("endDate", endDate);
-      if (sortBy) params.append("sortBy", sortBy);
+      if (targetSiteId && targetSiteId !== "ALL") params.append("siteId", targetSiteId);
+      if (targetStart) params.append("startDate", targetStart);
+      if (targetEnd) params.append("endDate", targetEnd);
 
       const res = await fetch(`/api/commissions/users?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load user commissions");
@@ -136,14 +138,15 @@ function UserCommissionsContent() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setHasLoadedInitial(true);
     }
   };
 
   useEffect(() => {
     if (status !== "loading") {
-      fetchData();
+      fetchData(siteFilter, startDate, endDate, hasLoadedInitial);
     }
-  }, [roleFilter, statusFilter, siteFilter, startDate, endDate, sortBy, status]);
+  }, [siteFilter, startDate, endDate, status]);
 
   // Open Custom Confirmation Popup for Payout
   const handleOpenPayoutConfirm = (user: UserCommissionRow) => {
@@ -208,8 +211,8 @@ function UserCommissionsContent() {
 
       toast.success(`Settled Rs. ${user.pendingAmount.toFixed(2)} for ${user.name}! Status is now Paid.`);
 
-      // 4. Re-fetch from server to ensure database sync
-      await fetchData(true);
+      // 4. Re-fetch from server in background to ensure database sync
+      await fetchData(siteFilter, startDate, endDate, true);
     } catch (err: any) {
       toast.error(err.message || "Failed to process payout");
     } finally {
@@ -249,28 +252,63 @@ function UserCommissionsContent() {
           pendingAmount: parseFloat(newPending.toFixed(2)),
         });
       }
-      fetchData(true);
+      fetchData(siteFilter, startDate, endDate, true);
     } catch (err: any) {
       toast.error(err.message || "Failed to update status");
     }
   };
 
-  // Filter users by text search using fuzzy matching (guarantee exclusion of ADMIN and SUPER_ADMIN)
+  // Filter & sort users by role, payment status, search query, and sortBy (pure client-side, 0 reload)
   const filteredUsers = useMemo(() => {
-    const commissionEligible = users.filter(
+    let result = users.filter(
       (u) => u.role !== "ADMIN" && u.role !== "SUPER_ADMIN"
     );
-    if (!search.trim()) return commissionEligible;
-    return commissionEligible.filter((u) => {
-      const productNames = u.sales?.map((s) => s.productName) || [];
-      return fuzzyMatchAny([u.name, u.email, u.role, ...productNames], search);
+
+    // 1. Role Filter
+    if (roleFilter !== "ALL") {
+      result = result.filter((u) => u.role === roleFilter);
+    }
+
+    // 2. Payment Status Filter
+    if (statusFilter !== "ALL") {
+      result = result.filter((u) => u.paymentStatus === statusFilter);
+    }
+
+    // 3. Search Filter (fuzzy match on name, email, role, and any sold product names)
+    if (search.trim()) {
+      result = result.filter((u) => {
+        const productNames = u.sales?.map((s) => s.productName) || [];
+        return fuzzyMatchAny([u.name, u.email, u.role, ...productNames], search);
+      });
+    }
+
+    // 4. Sort By
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "totalDesc":
+          return b.totalAmount - a.totalAmount;
+        case "totalAsc":
+          return a.totalAmount - b.totalAmount;
+        case "pendingDesc":
+          return b.pendingAmount - a.pendingAmount;
+        case "firstSalesDesc":
+          return b.firstSalesCount - a.firstSalesCount;
+        case "resalesDesc":
+          return b.resalesCount - a.resalesCount;
+        case "nameAsc":
+          return a.name.localeCompare(b.name);
+        default:
+          return b.totalAmount - a.totalAmount;
+      }
     });
-  }, [users, search]);
+
+    return result;
+  }, [users, roleFilter, statusFilter, search, sortBy]);
 
   const isAdminOrSuperAdmin =
     session?.user?.role === "SUPER_ADMIN" || session?.user?.role === "ADMIN";
 
-  if (loading && status !== "loading") {
+  if (!hasLoadedInitial && (loading || status === "loading")) {
     return (
       <div className="p-6 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950">
         <LoadingScreen
@@ -339,7 +377,8 @@ function UserCommissionsContent() {
             </div>
 
             <button
-              onClick={() => fetchData(true)}
+              type="button"
+              onClick={() => fetchData(siteFilter, startDate, endDate, true)}
               disabled={refreshing}
               className="px-3.5 py-2.5 rounded-xl border border-[#CBCBCB]/80 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold text-[#4A4A4A] dark:text-slate-200 transition flex items-center gap-2 shadow-2xs cursor-pointer"
             >
@@ -438,10 +477,14 @@ function UserCommissionsContent() {
               placeholder="Search user name or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+              }}
               className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-[#4A4A4A] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40"
             />
             {search && (
               <button
+                type="button"
                 onClick={() => setSearch("")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
@@ -460,6 +503,7 @@ function UserCommissionsContent() {
               { key: "TEAM_LEAD", label: "Team Leads" },
             ].map((tab) => (
               <button
+                type="button"
                 key={tab.key}
                 onClick={() => setRoleFilter(tab.key)}
                 className={`px-3 py-1.5 rounded-lg transition cursor-pointer text-[11px] whitespace-nowrap ${roleFilter === tab.key
@@ -554,6 +598,7 @@ function UserCommissionsContent() {
               endDate ||
               search) && (
                 <button
+                  type="button"
                   onClick={() => {
                     setRoleFilter("ALL");
                     setStatusFilter("ALL");

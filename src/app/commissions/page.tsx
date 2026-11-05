@@ -246,9 +246,6 @@ export default function CommissionsPage() {
       if (siteId && siteId !== "ALL") {
         params.append("siteId", siteId);
       }
-      if (search) params.append("search", search);
-      if (statusFilter !== "ALL") params.append("paymentStatus", statusFilter);
-      if (categoryFilter !== "ALL") params.append("category", categoryFilter);
       if (start) params.append("startDate", start);
       if (end) params.append("endDate", end);
 
@@ -273,7 +270,7 @@ export default function CommissionsPage() {
   useEffect(() => {
     if (status !== "loading") {
       if (canAccess) {
-        fetchData(activeSiteTab, startDate, endDate);
+        fetchData(activeSiteTab, startDate, endDate, hasLoadedInitial);
       } else {
         setLoading(false);
       }
@@ -800,6 +797,7 @@ export default function CommissionsPage() {
 
             {/* Refresh Button */}
             <button
+              type="button"
               onClick={() => fetchData(activeSiteTab, startDate, endDate, true)}
               disabled={refreshing}
               className="px-3.5 py-2 rounded-xl border border-[#CBCBCB]/80 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold text-[#4A4A4A] dark:text-slate-200 transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
@@ -1048,10 +1046,14 @@ export default function CommissionsPage() {
             }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.preventDefault();
+            }}
             className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-[#4A4A4A] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6D8196]/40"
           />
           {search && (
             <button
+              type="button"
               onClick={() => setSearch("")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
@@ -1083,6 +1085,7 @@ export default function CommissionsPage() {
                 { key: "RESALE", label: "Resales" },
               ].map((t) => (
                 <button
+                  type="button"
                   key={t.key}
                   onClick={() => setSaleTypeFilter(t.key)}
                   className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${saleTypeFilter === t.key
@@ -1104,6 +1107,7 @@ export default function CommissionsPage() {
               { key: "PENDING", label: "Unpaid / Pending" },
             ].map((st) => (
               <button
+                type="button"
                 key={st.key}
                 onClick={() => setStatusFilter(st.key)}
                 className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${statusFilter === st.key
@@ -1124,6 +1128,7 @@ export default function CommissionsPage() {
               { key: "UNASSIGNED", label: "Unassigned" },
             ].map((item) => (
               <button
+                type="button"
                 key={item.key}
                 onClick={() => setAssignmentFilter(item.key)}
                 className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${assignmentFilter === item.key
@@ -1140,6 +1145,7 @@ export default function CommissionsPage() {
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
             {["ALL", "NUTRA", "ECOM"].map((cat) => (
               <button
+                type="button"
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
                 className={`px-3 py-1 rounded-lg transition cursor-pointer text-[11px] ${categoryFilter === cat
