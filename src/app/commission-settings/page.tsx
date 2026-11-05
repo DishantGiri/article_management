@@ -700,6 +700,7 @@ function CommissionCard({
   const currencySymbol = getCurrencySymbol(tier.currency);
   const currencyShort = getCurrencyShort(tier.currency);
   const unitSymbol = isFixed ? currencySymbol : "%";
+  const baseReferenceAmount = tier.currency === "USD" ? 20 : (tier.category === "NUTRA" ? 320 : 320);
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-[#CBCBCB]/60 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs flex flex-col justify-between space-y-6 relative overflow-hidden">
@@ -790,14 +791,16 @@ function CommissionCard({
               <span>Combined Pool Allocation</span>
             </span>
             <span className="text-sm font-black text-[#4A4A4A] dark:text-white">
-              Total: {isFixed ? `${currencySymbol}${tier.total.toFixed(2)}` : `${tier.total.toFixed(2)}%`}
+              Total: {isFixed ? `${currencySymbol}${tier.total.toFixed(2)}` : `${Math.round(tier.total)}% (100% Target)`}
             </span>
           </div>
 
           <div className="h-3 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
             {POOL_CONFIG.map((pool) => {
               const val = tier[pool.key] || 0;
-              const widthPct = tier.total > 0 ? (val / tier.total) * 100 : 0;
+              const widthPct = isFixed
+                ? (tier.total > 0 ? (val / tier.total) * 100 : 0)
+                : Math.min(100, val);
               if (widthPct <= 0) return null;
               return (
                 <div
@@ -814,13 +817,19 @@ function CommissionCard({
           <div className="flex flex-wrap items-center gap-3 pt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
             {(() => {
               const percentages = getPoolPercentages(POOL_CONFIG, tier);
-              return POOL_CONFIG.map((pool) => (
-                <div key={pool.key} className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${pool.barColor}`} />
-                  <span>{pool.label}:</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-200">{percentages[pool.key]}</span>
-                </div>
-              ));
+              return POOL_CONFIG.map((pool) => {
+                const val = tier[pool.key] || 0;
+                const poolAmount = !isFixed ? `${currencySymbol}${((baseReferenceAmount * val) / 100).toFixed(2)}` : null;
+                return (
+                  <div key={pool.key} className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${pool.barColor}`} />
+                    <span>{pool.label}:</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-200">
+                      {isFixed ? percentages[pool.key] : `${val}% ${poolAmount ? `(${poolAmount})` : ""}`}
+                    </span>
+                  </div>
+                );
+              });
             })()}
           </div>
         </div>
@@ -829,8 +838,12 @@ function CommissionCard({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           {POOL_CONFIG.map((pool) => {
             const val = tier[pool.key] ?? 0;
-            const pctShare =
-              tier.total > 0 ? ((val / tier.total) * 100).toFixed(1) : "0.0";
+            const pctShare = isFixed
+              ? (tier.total > 0 ? ((val / tier.total) * 100).toFixed(1) : "0.0")
+              : val.toFixed(1);
+            const calculatedAmount = !isFixed
+              ? `${currencySymbol}${((baseReferenceAmount * val) / 100).toFixed(2)}`
+              : undefined;
 
             return (
               <PoolInputCard
@@ -840,6 +853,7 @@ function CommissionCard({
                 unitSymbol={unitSymbol}
                 isFixed={isFixed}
                 pctShare={pctShare}
+                calculatedAmount={calculatedAmount}
                 onUpdate={(newVal) => onChangeField(pool.key, newVal)}
               />
             );
@@ -863,12 +877,26 @@ function CommissionCard({
 
       {/* Card Footer Summary */}
       <div className="pt-4 border-t border-[#CBCBCB]/40 dark:border-slate-800 flex items-center justify-between text-xs">
-        <span className="text-[#737373] dark:text-slate-400 font-medium">
-          Total Combined Allocation:
-        </span>
-        <span className="text-lg font-black text-[#6D8196] dark:text-sky-400 tracking-tight">
-          {isFixed ? `${currencySymbol}${tier.total.toFixed(2)}` : `${tier.total.toFixed(2)}%`}
-        </span>
+        <div>
+          <span className="text-[#737373] dark:text-slate-400 font-medium block">
+            Total Combined Allocation:
+          </span>
+          {!isFixed && (
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold block mt-0.5">
+              Based on {currencySymbol}{baseReferenceAmount.toFixed(2)} standard sale
+            </span>
+          )}
+        </div>
+        <div className="text-right">
+          <span className="text-lg font-black text-[#6D8196] dark:text-sky-400 tracking-tight">
+            {isFixed ? `${currencySymbol}${tier.total.toFixed(2)}` : `${Math.round(tier.total)}%`}
+          </span>
+          {!isFixed && (
+            <span className="block text-xs font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+              {currencySymbol}{((baseReferenceAmount * tier.total) / 100).toFixed(2)} Total
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
