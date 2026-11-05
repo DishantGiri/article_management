@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
-import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare, Info, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import AddProductModal from "@/components/AddProductModal";
@@ -61,6 +61,7 @@ const STATUS_COLORS: Record<string, string> = {
   COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/60 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/60",
   APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60",
   REDO: "bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60",
+  REDIRECTED: "bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60",
 };
 
 function ProductsPageContent() {
@@ -433,13 +434,18 @@ function ProductsPageContent() {
     let matchStatus = true;
     const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
     const rawStatus = p.article?.status || "PENDING";
-    const currentStatus = (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
+    const isRedirected = rawStatus === "REDIRECTED" || (p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.status === "REDIRECTED"));
+    const currentStatus = isRedirected
+      ? "REDIRECTED"
+      : (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
       ? "PENDING"
       : rawStatus;
     if (statusFilter === "NO_LINKS") {
       const isPub = Boolean(p.article?.articleLink || rawStatus === "APPROVED" || rawStatus === "COMPLETED");
       const hasLinks = p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
       matchStatus = isPub && !hasLinks;
+    } else if (statusFilter === "REDIRECTED") {
+      matchStatus = isRedirected;
     } else if (statusFilter) {
       matchStatus = currentStatus === statusFilter;
     } else if (currentUserRole === "WRITER") {
@@ -976,6 +982,7 @@ function ProductsPageContent() {
               { value: "COMPLETED", label: "Completed" },
               { value: "APPROVED", label: "Approved" },
               { value: "REDO", label: "Redo / Changes" },
+              { value: "REDIRECTED", label: "Redirected" },
               { value: "NO_LINKS", label: "Published (No Links)" },
             ]}
           />
@@ -1141,7 +1148,10 @@ function ProductsPageContent() {
                   {paginated.map((p: any) => {
                     const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
                     const rawStatus = p.article?.status || "PENDING";
-                    const status = (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
+                    const isRedirected = rawStatus === "REDIRECTED" || (p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.status === "REDIRECTED"));
+                    const status = isRedirected
+                      ? "REDIRECTED"
+                      : (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
                       ? "PENDING"
                       : rawStatus;
 
@@ -1222,6 +1232,15 @@ function ProductsPageContent() {
                               >
                                 <AlertTriangle className="w-3 h-3 text-rose-600" />
                                 No Links
+                              </span>
+                            )}
+                            {isRedirected && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-700/80 shadow-2xs"
+                                title="Redirected Product"
+                              >
+                                <Share2 className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                Redirected
                               </span>
                             )}
                           </div>

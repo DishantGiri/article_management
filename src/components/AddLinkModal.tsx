@@ -2014,20 +2014,8 @@ export default function AddLinkModal({
               Done / Close
             </button>
 
-            {availableSitesForProduct.length > 1 && (
-              <button
-                onClick={() => handleSubmit(false)}
-                disabled={submitting || !isFormValid || isNoSite}
-                type="button"
-                title={`Save only for active site (${selectedProduct?.site?.name || "Current Site"})`}
-                className="flex-1 sm:flex-initial px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer shadow-xs whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {submitting ? "Saving..." : `Save for ${selectedProduct?.site?.name || "Site"} Only`}
-              </button>
-            )}
-
             <button
-              onClick={() => handleSubmit(availableSitesForProduct.length > 1)}
+              onClick={() => handleSubmit(false)}
               disabled={submitting || !isFormValid || isNoSite}
               type="button"
               title={
@@ -2037,25 +2025,17 @@ export default function AddLinkModal({
                   ? !bridgePageLink?.trim() || !buyLink?.trim()
                     ? "Bridge Page Link and Buy Link (Buy Now) are both required before saving"
                     : "Please configure all required fields (Product, GEOs, Country Links, Bridge Link, Buy Link)"
-                  : availableSitesForProduct.length > 1
-                  ? "Save this link configuration across all sites for this product (buy links and bridge links will adapt to each site domain)"
-                  : undefined
+                  : `Save link configuration for ${selectedProduct?.site?.name || "Site"}`
               }
-              className="flex-1 sm:flex-initial px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               {submitting ? (
                 "Saving..."
               ) : isNoSite ? (
                 <span>Add to Site First</span>
-              ) : availableSitesForProduct.length > 1 ? (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Save & Apply to All ({availableSitesForProduct.length} Sites)</span>
-                </>
               ) : (
                 <>
-                  <span>Save</span>
-                  <span className="hidden sm:inline">for {selectedProduct?.site?.name || "Site"}</span>
+                  <span>Save for {selectedProduct?.site?.name || "Site"}</span>
                   <span>({useCountrySpecificLinks ? countryLinks.length : affiliateEntries.length} Links)</span>
                 </>
               )}

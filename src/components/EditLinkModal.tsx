@@ -1632,50 +1632,6 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               />
             </div>
           </div>
-
-          {/* Section 6: Sibling Sites Sync Banner */}
-          {siblingSites.length > 1 && (
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-              <div className="flex items-start sm:items-center gap-2.5 min-w-0">
-                <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-blue-900 dark:text-blue-200">
-                      Product exists on {siblingSites.length} sites:
-                    </span>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {siblingSites.map((s) => (
-                        <span
-                          key={s.id}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                            s.site?.id === selectedProduct?.site?.id
-                              ? "bg-blue-600 text-white"
-                              : "bg-white/80 dark:bg-slate-800 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700"
-                          }`}
-                        >
-                          {s.site?.name || "Site"}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-blue-700/80 dark:text-blue-300/80 mt-0.5">
-                    Apply affiliate links, GEOs, status, and remarks across all sites (adapts buy links to each site domain).
-                  </p>
-                </div>
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer shrink-0 select-none bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-700 shadow-2xs hover:border-blue-400 transition">
-                <input
-                  type="checkbox"
-                  checked={applyToAllSites}
-                  onChange={(e) => setApplyToAllSites(e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
-                />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Apply to all {siblingSites.length} sites
-                </span>
-              </label>
-            </div>
-          )}
         </div>
 
         {/* Modal Footer */}
@@ -1705,43 +1661,25 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               Cancel
             </button>
 
-            {siblingSites.length > 1 && (
-              <button
-                onClick={() => handleSubmit(false)}
-                disabled={submitting || !isFormValid || (!hasChanges && !applyToAllSites)}
-                type="button"
-                className="flex-1 sm:flex-initial px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer shadow-xs whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {submitting ? "Saving..." : `Save for ${selectedProduct?.site?.name || "Site"} Only`}
-              </button>
-            )}
-
             <button
-              onClick={() => handleSubmit(siblingSites.length > 1 ? true : undefined)}
-              disabled={submitting || !isFormValid || (!hasChanges && !applyToAllSites)}
+              onClick={() => handleSubmit(false)}
+              disabled={submitting || !isFormValid || !hasChanges}
               type="button"
               title={
                 !isFormValid
                   ? !bridgePageLink?.trim() || !buyLink?.trim()
                     ? "Bridge Page Link and Buy Link (Buy Now) are both required before saving"
                     : "Please configure all required fields (Product, GEOs, Country Links, Bridge Link, Buy Link)"
-                  : !hasChanges && !applyToAllSites
+                  : !hasChanges
                     ? "No changes made"
-                    : undefined
+                    : `Save changes for ${selectedProduct?.site?.name || "Site"}`
               }
-              className="flex-1 sm:flex-initial px-5 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="flex-1 sm:flex-initial px-5 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               {submitting ? (
                 "Saving..."
-              ) : siblingSites.length > 1 ? (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Save & Apply to All ({siblingSites.length} Sites)</span>
-                </>
-              ) : useCountrySpecificLinks ? (
-                `Save Product (${countryLinks.length} Country Links)`
               ) : (
-                `Save Changes`
+                <span>Save for {selectedProduct?.site?.name || "Site"}</span>
               )}
             </button>
           </div>

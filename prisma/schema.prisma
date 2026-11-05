@@ -32,6 +32,7 @@ enum ArticleStatus {
   COMPLETED
   APPROVED
   REDO
+  REDIRECTED
 }
 
 enum LinkStatus {
@@ -465,6 +466,12 @@ model CommissionSale {
   // Payment status
   paymentStatus String   @default("PENDING") // "PENDING" | "PAID"
   paidAt        DateTime?
+  writerPaid    Boolean   @default(false)
+  writerPaidAt  DateTime?
+  linkerPaid    Boolean   @default(false)
+  linkerPaidAt  DateTime?
+  tlPaid        Boolean   @default(false)
+  tlPaidAt      DateTime?
   
   // Commission amounts snapshot in Rs from CommissionSetting
   amount        Float    @default(0) // Total commission in Rs

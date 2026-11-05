@@ -60,6 +60,7 @@ const STATUS_COLORS: Record<string, string> = {
   COMPLETED: "bg-indigo-50 text-indigo-700 border border-indigo-200/50 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/60",
   APPROVED: "bg-emerald-50 text-emerald-700 border border-emerald-200/50 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60",
   REDO: "bg-rose-50 text-rose-700 border border-rose-200/50 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60",
+  REDIRECTED: "bg-amber-50 text-amber-700 border border-amber-200/50 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60",
 };
 
 const generateSlug = (productName: string) => {
