@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { productId, bridgePageLink, buyLink, affiliateName, affiliateLink, affiliateEntries, countryLinks, geos, status, linkerRemarks } = body;
+    const { productId, bridgePageLink, buyLink, affiliateName, affiliateLink, affiliateEntries, countryLinks, geos, status, linkerRemarks, applyToAllSites } = body;
 
     if (!productId) {
       return NextResponse.json({ error: "productId is required" }, { status: 400 });
@@ -80,8 +80,11 @@ export async function POST(req: NextRequest) {
     const product = await prisma.product.findUnique({
       where: { id: parseInt(productId) },
       select: {
+        id: true,
+        name: true,
+        slug: true,
         siteId: true,
-        site: { select: { id: true, name: true } },
+        site: { select: { id: true, name: true, url: true, bridgeUrl: true } },
       },
     });
     if (!product) {
@@ -260,64 +263,129 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Buy Link is required before saving links." }, { status: 400 });
     }
 
+    // Determine target products: either just this product or all sibling site products if applyToAllSites
+    const targetProducts: Array<{
+      id: number;
+      name: string;
+      slug: string | null;
+      siteId: number | null;
+      site: { id: number; name: string; url: string | null; bridgeUrl: string | null } | null;
+    }> = [product];
+
+    if (applyToAllSites && product.name) {
+      const siblings = await prisma.product.findMany({
+        where: {
+          name: { equals: product.name.trim(), mode: "insensitive" },
+          id: { not: product.id },
+          siteId: { not: null },
+          site: { name: { not: "Product Research" } },
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          siteId: true,
+          site: { select: { id: true, name: true, url: true, bridgeUrl: true } },
+        },
+      });
+
+      for (const sib of siblings) {
+        if (sib.siteId) {
+          const canAdd = await canUserAddLinkOnSite(Number(session.user.id), session.user.role, sib.siteId);
+          if (canAdd) {
+            targetProducts.push(sib);
+          }
+        }
+      }
+    }
+
     const createdLinks = await prisma.$transaction(async (tx) => {
       const results = [];
-      for (const entry of entriesToCreate) {
-        const existingLink = await tx.linkLog.findFirst({
-          where: {
-            productId: parseInt(productId),
-            affiliateName: entry.affiliateName.trim(),
-          },
-          include: { geos: true },
-        });
+      for (const currentProd of targetProducts) {
+        const prodSlug =
+          currentProd.slug ||
+          currentProd.name
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+        const siteUrl = currentProd.site?.url?.replace(/\/+$/, "");
 
-        if (existingLink) {
-          await tx.linkGeo.deleteMany({
-            where: { linkLogId: existingLink.id },
-          });
-          const updated = await tx.linkLog.update({
-            where: { id: existingLink.id },
-            data: {
-              updatedById: addedById,
-              bridgePageLink: bridgePageLink?.trim() || null,
-              buyLink: buyLink?.trim() || null,
+        const targetBuyLink =
+          currentProd.id === product.id
+            ? buyLink?.trim() || null
+            : siteUrl && prodSlug
+            ? `${siteUrl}/${prodSlug}`
+            : buyLink?.trim() || null;
+
+        let targetBridgeLink = bridgePageLink?.trim() || null;
+        if (currentProd.id !== product.id && currentProd.site?.bridgeUrl) {
+          const firstBridge = currentProd.site.bridgeUrl
+            .split(/[\n,]+/)[0]
+            ?.trim()
+            .replace(/\/+$/, "");
+          if (firstBridge && prodSlug) {
+            targetBridgeLink = `${firstBridge}/${prodSlug}`;
+          }
+        }
+
+        for (const entry of entriesToCreate) {
+          const existingLink = await tx.linkLog.findFirst({
+            where: {
+              productId: currentProd.id,
               affiliateName: entry.affiliateName.trim(),
-              affiliateLink: entry.affiliateLink.trim(),
-              status: targetStatus as any,
-              linkerRemarks: linkerRemarks?.trim() || existingLink.linkerRemarks,
-              geos: {
-                create: entry.geos.map((g) => ({
-                  geo: g.geo,
-                  affiliateLink: g.affiliateLink || entry.affiliateLink.trim(),
-                  affiliateName: g.affiliateName || entry.affiliateName.trim(),
-                })),
-              },
             },
-            include: { geos: true, addedBy: { select: { name: true } } },
+            include: { geos: true },
           });
-          results.push(updated);
-        } else {
-          const created = await tx.linkLog.create({
-            data: {
-              productId: parseInt(productId),
-              addedById: addedById,
-              bridgePageLink: bridgePageLink?.trim() || null,
-              buyLink: buyLink?.trim() || null,
-              affiliateName: entry.affiliateName.trim(),
-              affiliateLink: entry.affiliateLink.trim(),
-              status: targetStatus as any,
-              linkerRemarks: linkerRemarks?.trim() || null,
-              geos: {
-                create: entry.geos.map((g) => ({
-                  geo: g.geo,
-                  affiliateLink: g.affiliateLink || entry.affiliateLink.trim(),
-                  affiliateName: g.affiliateName || entry.affiliateName.trim(),
-                })),
+
+          if (existingLink) {
+            await tx.linkGeo.deleteMany({
+              where: { linkLogId: existingLink.id },
+            });
+            const updated = await tx.linkLog.update({
+              where: { id: existingLink.id },
+              data: {
+                updatedById: addedById,
+                bridgePageLink: targetBridgeLink,
+                buyLink: targetBuyLink,
+                affiliateName: entry.affiliateName.trim(),
+                affiliateLink: entry.affiliateLink.trim(),
+                status: targetStatus as any,
+                linkerRemarks: linkerRemarks?.trim() || existingLink.linkerRemarks,
+                geos: {
+                  create: entry.geos.map((g) => ({
+                    geo: g.geo,
+                    affiliateLink: g.affiliateLink || entry.affiliateLink.trim(),
+                    affiliateName: g.affiliateName || entry.affiliateName.trim(),
+                  })),
+                },
               },
-            },
-            include: { geos: true, addedBy: { select: { name: true } } },
-          });
-          results.push(created);
+              include: { geos: true, addedBy: { select: { name: true } } },
+            });
+            results.push(updated);
+          } else {
+            const created = await tx.linkLog.create({
+              data: {
+                productId: currentProd.id,
+                addedById: addedById,
+                bridgePageLink: targetBridgeLink,
+                buyLink: targetBuyLink,
+                affiliateName: entry.affiliateName.trim(),
+                affiliateLink: entry.affiliateLink.trim(),
+                status: targetStatus as any,
+                linkerRemarks: linkerRemarks?.trim() || null,
+                geos: {
+                  create: entry.geos.map((g) => ({
+                    geo: g.geo,
+                    affiliateLink: g.affiliateLink || entry.affiliateLink.trim(),
+                    affiliateName: g.affiliateName || entry.affiliateName.trim(),
+                  })),
+                },
+              },
+              include: { geos: true, addedBy: { select: { name: true } } },
+            });
+            results.push(created);
+          }
         }
       }
       return results;

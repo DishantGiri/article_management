@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Plus,
   Lock,
+  Sparkles,
 } from "lucide-react";
 import {
   LATAM_CODES,
@@ -25,6 +26,7 @@ import {
   getGeoDisplayName,
   getCountryFlag,
 } from "@/lib/geo-constants";
+import { isResearchSite } from "@/lib/researchSiteUtils";
 import { toast } from "react-hot-toast";
 
 
@@ -123,6 +125,8 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   const [buyLinkError, setBuyLinkError] = useState("");
 
   const isInitializingRef = useRef(false);
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [applyToAllSites, setApplyToAllSites] = useState(false);
 
   const selectedProduct = useMemo(() => {
     if (!link?.product) return null;
@@ -136,6 +140,19 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       article: link.product.article,
     };
   }, [link]);
+
+  const siblingSites = useMemo(() => {
+    if (!selectedProduct?.name || !allProducts.length) return [];
+    const pName = selectedProduct.name.trim().toLowerCase();
+    const siteMap = new Map<number, any>();
+    for (const p of allProducts) {
+      if (!p.site || !p.site.id || isResearchSite(p.site.name)) continue;
+      if (p.name?.trim().toLowerCase() === pName) {
+        if (!siteMap.has(p.site.id)) siteMap.set(p.site.id, p);
+      }
+    }
+    return Array.from(siteMap.values());
+  }, [selectedProduct, allProducts]);
 
   const allAffiliates = useMemo(() => dbAffiliates.map((a) => a.name), [dbAffiliates]);
   const allGeos = dbGeos;
@@ -376,6 +393,14 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
         })
         .catch((e) => console.error("Failed to load geos", e));
 
+      fetch("/api/products")
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setAllProducts(data);
+        })
+        .catch((e) => console.error("Failed to load products", e));
+
+      setApplyToAllSites(false);
       setError("");
       setBridgePageLinkError("");
       setBuyLinkError("");
@@ -611,8 +636,10 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
     geos,
   ]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (overrideApplyAll?: boolean) => {
     if (!link) return;
+    const willApplyAll = overrideApplyAll !== undefined ? overrideApplyAll : applyToAllSites;
+
     if (!productId) {
       setError("Product is required.");
       return;
@@ -671,7 +698,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       }
     }
 
-    if (!hasChanges) {
+    if (!hasChanges && !willApplyAll) {
       toast("No changes made", { icon: "ℹ️" });
       onClose();
       return;
@@ -719,6 +746,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
           })),
         status,
         linkerRemarks: linkerRemarks ? linkerRemarks.trim() : null,
+        applyToAllSites: willApplyAll,
       };
 
       const res = await fetch(`/api/links/${link.id}`, {
@@ -733,7 +761,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       }
 
       const resData = await res.json().catch(() => ({}));
-      if (resData.noChanges || resData.message === "No changes made") {
+      if (!willApplyAll && (resData.noChanges || resData.message === "No changes made")) {
         toast("No changes made", { icon: "ℹ️" });
         if (onSuccess) onSuccess();
         onClose();
@@ -741,7 +769,9 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       }
 
       toast.success(
-        useCountrySpecificLinks
+        willApplyAll
+          ? `Successfully updated links across all ${siblingSites.length} sites!`
+          : useCountrySpecificLinks
           ? `Successfully saved product link with ${countryLinks.length} country link(s)!`
           : "Link updated successfully!"
       );
@@ -1602,52 +1632,117 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               />
             </div>
           </div>
+
+          {/* Section 6: Sibling Sites Sync Banner */}
+          {siblingSites.length > 1 && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+                <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                      Product exists on {siblingSites.length} sites:
+                    </span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {siblingSites.map((s) => (
+                        <span
+                          key={s.id}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            s.site?.id === selectedProduct?.site?.id
+                              ? "bg-blue-600 text-white"
+                              : "bg-white/80 dark:bg-slate-800 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700"
+                          }`}
+                        >
+                          {s.site?.name || "Site"}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-blue-700/80 dark:text-blue-300/80 mt-0.5">
+                    Apply affiliate links, GEOs, status, and remarks across all sites (adapts buy links to each site domain).
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0 select-none bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-700 shadow-2xs hover:border-blue-400 transition">
+                <input
+                  type="checkbox"
+                  checked={applyToAllSites}
+                  onChange={(e) => setApplyToAllSites(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Apply to all {siblingSites.length} sites
+                </span>
+              </label>
+            </div>
+          )}
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 min-w-0">
             {selectedProduct ? (
-              <span className="text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                {useCountrySpecificLinks
-                  ? `${countryLinks.length} country link${countryLinks.length !== 1 ? "s" : ""} configured for 1 product`
-                  : `${affiliateEntries.length} link log ${affiliateEntries.length !== 1 ? "entries" : "entry"}`}{" "}
-                ready for {selectedProduct.site?.name || "site"}
+              <span className="text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5 truncate">
+                <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="truncate">
+                  {useCountrySpecificLinks
+                    ? `${countryLinks.length} country link${countryLinks.length !== 1 ? "s" : ""} configured for `
+                    : `${affiliateEntries.length} link entry ready for `}
+                  <strong>{selectedProduct.site?.name || "site"}</strong>
+                </span>
               </span>
             ) : (
               <span>Select a product above</span>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end shrink-0">
             <button
               onClick={onClose}
               type="button"
-              className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-white dark:hover:bg-slate-800 transition text-xs cursor-pointer shadow-xs"
+              className="flex-1 sm:flex-initial px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-white dark:hover:bg-slate-800 transition text-xs cursor-pointer shadow-xs whitespace-nowrap text-center"
             >
               Cancel
             </button>
+
+            {siblingSites.length > 1 && (
+              <button
+                onClick={() => handleSubmit(false)}
+                disabled={submitting || !isFormValid || (!hasChanges && !applyToAllSites)}
+                type="button"
+                className="flex-1 sm:flex-initial px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer shadow-xs whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {submitting ? "Saving..." : `Save for ${selectedProduct.site?.name || "Site"} Only`}
+              </button>
+            )}
+
             <button
-              onClick={handleSubmit}
-              disabled={submitting || !isFormValid}
+              onClick={() => handleSubmit(siblingSites.length > 1 ? true : undefined)}
+              disabled={submitting || !isFormValid || (!hasChanges && !applyToAllSites)}
               type="button"
               title={
                 !isFormValid
                   ? !bridgePageLink?.trim() || !buyLink?.trim()
                     ? "Bridge Page Link and Buy Link (Buy Now) are both required before saving"
                     : "Please configure all required fields (Product, GEOs, Country Links, Bridge Link, Buy Link)"
-                  : !hasChanges
+                  : !hasChanges && !applyToAllSites
                     ? "No changes made"
                     : undefined
               }
-              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
+              className="flex-1 sm:flex-initial px-5 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
-              {submitting
-                ? "Saving..."
-                : useCountrySpecificLinks
-                  ? `Save Product (${countryLinks.length} Country Links)`
-                  : `Save Changes`}
+              {submitting ? (
+                "Saving..."
+              ) : siblingSites.length > 1 ? (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Save & Apply to All ({siblingSites.length} Sites)</span>
+                </>
+              ) : useCountrySpecificLinks ? (
+                `Save Product (${countryLinks.length} Country Links)`
+              ) : (
+                `Save Changes`
+              )}
             </button>
           </div>
         </div>

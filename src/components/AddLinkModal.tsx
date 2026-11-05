@@ -2,7 +2,7 @@
 "use client";
 
 import CustomSelect from "@/components/CustomSelect";
-import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Copy, CheckCircle2, ArrowRight } from "lucide-react";
+import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Copy, CheckCircle2, ArrowRight, Sparkles } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -112,6 +112,8 @@ export default function AddLinkModal({
 
   const [dbAffiliates, setDbAffiliates] = useState<DbAffiliate[]>([]);
   const [dbGeos, setDbGeos] = useState<string[]>([]);
+
+  const isInitializingRef = useRef(false);
 
   // Horizontal scroll navigation for site switcher bar
   const sitesScrollRef = useRef<HTMLDivElement>(null);
@@ -382,10 +384,32 @@ export default function AddLinkModal({
     if (latestLog.linkerRemarks) setLinkerRemarks(latestLog.linkerRemarks);
 
     if (latestLog.geos && Array.isArray(latestLog.geos) && latestLog.geos.length > 0) {
-      const targetGeos = latestLog.geos.map((g: any) => (typeof g === "string" ? g : g.geo || ""));
-      const uniqueGeos = Array.from(new Set(targetGeos.filter(Boolean) as string[]));
-      if (uniqueGeos.length > 0) {
-        setGeos(uniqueGeos);
+      isInitializingRef.current = true;
+      const initialCountryLinks: CountryLinkEntry[] = latestLog.geos
+        .map((g: any) => ({
+          geo: (typeof g === "string" ? g : g.geo || "").trim().toUpperCase(),
+          affiliateName:
+            (typeof g === "object" ? g.affiliateName : null) ||
+            latestLog.affiliateName ||
+            allAffiliates[0] ||
+            "Standard",
+          affiliateLink:
+            (typeof g === "object" ? g.affiliateLink : null) ||
+            latestLog.affiliateLink ||
+            "",
+        }))
+        .filter((c: CountryLinkEntry) => Boolean(c.geo));
+
+      if (initialCountryLinks.length > 0) {
+        setCountryLinks(initialCountryLinks);
+        setGeos(initialCountryLinks.map((c) => c.geo));
+        setUseCountrySpecificLinks(true);
+        const uniqueNets = Array.from(
+          new Set(initialCountryLinks.map((c) => c.affiliateName.trim()).filter(Boolean))
+        );
+        if (uniqueNets.length === 1 && uniqueNets[0]) {
+          setDefaultAffiliateName(uniqueNets[0]);
+        }
       }
     }
 
@@ -412,39 +436,22 @@ export default function AddLinkModal({
       currentProd.name.trim().toLowerCase() === targetProd.name.trim().toLowerCase()
     );
 
+    const targetSiteUrl = targetProd?.site?.url?.replace(/\/+$/, "");
+    const pSlug = targetProd.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const targetBridgeUrl = (targetProd?.site?.bridgeUrl || "")
+      .split(/[\n,]+/)
+      .map((u) => u.trim().replace(/\/+$/, ""))
+      .filter(Boolean)[0] || "";
+
     if (targetProd.linkLogs && targetProd.linkLogs.length > 0) {
       loadProductLogs(targetProd);
     } else if (isSameProductName) {
       // Preserve current affiliate link, country links, geos, remarks, status for the same product!
-      const currentBridgeUrl = (currentProd?.site?.bridgeUrl || "")
-        .split(/[\n,]+/)
-        .map((u) => u.trim().replace(/\/+$/, ""))
-        .filter(Boolean)[0] || "";
-      const targetBridgeUrl = (targetProd?.site?.bridgeUrl || "")
-        .split(/[\n,]+/)
-        .map((u) => u.trim().replace(/\/+$/, ""))
-        .filter(Boolean)[0] || "";
-
-      const currentSiteUrl = currentProd?.site?.url?.replace(/\/+$/, "");
-      const targetSiteUrl = targetProd?.site?.url?.replace(/\/+$/, "");
-      const pSlug = targetProd.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-
-      if (currentBridgeUrl && targetBridgeUrl && bridgePageLink.startsWith(currentBridgeUrl)) {
-        const replaced = bridgePageLink.replace(currentBridgeUrl, targetBridgeUrl);
-        if (pSlug && (replaced === targetBridgeUrl || replaced === `${targetBridgeUrl}/`)) {
-          setBridgePageLink(`${targetBridgeUrl}/${pSlug}`);
-        } else {
-          setBridgePageLink(replaced);
-        }
-      } else if (!bridgePageLink && targetBridgeUrl) {
-        setBridgePageLink(pSlug ? `${targetBridgeUrl}/${pSlug}` : targetBridgeUrl);
-      } else if (!targetBridgeUrl) {
-        setBridgePageLink("");
+      if (targetBridgeUrl && pSlug) {
+        setBridgePageLink(`${targetBridgeUrl}/${pSlug}`);
       }
 
-      if (currentSiteUrl && targetSiteUrl && buyLink.startsWith(currentSiteUrl)) {
-        setBuyLink(buyLink.replace(currentSiteUrl, targetSiteUrl));
-      } else if (!buyLink && targetSiteUrl && pSlug) {
+      if (targetSiteUrl && pSlug) {
         setBuyLink(`${targetSiteUrl}/${pSlug}`);
       }
     } else {
@@ -452,12 +459,21 @@ export default function AddLinkModal({
       setBridgePageLink("");
       setBuyLink("");
       setAffiliateEntries([{ affiliateName: allAffiliates[0] || "", affiliateLink: "" }]);
+      setCountryLinks([]);
+      setGeos([]);
     }
 
     setBridgeLinkError("");
     setBuyLinkError("");
     setError("");
     setSelectedProductId(targetProductId);
+  };
+
+  const syncCurrentValuesToAllTabs = () => {
+    if (!selectedProduct) return;
+    toast.success(
+      `Values synced across all ${availableSitesForProduct.length} tabs for ${selectedProduct.name}! Click 'Save & Apply to All' to save.`
+    );
   };
 
   useEffect(() => {
@@ -512,6 +528,10 @@ export default function AddLinkModal({
 
   // Synchronize countryLinks whenever geos change - do NOT auto-fill fake links
   useEffect(() => {
+    if (isInitializingRef.current) {
+      isInitializingRef.current = false;
+      return;
+    }
     setCountryLinks((prev) => {
       const defName = defaultAffiliateName || allAffiliates[0] || "Standard";
       return geos.map((geo) => {
@@ -525,7 +545,7 @@ export default function AddLinkModal({
         return {
           geo,
           affiliateName: defName,
-          affiliateLink: "",
+          affiliateLink: prev[0]?.affiliateLink || "",
         };
       });
     });
@@ -620,7 +640,7 @@ export default function AddLinkModal({
     isValidUrl(buyLink) &&
     !buyLinkError;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (applyToAll: boolean = false) => {
     if (isNoSite) {
       setError("Cannot add links: This product has No Site assigned. Please add the product to a website first.");
       return;
@@ -723,6 +743,7 @@ export default function AddLinkModal({
           geos,
           status,
           linkerRemarks: linkerRemarks || null,
+          applyToAllSites: applyToAll,
         }),
       });
 
@@ -733,30 +754,136 @@ export default function AddLinkModal({
 
       const savedSiteName = selectedProduct?.site?.name || "site";
 
-      // Update local products state immediately so active site marks as configured
-      setProducts((prev) =>
-        prev.map((p) => {
-          if (p.id === selectedProductId) {
-            return {
-              ...p,
-              linkLogs: [
-                ...(p.linkLogs || []),
-                {
-                  id: Date.now(),
-                  bridgePageLink,
-                  buyLink,
-                  status,
-                  linkerRemarks,
-                  affiliateName: useCountrySpecificLinks ? countryLinks[0]?.affiliateName : affiliateEntries[0]?.affiliateName,
-                  affiliateLink: useCountrySpecificLinks ? countryLinks[0]?.affiliateLink : affiliateEntries[0]?.affiliateLink,
-                  geos: geos.map((g) => ({ geo: g })),
-                },
-              ],
-            };
-          }
-          return p;
-        })
-      );
+      const savedGeos = useCountrySpecificLinks
+        ? countryLinks.map((c) => ({
+            geo: c.geo,
+            affiliateLink: c.affiliateLink,
+            affiliateName: c.affiliateName,
+          }))
+        : geos.map((g) => ({
+            geo: g,
+            affiliateLink: affiliateEntries[0]?.affiliateLink || "",
+            affiliateName: affiliateEntries[0]?.affiliateName || "",
+          }));
+
+      if (applyToAll) {
+        // Update local products state immediately across ALL sites for this product
+        setProducts((prev) =>
+          prev.map((p) => {
+            const isSameProduct =
+              p.name?.trim().toLowerCase() === selectedProduct.name.trim().toLowerCase() &&
+              p.site &&
+              !isResearchSite(p.site.name);
+            if (isSameProduct) {
+              const pSiteUrl = p.site?.url?.replace(/\/+$/, "");
+              const pSlug =
+                p.slug ||
+                p.name
+                  .toLowerCase()
+                  .trim()
+                  .replace(/[^a-z0-9]+/g, "-")
+                  .replace(/^-+|-+$/g, "");
+              const pBridgeBase = p.site?.bridgeUrl?.split(/[\n,]+/)[0]?.trim().replace(/\/+$/, "");
+              const adaptedBuy =
+                p.id === selectedProductId
+                  ? buyLink
+                  : pSiteUrl && pSlug
+                  ? `${pSiteUrl}/${pSlug}`
+                  : buyLink;
+              const adaptedBridge =
+                p.id === selectedProductId
+                  ? bridgePageLink
+                  : pBridgeBase && pSlug
+                  ? `${pBridgeBase}/${pSlug}`
+                  : bridgePageLink;
+
+              return {
+                ...p,
+                linkLogs: [
+                  ...(p.linkLogs || []),
+                  {
+                    id: Date.now() + p.id,
+                    bridgePageLink: adaptedBridge,
+                    buyLink: adaptedBuy,
+                    status,
+                    linkerRemarks,
+                    affiliateName: useCountrySpecificLinks
+                      ? countryLinks[0]?.affiliateName
+                      : affiliateEntries[0]?.affiliateName,
+                    affiliateLink: useCountrySpecificLinks
+                      ? countryLinks[0]?.affiliateLink
+                      : affiliateEntries[0]?.affiliateLink,
+                    geos: savedGeos,
+                  },
+                ],
+              };
+            }
+            return p;
+          })
+        );
+
+        setSaveSuccessNotification({
+          siteName: `All ${availableSitesForProduct.length} Sites`,
+          nextSite: null,
+        });
+        toast.success(
+          `🎉 Successfully saved and applied links across all ${availableSitesForProduct.length} sites for ${selectedProduct.name}!`
+        );
+      } else {
+        // Update local products state immediately so active site marks as configured
+        setProducts((prev) =>
+          prev.map((p) => {
+            if (p.id === selectedProductId) {
+              return {
+                ...p,
+                linkLogs: [
+                  ...(p.linkLogs || []),
+                  {
+                    id: Date.now(),
+                    bridgePageLink,
+                    buyLink,
+                    status,
+                    linkerRemarks,
+                    affiliateName: useCountrySpecificLinks
+                      ? countryLinks[0]?.affiliateName
+                      : affiliateEntries[0]?.affiliateName,
+                    affiliateLink: useCountrySpecificLinks
+                      ? countryLinks[0]?.affiliateLink
+                      : affiliateEntries[0]?.affiliateLink,
+                    geos: savedGeos,
+                  },
+                ],
+              };
+            }
+            return p;
+          })
+        );
+
+        const nextPending = availableSitesForProduct.find(
+          (s) => s.productId !== selectedProductId && !s.hasLogs
+        );
+
+        if (nextPending) {
+          setSaveSuccessNotification({
+            siteName: savedSiteName,
+            nextSite: {
+              productId: nextPending.productId,
+              siteName: nextPending.siteName,
+            },
+          });
+          toast.success(
+            `Successfully saved links for ${savedSiteName}! Switch to ${nextPending.siteName} above to continue, or click 'Save & Apply to All'.`
+          );
+        } else {
+          setSaveSuccessNotification({
+            siteName: savedSiteName,
+            nextSite: null,
+          });
+          toast.success(
+            `Successfully saved links for ${savedSiteName}! All sites for this product are now configured.`
+          );
+        }
+      }
 
       // Refresh products list from server in background
       fetch("/api/products")
@@ -765,31 +892,6 @@ export default function AddLinkModal({
           if (Array.isArray(data)) setProducts(data);
         })
         .catch(() => {});
-
-      const nextPending = availableSitesForProduct.find(
-        (s) => s.productId !== selectedProductId && !s.hasLogs
-      );
-
-      if (nextPending) {
-        setSaveSuccessNotification({
-          siteName: savedSiteName,
-          nextSite: {
-            productId: nextPending.productId,
-            siteName: nextPending.siteName,
-          },
-        });
-        toast.success(
-          `Successfully saved links for ${savedSiteName}! Switch to ${nextPending.siteName} above to continue adding links.`
-        );
-      } else {
-        setSaveSuccessNotification({
-          siteName: savedSiteName,
-          nextSite: null,
-        });
-        toast.success(
-          `Successfully saved links for ${savedSiteName}! All sites for this product are now configured.`
-        );
-      }
 
       if (onSuccess) onSuccess();
       // Keep modal open so linker can switch to other sites for this product!
@@ -924,6 +1026,17 @@ export default function AddLinkModal({
                 title="Scroll right"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Quick sync values to all tabs action */}
+              <button
+                type="button"
+                onClick={syncCurrentValuesToAllTabs}
+                title="Synchronize current affiliate links and settings across all site tabs"
+                className="ml-auto hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white/15 hover:bg-white/25 active:bg-white/30 text-white cursor-pointer transition border border-white/20 shadow-2xs whitespace-nowrap shrink-0"
+              >
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                <span>Sync to All Tabs</span>
               </button>
             </div>
           )}
@@ -1892,7 +2005,7 @@ export default function AddLinkModal({
             )}
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 justify-end shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 justify-end shrink-0 flex-wrap">
             <button
               onClick={onClose}
               type="button"
@@ -1900,8 +2013,21 @@ export default function AddLinkModal({
             >
               Done / Close
             </button>
+
+            {availableSitesForProduct.length > 1 && (
+              <button
+                onClick={() => handleSubmit(false)}
+                disabled={submitting || !isFormValid || isNoSite}
+                type="button"
+                title={`Save only for active site (${selectedProduct?.site?.name || "Current Site"})`}
+                className="flex-1 sm:flex-initial px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer shadow-xs whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {submitting ? "Saving..." : `Save for ${selectedProduct?.site?.name || "Site"} Only`}
+              </button>
+            )}
+
             <button
-              onClick={handleSubmit}
+              onClick={() => handleSubmit(availableSitesForProduct.length > 1)}
               disabled={submitting || !isFormValid || isNoSite}
               type="button"
               title={
@@ -1911,14 +2037,21 @@ export default function AddLinkModal({
                   ? !bridgePageLink?.trim() || !buyLink?.trim()
                     ? "Bridge Page Link and Buy Link (Buy Now) are both required before saving"
                     : "Please configure all required fields (Product, GEOs, Country Links, Bridge Link, Buy Link)"
+                  : availableSitesForProduct.length > 1
+                  ? "Save this link configuration across all sites for this product (buy links and bridge links will adapt to each site domain)"
                   : undefined
               }
-              className="flex-1 sm:flex-initial px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="flex-1 sm:flex-initial px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               {submitting ? (
                 "Saving..."
               ) : isNoSite ? (
                 <span>Add to Site First</span>
+              ) : availableSitesForProduct.length > 1 ? (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Save & Apply to All ({availableSitesForProduct.length} Sites)</span>
+                </>
               ) : (
                 <>
                   <span>Save</span>

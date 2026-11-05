@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification, broadcastRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { canUserAddLinkOnSite } from "@/lib/permissions";
+import { isResearchSite } from "@/lib/researchSite";
 
 // PATCH /api/links/[id] - update link details / status
 export async function PATCH(
@@ -29,9 +31,10 @@ export async function PATCH(
       affiliateName,
       affiliateLink,
       geos,
+      countryLinks,
+      issueMessage,
+      applyToAllSites,
     } = body;
-
-    const { countryLinks, issueMessage } = body;
 
     const isReportingIssue = Boolean(
       issueMessage ||
@@ -291,6 +294,143 @@ export async function PATCH(
           newRemarks: updated.linkerRemarks,
         },
       });
+    }
+
+    // If applyToAllSites is enabled, propagate changes to all sibling site products for this product
+    if (applyToAllSites && existing.product?.name) {
+      try {
+        const siblings = await prisma.product.findMany({
+          where: {
+            name: { equals: existing.product.name.trim(), mode: "insensitive" },
+            id: { not: existing.productId },
+            siteId: { not: null },
+            site: { name: { not: "Product Research" } },
+          },
+          include: { site: true },
+        });
+
+        for (const sib of siblings) {
+          if (!sib.siteId) continue;
+          const canAdd = await canUserAddLinkOnSite(activeUserId, activeUserRole, sib.siteId);
+          if (!canAdd) continue;
+
+          const sibSlug =
+            sib.slug ||
+            sib.name
+              .toLowerCase()
+              .trim()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+          const sibSiteUrl = sib.site?.url?.replace(/\/+$/, "");
+          const sibBuyLink =
+            sibSiteUrl && sibSlug
+              ? `${sibSiteUrl}/${sibSlug}`
+              : updatedBuy || existing.buyLink;
+
+          let sibBridgeLink = updatedBridge || existing.bridgePageLink;
+          if (sib.site?.bridgeUrl) {
+            const firstBridge = sib.site.bridgeUrl
+              .split(/[\n,]+/)[0]
+              ?.trim()
+              .replace(/\/+$/, "");
+            if (firstBridge && sibSlug) {
+              sibBridgeLink = `${firstBridge}/${sibSlug}`;
+            }
+          }
+
+          const sibLink = await prisma.linkLog.findFirst({
+            where: { productId: sib.id },
+            include: { geos: true },
+          });
+
+          if (sibLink) {
+            if (geosToSet !== null) {
+              await prisma.linkGeo.deleteMany({ where: { linkLogId: sibLink.id } });
+            }
+            const updatedSib = await prisma.linkLog.update({
+              where: { id: sibLink.id },
+              data: {
+                ...(activeUserId && !isReportingIssue ? { updatedById: activeUserId } : {}),
+                ...(targetStatus !== undefined ? { status: targetStatus as any } : {}),
+                bridgePageLink: sibBridgeLink,
+                buyLink: sibBuyLink,
+                affiliateName: targetAffiliateName || updated.affiliateName,
+                affiliateLink: affiliateLink || updated.affiliateLink,
+                ...(formattedRemarks !== undefined ? { linkerRemarks: formattedRemarks } : {}),
+                ...(geosToSet !== null
+                  ? {
+                      geos: {
+                        create: geosToSet.map((item) => ({
+                          geo: item.geo,
+                          affiliateLink: item.affiliateLink || affiliateLink || existing.affiliateLink,
+                          affiliateName: item.affiliateName || targetAffiliateName || existing.affiliateName,
+                        })),
+                      },
+                    }
+                  : {}),
+              },
+            });
+
+            if (activeUserId) {
+              await prisma.linkHistory.create({
+                data: {
+                  linkLogId: updatedSib.id,
+                  updatedById: activeUserId,
+                  oldBridgeLink: sibLink.bridgePageLink,
+                  newBridgeLink: updatedSib.bridgePageLink,
+                  oldBuyLink: sibLink.buyLink,
+                  newBuyLink: updatedSib.buyLink,
+                  oldAffiliateLink: sibLink.affiliateLink,
+                  newAffiliateLink: updatedSib.affiliateLink,
+                  oldStatus: sibLink.status,
+                  newStatus: updatedSib.status,
+                  oldRemarks: sibLink.linkerRemarks,
+                  newRemarks: updatedSib.linkerRemarks,
+                },
+              });
+            }
+          } else {
+            const createdSib = await prisma.linkLog.create({
+              data: {
+                productId: sib.id,
+                addedById: activeUserId,
+                status: (targetStatus as any) || updated.status,
+                bridgePageLink: sibBridgeLink,
+                buyLink: sibBuyLink,
+                affiliateName: targetAffiliateName || updated.affiliateName,
+                affiliateLink: affiliateLink || updated.affiliateLink,
+                linkerRemarks: formattedRemarks !== undefined ? formattedRemarks : updated.linkerRemarks,
+                geos:
+                  geosToSet !== null && geosToSet.length > 0
+                    ? {
+                        create: geosToSet.map((item) => ({
+                          geo: item.geo,
+                          affiliateLink: item.affiliateLink || affiliateLink || updated.affiliateLink,
+                          affiliateName: item.affiliateName || targetAffiliateName || updated.affiliateName,
+                        })),
+                      }
+                    : undefined,
+              },
+            });
+
+            if (activeUserId) {
+              await prisma.linkHistory.create({
+                data: {
+                  linkLogId: createdSib.id,
+                  updatedById: activeUserId,
+                  newBridgeLink: createdSib.bridgePageLink,
+                  newBuyLink: createdSib.buyLink,
+                  newAffiliateLink: createdSib.affiliateLink,
+                  newStatus: createdSib.status,
+                  newRemarks: createdSib.linkerRemarks,
+                },
+              });
+            }
+          }
+        }
+      } catch (sibErr) {
+        console.error("Failed to propagate link updates across sibling sites:", sibErr);
+      }
     }
 
     const productName = updated.product?.name || existing.product?.name || "Product";
