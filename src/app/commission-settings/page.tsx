@@ -912,6 +912,7 @@ function PoolInputCard({
   unitSymbol,
   isFixed,
   pctShare,
+  calculatedAmount,
   onUpdate,
 }: {
   pool: typeof POOL_CONFIG[number];
@@ -919,6 +920,7 @@ function PoolInputCard({
   unitSymbol: string;
   isFixed: boolean;
   pctShare: string;
+  calculatedAmount?: string;
   onUpdate: (newVal: number) => void;
 }) {
   const step = isFixed ? 0.5 : 1;
@@ -1023,25 +1025,32 @@ function PoolInputCard({
         </button>
 
         {/* Value Display with Currency Symbol (prefix for currency, suffix for percentage) */}
-        <div className="flex-1 flex items-center justify-center gap-1.5 px-2">
-          {isFixed && (
-            <span className="text-xs font-black text-slate-400 dark:text-slate-500 select-none">
-              {unitSymbol.trim()}
-            </span>
-          )}
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="0"
-            value={inputValue}
-            onFocus={(e) => e.target.select()}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className="w-full text-center bg-transparent text-base sm:text-lg font-black text-slate-900 dark:text-white focus:outline-none tracking-tight"
-          />
-          {!isFixed && (
-            <span className="text-xs font-black text-slate-400 dark:text-slate-500 select-none">
-              %
+        <div className="flex-1 flex flex-col items-center justify-center px-2 py-0.5">
+          <div className="flex items-center justify-center gap-1.5 w-full">
+            {isFixed && (
+              <span className="text-xs font-black text-slate-400 dark:text-slate-500 select-none">
+                {unitSymbol.trim()}
+              </span>
+            )}
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="0"
+              value={inputValue}
+              onFocus={(e) => e.target.select()}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className="w-full text-center bg-transparent text-base sm:text-lg font-black text-slate-900 dark:text-white focus:outline-none tracking-tight"
+            />
+            {!isFixed && (
+              <span className="text-xs font-black text-slate-400 dark:text-slate-500 select-none">
+                %
+              </span>
+            )}
+          </div>
+          {calculatedAmount && (
+            <span className="text-[10px] font-black text-[#6D8196] dark:text-sky-400 leading-none mt-0.5">
+              Amount: {calculatedAmount}
             </span>
           )}
         </div>
