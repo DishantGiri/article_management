@@ -261,7 +261,7 @@ function UserCommissionsContent() {
   // Filter & sort users by role, payment status, search query, and sortBy (pure client-side, 0 reload)
   const filteredUsers = useMemo(() => {
     let result = users.filter(
-      (u) => u.role !== "ADMIN" && u.role !== "SUPER_ADMIN"
+      (u) => u.role !== "ADMIN" && u.role !== "SUPER_ADMIN" && u.role !== "PRODUCT_RESEARCHER"
     );
 
     // 1. Role Filter
@@ -343,7 +343,7 @@ function UserCommissionsContent() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-[#737373] dark:text-slate-400 mt-1 font-medium max-w-2xl leading-relaxed">
-                Review individual commission earnings for Writers, Linkers, Product Researchers, and Team Leads. Track 1st sale totals, resales, paid balances, and settle pending payouts.
+                Review individual commission earnings for Writers, Linkers, and Team Leads. Track 1st sale totals, resales, paid balances, and settle pending payouts.
               </p>
             </div>
           </div>
@@ -499,7 +499,6 @@ function UserCommissionsContent() {
               { key: "ALL", label: "All Roles" },
               { key: "WRITER", label: "Writers" },
               { key: "LINKER", label: "Linkers" },
-              { key: "PRODUCT_RESEARCHER", label: "Product Researchers" },
               { key: "TEAM_LEAD", label: "Team Leads" },
             ].map((tab) => (
               <button

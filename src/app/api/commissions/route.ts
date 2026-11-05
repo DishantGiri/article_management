@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
         linkLogs: {
           take: 1,
           orderBy: { addedAt: "desc" },
-          select: { id: true, affiliateName: true, addedBy: { select: { id: true, name: true } } },
+          select: { id: true, affiliateName: true, addedBy: { select: { id: true, name: true, role: true } } },
         },
         commissionSales: {
           where: Object.keys(saleDateFilter).length > 0 ? { saleDate: saleDateFilter } : undefined,
@@ -265,8 +265,20 @@ export async function GET(req: NextRequest) {
     // 6. Transform and enrich each product row
     let enriched = products.map((prod) => {
       const catKey = resolveCategoryKey(prod.category?.name);
-      const linkerName = prod.addedBy?.name || prod.linkLogs[0]?.addedBy?.name || "Unassigned";
-      const linkerId = prod.addedBy?.id || prod.linkLogs[0]?.addedBy?.id || null;
+      // Resolve Linker: Product Researchers do NOT receive commission, only Linkers
+      let resolvedLinker: any = null;
+      if (prod.linkLogs[0]?.addedBy?.role === "LINKER") {
+        resolvedLinker = prod.linkLogs[0].addedBy;
+      } else if (prod.addedBy?.role === "LINKER") {
+        resolvedLinker = prod.addedBy;
+      } else if (prod.linkLogs[0]?.addedBy && prod.linkLogs[0].addedBy.role !== "PRODUCT_RESEARCHER") {
+        resolvedLinker = prod.linkLogs[0].addedBy;
+      } else if (prod.addedBy && prod.addedBy.role !== "PRODUCT_RESEARCHER" && prod.addedBy.role !== "SUPER_ADMIN" && prod.addedBy.role !== "ADMIN") {
+        resolvedLinker = prod.addedBy;
+      }
+
+      const linkerName = resolvedLinker?.name || "Unassigned";
+      const linkerId = resolvedLinker?.id || null;
       const writerName = prod.article?.writer?.name || "Unassigned";
       const writerId = prod.article?.writer?.id || null;
       const isUnassigned = !prod.article?.writerId || !prod.article?.writer;
@@ -533,32 +545,19 @@ export async function POST(req: NextRequest) {
     const bonusAmount = setting?.bonusPool ?? fallbackTier?.bonusPool ?? 0;
     const basePartyAmount = setting?.partyFund ?? fallbackTier?.partyFund ?? 0;
 
-    // Beneficiaries
-    let linker = product.addedBy || product.linkLogs[0]?.addedBy;
-    const writer = product.article?.writer;
-
-    // If addedBy is Admin/SuperAdmin, check if there is an assigned Product Researcher or linkLog
-    if (linker?.role === "SUPER_ADMIN" || linker?.role === "ADMIN") {
-      let researcherName: string | null = null;
-      if (product.remarks) {
-        const match = product.remarks.match(/Researched by:\s*([^.\n,]+)/i);
-        if (match && match[1]?.trim()) researcherName = match[1].trim();
-      }
-      if (researcherName) {
-        const matchedResearcher = await prisma.user.findFirst({
-          where: {
-            name: { contains: researcherName },
-            role: { in: ["PRODUCT_RESEARCHER", "LINKER"] },
-          },
-        });
-        if (matchedResearcher) {
-          linker = matchedResearcher;
-        }
-      }
-      if ((linker?.role === "SUPER_ADMIN" || linker?.role === "ADMIN") && product.linkLogs[0]?.addedBy) {
-        linker = product.linkLogs[0].addedBy;
-      }
+    // Beneficiaries: Product Researchers do NOT receive commission, only Linkers
+    let linker: any = null;
+    if (product.linkLogs[0]?.addedBy && product.linkLogs[0].addedBy.role === "LINKER") {
+      linker = product.linkLogs[0].addedBy;
+    } else if (product.addedBy && product.addedBy.role === "LINKER") {
+      linker = product.addedBy;
+    } else if (product.linkLogs[0]?.addedBy && product.linkLogs[0].addedBy.role !== "PRODUCT_RESEARCHER") {
+      linker = product.linkLogs[0].addedBy;
+    } else if (product.addedBy && product.addedBy.role !== "PRODUCT_RESEARCHER" && product.addedBy.role !== "SUPER_ADMIN" && product.addedBy.role !== "ADMIN") {
+      linker = product.addedBy;
     }
+
+    const writer = product.article?.writer;
 
     // Determine if writer has left the company or has commission routed to Party Fund
     const isWriterLeft =
@@ -572,10 +571,10 @@ export async function POST(req: NextRequest) {
     const writerTransferredToParty = isWriterToParty ? baseWriterAmount : 0;
     const writerAmount = isWriterToParty ? 0 : baseWriterAmount;
 
-    // Linker commission routed to party fund if linker has commissionToPartyFund
+    // Linker commission routed to party fund if linker has commissionToPartyFund or no valid linker assigned
     let linkerTransferred = 0;
     let linkerAmount = baseLinkerAmount;
-    if (linker?.commissionToPartyFund) {
+    if (!linker || linker.role === "PRODUCT_RESEARCHER" || linker.commissionToPartyFund) {
       linkerTransferred = baseLinkerAmount;
       linkerAmount = 0;
     }
@@ -623,14 +622,14 @@ export async function POST(req: NextRequest) {
         saleDate: isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
         writerId: writer?.id || null,
         writerName: writer?.name || (isWriterLeft ? "Departed Writer" : null),
-        linkerId: linker?.id || null,
-        linkerName: linker?.name || null,
+        linkerId: (linker && linker.role !== "PRODUCT_RESEARCHER") ? linker.id : null,
+        linkerName: (linker && linker.role !== "PRODUCT_RESEARCHER") ? linker.name : null,
         teamLeadId,
         teamLeadName,
         paymentStatus: status,
         paidAt,
         amount,
-        linkerAmount,
+        linkerAmount: (linker && linker.role !== "PRODUCT_RESEARCHER") ? linkerAmount : 0,
         writerAmount,
         tlAmount,
         seoAmount,

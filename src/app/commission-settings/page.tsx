@@ -55,8 +55,8 @@ interface CommissionTier {
 const POOL_CONFIG = [
   {
     key: "linker" as const,
-    label: "Linker / Product Researcher",
-    roleDesc: "Product research, affiliate sourcing & link integration",
+    label: "Linker",
+    roleDesc: "Affiliate sourcing & link integration",
     icon: Link2,
     color: "text-sky-600 dark:text-sky-400",
     bg: "bg-sky-50 dark:bg-sky-950/40",

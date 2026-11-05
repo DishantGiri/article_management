@@ -1026,7 +1026,7 @@ export default function CommissionsPage() {
           <div className="flex items-center gap-2.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
             <span>Writer: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalWriterAmount.toFixed(2)}</strong></span>
             <span>•</span>
-            <span>Linker / Researcher: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalLinkerAmount.toFixed(2)}</strong></span>
+            <span>Linker: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalLinkerAmount.toFixed(2)}</strong></span>
             <span>•</span>
             <span>TL: <strong className="text-slate-700 dark:text-slate-200">Rs. {metrics.totalTlAmount.toFixed(2)}</strong></span>
           </div>
@@ -1368,7 +1368,7 @@ export default function CommissionsPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-1">
-                              <span className="text-slate-400 font-bold w-14" title="Linker or Product Researcher who added the product">Link/PR:</span>
+                              <span className="text-slate-400 font-bold w-14" title="Linker who added affiliate links">Linker:</span>
                               <span className="font-semibold text-slate-700 dark:text-slate-200">
                                 {sale.linkerName}
                               </span>
@@ -2001,10 +2001,10 @@ export default function CommissionsPage() {
                     )}
                   </div>
 
-                  {/* Linker / Product Researcher attribution */}
+                  {/* Linker attribution */}
                   <div className="p-2.5 rounded-xl border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Researcher / Linker:</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Linker:</span>
                       <span className="font-extrabold text-slate-800 dark:text-white truncate text-xs">
                         {selectedProductForSale.linkerName || "Unassigned"}
                       </span>
