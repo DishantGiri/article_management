@@ -176,6 +176,7 @@ const ARTICLE_STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   COMPLETED: { bg: "bg-indigo-100 dark:bg-indigo-950/60", text: "text-indigo-800 dark:text-indigo-300" },
   APPROVED: { bg: "bg-emerald-100 dark:bg-emerald-950/60", text: "text-emerald-800 dark:text-emerald-300" },
   REDO: { bg: "bg-rose-100 dark:bg-rose-950/60", text: "text-rose-800 dark:text-rose-300" },
+  REDIRECTED: { bg: "bg-amber-100 dark:bg-amber-950/60", text: "text-amber-800 dark:text-amber-300" },
 };
 
 const ensureExternalUrl = (url: string | null | undefined) => {

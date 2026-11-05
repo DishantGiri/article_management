@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
   const articles = await prisma.article.findMany({
     where: {
       ...(writerId ? { writerId: parseInt(writerId) } : {}),
-      ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO" } : {}),
+      ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO" | "REDIRECTED" } : {}),
       ...(productId ? { productId: parseInt(productId) } : {}),
       ...allowedFilter,
     },

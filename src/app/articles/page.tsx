@@ -913,6 +913,7 @@ function ArticlesContent() {
             { value: "COMPLETED", label: "Completed" },
             { value: "APPROVED", label: "Approved" },
             { value: "REDO", label: "Redo / Needs Changes" },
+            { value: "REDIRECTED", label: "Redirected" },
           ]}
         />
 
