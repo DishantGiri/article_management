@@ -272,25 +272,53 @@ export async function GET(req: NextRequest) {
       const redirectSalesCount = prod.commissionSales.filter((s) => s.saleType === "REDIRECT").length;
       const resalesCount = Math.max(0, totalSalesCount - firstSalesCount - redirectSalesCount);
 
-      const totalCommissionAmount = prod.commissionSales.reduce((acc, s) => acc + (s.amount || 0), 0);
-      const paidCommissionAmount = prod.commissionSales
-        .filter((s) => s.paymentStatus === "PAID")
-        .reduce((acc, s) => acc + (s.amount || 0), 0);
-      const pendingCommissionAmount = prod.commissionSales
-        .filter((s) => s.paymentStatus === "PENDING")
-        .reduce((acc, s) => acc + (s.amount || 0), 0);
+      let pendingWriterAmount = 0;
+      let pendingLinkerAmount = 0;
+      let pendingTlAmount = 0;
+      let paidCommissionAmount = 0;
+      let pendingCommissionAmount = 0;
+
+      prod.commissionSales.forEach((s) => {
+        if (s.writerId && s.writerAmount > 0) {
+          if (s.writerPaid) paidCommissionAmount += s.writerAmount;
+          else {
+            pendingCommissionAmount += s.writerAmount;
+            pendingWriterAmount += s.writerAmount;
+          }
+        }
+        if (s.linkerId && s.linkerAmount > 0) {
+          if (s.linkerPaid) paidCommissionAmount += s.linkerAmount;
+          else {
+            pendingCommissionAmount += s.linkerAmount;
+            pendingLinkerAmount += s.linkerAmount;
+          }
+        }
+        if (s.teamLeadId && s.tlAmount > 0) {
+          if (s.tlPaid) paidCommissionAmount += s.tlAmount;
+          else {
+            pendingCommissionAmount += s.tlAmount;
+            pendingTlAmount += s.tlAmount;
+          }
+        }
+        const nonRolePools = (s.seoAmount || 0) + (s.bonusAmount || 0) + (s.partyAmount || 0);
+        if (s.paymentStatus === "PAID") {
+          paidCommissionAmount += nonRolePools;
+        } else {
+          pendingCommissionAmount += nonRolePools;
+        }
+      });
+
+      const totalCommissionAmount = paidCommissionAmount + pendingCommissionAmount;
 
       // Payment status determination for the product
       let overallPaymentStatus: "PAID" | "PENDING" | "PARTIAL" | "NO_SALES" = "NO_SALES";
       if (prod.commissionSales.length > 0) {
-        const hasPending = prod.commissionSales.some((s) => s.paymentStatus === "PENDING");
-        const hasPaid = prod.commissionSales.some((s) => s.paymentStatus === "PAID");
-        if (hasPending && hasPaid) {
-          overallPaymentStatus = "PARTIAL";
-        } else if (hasPending) {
-          overallPaymentStatus = "PENDING";
-        } else {
+        if (pendingCommissionAmount === 0) {
           overallPaymentStatus = "PAID";
+        } else if (paidCommissionAmount > 0) {
+          overallPaymentStatus = "PARTIAL";
+        } else {
+          overallPaymentStatus = "PENDING";
         }
       }
 
@@ -328,6 +356,9 @@ export async function GET(req: NextRequest) {
         totalCommissionAmount: parseFloat(totalCommissionAmount.toFixed(2)),
         paidCommissionAmount: parseFloat(paidCommissionAmount.toFixed(2)),
         pendingCommissionAmount: parseFloat(pendingCommissionAmount.toFixed(2)),
+        pendingWriterAmount: parseFloat(pendingWriterAmount.toFixed(2)),
+        pendingLinkerAmount: parseFloat(pendingLinkerAmount.toFixed(2)),
+        pendingTlAmount: parseFloat(pendingTlAmount.toFixed(2)),
         overallPaymentStatus,
         latestDate,
         sales: prod.commissionSales,
@@ -534,7 +565,13 @@ export async function POST(req: NextRequest) {
       (t) => t.category === catKey && t.saleType === baseLookupType
     );
 
-    const baseLinkerAmount = setting?.linker ?? fallbackTier?.linker ?? 0;
+    const isPercentage = setting?.rateType === "PERCENTAGE";
+    const totalSaleBase = (fallbackTier?.total && fallbackTier.total > 0) ? fallbackTier.total : ((setting?.total && setting.total > 100) ? setting.total : 320);
+
+    const rawLinkerRate = setting?.linker ?? fallbackTier?.linker ?? 0;
+    const baseLinkerAmount = isPercentage
+      ? parseFloat(((rawLinkerRate / 100) * totalSaleBase).toFixed(2))
+      : rawLinkerRate;
 
     // For REDIRECT sales:
     // Linker receives their standard commission + 50% extra bonus (1.5x)
@@ -543,14 +580,45 @@ export async function POST(req: NextRequest) {
       ? parseFloat((baseLinkerAmount * 1.5).toFixed(2))
       : baseLinkerAmount;
 
-    const baseWriterAmount = isRedirectSale ? 0 : (setting?.writer ?? fallbackTier?.writer ?? 0);
-    const baseTlAmount = isRedirectSale ? 0 : (setting?.tl ?? fallbackTier?.tl ?? 0);
-    const seoAmount = isRedirectSale ? 0 : (setting?.seo ?? fallbackTier?.seo ?? 0);
-    const bonusAmount = isRedirectSale ? 0 : (setting?.bonusPool ?? fallbackTier?.bonusPool ?? 0);
-    const basePartyAmount = isRedirectSale ? 0 : (setting?.partyFund ?? fallbackTier?.partyFund ?? 0);
+    const rawWriterRate = setting?.writer ?? fallbackTier?.writer ?? 0;
+    const baseWriterAmount = isRedirectSale
+      ? 0
+      : isPercentage
+      ? parseFloat(((rawWriterRate / 100) * totalSaleBase).toFixed(2))
+      : rawWriterRate;
+
+    const rawTlRate = setting?.tl ?? fallbackTier?.tl ?? 0;
+    const baseTlAmount = isRedirectSale
+      ? 0
+      : isPercentage
+      ? parseFloat(((rawTlRate / 100) * totalSaleBase).toFixed(2))
+      : rawTlRate;
+
+    const rawSeoRate = setting?.seo ?? fallbackTier?.seo ?? 0;
+    const seoAmount = isRedirectSale
+      ? 0
+      : isPercentage
+      ? parseFloat(((rawSeoRate / 100) * totalSaleBase).toFixed(2))
+      : rawSeoRate;
+
+    const rawBonusRate = setting?.bonusPool ?? fallbackTier?.bonusPool ?? 0;
+    const bonusAmount = isRedirectSale
+      ? 0
+      : isPercentage
+      ? parseFloat(((rawBonusRate / 100) * totalSaleBase).toFixed(2))
+      : rawBonusRate;
+
+    const rawPartyRate = setting?.partyFund ?? fallbackTier?.partyFund ?? 0;
+    const basePartyAmount = isRedirectSale
+      ? 0
+      : isPercentage
+      ? parseFloat(((rawPartyRate / 100) * totalSaleBase).toFixed(2))
+      : rawPartyRate;
 
     const amount = isRedirectSale
       ? effectiveLinkerRate
+      : isPercentage
+      ? totalSaleBase
       : (setting?.total ?? fallbackTier?.total ?? 0);
 
     // Beneficiaries: Product Researchers do NOT receive commission, only Linkers
@@ -647,6 +715,12 @@ export async function POST(req: NextRequest) {
         teamLeadName: isRedirectSale ? null : teamLeadName,
         paymentStatus: status,
         paidAt,
+        writerPaid: status === "PAID" && writerAmount > 0,
+        writerPaidAt: status === "PAID" && writerAmount > 0 ? paidAt : null,
+        linkerPaid: status === "PAID" && linkerAmount > 0,
+        linkerPaidAt: status === "PAID" && linkerAmount > 0 ? paidAt : null,
+        tlPaid: status === "PAID" && tlAmount > 0,
+        tlPaidAt: status === "PAID" && tlAmount > 0 ? paidAt : null,
         amount,
         linkerAmount: (linker && linker.role !== "PRODUCT_RESEARCHER") ? linkerAmount : 0,
         writerAmount,
