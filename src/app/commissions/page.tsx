@@ -1931,6 +1931,20 @@ export default function CommissionsPage() {
                               </button>
                             )}
 
+                            {isSuperAdmin && prod.pendingCommissionAmount > 0 && (
+                              <button
+                                onClick={() => {
+                                  setPayoutProduct(prod);
+                                  setPayoutRoles(["WRITER", "LINKER", "TEAM_LEAD"]);
+                                }}
+                                className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                                title="Process product commission payout"
+                              >
+                                <Coins className="w-3 h-3" />
+                                <span>Payout</span>
+                              </button>
+                            )}
+
                             {hasSales && (
                               <button
                                 onClick={() => setHistoryProduct(prod)}
