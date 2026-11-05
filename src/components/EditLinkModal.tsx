@@ -134,7 +134,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       id: link.productId || link.product.id || 0,
       name: link.product.name,
       slug: link.product.slug,
-      site: link.product.site || { name: "Unassigned" },
+      site: (link.product.site as { id?: number; name?: string; url?: string | null; bridgeUrl?: string | null } | null) || { id: 0, name: "Unassigned" },
       trendLink: link.product.trendLink,
       previewLink: link.product.previewLink,
       article: link.product.article,
@@ -1712,7 +1712,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
                 type="button"
                 className="flex-1 sm:flex-initial px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer shadow-xs whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {submitting ? "Saving..." : `Save for ${selectedProduct.site?.name || "Site"} Only`}
+                {submitting ? "Saving..." : `Save for ${selectedProduct?.site?.name || "Site"} Only`}
               </button>
             )}
 

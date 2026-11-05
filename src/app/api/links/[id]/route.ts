@@ -301,9 +301,8 @@ export async function PATCH(
       try {
         const siblings = await prisma.product.findMany({
           where: {
-            name: { equals: existing.product.name.trim(), mode: "insensitive" },
+            name: existing.product.name.trim(),
             id: { not: existing.productId },
-            siteId: { not: null },
             site: { name: { not: "Product Research" } },
           },
           include: { site: true },

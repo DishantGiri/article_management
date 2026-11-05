@@ -275,9 +275,8 @@ export async function POST(req: NextRequest) {
     if (applyToAllSites && product.name) {
       const siblings = await prisma.product.findMany({
         where: {
-          name: { equals: product.name.trim(), mode: "insensitive" },
+          name: product.name.trim(),
           id: { not: product.id },
-          siteId: { not: null },
           site: { name: { not: "Product Research" } },
         },
         select: {
