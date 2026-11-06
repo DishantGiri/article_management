@@ -769,12 +769,11 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       }
 
       toast.success(
-        willApplyAll
-          ? `Successfully updated links across all ${siblingSites.length} sites!`
-          : useCountrySpecificLinks
-          ? `Successfully saved product link with ${countryLinks.length} country link(s)!`
-          : "Link updated successfully!"
+        useCountrySpecificLinks
+          ? `Successfully saved product link for ${selectedProduct?.site?.name || "this site"} with ${countryLinks.length} country link(s)!`
+          : `Successfully updated link for ${selectedProduct?.site?.name || "this site"}!`
       );
+      setBatchLinkUrl("");
       if (onSuccess) onSuccess();
       onClose();
     } catch (e: any) {
@@ -1679,7 +1678,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
               {submitting ? (
                 "Saving..."
               ) : (
-                <span>Save for {selectedProduct?.site?.name || "Site"}</span>
+                <span>Save for {selectedProduct?.site?.name || "This Site"} Only</span>
               )}
             </button>
           </div>

@@ -466,14 +466,8 @@ export default function AddLinkModal({
     setBridgeLinkError("");
     setBuyLinkError("");
     setError("");
+    setBatchLinkUrl("");
     setSelectedProductId(targetProductId);
-  };
-
-  const syncCurrentValuesToAllTabs = () => {
-    if (!selectedProduct) return;
-    toast.success(
-      `Values synced across all ${availableSitesForProduct.length} tabs for ${selectedProduct.name}! Click 'Save & Apply to All' to save.`
-    );
   };
 
   useEffect(() => {
@@ -872,7 +866,7 @@ export default function AddLinkModal({
             },
           });
           toast.success(
-            `Successfully saved links for ${savedSiteName}! Switch to ${nextPending.siteName} above to continue, or click 'Save & Apply to All'.`
+            `Successfully saved links for ${savedSiteName}! You can switch to ${nextPending.siteName} tab above to configure links.`
           );
         } else {
           setSaveSuccessNotification({
@@ -883,6 +877,9 @@ export default function AddLinkModal({
             `Successfully saved links for ${savedSiteName}! All sites for this product are now configured.`
           );
         }
+
+        // Clear quick fill after saving
+        setBatchLinkUrl("");
       }
 
       // Refresh products list from server in background
@@ -1027,17 +1024,6 @@ export default function AddLinkModal({
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
-
-              {/* Quick sync values to all tabs action */}
-              <button
-                type="button"
-                onClick={syncCurrentValuesToAllTabs}
-                title="Synchronize current affiliate links and settings across all site tabs"
-                className="ml-auto hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white/15 hover:bg-white/25 active:bg-white/30 text-white cursor-pointer transition border border-white/20 shadow-2xs whitespace-nowrap shrink-0"
-              >
-                <Sparkles className="w-3 h-3 text-amber-300" />
-                <span>Sync to All Tabs</span>
-              </button>
             </div>
           )}
         </div>
@@ -1051,7 +1037,7 @@ export default function AddLinkModal({
                 <span className="font-semibold">
                   Saved links for <strong>{saveSuccessNotification.siteName}</strong>!
                   {saveSuccessNotification.nextSite
-                    ? " Switch to other sites above to continue adding links:"
+                    ? ` You can configure links for ${saveSuccessNotification.nextSite.siteName} next:`
                     : " All sites for this product are now configured."}
                 </span>
               </div>
@@ -2034,10 +2020,7 @@ export default function AddLinkModal({
               ) : isNoSite ? (
                 <span>Add to Site First</span>
               ) : (
-                <>
-                  <span>Save for {selectedProduct?.site?.name || "Site"}</span>
-                  <span>({useCountrySpecificLinks ? countryLinks.length : affiliateEntries.length} Links)</span>
-                </>
+                <span>Save for {selectedProduct?.site?.name || "This Site"} Only</span>
               )}
             </button>
           </div>
