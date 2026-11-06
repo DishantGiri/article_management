@@ -455,7 +455,7 @@ export default function CommissionsPage() {
           saleDate: modalSaleDate,
           paymentStatus: modalPaymentStatus,
           notes: modalNotes,
-          writerLeftCompany: isRedirect ? false : modalWriterLeftCompany,
+          writerLeftCompany: modalWriterLeftCompany,
         }),
       });
 
@@ -2115,7 +2115,7 @@ export default function CommissionsPage() {
                     }`}
                   >
                     <Share2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    <span>Sale from Redirect</span>
+                    <span>Redirect Sale</span>
                   </button>
                 </div>
 
@@ -2124,10 +2124,10 @@ export default function CommissionsPage() {
                     <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div className="text-[11px] leading-relaxed">
                       <p className="font-extrabold text-amber-900 dark:text-amber-200">
-                        ⚡ Sale from Redirect: 100% Commission to Linker (+50% Bonus)
+                        ⚡ Redirect Sale: Linker receives +50% Bonus, other roles receive normal commission
                       </p>
                       <p className="text-amber-700 dark:text-amber-300 font-medium">
-                        All commission goes exclusively to the Linker (base commission + 50% extra bonus). Writer, Team Lead, SEO, Bonus Pool, and Party Fund receive Rs. 0.00.
+                        The Linker receives their standard commission plus a 50% extra bonus. Writer, Team Lead, SEO Pool, and Bonus Pool receive their standard normal commissions.
                       </p>
                     </div>
                   </div>
@@ -2156,11 +2156,13 @@ export default function CommissionsPage() {
                   const baseLinker = Number(brk?.linker ?? 0);
                   const redirectBonus = parseFloat((baseLinker * 0.5).toFixed(2));
                   const redirectLinker = parseFloat((baseLinker * 1.5).toFixed(2));
+                  const normalTotal =
+                    modalSaleType === "FIRST_SALE"
+                      ? selectedProductForSale.rates.firstSaleTotal
+                      : selectedProductForSale.rates.resaleTotal;
                   const totalCommissionAmount = isRedirect
-                    ? redirectLinker
-                    : modalSaleType === "FIRST_SALE"
-                    ? selectedProductForSale.rates.firstSaleTotal
-                    : selectedProductForSale.rates.resaleTotal;
+                    ? parseFloat((normalTotal + redirectBonus).toFixed(2))
+                    : normalTotal;
 
                   return (
                     <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-3">
@@ -2171,7 +2173,7 @@ export default function CommissionsPage() {
                           </span>
                           {isRedirect && (
                             <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                              Base Rs. {baseLinker.toFixed(2)} + 50% extra Rs. {redirectBonus.toFixed(2)}
+                              Base Rs. {normalTotal.toFixed(2)} + Linker 50% bonus Rs. {redirectBonus.toFixed(2)}
                             </span>
                           )}
                         </div>
@@ -2181,39 +2183,30 @@ export default function CommissionsPage() {
                       </div>
 
                       {/* Writer Box */}
-                      {isRedirect ? (
-                        <div className="p-2.5 rounded-xl border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+                      <div
+                        className={`p-2.5 rounded-xl border space-y-1.5 transition-all ${
+                          modalWriterLeftCompany
+                            ? "bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60"
+                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <span className="text-[10px] font-bold text-slate-400 uppercase">Writer:</span>
-                            <span className="font-extrabold text-slate-600 dark:text-slate-300 truncate text-xs">
-                              {selectedProductForSale.writerName || "Not Applicable"}
+                            <span className="font-extrabold text-slate-800 dark:text-white truncate text-xs">
+                              {selectedProductForSale.writerName || "Unassigned"}
                             </span>
-                          </div>
-                          <span className="text-xs font-bold text-slate-400">
-                            Rs. 0.00 (Redirect Sale — No Writer Share)
-                          </span>
-                        </div>
-                      ) : (
-                        <div
-                          className={`p-2.5 rounded-xl border space-y-1.5 transition-all ${
-                            modalWriterLeftCompany
-                              ? "bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60"
-                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">Writer:</span>
-                              <span className="font-extrabold text-slate-800 dark:text-white truncate text-xs">
-                                {selectedProductForSale.writerName || "Unassigned"}
+                            {modalWriterLeftCompany && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-100 dark:bg-rose-900/80 text-rose-700 dark:text-rose-300 shrink-0">
+                                Left Company
                               </span>
-                              {modalWriterLeftCompany && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-100 dark:bg-rose-900/80 text-rose-700 dark:text-rose-300 shrink-0">
-                                  Left Company
-                                </span>
-                              )}
-                            </div>
+                            )}
+                          </div>
 
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                              Rs. {Number(brk?.writer ?? 0).toFixed(2)}
+                            </span>
                             <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
                               <input
                                 type="checkbox"
@@ -2224,14 +2217,14 @@ export default function CommissionsPage() {
                               <span>Left Company</span>
                             </label>
                           </div>
-
-                          {modalWriterLeftCompany && (
-                            <p className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium leading-tight">
-                              Writer commission will be transferred directly to the <strong>Office Party Fund</strong>.
-                            </p>
-                          )}
                         </div>
-                      )}
+
+                        {modalWriterLeftCompany && (
+                          <p className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium leading-tight">
+                            Writer commission will be transferred directly to the <strong>Office Party Fund</strong>.
+                          </p>
+                        )}
+                      </div>
 
                       {/* Linker Box */}
                       <div
@@ -2268,32 +2261,32 @@ export default function CommissionsPage() {
                           </div>
                           <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
                             <span className="text-slate-400 block font-semibold truncate">Writer</span>
-                            <span className={`font-extrabold ${isRedirect || modalWriterLeftCompany ? "text-slate-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                              Rs. {isRedirect || modalWriterLeftCompany ? "0.00" : Number(brk.writer ?? 0).toFixed(2)}
+                            <span className={`font-extrabold ${modalWriterLeftCompany ? "text-slate-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                              Rs. {modalWriterLeftCompany ? "0.00" : Number(brk.writer ?? 0).toFixed(2)}
                             </span>
                           </div>
                           <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
                             <span className="text-slate-400 block font-semibold truncate">Team Lead</span>
-                            <span className={`font-extrabold ${isRedirect ? "text-slate-400" : "text-indigo-600 dark:text-indigo-400"}`}>
-                              Rs. {isRedirect ? "0.00" : Number(brk.tl ?? 0).toFixed(2)}
+                            <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                              Rs. {Number(brk.tl ?? 0).toFixed(2)}
                             </span>
                           </div>
                           <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
                             <span className="text-slate-400 block font-semibold truncate">Bonus Pool</span>
-                            <span className={`font-extrabold ${isRedirect ? "text-slate-400" : "text-amber-600 dark:text-amber-400"}`}>
-                              Rs. {isRedirect ? "0.00" : Number(brk.bonusPool ?? 0).toFixed(2)}
+                            <span className="font-extrabold text-amber-600 dark:text-amber-400">
+                              Rs. {Number(brk.bonusPool ?? 0).toFixed(2)}
                             </span>
                           </div>
                           <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
                             <span className="text-slate-400 block font-semibold truncate">SEO Pool</span>
-                            <span className={`font-extrabold ${isRedirect ? "text-slate-400" : "text-teal-600 dark:text-teal-400"}`}>
-                              Rs. {isRedirect ? "0.00" : Number(brk.seo ?? 0).toFixed(2)}
+                            <span className="font-extrabold text-teal-600 dark:text-teal-400">
+                              Rs. {Number(brk.seo ?? 0).toFixed(2)}
                             </span>
                           </div>
-                          <div className={`p-2 rounded-xl border text-center ${!isRedirect && modalWriterLeftCompany ? "bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"}`}>
+                          <div className={`p-2 rounded-xl border text-center ${modalWriterLeftCompany ? "bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"}`}>
                             <span className="text-slate-400 block font-semibold truncate">Party Fund</span>
-                            <span className={`font-extrabold ${isRedirect ? "text-slate-400" : "text-rose-600 dark:text-rose-400"}`}>
-                              Rs. {isRedirect ? "0.00" : (Number(brk.partyFund ?? 0) + (modalWriterLeftCompany ? Number(brk.writer ?? 0) : 0)).toFixed(2)}
+                            <span className="font-extrabold text-rose-600 dark:text-rose-400">
+                              Rs. {(Number(brk.partyFund ?? 0) + (modalWriterLeftCompany ? Number(brk.writer ?? 0) : 0)).toFixed(2)}
                             </span>
                           </div>
                         </div>
@@ -2440,7 +2433,7 @@ export default function CommissionsPage() {
                     }`}
                   >
                     {detailsSale.saleType === "REDIRECT"
-                      ? "Sale from Redirect"
+                      ? "Redirect Sale"
                       : detailsSale.saleType === "FIRST_SALE"
                       ? "1st Sale"
                       : "Resale"}

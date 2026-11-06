@@ -574,52 +574,45 @@ export async function POST(req: NextRequest) {
       : rawLinkerRate;
 
     // For REDIRECT sales:
-    // Linker receives their standard commission + 50% extra bonus (1.5x)
-    // All other commissions (Writer, TL, SEO, Bonus, Party) are set to 0.
+    // Linker receives standard commission + 50% extra bonus (1.5x)
+    // All other roles (Writer, Team Lead, SEO, Bonus, Party) receive their normal standard commissions.
+    const redirectBonus = parseFloat((baseLinkerAmount * 0.5).toFixed(2));
     const effectiveLinkerRate = isRedirectSale
       ? parseFloat((baseLinkerAmount * 1.5).toFixed(2))
       : baseLinkerAmount;
 
     const rawWriterRate = setting?.writer ?? fallbackTier?.writer ?? 0;
-    const baseWriterAmount = isRedirectSale
-      ? 0
-      : isPercentage
+    const baseWriterAmount = isPercentage
       ? parseFloat(((rawWriterRate / 100) * totalSaleBase).toFixed(2))
       : rawWriterRate;
 
     const rawTlRate = setting?.tl ?? fallbackTier?.tl ?? 0;
-    const baseTlAmount = isRedirectSale
-      ? 0
-      : isPercentage
+    const baseTlAmount = isPercentage
       ? parseFloat(((rawTlRate / 100) * totalSaleBase).toFixed(2))
       : rawTlRate;
 
     const rawSeoRate = setting?.seo ?? fallbackTier?.seo ?? 0;
-    const seoAmount = isRedirectSale
-      ? 0
-      : isPercentage
+    const seoAmount = isPercentage
       ? parseFloat(((rawSeoRate / 100) * totalSaleBase).toFixed(2))
       : rawSeoRate;
 
     const rawBonusRate = setting?.bonusPool ?? fallbackTier?.bonusPool ?? 0;
-    const bonusAmount = isRedirectSale
-      ? 0
-      : isPercentage
+    const bonusAmount = isPercentage
       ? parseFloat(((rawBonusRate / 100) * totalSaleBase).toFixed(2))
       : rawBonusRate;
 
     const rawPartyRate = setting?.partyFund ?? fallbackTier?.partyFund ?? 0;
-    const basePartyAmount = isRedirectSale
-      ? 0
-      : isPercentage
+    const basePartyAmount = isPercentage
       ? parseFloat(((rawPartyRate / 100) * totalSaleBase).toFixed(2))
       : rawPartyRate;
 
-    const amount = isRedirectSale
-      ? effectiveLinkerRate
-      : isPercentage
+    const standardTotal = isPercentage
       ? totalSaleBase
       : (setting?.total ?? fallbackTier?.total ?? 0);
+
+    const amount = isRedirectSale
+      ? parseFloat((standardTotal + redirectBonus).toFixed(2))
+      : standardTotal;
 
     // Beneficiaries: Product Researchers do NOT receive commission, only Linkers
     let linker: any = null;
@@ -651,8 +644,8 @@ export async function POST(req: NextRequest) {
     const isWriterToParty = isWriterLeft || Boolean(writer?.commissionToPartyFund);
 
     // If writer has left or commission routed to party fund, their commission transfers to the Office Party Fund
-    const writerTransferredToParty = isRedirectSale ? 0 : (isWriterToParty ? baseWriterAmount : 0);
-    const writerAmount = isRedirectSale ? 0 : (isWriterToParty ? 0 : baseWriterAmount);
+    const writerTransferredToParty = isWriterToParty ? baseWriterAmount : 0;
+    const writerAmount = isWriterToParty ? 0 : baseWriterAmount;
 
     // Linker commission routed to party fund if linker has commissionToPartyFund or no valid linker assigned
     let linkerTransferred = 0;
@@ -667,34 +660,30 @@ export async function POST(req: NextRequest) {
     let tlTransferred = 0;
     let tlAmount = baseTlAmount;
 
-    if (!isRedirectSale) {
-      if (writer?.teamLeadId) {
-        // Writer has a separate assigned Team Lead - credit TL commission to them
-        const tl = await prisma.user.findUnique({
-          where: { id: writer.teamLeadId },
-          select: { id: true, name: true, commissionToPartyFund: true },
-        });
-        teamLeadId = tl?.id || null;
-        teamLeadName = tl?.name || null;
-        if (tl?.commissionToPartyFund) {
-          tlTransferred = tlAmount;
-          tlAmount = 0;
-        }
-      } else if (writer?.role === "TEAM_LEAD") {
-        // Special case: the writer IS a Team Lead themselves (no separate TL above them).
-        // Both writer commission AND TL commission go to this same user.
-        teamLeadId = writer.id;
-        teamLeadName = writer.name;
-        if (writer.commissionToPartyFund) {
-          tlTransferred = tlAmount;
-          tlAmount = 0;
-        }
+    if (writer?.teamLeadId) {
+      // Writer has a separate assigned Team Lead - credit TL commission to them
+      const tl = await prisma.user.findUnique({
+        where: { id: writer.teamLeadId },
+        select: { id: true, name: true, commissionToPartyFund: true },
+      });
+      teamLeadId = tl?.id || null;
+      teamLeadName = tl?.name || null;
+      if (tl?.commissionToPartyFund) {
+        tlTransferred = tlAmount;
+        tlAmount = 0;
+      }
+    } else if (writer?.role === "TEAM_LEAD") {
+      // Special case: the writer IS a Team Lead themselves (no separate TL above them).
+      // Both writer commission AND TL commission go to this same user.
+      teamLeadId = writer.id;
+      teamLeadName = writer.name;
+      if (writer.commissionToPartyFund) {
+        tlTransferred = tlAmount;
+        tlAmount = 0;
       }
     }
 
-    const partyAmount = isRedirectSale
-      ? linkerTransferred
-      : (basePartyAmount + writerTransferredToParty + linkerTransferred + tlTransferred);
+    const partyAmount = basePartyAmount + writerTransferredToParty + linkerTransferred + tlTransferred;
 
     const parsedDate = saleDate ? new Date(saleDate) : new Date();
     const status = paymentStatus === "PAID" ? "PAID" : "PENDING";
@@ -707,12 +696,12 @@ export async function POST(req: NextRequest) {
         siteId: product.siteId,
         saleType: type,
         saleDate: isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
-        writerId: isRedirectSale ? null : (writer?.id || null),
-        writerName: isRedirectSale ? null : (writer?.name || (isWriterLeft ? "Departed Writer" : null)),
+        writerId: writer?.id || null,
+        writerName: writer?.name || (isWriterLeft ? "Departed Writer" : null),
         linkerId: (linker && linker.role !== "PRODUCT_RESEARCHER") ? linker.id : null,
         linkerName: (linker && linker.role !== "PRODUCT_RESEARCHER") ? linker.name : null,
-        teamLeadId: isRedirectSale ? null : teamLeadId,
-        teamLeadName: isRedirectSale ? null : teamLeadName,
+        teamLeadId,
+        teamLeadName,
         paymentStatus: status,
         paidAt,
         writerPaid: status === "PAID" && writerAmount > 0,
@@ -728,16 +717,16 @@ export async function POST(req: NextRequest) {
         seoAmount,
         bonusAmount,
         partyAmount,
-        writerLeftCompany: isRedirectSale ? false : isWriterLeft,
+        writerLeftCompany: isWriterLeft,
         writerTransferredToParty,
-        notes: notes?.trim() || (isRedirectSale ? "Sale from redirect (Linker +50% bonus)" : null),
+        notes: notes?.trim() || (isRedirectSale ? "Redirect sale (Linker +50% bonus, normal other commissions)" : null),
         createdById: session.user.id ? Number(session.user.id) : null,
       },
     });
 
     const successMsg =
       type === "REDIRECT"
-        ? `Redirect sale logged successfully! Rs. ${linkerAmount.toFixed(2)} allocated to Linker (${linker?.name || "Linker"}).`
+        ? `Redirect sale logged successfully! Rs. ${linkerAmount.toFixed(2)} allocated to Linker (+50% bonus), and normal commissions allocated to all other roles.`
         : isAlreadyFirstSold && saleType === "FIRST_SALE"
         ? "Resale recorded! (Product already has a 1st Sale, so this sale was automatically classified as a Resale)"
         : `${type === "FIRST_SALE" ? "1st Sale" : "Resale"} recorded successfully!`;
