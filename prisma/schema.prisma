@@ -195,10 +195,10 @@ model Product {
   targetSites   String?     @db.Text
   categoryId    Int
   productCategory String?   // Defined category for the product (e.g. Skincare, Supplements)
-  trendLink     String?
+  trendLink     String?     @db.Text
   trendLevel    String?     @default("HIGH") // HIGH, MODERATE, LOW
   affiliateName String?     // Selected from Affiliate dropdown
-  previewLink   String?
+  previewLink   String?     @db.Text
   remarks       String?     @db.Text
   addedById     Int
   addedAt       DateTime    @default(now())
@@ -225,7 +225,7 @@ model Article {
   writerId        Int?
   country         String?
   status          ArticleStatus @default(PENDING)
-  articleLink     String?
+  articleLink     String?       @db.Text
   startedAt       DateTime?     // Set when status → IN_PROGRESS
   completedAt     DateTime?     // Set when status → COMPLETED
   writingTimeMin  Int?          // Calculated: completedAt - startedAt in minutes
@@ -286,10 +286,10 @@ model LinkLog {
   productId       Int
   addedById       Int
   updatedById     Int?
-  bridgePageLink  String?
-  buyLink         String?
+  bridgePageLink  String?    @db.Text
+  buyLink         String?    @db.Text
   affiliateName   String
-  affiliateLink   String
+  affiliateLink   String     @db.Text
   geos            LinkGeo[]
   status          LinkStatus @default(REQUESTED)
   linkerRemarks   String?    @db.Text
@@ -344,8 +344,8 @@ model ArticleHistory {
   updatedBy   User     @relation("ArticleHistoryUpdatedBy", fields: [updatedById], references: [id])
   oldStatus   String?
   newStatus   String?
-  oldLink     String?
-  newLink     String?
+  oldLink     String?  @db.Text
+  newLink     String?  @db.Text
   notes       String?  @db.Text
   updatedAt   DateTime @default(now())
 }
@@ -376,12 +376,12 @@ model LinkHistory {
   linkLog          LinkLog  @relation(fields: [linkLogId], references: [id], onDelete: Cascade)
   updatedById      Int
   updatedBy        User     @relation("LinkHistoryUpdatedBy", fields: [updatedById], references: [id])
-  oldBridgeLink    String?
-  newBridgeLink    String?
-  oldBuyLink       String?
-  newBuyLink       String?
-  oldAffiliateLink String?
-  newAffiliateLink String?
+  oldBridgeLink    String?  @db.Text
+  newBridgeLink    String?  @db.Text
+  oldBuyLink       String?  @db.Text
+  newBuyLink       String?  @db.Text
+  oldAffiliateLink String?  @db.Text
+  newAffiliateLink String?  @db.Text
   oldStatus        String?
   newStatus        String?
   oldRemarks       String?  @db.Text

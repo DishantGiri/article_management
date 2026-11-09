@@ -30,6 +30,7 @@ import {
   Moon,
   Cloud,
   Key,
+  FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -39,6 +40,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { useTheme } from "@/context/ThemeContext";
 import GoogleDriveBackupSettings from "@/components/GoogleDriveBackupSettings";
 import CommissionPasswordSettings from "@/components/CommissionPasswordSettings";
+import MergedSheetImportSettings from "@/components/MergedSheetImportSettings";
 import { validateUserName, filterNameInput, handleNameKeyDown } from "@/lib/user-validation";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -69,7 +71,7 @@ const PRESET_AVATARS = [
 export default function SettingsPage() {
   const { data: session, update } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<"profile" | "appearance" | "notifications" | "workspace" | "security" | "backup" | "commission-password">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "appearance" | "notifications" | "workspace" | "security" | "backup" | "commission-password" | "import-sheet">("profile");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -78,6 +80,8 @@ export default function SettingsPage() {
         setActiveTab("backup");
       } else if (p.get("tab") === "commission-password") {
         setActiveTab("commission-password");
+      } else if (p.get("tab") === "import-sheet") {
+        setActiveTab("import-sheet");
       }
     }
   }, []);
@@ -86,7 +90,7 @@ export default function SettingsPage() {
     if (
       session &&
       session.user?.role !== "SUPER_ADMIN" &&
-      (activeTab === "backup" || activeTab === "commission-password")
+      (activeTab === "backup" || activeTab === "commission-password" || activeTab === "import-sheet")
     ) {
       setActiveTab("profile");
     }
@@ -603,6 +607,7 @@ export default function SettingsPage() {
                 ? [
                     { id: "backup", label: "Google Drive & Backups", icon: Cloud, badge: "Super Admin" },
                     { id: "commission-password", label: "Commissions Password", icon: Key, badge: "Super Admin" },
+                    { id: "import-sheet", label: "Import Merged Sheet", icon: FileSpreadsheet, badge: "Super Admin" },
                   ]
                 : []),
             ].map((t) => {
@@ -1510,6 +1515,13 @@ export default function SettingsPage() {
       {activeTab === "commission-password" && session?.user?.role === "SUPER_ADMIN" && (
         <div className="animate-fadeIn">
           <CommissionPasswordSettings />
+        </div>
+      )}
+
+      {/* ─── TAB 8: IMPORT MERGED SHEET (SUPER ADMIN) ────────────────── */}
+      {activeTab === "import-sheet" && session?.user?.role === "SUPER_ADMIN" && (
+        <div className="animate-fadeIn">
+          <MergedSheetImportSettings />
         </div>
       )}
     </div>
