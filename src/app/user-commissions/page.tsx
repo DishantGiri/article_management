@@ -162,6 +162,16 @@ function UserCommissionsContent() {
       toast.error("Please select at least one role to settle");
       return;
     }
+    if (bulkTimePeriod === "custom") {
+      if (!bulkCustomStart?.trim() || !bulkCustomEnd?.trim()) {
+        toast.error("Please select both start date and end date.");
+        return;
+      }
+      if (new Date(bulkCustomStart) > new Date(bulkCustomEnd)) {
+        toast.error("Start date cannot be after end date.");
+        return;
+      }
+    }
     setSubmittingBulkPayout(true);
     try {
       const res = await fetch("/api/commissions/users/payout", {
@@ -1049,29 +1059,41 @@ function UserCommissionsContent() {
 
               {/* Custom Date Inputs if 'custom' */}
               {bulkTimePeriod === "custom" && (
-                <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                      Start Date
-                    </label>
-                    <input
-                      type="date"
-                      value={bulkCustomStart}
-                      onChange={(e) => setBulkCustomStart(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white"
-                    />
+                <div className="space-y-1.5">
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        Start Date <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={bulkCustomStart}
+                        onChange={(e) => setBulkCustomStart(e.target.value)}
+                        className={`w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border ${
+                          !bulkCustomStart.trim() ? "border-amber-300 dark:border-amber-700" : "border-slate-200 dark:border-slate-700"
+                        } rounded-xl text-xs font-semibold text-slate-800 dark:text-white`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        End Date <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={bulkCustomEnd}
+                        onChange={(e) => setBulkCustomEnd(e.target.value)}
+                        className={`w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border ${
+                          !bulkCustomEnd.trim() ? "border-amber-300 dark:border-amber-700" : "border-slate-200 dark:border-slate-700"
+                        } rounded-xl text-xs font-semibold text-slate-800 dark:text-white`}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                      End Date
-                    </label>
-                    <input
-                      type="date"
-                      value={bulkCustomEnd}
-                      onChange={(e) => setBulkCustomEnd(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white"
-                    />
-                  </div>
+                  {(!bulkCustomStart.trim() || !bulkCustomEnd.trim()) && (
+                    <p className="text-[11px] text-rose-500 font-semibold px-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Please select both start date and end date.</span>
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1122,14 +1144,26 @@ function UserCommissionsContent() {
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                disabled={submittingBulkPayout || bulkRoles.length === 0}
-                onClick={handleExecuteBulkPayout}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-xs font-bold text-white transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                {submittingBulkPayout ? "Processing..." : "Execute Bulk Payout"}
-              </button>
+              {(() => {
+                const isCustomInvalid = bulkTimePeriod === "custom" && (!bulkCustomStart?.trim() || !bulkCustomEnd?.trim());
+                return (
+                  <button
+                    type="button"
+                    disabled={submittingBulkPayout || bulkRoles.length === 0 || isCustomInvalid}
+                    onClick={handleExecuteBulkPayout}
+                    title={
+                      bulkRoles.length === 0
+                        ? "Please select at least one role to settle"
+                        : isCustomInvalid
+                        ? "Please select both start date and end date"
+                        : undefined
+                    }
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-xs font-bold text-white transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:cursor-not-allowed"
+                  >
+                    {submittingBulkPayout ? "Processing..." : "Execute Bulk Payout"}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>

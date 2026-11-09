@@ -24,11 +24,18 @@ function getDateRangeForPeriod(period?: string, customStart?: string, customEnd?
     const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     return { start, end };
-  } else if (customStart || customEnd) {
-    const start = customStart ? new Date(customStart) : undefined;
-    if (start) start.setHours(0, 0, 0, 0);
-    const end = customEnd ? new Date(customEnd) : undefined;
-    if (end) end.setHours(23, 59, 59, 999);
+  } else if (period === "custom") {
+    if (!customStart?.trim() || !customEnd?.trim()) return { start: undefined, end: undefined };
+    const start = new Date(customStart);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(customEnd);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  } else if (customStart?.trim() && customEnd?.trim()) {
+    const start = new Date(customStart);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(customEnd);
+    end.setHours(23, 59, 59, 999);
     return { start, end };
   }
   return { start: undefined, end: undefined };
@@ -132,14 +139,43 @@ export async function POST(req: NextRequest) {
     // CASE 2: BULK PAYOUT BY TIME PERIOD
     // ─────────────────────────────────────────────────────────────────────────
     if (timePeriod) {
+      if (timePeriod === "custom") {
+        if (!startDate?.trim() || !endDate?.trim()) {
+          return NextResponse.json(
+            { error: "Please select both start date and end date." },
+            { status: 400 }
+          );
+        }
+        const sDate = new Date(startDate);
+        const eDate = new Date(endDate);
+        if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) {
+          return NextResponse.json(
+            { error: "Invalid start date or end date format." },
+            { status: 400 }
+          );
+        }
+        if (sDate > eDate) {
+          return NextResponse.json(
+            { error: "Start date cannot be after end date." },
+            { status: 400 }
+          );
+        }
+      }
+
       const { start, end } = getDateRangeForPeriod(timePeriod, startDate, endDate);
-      const dateFilter: any = {};
-      if (start) dateFilter.gte = start;
-      if (end) dateFilter.lte = end;
+
+      if (!start || !end) {
+        return NextResponse.json(
+          { error: timePeriod === "custom" ? "Please select both start date and end date." : "A valid time period or date range must be specified for bulk payout." },
+          { status: 400 }
+        );
+      }
+
+      const dateFilter: any = { gte: start, lte: end };
 
       const sales = await prisma.commissionSale.findMany({
         where: {
-          ...(Object.keys(dateFilter).length > 0 ? { saleDate: dateFilter } : {}),
+          saleDate: dateFilter,
           OR: [
             { paymentStatus: "PENDING" },
             { writerPaid: false, writerAmount: { gt: 0 } },
