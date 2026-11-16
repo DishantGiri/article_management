@@ -57,7 +57,6 @@ export default function MergedSheetImportSettings() {
     totalRows: number;
     percent: number;
   } | null>(null);
-  const [createMissingUsers, setCreateMissingUsers] = useState(true);
   const [updateExisting, setUpdateExisting] = useState(true);
   const [importResult, setImportResult] = useState<any | null>(null);
 
@@ -284,7 +283,6 @@ export default function MergedSheetImportSettings() {
       processed: 0,
       createdProducts: 0,
       updatedProducts: 0,
-      createdUsers: 0,
       createdSites: 0,
       assignedWriters: 0,
       configuredLinks: 0,
@@ -316,7 +314,6 @@ export default function MergedSheetImportSettings() {
           },
           body: JSON.stringify({
             rows: chunk,
-            createMissingUsers,
             updateExisting,
           }),
         });
@@ -330,7 +327,6 @@ export default function MergedSheetImportSettings() {
           aggregatedStats.processed += data.stats.processed || 0;
           aggregatedStats.createdProducts += data.stats.createdProducts || 0;
           aggregatedStats.updatedProducts += data.stats.updatedProducts || 0;
-          aggregatedStats.createdUsers += data.stats.createdUsers || 0;
           aggregatedStats.createdSites += data.stats.createdSites || 0;
           aggregatedStats.assignedWriters += data.stats.assignedWriters || 0;
           aggregatedStats.configuredLinks += data.stats.configuredLinks || 0;
@@ -555,25 +551,8 @@ export default function MergedSheetImportSettings() {
               </div>
             </div>
 
-            {/* Import Configuration Toggles */}
+            {/* Import Configuration Options */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <label className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-start gap-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-850 transition">
-                <input
-                  type="checkbox"
-                  checked={createMissingUsers}
-                  onChange={(e) => setCreateMissingUsers(e.target.checked)}
-                  className="w-4 h-4 text-indigo-600 rounded mt-0.5 border-slate-300 focus:ring-indigo-500 cursor-pointer"
-                />
-                <div className="text-xs">
-                  <span className="font-bold text-slate-800 dark:text-white block">
-                    Auto-create missing Linker & Writer users
-                  </span>
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                    If a person named in the sheet does not exist in the database, automatically register them.
-                  </span>
-                </div>
-              </label>
-
               <label className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-start gap-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-850 transition">
                 <input
                   type="checkbox"
@@ -590,6 +569,18 @@ export default function MergedSheetImportSettings() {
                   </span>
                 </div>
               </label>
+
+              <div className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex items-start gap-2.5">
+                <Users className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 block">
+                    User Matching Only (No Auto-Create)
+                  </span>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                    Matches existing registered Linkers & Writers by name. Unrecognized names are left unassigned.
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -870,9 +861,9 @@ export default function MergedSheetImportSettings() {
                     </span>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center border border-slate-200 dark:border-slate-700">
-                    <span className="text-slate-400 text-[10px] font-bold uppercase block">New Users Created</span>
+                    <span className="text-slate-400 text-[10px] font-bold uppercase block">Sites Covered</span>
                     <span className="text-base font-black text-amber-600 dark:text-amber-400">
-                      {importResult.stats.createdUsers}
+                      {importResult.stats.uniqueSites?.length || 0}
                     </span>
                   </div>
                 </div>

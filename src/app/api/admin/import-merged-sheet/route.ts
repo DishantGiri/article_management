@@ -117,7 +117,6 @@ export async function POST(req: NextRequest) {
     }
 
     let rows: any[] = [];
-    let createMissingUsers = true;
     let updateExisting = true;
 
     const contentType = req.headers.get("content-type") || "";
@@ -129,7 +128,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
       }
 
-      createMissingUsers = formData.get("createMissingUsers") !== "false";
       updateExisting = formData.get("updateExisting") !== "false";
 
       const buffer = Buffer.from(await file.arrayBuffer());
@@ -155,7 +153,6 @@ export async function POST(req: NextRequest) {
     } else {
       const body = await req.json();
       rows = body.rows || [];
-      if (typeof body.createMissingUsers === "boolean") createMissingUsers = body.createMissingUsers;
       if (typeof body.updateExisting === "boolean") updateExisting = body.updateExisting;
     }
 
@@ -232,7 +229,6 @@ export async function POST(req: NextRequest) {
     let processedCount = 0;
     let createdProductsCount = 0;
     let updatedProductsCount = 0;
-    let createdUsersCount = 0;
     let createdSitesCount = 0;
     let assignedWritersCount = 0;
     let configuredLinksCount = 0;
@@ -349,7 +345,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 5. Extract Linker Name
+      // 5. Extract Linker Name (Match existing users only; never auto-create users)
       const rawLinker = (
         r["Linker Name"] ||
         r["linker_name"] ||
@@ -359,36 +355,18 @@ export async function POST(req: NextRequest) {
         ""
       ).trim();
 
-      let linkerUser = allDbUsers.find(
-        (u) =>
-          u.name.toLowerCase() === rawLinker.toLowerCase() ||
-          u.email.toLowerCase() === rawLinker.toLowerCase() ||
-          u.email.toLowerCase().split("@")[0] === rawLinker.toLowerCase()
-      );
-
-      if (!linkerUser && rawLinker && createMissingUsers) {
-        try {
-          const cleanLinkerEmail = `${rawLinker.toLowerCase().replace(/[^a-z0-9]/g, "") || "linker"}@fishtailinfosolutions.com`;
-          linkerUser = await prisma.user.upsert({
-            where: { email: cleanLinkerEmail },
-            update: { name: rawLinker },
-            create: {
-              name: rawLinker,
-              email: cleanLinkerEmail,
-              role: "LINKER",
-              approved: true,
-            },
-          });
-          allDbUsers.push(linkerUser);
-          createdUsersCount++;
-        } catch (e) {
-          linkerUser = undefined;
-        }
-      }
+      const linkerUser = rawLinker
+        ? allDbUsers.find(
+            (u) =>
+              u.name.toLowerCase() === rawLinker.toLowerCase() ||
+              u.email.toLowerCase() === rawLinker.toLowerCase() ||
+              u.email.toLowerCase().split("@")[0] === rawLinker.toLowerCase()
+          )
+        : null;
 
       const effectiveLinkerId = linkerUser?.id || currentUserId;
 
-      // 6. Extract Writer Name
+      // 6. Extract Writer Name (Match existing users only; never auto-create users)
       const rawWriter = (
         r["Writer Name"] ||
         r["writer_name"] ||
@@ -409,26 +387,6 @@ export async function POST(req: NextRequest) {
             u.email.toLowerCase() === rawWriter.toLowerCase() ||
             u.email.toLowerCase().split("@")[0] === rawWriter.toLowerCase()
         );
-
-        if (!writerUser && createMissingUsers) {
-          try {
-            const cleanWriterEmail = `${rawWriter.toLowerCase().replace(/[^a-z0-9]/g, "") || "writer"}@fishtailinfosolutions.com`;
-            writerUser = await prisma.user.upsert({
-              where: { email: cleanWriterEmail },
-              update: { name: rawWriter },
-              create: {
-                name: rawWriter,
-                email: cleanWriterEmail,
-                role: "WRITER",
-                approved: true,
-              },
-            });
-            allDbUsers.push(writerUser);
-            createdUsersCount++;
-          } catch (e) {
-            writerUser = null;
-          }
-        }
 
         // Grant site access to writer if resolved
         if (writerUser && targetSite) {
@@ -593,7 +551,6 @@ export async function POST(req: NextRequest) {
         processed: processedCount,
         createdProducts: createdProductsCount,
         updatedProducts: updatedProductsCount,
-        createdUsers: createdUsersCount,
         createdSites: createdSitesCount,
         assignedWriters: assignedWritersCount,
         configuredLinks: configuredLinksCount,
