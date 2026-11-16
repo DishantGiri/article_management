@@ -4,6 +4,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import * as XLSX from "xlsx";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
 // Known site abbreviation aliases
 const SITE_ALIASES: Record<string, string> = {
   dhs: "Daily Health Supplement",
@@ -164,9 +167,65 @@ export async function POST(req: NextRequest) {
     }
 
     // Load initial reference data
-    let allDbSites = await prisma.site.findMany();
+    let allDbSites = await prisma.site.findMany({
+      include: { categories: true },
+    });
     let allDbUsers = await prisma.user.findMany();
     let allDbCategories = await prisma.category.findMany();
+    let allDbAffiliates = await prisma.affiliateName.findMany();
+    let allDbSiteAccess = await prisma.siteAccess.findMany();
+
+    // Cache existing relations to prevent redundant write queries on every row
+    const connectedSiteCategories = new Set<string>();
+    for (const s of allDbSites) {
+      if (s.categories) {
+        for (const cat of s.categories) {
+          connectedSiteCategories.add(`${s.id}_${cat.id}`);
+        }
+      }
+    }
+
+    const knownAffiliateNames = new Set<string>(
+      allDbAffiliates.map((a) => a.name.toLowerCase().trim())
+    );
+
+    const knownSiteAccessSet = new Set<string>(
+      allDbSiteAccess.map((sa) => `${sa.userId}_${sa.siteId}`)
+    );
+
+    // Pre-fetch all products that might match names in this batch
+    const candidateProductNames = Array.from(
+      new Set(
+        rows
+          .map((r) =>
+            (
+              r["Product Name"] ||
+              r["product_name"] ||
+              r["ProductName"] ||
+              r["product"] ||
+              r["Title"] ||
+              r["name"] ||
+              ""
+            ).trim()
+          )
+          .filter((n) => n.length >= 2)
+      )
+    );
+
+    const existingProductsInDb =
+      candidateProductNames.length > 0
+        ? await prisma.product.findMany({
+            where: {
+              name: { in: candidateProductNames },
+            },
+            include: { article: true, linkLogs: true },
+          })
+        : [];
+
+    const productMap = new Map<string, any>();
+    for (const p of existingProductsInDb) {
+      productMap.set(`${p.siteId}_${p.name.toLowerCase().trim()}`, p);
+    }
 
     const currentUserId = Number(session.user.id) || allDbUsers[0]?.id || 1;
 
@@ -259,10 +318,14 @@ export async function POST(req: NextRequest) {
 
       // Connect category to site if not already connected
       if (category && targetSite) {
-        await prisma.site.update({
-          where: { id: targetSite.id },
-          data: { categories: { connect: { id: category.id } } },
-        }).catch(() => {});
+        const siteCatKey = `${targetSite.id}_${category.id}`;
+        if (!connectedSiteCategories.has(siteCatKey)) {
+          await prisma.site.update({
+            where: { id: targetSite.id },
+            data: { categories: { connect: { id: category.id } } },
+          }).catch(() => {});
+          connectedSiteCategories.add(siteCatKey);
+        }
       }
 
       // 4. Extract Affiliate Network
@@ -275,11 +338,15 @@ export async function POST(req: NextRequest) {
       ).trim();
 
       if (rawAffiliate && rawAffiliate.toLowerCase() !== "none" && rawAffiliate.toLowerCase() !== "no affiliate") {
-        await prisma.affiliateName.upsert({
-          where: { name: rawAffiliate },
-          update: {},
-          create: { name: rawAffiliate },
-        }).catch(() => {});
+        const affKey = rawAffiliate.toLowerCase();
+        if (!knownAffiliateNames.has(affKey)) {
+          await prisma.affiliateName.upsert({
+            where: { name: rawAffiliate },
+            update: {},
+            create: { name: rawAffiliate },
+          }).catch(() => {});
+          knownAffiliateNames.add(affKey);
+        }
       }
 
       // 5. Extract Linker Name
@@ -365,16 +432,20 @@ export async function POST(req: NextRequest) {
 
         // Grant site access to writer if resolved
         if (writerUser && targetSite) {
-          await prisma.siteAccess.upsert({
-            where: { userId_siteId: { userId: writerUser.id, siteId: targetSite.id } },
-            update: { canWrite: true },
-            create: {
-              userId: writerUser.id,
-              siteId: targetSite.id,
-              role: "WRITER",
-              canWrite: true,
-            },
-          }).catch(() => {});
+          const accessKey = `${writerUser.id}_${targetSite.id}`;
+          if (!knownSiteAccessSet.has(accessKey)) {
+            await prisma.siteAccess.upsert({
+              where: { userId_siteId: { userId: writerUser.id, siteId: targetSite.id } },
+              update: { canWrite: true },
+              create: {
+                userId: writerUser.id,
+                siteId: targetSite.id,
+                role: "WRITER",
+                canWrite: true,
+              },
+            }).catch(() => {});
+            knownSiteAccessSet.add(accessKey);
+          }
         }
       }
 
@@ -393,14 +464,9 @@ export async function POST(req: NextRequest) {
       const rawLinkStatus = r["Link Status"] || r["link_status"] || "";
       const mappedLinkStatus = mapLinkStatus(rawLinkStatus);
 
-      // 9. Find or create Product
-      let product = await prisma.product.findFirst({
-        where: {
-          siteId: targetSite.id,
-          name: { equals: productName },
-        },
-        include: { article: true, linkLogs: true },
-      });
+      // 9. Find or create Product (instant in-memory lookup via productMap)
+      const pKey = `${targetSite.id}_${productName.toLowerCase().trim()}`;
+      let product = productMap.get(pKey);
 
       if (product) {
         if (!updateExisting) {
@@ -418,6 +484,7 @@ export async function POST(req: NextRequest) {
           },
           include: { article: true, linkLogs: true },
         });
+        productMap.set(pKey, product);
         updatedProductsCount++;
       } else {
         // Create new product
@@ -434,6 +501,7 @@ export async function POST(req: NextRequest) {
           },
           include: { article: true, linkLogs: true },
         });
+        productMap.set(pKey, product);
         createdProductsCount++;
       }
 
@@ -441,7 +509,7 @@ export async function POST(req: NextRequest) {
       const isCompletedOrApproved = mappedArticleStatus === "APPROVED" || mappedArticleStatus === "COMPLETED";
 
       if (product.article) {
-        await prisma.article.update({
+        const updatedArticle = await prisma.article.update({
           where: { id: product.article.id },
           data: {
             writerId: writerUser ? writerUser.id : product.article.writerId,
@@ -451,9 +519,11 @@ export async function POST(req: NextRequest) {
             productCreatedAt: isCompletedOrApproved ? (publishDate || product.article.productCreatedAt || new Date()) : null,
           },
         });
+        product.article = updatedArticle;
+        productMap.set(pKey, product);
         if (writerUser) assignedWritersCount++;
       } else {
-        await prisma.article.create({
+        const createdArticle = await prisma.article.create({
           data: {
             productId: product.id,
             writerId: writerUser ? writerUser.id : null,
@@ -463,6 +533,8 @@ export async function POST(req: NextRequest) {
             productCreatedAt: isCompletedOrApproved ? publishDate : null,
           },
         });
+        product.article = createdArticle;
+        productMap.set(pKey, product);
         if (writerUser) assignedWritersCount++;
       }
 
@@ -475,7 +547,7 @@ export async function POST(req: NextRequest) {
             : mappedLinkStatus;
 
         if (product.linkLogs && product.linkLogs.length > 0) {
-          await prisma.linkLog.update({
+          const updatedLink = await prisma.linkLog.update({
             where: { id: product.linkLogs[0].id },
             data: {
               bridgePageLink: bridgePageLink || product.linkLogs[0].bridgePageLink,
@@ -485,9 +557,11 @@ export async function POST(req: NextRequest) {
               updatedById: effectiveLinkerId,
             },
           });
+          product.linkLogs[0] = updatedLink;
+          productMap.set(pKey, product);
           configuredLinksCount++;
         } else {
-          await prisma.linkLog.create({
+          const createdLink = await prisma.linkLog.create({
             data: {
               productId: product.id,
               addedById: effectiveLinkerId,
@@ -498,6 +572,8 @@ export async function POST(req: NextRequest) {
               addedAt: addedDate,
             },
           });
+          product.linkLogs = [createdLink];
+          productMap.set(pKey, product);
           configuredLinksCount++;
         }
       }

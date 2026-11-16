@@ -42,12 +42,21 @@ const EXPECTED_HEADERS = [
 
 export default function MergedSheetImportSettings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cancelImportRef = useRef(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [activeSheetTab, setActiveSheetTab] = useState<string>("ALL");
+  const [importScope, setImportScope] = useState<"ALL" | "ACTIVE">("ALL");
   const [allParsedRows, setAllParsedRows] = useState<any[]>([]);
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{
+    currentChunk: number;
+    totalChunks: number;
+    processedRows: number;
+    totalRows: number;
+    percent: number;
+  } | null>(null);
   const [createMissingUsers, setCreateMissingUsers] = useState(true);
   const [updateExisting, setUpdateExisting] = useState(true);
   const [importResult, setImportResult] = useState<any | null>(null);
@@ -230,38 +239,144 @@ export default function MergedSheetImportSettings() {
     allParsedRows.map((r) => r["Writer Name"]).filter((x) => x && x.trim() && x.toLowerCase() !== "unassigned")
   ).size;
 
-  // Execute Import
+  // Execute Chunked Batch Import to prevent 504 Gateway Timeouts
+  const CHUNK_SIZE = 120;
+
+  const handleCancelImport = () => {
+    cancelImportRef.current = true;
+  };
+
   const handleExecuteImport = async () => {
     if (!selectedFile || allParsedRows.length === 0) {
       toast.error("Please choose a valid spreadsheet first.");
       return;
     }
 
+    const rowsToImport =
+      importScope === "ACTIVE" && activeSheetTab !== "ALL"
+        ? allParsedRows.filter(
+            (r) => r.__sheetName === activeSheetTab || r["Site Name"] === activeSheetTab
+          )
+        : allParsedRows;
+
+    if (rowsToImport.length === 0) {
+      toast.error("No valid rows found in the selected scope.");
+      return;
+    }
+
     setIsImporting(true);
     setImportResult(null);
+    cancelImportRef.current = false;
+
+    const totalRows = rowsToImport.length;
+    const totalChunks = Math.ceil(totalRows / CHUNK_SIZE);
+
+    setImportProgress({
+      currentChunk: 0,
+      totalChunks,
+      processedRows: 0,
+      totalRows,
+      percent: 0,
+    });
+
+    const aggregatedStats = {
+      totalRows,
+      processed: 0,
+      createdProducts: 0,
+      updatedProducts: 0,
+      createdUsers: 0,
+      createdSites: 0,
+      assignedWriters: 0,
+      configuredLinks: 0,
+      uniqueSites: new Set<string>(),
+      errors: [] as string[],
+    };
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("createMissingUsers", String(createMissingUsers));
-      formData.append("updateExisting", String(updateExisting));
+      for (let i = 0; i < totalChunks; i++) {
+        if (cancelImportRef.current) {
+          toast("Import stopped by user.", { icon: "⏸️" });
+          break;
+        }
 
-      const res = await fetch("/api/admin/import-merged-sheet", {
-        method: "POST",
-        body: formData,
-      });
+        const chunk = rowsToImport.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Import failed");
+        setImportProgress({
+          currentChunk: i + 1,
+          totalChunks,
+          processedRows: i * CHUNK_SIZE,
+          totalRows,
+          percent: Math.round((i / totalChunks) * 100),
+        });
+
+        const res = await fetch("/api/admin/import-merged-sheet", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            rows: chunk,
+            createMissingUsers,
+            updateExisting,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || `Batch ${i + 1} failed (HTTP ${res.status})`);
+        }
+
+        if (data.stats) {
+          aggregatedStats.processed += data.stats.processed || 0;
+          aggregatedStats.createdProducts += data.stats.createdProducts || 0;
+          aggregatedStats.updatedProducts += data.stats.updatedProducts || 0;
+          aggregatedStats.createdUsers += data.stats.createdUsers || 0;
+          aggregatedStats.createdSites += data.stats.createdSites || 0;
+          aggregatedStats.assignedWriters += data.stats.assignedWriters || 0;
+          aggregatedStats.configuredLinks += data.stats.configuredLinks || 0;
+          if (Array.isArray(data.stats.uniqueSites)) {
+            data.stats.uniqueSites.forEach((s: string) => aggregatedStats.uniqueSites.add(s));
+          }
+          if (Array.isArray(data.stats.errors)) {
+            aggregatedStats.errors.push(...data.stats.errors);
+          }
+        }
+
+        setImportProgress({
+          currentChunk: i + 1,
+          totalChunks,
+          processedRows: Math.min((i + 1) * CHUNK_SIZE, totalRows),
+          totalRows,
+          percent: Math.round(((i + 1) / totalChunks) * 100),
+        });
       }
 
-      setImportResult(data);
-      toast.success(data.message || "Import completed successfully!");
+      setImportResult({
+        success: true,
+        message: `Successfully processed ${aggregatedStats.processed} rows across ${aggregatedStats.uniqueSites.size} site(s)!`,
+        stats: {
+          ...aggregatedStats,
+          uniqueSites: Array.from(aggregatedStats.uniqueSites),
+          errors: aggregatedStats.errors.slice(0, 50),
+        },
+      });
+      toast.success(`Import complete! ${aggregatedStats.processed} rows processed.`);
     } catch (err: any) {
       toast.error(err.message || "Failed to process import");
+      if (aggregatedStats.processed > 0) {
+        setImportResult({
+          success: false,
+          message: `Partially imported ${aggregatedStats.processed} of ${totalRows} rows before error.`,
+          stats: {
+            ...aggregatedStats,
+            uniqueSites: Array.from(aggregatedStats.uniqueSites),
+            errors: [...aggregatedStats.errors, err.message].slice(0, 50),
+          },
+        });
+      }
     } finally {
       setIsImporting(false);
+      setImportProgress(null);
     }
   };
 
@@ -270,6 +385,8 @@ export default function MergedSheetImportSettings() {
     setSheetNames([]);
     setAllParsedRows([]);
     setImportResult(null);
+    setImportProgress(null);
+    cancelImportRef.current = false;
     setSearchQuery("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -610,32 +727,98 @@ export default function MergedSheetImportSettings() {
 
               {displayedRows.length > 25 && (
                 <div className="p-2.5 text-center bg-slate-50 dark:bg-slate-800/40 text-slate-400 text-xs font-semibold">
-                  Showing first 25 of {displayedRows.length} rows in this view. All {allParsedRows.length} rows will be imported.
+                  Showing first 25 of {displayedRows.length} rows in this view.
                 </div>
               )}
             </div>
 
+            {/* Scope Selection (All Sheets vs Active Tab) */}
+            {activeSheetTab !== "ALL" && (
+              <div className="flex flex-wrap items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 text-xs">
+                <span className="font-bold text-slate-700 dark:text-slate-300">Import Scope:</span>
+                <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800 dark:text-slate-200">
+                  <input
+                    type="radio"
+                    name="importScope"
+                    value="ALL"
+                    checked={importScope === "ALL"}
+                    onChange={() => setImportScope("ALL")}
+                    className="text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <span>All Tabs ({allParsedRows.length} total rows)</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800 dark:text-slate-200">
+                  <input
+                    type="radio"
+                    name="importScope"
+                    value="ACTIVE"
+                    checked={importScope === "ACTIVE"}
+                    onChange={() => setImportScope("ACTIVE")}
+                    className="text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <span>Active Tab Only: <strong className="text-indigo-600 dark:text-indigo-400">{activeSheetTab}</strong> ({displayedRows.length} rows)</span>
+                </label>
+              </div>
+            )}
+
+            {/* Live Chunked Batch Progress Indicator */}
+            {isImporting && importProgress && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/80 space-y-3 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin shrink-0" />
+                    <span className="font-bold text-slate-800 dark:text-white">
+                      Processing Batch {importProgress.currentChunk} of {importProgress.totalChunks}...
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      (Chunked 120 rows/req to prevent timeouts)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    <span className="font-black text-indigo-600 dark:text-indigo-400 font-mono text-sm">
+                      {importProgress.percent}% ({importProgress.processedRows} / {importProgress.totalRows} rows)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCancelImport}
+                      className="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-bold text-[11px] transition cursor-pointer"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                </div>
+
+                {/* Animated Progress Bar */}
+                <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 transition-all duration-300 rounded-full"
+                    style={{ width: `${importProgress.percent}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Action Bar */}
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
               <span className="text-xs text-slate-500 dark:text-slate-400">
-                Ready to import <strong>{allParsedRows.length}</strong> items into database
+                Ready to import <strong>{importScope === "ACTIVE" && activeSheetTab !== "ALL" ? displayedRows.length : allParsedRows.length}</strong> items into database via fast chunks
               </span>
 
               <button
                 type="button"
                 disabled={isImporting || allParsedRows.length === 0}
                 onClick={handleExecuteImport}
-                className="px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 text-white font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20 disabled:cursor-not-allowed"
+                className="px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20 disabled:cursor-not-allowed"
               >
                 {isImporting ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Processing Import...</span>
+                    <span>Importing in Batches...</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirm & Import {allParsedRows.length} Rows</span>
+                    <span>Confirm & Import {importScope === "ACTIVE" && activeSheetTab !== "ALL" ? displayedRows.length : allParsedRows.length} Rows</span>
                   </>
                 )}
               </button>
