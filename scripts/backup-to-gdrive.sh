@@ -166,7 +166,7 @@ fi
 FILE_SIZE=$(du -h "${BACKUP_PATH}" | cut -f1)
 echo "[+] Dump successful: ${BACKUP_FILENAME} (${FILE_SIZE})"
 
-# 5. Upload to Google Drive via rclone
+# 5. Upload to Google Drive via rclone (if configured)
 RCLONE_CONF_OPT=""
 if [ -f "${PROJECT_DIR}/backups/.rclone.conf" ]; then
   RCLONE_CONF_OPT="--config ${PROJECT_DIR}/backups/.rclone.conf"
@@ -174,32 +174,35 @@ elif [ -f "${HOME:-/root}/.config/rclone/rclone.conf" ]; then
   RCLONE_CONF_OPT="--config ${HOME:-/root}/.config/rclone/rclone.conf"
 fi
 
+GDRIVE_SYNCED=false
+
 if ! command -v rclone &>/dev/null; then
-  echo "[-] ERROR: 'rclone' is not installed on this server." >&2
-  echo "[-] Install it with: sudo apt install -y rclone" >&2
-  echo "[*] Local backup preserved at: ${BACKUP_PATH}"
-  exit 1
+  echo "[!] Notice: 'rclone' is not installed on this server. Install with: sudo apt install -y rclone"
+  echo "[+] Database backup preserved locally at: ${BACKUP_PATH}"
+elif ! rclone ${RCLONE_CONF_OPT} listremotes 2>/dev/null | grep -q "^${RCLONE_REMOTE}:"; then
+  echo "[!] Notice: Google Drive is not connected yet (remote '${RCLONE_REMOTE}' not found)."
+  echo "[!] Local backup preserved successfully at: ${BACKUP_PATH}"
+  echo "[*] Open Settings -> Backup in the web dashboard to connect Google Drive."
+else
+  echo "[*] Uploading to Google Drive: ${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}..."
+  if rclone ${RCLONE_CONF_OPT} copy "${BACKUP_PATH}" "${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}/"; then
+    echo "[+] Uploaded to Google Drive successfully!"
+    GDRIVE_SYNCED=true
+
+    # Prune old backups on Google Drive
+    echo "[*] Cleaning up Google Drive (${BACKUP_TYPE}) backups older than ${REMOTE_RETENTION_DAYS} days..."
+    rclone ${RCLONE_CONF_OPT} delete "${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}" --min-age "${REMOTE_RETENTION_DAYS}d" || true
+  else
+    echo "[-] Warning: rclone upload to Google Drive failed. Local backup is intact."
+  fi
 fi
-
-if ! rclone ${RCLONE_CONF_OPT} listremotes 2>/dev/null | grep -q "^${RCLONE_REMOTE}:"; then
-  echo "[-] ERROR: Google Drive is not connected yet (remote '${RCLONE_REMOTE}' not found)." >&2
-  echo "[-] Please open Settings -> Backup in the web dashboard and click 'Connect Google Drive'." >&2
-  echo "[*] Local backup preserved at: ${BACKUP_PATH}"
-  exit 1
-fi
-
-echo "[*] Uploading to Google Drive: ${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}..."
-rclone ${RCLONE_CONF_OPT} copy "${BACKUP_PATH}" "${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}/"
-
-echo "[+] Uploaded to Google Drive successfully!"
-
-# Prune old backups on Google Drive
-echo "[*] Cleaning up Google Drive (${BACKUP_TYPE}) backups older than ${REMOTE_RETENTION_DAYS} days..."
-rclone ${RCLONE_CONF_OPT} delete "${RCLONE_REMOTE}:${TARGET_REMOTE_FOLDER}" --min-age "${REMOTE_RETENTION_DAYS}d" || true
 
 # 6. Local Cleanup (Prune old local backups)
 echo "[*] Cleaning up local (${BACKUP_TYPE}) backups older than ${LOCAL_RETENTION_DAYS} days..."
 find "${BACKUP_DIR}" -type f -name "${BACKUP_TYPE}_${DB_NAME}_*.sql.gz" -mtime +"${LOCAL_RETENTION_DAYS}" -exec rm -f {} +
+
+# 7. 
+EOF
 
 echo "======================================================================"
 echo "[$(date +"%Y-%m-%d %T")] ${BACKUP_TYPE^^} backup completed: ${BACKUP_FILENAME}"
