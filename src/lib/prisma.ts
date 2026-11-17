@@ -19,6 +19,8 @@ const globalForPrisma = globalThis as unknown as { prisma_v24: PrismaClient };
 export const prisma =
   globalForPrisma.prisma_v24 ?? new PrismaClient({ adapter });
 
+export { Prisma } from "@/generated/prisma/client";
+
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma_v24 = prisma;
 
 

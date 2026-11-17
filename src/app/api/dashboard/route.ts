@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, Prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
@@ -776,17 +776,14 @@ export async function GET(req: NextRequest) {
 
     let productSiteOccurrences: { name: string; siteId: number }[] = [];
     if (uniqueProductNames.length > 0) {
-      productSiteOccurrences = await prisma.product.findMany({
-        where: {
-          site: { name: { not: "Product Research" } },
-          OR: uniqueProductNames.flatMap((n) => [
-            { name: { equals: n } },
-            { name: { equals: n.toLowerCase() } },
-            { name: { equals: n.toUpperCase() } },
-          ]),
-        },
-        select: { name: true, siteId: true },
-      });
+      productSiteOccurrences = await prisma.$queryRaw<Array<{ name: string; siteId: number }>>`
+        SELECT LOWER(TRIM(p.name)) as name, p.siteId 
+        FROM Product p
+        JOIN Site s ON p.siteId = s.id
+        WHERE s.name != "Product Research"
+        AND p.name IN (${Prisma.join(uniqueProductNames)})
+        GROUP BY LOWER(TRIM(p.name)), p.siteId
+      `;
     }
 
     const availabilityMap = new Map<string, Set<number>>();

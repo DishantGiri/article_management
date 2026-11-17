@@ -356,134 +356,145 @@ function ProductsPageContent() {
     };
   }, [session?.user?.id]);
 
-  const uniqueSites = Array.from(
-    new Set([
-      ...products.map((p) => p.site?.name),
-      ...products.flatMap((p) =>
-        p.targetSites
-          ? p.targetSites.split(/[,|]/).map((s: string) => s.trim())
-          : []
-      ),
-    ].filter(Boolean))
-  ) as string[];
-  const uniqueUsers = Array.from(
-    new Set([
-      ...products.map((p) => p.addedBy?.name),
-      ...products.map((p) => p.article?.writer?.name),
-    ].filter(Boolean))
-  ) as string[];
+  const uniqueSites = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...products.map((p) => p.site?.name),
+        ...products.flatMap((p) =>
+          p.targetSites
+            ? p.targetSites.split(/[,|]/).map((s: string) => s.trim())
+            : []
+        ),
+      ].filter(Boolean))
+    ) as string[];
+  }, [products]);
 
-  const filtered = products.filter((p) => {
+  const uniqueUsers = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...products.map((p) => p.addedBy?.name),
+        ...products.map((p) => p.article?.writer?.name),
+      ].filter(Boolean))
+    ) as string[];
+  }, [products]);
+
+  const filtered = useMemo(() => {
     const cleanQuery = (search || "").trim().toLowerCase();
-    const cleanProductName = (p.name || "").trim().toLowerCase();
-    const cleanProductSlug = (p.slug || "").trim().toLowerCase();
+    const hasExactAny =
+      isExact && cleanQuery
+        ? products.some(
+            (prod) =>
+              (prod.name || "").trim().toLowerCase() === cleanQuery ||
+              (prod.slug || "").trim().toLowerCase() === cleanQuery
+          )
+        : false;
 
-    let matchSearch = false;
-    if (!search) {
-      matchSearch = true;
-    } else if (isExact) {
-      const hasExactAny = products.some(
-        (prod) =>
-          (prod.name || "").trim().toLowerCase() === cleanQuery ||
-          (prod.slug || "").trim().toLowerCase() === cleanQuery
-      );
-      if (hasExactAny) {
-        matchSearch =
-          cleanProductName === cleanQuery ||
-          cleanProductSlug === cleanQuery;
+    return products.filter((p) => {
+      const cleanProductName = (p.name || "").trim().toLowerCase();
+      const cleanProductSlug = (p.slug || "").trim().toLowerCase();
+
+      let matchSearch = false;
+      if (!search) {
+        matchSearch = true;
+      } else if (isExact) {
+        if (hasExactAny) {
+          matchSearch =
+            cleanProductName === cleanQuery ||
+            cleanProductSlug === cleanQuery;
+        } else {
+          matchSearch = cleanProductName.includes(cleanQuery);
+        }
       } else {
-        matchSearch = cleanProductName.includes(cleanQuery);
+        matchSearch = fuzzyMatchAny(
+          [
+            p.name,
+            p.slug,
+            p.site?.name,
+            p.category?.name,
+            p.productCategory,
+            p.source,
+            p.affiliateName,
+            p.addedBy?.name,
+          ],
+          search
+        );
       }
-    } else {
-      matchSearch = fuzzyMatchAny(
-        [
-          p.name,
-          p.slug,
-          p.site?.name,
-          p.category?.name,
-          p.productCategory,
-          p.source,
-          p.affiliateName,
-          p.addedBy?.name,
-        ],
-        search
+
+      const matchSite =
+        !siteFilter ||
+        p.site?.id?.toString() === siteFilter ||
+        p.siteId?.toString() === siteFilter ||
+        (p.site?.name && p.site.name.toLowerCase() === siteFilter.toLowerCase()) ||
+        (p.targetSites && p.targetSites.toLowerCase().includes(siteFilter.toLowerCase()));
+
+      const selectedCategoryObj = categories.find(
+        (c) => String(c.id) === categoryFilter || c.name.toLowerCase() === categoryFilter.toLowerCase()
       );
-    }
+      const selectedCategoryName = selectedCategoryObj ? selectedCategoryObj.name.toLowerCase() : categoryFilter.toLowerCase();
+      const selectedCategoryIdStr = selectedCategoryObj ? String(selectedCategoryObj.id) : categoryFilter;
 
-    const matchSite =
-      !siteFilter ||
-      p.site?.id?.toString() === siteFilter ||
-      p.siteId?.toString() === siteFilter ||
-      (p.site?.name && p.site.name.toLowerCase() === siteFilter.toLowerCase()) ||
-      (p.targetSites && p.targetSites.toLowerCase().includes(siteFilter.toLowerCase()));
+      const matchCategory =
+        !categoryFilter ||
+        p.category?.id?.toString() === selectedCategoryIdStr ||
+        p.categoryId?.toString() === selectedCategoryIdStr ||
+        (p.category?.name && p.category.name.toLowerCase() === selectedCategoryName) ||
+        (p.productCategory && p.productCategory.toLowerCase() === selectedCategoryName);
 
-    const selectedCategoryObj = categories.find(
-      (c) => String(c.id) === categoryFilter || c.name.toLowerCase() === categoryFilter.toLowerCase()
-    );
-    const selectedCategoryName = selectedCategoryObj ? selectedCategoryObj.name.toLowerCase() : categoryFilter.toLowerCase();
-    const selectedCategoryIdStr = selectedCategoryObj ? String(selectedCategoryObj.id) : categoryFilter;
-
-    const matchCategory =
-      !categoryFilter ||
-      p.category?.id?.toString() === selectedCategoryIdStr ||
-      p.categoryId?.toString() === selectedCategoryIdStr ||
-      (p.category?.name && p.category.name.toLowerCase() === selectedCategoryName) ||
-      (p.productCategory && p.productCategory.toLowerCase() === selectedCategoryName);
-
-    // Status Filter
-    let matchStatus = true;
-    const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
-    const rawStatus = p.article?.status || "PENDING";
-    const isRedirected = Boolean(rawStatus === "REDIRECTED" || (p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.status === "REDIRECTED")));
-    const currentStatus = isRedirected
-      ? "REDIRECTED"
-      : (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
-      ? "PENDING"
-      : rawStatus;
-    if (statusFilter === "NO_LINKS") {
-      const isPub = Boolean(p.article?.articleLink || rawStatus === "APPROVED" || rawStatus === "COMPLETED");
-      const hasLinks = p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
-      matchStatus = isPub && !hasLinks;
-    } else if (statusFilter === "REDIRECTED") {
-      matchStatus = isRedirected;
-    } else if (statusFilter) {
-      matchStatus = currentStatus === statusFilter;
-    } else if (currentUserRole === "WRITER") {
-      // By default, remove completed & approved products from writer's available queue
-      if (currentStatus === "COMPLETED" || currentStatus === "APPROVED") {
-        matchStatus = false;
+      // Status Filter
+      let matchStatus = true;
+      const hasWriter = Boolean(p.article?.writer?.id || p.article?.writer?.name);
+      const rawStatus = p.article?.status || "PENDING";
+      const isRedirected = Boolean(rawStatus === "REDIRECTED" || (p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.status === "REDIRECTED")));
+      const currentStatus = isRedirected
+        ? "REDIRECTED"
+        : (!hasWriter && (rawStatus === "APPROVED" || rawStatus === "COMPLETED" || rawStatus === "IN_PROGRESS"))
+        ? "PENDING"
+        : rawStatus;
+      if (statusFilter === "NO_LINKS") {
+        const isPub = Boolean(p.article?.articleLink || rawStatus === "APPROVED" || rawStatus === "COMPLETED");
+        const hasLinks = p.linkLogs && p.linkLogs.length > 0 && p.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
+        matchStatus = isPub && !hasLinks;
+      } else if (statusFilter === "REDIRECTED") {
+        matchStatus = isRedirected;
+      } else if (statusFilter) {
+        matchStatus = currentStatus === statusFilter;
+      } else if (currentUserRole === "WRITER") {
+        // By default, remove completed & approved products from writer's available queue
+        if (currentStatus === "COMPLETED" || currentStatus === "APPROVED") {
+          matchStatus = false;
+        }
       }
-    }
 
-    // User filter (matches either Adder or Writer)
-    const matchUser =
-      !userFilter ||
-      p.addedBy?.name === userFilter ||
-      p.article?.writer?.name === userFilter;
+      // User filter (matches either Adder or Writer)
+      const matchUser =
+        !userFilter ||
+        p.addedBy?.name === userFilter ||
+        p.article?.writer?.name === userFilter;
 
-    // Date Range filter
-    let matchDate = true;
-    if (startDate) {
-      const sDate = new Date(startDate);
-      sDate.setHours(0, 0, 0, 0);
-      const d = new Date(p.addedAt);
-      if (d < sDate) matchDate = false;
-    }
-    if (endDate) {
-      const eDate = new Date(endDate);
-      eDate.setHours(23, 59, 59, 999);
-      const d = new Date(p.addedAt);
-      if (d > eDate) matchDate = false;
-    }
+      // Date Range filter
+      let matchDate = true;
+      if (startDate) {
+        const sDate = new Date(startDate);
+        sDate.setHours(0, 0, 0, 0);
+        const d = new Date(p.addedAt);
+        if (d < sDate) matchDate = false;
+      }
+      if (endDate) {
+        const eDate = new Date(endDate);
+        eDate.setHours(23, 59, 59, 999);
+        const d = new Date(p.addedAt);
+        if (d > eDate) matchDate = false;
+      }
 
-    // Native Product Filter
-    const matchNative =
-      !nativeFilter ||
-      (nativeFilter === "native" && Boolean(p.isNative)) ||
-      (nativeFilter === "non_native" && !p.isNative);
+      // Native Product Filter
+      const matchNative =
+        !nativeFilter ||
+        (nativeFilter === "native" && Boolean(p.isNative)) ||
+        (nativeFilter === "non_native" && !p.isNative);
 
-    return matchSearch && matchSite && matchCategory && matchStatus && matchUser && matchDate && matchNative;
-  });
+      return matchSearch && matchSite && matchCategory && matchStatus && matchUser && matchDate && matchNative;
+    });
+  }, [products, search, isExact, siteFilter, categories, categoryFilter, statusFilter, currentUserRole, userFilter, startDate, endDate, nativeFilter]);
 
   const activeFiltersCount = [
     Boolean(search),
@@ -507,70 +518,76 @@ function ProductsPageContent() {
     setCurrentPage(1);
   };
 
-  const filteredMyArticles = myArticles.filter((a: any) => {
+  const filteredMyArticles = useMemo(() => {
     const cleanQuery = (search || "").trim().toLowerCase();
-    const cleanProductName = (a.product?.name || "").trim().toLowerCase();
-    const cleanProductSlug = (a.product?.slug || "").trim().toLowerCase();
+    const hasExactAny =
+      isExact && cleanQuery
+        ? myArticles.some(
+            (art: any) =>
+              (art.product?.name || "").trim().toLowerCase() === cleanQuery ||
+              (art.product?.slug || "").trim().toLowerCase() === cleanQuery
+          )
+        : false;
 
-    let matchSearch = false;
-    if (!search) {
-      matchSearch = true;
-    } else if (isExact) {
-      const hasExactAny = myArticles.some(
-        (art: any) =>
-          (art.product?.name || "").trim().toLowerCase() === cleanQuery ||
-          (art.product?.slug || "").trim().toLowerCase() === cleanQuery
-      );
-      if (hasExactAny) {
-        matchSearch =
-          cleanProductName === cleanQuery ||
-          cleanProductSlug === cleanQuery;
+    return myArticles.filter((a: any) => {
+      const cleanProductName = (a.product?.name || "").trim().toLowerCase();
+      const cleanProductSlug = (a.product?.slug || "").trim().toLowerCase();
+
+      let matchSearch = false;
+      if (!search) {
+        matchSearch = true;
+      } else if (isExact) {
+        if (hasExactAny) {
+          matchSearch =
+            cleanProductName === cleanQuery ||
+            cleanProductSlug === cleanQuery;
+        } else {
+          matchSearch = cleanProductName.includes(cleanQuery);
+        }
       } else {
-        matchSearch = cleanProductName.includes(cleanQuery);
+        matchSearch = fuzzyMatchAny(
+          [
+            a.product?.name,
+            a.product?.slug,
+            a.product?.site?.name,
+            a.product?.category?.name,
+            a.product?.productCategory,
+            a.product?.affiliateName,
+          ],
+          search
+        );
       }
-    } else {
-      matchSearch = fuzzyMatchAny(
-        [
-          a.product?.name,
-          a.product?.slug,
-          a.product?.site?.name,
-          a.product?.category?.name,
-          a.product?.productCategory,
-          a.product?.affiliateName,
-        ],
-        search
+
+      const matchSite =
+        !siteFilter ||
+        a.product?.site?.id?.toString() === siteFilter ||
+        (a.product?.site?.name && a.product.site.name.toLowerCase() === siteFilter.toLowerCase());
+
+      const selectedCategoryObj = categories.find(
+        (c) => String(c.id) === categoryFilter || c.name.toLowerCase() === categoryFilter.toLowerCase()
       );
-    }
+      const selectedCategoryName = selectedCategoryObj ? selectedCategoryObj.name.toLowerCase() : categoryFilter.toLowerCase();
+      const selectedCategoryIdStr = selectedCategoryObj ? String(selectedCategoryObj.id) : categoryFilter;
 
-    const matchSite =
-      !siteFilter ||
-      a.product?.site?.id?.toString() === siteFilter ||
-      (a.product?.site?.name && a.product.site.name.toLowerCase() === siteFilter.toLowerCase());
+      const matchCategory =
+        !categoryFilter ||
+        a.product?.category?.id?.toString() === selectedCategoryIdStr ||
+        (a.product?.category?.name && a.product.category.name.toLowerCase() === selectedCategoryName) ||
+        (a.product?.productCategory && a.product.productCategory.toLowerCase() === selectedCategoryName);
 
-    const selectedCategoryObj = categories.find(
-      (c) => String(c.id) === categoryFilter || c.name.toLowerCase() === categoryFilter.toLowerCase()
-    );
-    const selectedCategoryName = selectedCategoryObj ? selectedCategoryObj.name.toLowerCase() : categoryFilter.toLowerCase();
-    const selectedCategoryIdStr = selectedCategoryObj ? String(selectedCategoryObj.id) : categoryFilter;
+      const matchStatus = statusFilter === "NO_LINKS"
+        ? (() => {
+            const isPub = Boolean(a.articleLink || a.status === "APPROVED" || a.status === "COMPLETED");
+            const mProd = products.find((p) => p.id === (a.productId || a.product?.id));
+            const pLogs = mProd?.linkLogs || a.product?.linkLogs || [];
+            const hasLinks = pLogs.length > 0 && pLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
+            return isPub && !hasLinks;
+          })()
+        : (!statusFilter || a.status === statusFilter);
 
-    const matchCategory =
-      !categoryFilter ||
-      a.product?.category?.id?.toString() === selectedCategoryIdStr ||
-      (a.product?.category?.name && a.product.category.name.toLowerCase() === selectedCategoryName) ||
-      (a.product?.productCategory && a.product.productCategory.toLowerCase() === selectedCategoryName);
-
-    const matchStatus = statusFilter === "NO_LINKS"
-      ? (() => {
-          const isPub = Boolean(a.articleLink || a.status === "APPROVED" || a.status === "COMPLETED");
-          const mProd = products.find((p) => p.id === (a.productId || a.product?.id));
-          const pLogs = mProd?.linkLogs || a.product?.linkLogs || [];
-          const hasLinks = pLogs.length > 0 && pLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0));
-          return isPub && !hasLinks;
-        })()
-      : (!statusFilter || a.status === statusFilter);
-
-    return matchSearch && matchSite && matchCategory && matchStatus;
-  });
+      return matchSearch && matchSite && matchCategory && matchStatus;
+    });
+  }, [myArticles, products, search, isExact, siteFilter, categories, categoryFilter, statusFilter]);
 
   // Deduplicate products so each product appears only ONCE ("dont splite like that only one product")
   const collapsedProducts = useMemo(() => {

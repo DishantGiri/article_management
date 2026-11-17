@@ -335,76 +335,84 @@ function LinksPageContent() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const uniqueAdders = Array.from(new Set(links.map((l) => l.addedBy?.name).filter(Boolean))) as string[];
+  const uniqueAdders = useMemo(() => {
+    return Array.from(new Set(links.map((l) => l.addedBy?.name).filter(Boolean))) as string[];
+  }, [links]);
 
-  const filtered = links.filter((l) => {
+  const filtered = useMemo(() => {
     const cleanQuery = (search || "").trim().toLowerCase();
-    const cleanProductName = (l.product?.name || "").trim().toLowerCase();
-    const cleanProductSlug = (l.product?.slug || "").trim().toLowerCase();
+    const hasExactAny =
+      isExact && cleanQuery
+        ? links.some(
+            (item) =>
+              (item.product?.name || "").trim().toLowerCase() === cleanQuery ||
+              (item.product?.slug || "").trim().toLowerCase() === cleanQuery
+          )
+        : false;
 
-    let matchSearch = false;
-    if (!search) {
-      matchSearch = true;
-    } else if (isExact) {
-      const hasExactAny = links.some(
-        (item) =>
-          (item.product?.name || "").trim().toLowerCase() === cleanQuery ||
-          (item.product?.slug || "").trim().toLowerCase() === cleanQuery
-      );
-      if (hasExactAny) {
-        matchSearch =
-          cleanProductName === cleanQuery ||
-          cleanProductSlug === cleanQuery;
+    return links.filter((l) => {
+      const cleanProductName = (l.product?.name || "").trim().toLowerCase();
+      const cleanProductSlug = (l.product?.slug || "").trim().toLowerCase();
+
+      let matchSearch = false;
+      if (!search) {
+        matchSearch = true;
+      } else if (isExact) {
+        if (hasExactAny) {
+          matchSearch =
+            cleanProductName === cleanQuery ||
+            cleanProductSlug === cleanQuery;
+        } else {
+          matchSearch = cleanProductName.includes(cleanQuery);
+        }
       } else {
-        matchSearch = cleanProductName.includes(cleanQuery);
+        matchSearch = fuzzyMatchAny(
+          [
+            l.product?.name,
+            l.product?.slug,
+            l.affiliateName,
+            ...(l.geos || []).map((g) => g.affiliateName),
+            l.product?.site?.name,
+            String(l.id),
+            String(l.productId),
+          ],
+          search
+        );
       }
-    } else {
-      matchSearch = fuzzyMatchAny(
-        [
-          l.product?.name,
-          l.product?.slug,
-          l.affiliateName,
-          ...(l.geos || []).map((g) => g.affiliateName),
-          l.product?.site?.name,
-          String(l.id),
-          String(l.productId),
-        ],
-        search
+
+      const matchStatus = !statusFilter || (
+        statusFilter === "ISSUE"
+          ? (l.status === "ISSUE" || l.status === "NEED_TO_CHECK" || l.status === "ALERT")
+          : l.status === statusFilter
       );
-    }
 
-    const matchStatus = !statusFilter || (
-      statusFilter === "ISSUE"
-        ? (l.status === "ISSUE" || l.status === "NEED_TO_CHECK" || l.status === "ALERT")
-        : l.status === statusFilter
-    );
+      // Added By filter
+      const matchUser = !userFilter || l.addedBy?.name === userFilter;
 
-    // Added By filter
-    const matchUser = !userFilter || l.addedBy?.name === userFilter;
+      // Date Range filter
+      let matchDate = true;
+      if (startDate) {
+        const s = new Date(startDate);
+        s.setHours(0, 0, 0, 0);
+        const d = new Date(l.addedAt);
+        if (d < s) matchDate = false;
+      }
+      if (endDate) {
+        const e = new Date(endDate);
+        e.setHours(23, 59, 59, 999);
+        const d = new Date(l.addedAt);
+        if (d > e) matchDate = false;
+      }
 
-    // Date Range filter
-    let matchDate = true;
-    if (startDate) {
-      const s = new Date(startDate);
-      s.setHours(0, 0, 0, 0);
-      const d = new Date(l.addedAt);
-      if (d < s) matchDate = false;
-    }
-    if (endDate) {
-      const e = new Date(endDate);
-      e.setHours(23, 59, 59, 999);
-      const d = new Date(l.addedAt);
-      if (d > e) matchDate = false;
-    }
+      const matchDeadOnly = !showOnlyDeadLinks || (
+        l.status === "ISSUE" &&
+        l.linkerRemarks &&
+        /dead|down|404|broken/i.test(l.linkerRemarks)
+      );
 
-    const matchDeadOnly = !showOnlyDeadLinks || (
-      l.status === "ISSUE" &&
-      l.linkerRemarks &&
-      /dead|down|404|broken/i.test(l.linkerRemarks)
-    );
-
-    return matchSearch && matchStatus && matchUser && matchDate && matchDeadOnly;
-  });
+      return matchSearch && matchStatus && matchUser && matchDate && matchDeadOnly;
+    });
+  }, [links, search, isExact, statusFilter, userFilter, startDate, endDate, showOnlyDeadLinks]);
 
   const activeFiltersCount = [
     Boolean(search),
@@ -424,12 +432,24 @@ function LinksPageContent() {
     setCurrentPage(1);
   };
 
-  const missingBridgeCount = links.filter(l => !l.bridgePageLink).length;
-  const flaggedLinksCount = links.filter(
-    (l) => l.status === "ISSUE" || l.status === "NEED_TO_CHECK" || l.status === "ALERT"
-  ).length;
-  const pendingRequestsCount = links.filter((l) => l.status === "REQUESTED").length;
-  const acceptedLinksCount = links.filter((l) => l.status === "ACCEPTED").length;
+  const { missingBridgeCount, flaggedLinksCount, pendingRequestsCount, acceptedLinksCount } = useMemo(() => {
+    let missing = 0;
+    let flagged = 0;
+    let pending = 0;
+    let accepted = 0;
+    for (const l of links) {
+      if (!l.bridgePageLink) missing++;
+      if (l.status === "ISSUE" || l.status === "NEED_TO_CHECK" || l.status === "ALERT") flagged++;
+      if (l.status === "REQUESTED") pending++;
+      if (l.status === "ACCEPTED") accepted++;
+    }
+    return {
+      missingBridgeCount: missing,
+      flaggedLinksCount: flagged,
+      pendingRequestsCount: pending,
+      acceptedLinksCount: accepted,
+    };
+  }, [links]);
 
   const sortedFiltered = useMemo(() => {
     if (!search || !search.trim()) return filtered;

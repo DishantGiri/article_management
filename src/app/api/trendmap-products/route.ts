@@ -150,11 +150,7 @@ export async function GET(req: NextRequest) {
       productNames.length > 0
         ? prisma.product.findMany({
             where: {
-              OR: productNames.flatMap((n) => [
-                { name: n },
-                { name: n.toLowerCase() },
-                { name: n.toUpperCase() },
-              ]),
+              name: { in: productNames },
             },
             select: {
               id: true,

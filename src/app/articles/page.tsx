@@ -402,55 +402,66 @@ function ArticlesContent() {
     return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
   }, []);
 
-  const uniqueWriters = Array.from(new Set(articles.map((a) => a.writer?.name).filter(Boolean))) as string[];
-  const uniqueSites = Array.from(new Set(articles.map((a) => a.product.site.name).filter(Boolean))) as string[];
+  const uniqueWriters = useMemo(() => {
+    return Array.from(new Set(articles.map((a) => a.writer?.name).filter(Boolean))) as string[];
+  }, [articles]);
 
-  const filtered = articles.filter((a) => {
+  const uniqueSites = useMemo(() => {
+    return Array.from(new Set(articles.map((a) => a.product.site.name).filter(Boolean))) as string[];
+  }, [articles]);
+
+  const filtered = useMemo(() => {
     const cleanQuery = (search || "").trim().toLowerCase();
-    const cleanProductName = (a.product?.name || "").trim().toLowerCase();
-    const cleanProductSlug = (a.product?.slug || "").trim().toLowerCase();
+    const hasExactAny =
+      isExact && cleanQuery
+        ? articles.some(
+            (art) =>
+              (art.product?.name || "").trim().toLowerCase() === cleanQuery ||
+              (art.product?.slug || "").trim().toLowerCase() === cleanQuery
+          )
+        : false;
 
-    let matchSearch = false;
-    if (!search) {
-      matchSearch = true;
-    } else if (isExact) {
-      const hasExactAny = articles.some(
-        (art) =>
-          (art.product?.name || "").trim().toLowerCase() === cleanQuery ||
-          (art.product?.slug || "").trim().toLowerCase() === cleanQuery
-      );
-      if (hasExactAny) {
-        matchSearch =
-          cleanProductName === cleanQuery ||
-          cleanProductSlug === cleanQuery;
+    return articles.filter((a) => {
+      const cleanProductName = (a.product?.name || "").trim().toLowerCase();
+      const cleanProductSlug = (a.product?.slug || "").trim().toLowerCase();
+
+      let matchSearch = false;
+      if (!search) {
+        matchSearch = true;
+      } else if (isExact) {
+        if (hasExactAny) {
+          matchSearch =
+            cleanProductName === cleanQuery ||
+            cleanProductSlug === cleanQuery;
+        } else {
+          matchSearch = cleanProductName.includes(cleanQuery);
+        }
       } else {
-        matchSearch = cleanProductName.includes(cleanQuery);
+        matchSearch = fuzzyMatchAny(
+          [
+            a.product?.name,
+            a.product?.slug,
+            a.writer?.name,
+            a.product?.site?.name,
+            String(a.id),
+            String(a.product?.id),
+          ],
+          search
+        );
       }
-    } else {
-      matchSearch = fuzzyMatchAny(
-        [
-          a.product?.name,
-          a.product?.slug,
-          a.writer?.name,
-          a.product?.site?.name,
-          String(a.id),
-          String(a.product?.id),
-        ],
-        search
-      );
-    }
 
-    const matchStatus = !statusFilter
-      ? true
-      : statusFilter === "NO_LINKS"
-      ? (Boolean(a.articleLink || a.status === "APPROVED" || a.status === "COMPLETED") &&
-         (!a.product?.linkLogs || a.product.linkLogs.length === 0 || !a.product.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0))))
-      : a.status?.toUpperCase() === statusFilter.toUpperCase();
-    const matchWriter = !writerFilter || (a.writer?.name ? a.writer.name.toLowerCase() === writerFilter.toLowerCase() : false);
-    const matchSite = !siteFilter || (a.product?.site?.name ? a.product.site.name.toLowerCase() === siteFilter.toLowerCase() : false);
+      const matchStatus = !statusFilter
+        ? true
+        : statusFilter === "NO_LINKS"
+        ? (Boolean(a.articleLink || a.status === "APPROVED" || a.status === "COMPLETED") &&
+           (!a.product?.linkLogs || a.product.linkLogs.length === 0 || !a.product.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0))))
+        : a.status?.toUpperCase() === statusFilter.toUpperCase();
+      const matchWriter = !writerFilter || (a.writer?.name ? a.writer.name.toLowerCase() === writerFilter.toLowerCase() : false);
+      const matchSite = !siteFilter || (a.product?.site?.name ? a.product.site.name.toLowerCase() === siteFilter.toLowerCase() : false);
 
-    return matchSearch && matchStatus && matchWriter && matchSite;
-  });
+      return matchSearch && matchStatus && matchWriter && matchSite;
+    });
+  }, [articles, search, isExact, statusFilter, writerFilter, siteFilter]);
 
   const activeFiltersCount = [
     Boolean(search),
