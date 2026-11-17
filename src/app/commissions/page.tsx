@@ -595,8 +595,8 @@ export default function CommissionsPage() {
   };
 
 
-  // Filter & Sort for the Commission List view
-  const filteredSales = useMemo(() => {
+  // 1. Sales filtered by search, category, assignment, and saleType (unaffected by statusFilter)
+  const scopeSales = useMemo(() => {
     let result = [...sales];
 
     if (search.trim()) {
@@ -618,10 +618,6 @@ export default function CommissionsPage() {
 
     if (saleTypeFilter !== "ALL") {
       result = result.filter((s) => s.saleType === saleTypeFilter);
-    }
-
-    if (statusFilter !== "ALL") {
-      result = result.filter((s) => s.paymentStatus === statusFilter);
     }
 
     if (assignmentFilter === "ASSIGNED") {
@@ -648,8 +644,20 @@ export default function CommissionsPage() {
       result = result.filter((s) => s.categoryKey === categoryFilter);
     }
 
+    return result;
+  }, [sales, search, saleTypeFilter, assignmentFilter, categoryFilter]);
+
+  // 2. Filter & Sort for the Commission List table view (applies statusFilter)
+  const filteredSales = useMemo(() => {
+    let result = scopeSales;
+
+    if (statusFilter !== "ALL") {
+      result = result.filter((s) => s.paymentStatus === statusFilter);
+    }
+
     // Sorting
-    result.sort((a, b) => {
+    const sorted = [...result];
+    sorted.sort((a, b) => {
       switch (sortBy) {
         case "dateDesc":
           return new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime();
@@ -668,23 +676,18 @@ export default function CommissionsPage() {
       }
     });
 
-    return result;
-  }, [sales, search, saleTypeFilter, statusFilter, assignmentFilter, categoryFilter, sortBy]);
+    return sorted;
+  }, [scopeSales, statusFilter, sortBy]);
 
-  // Filtered Products for the "By Products" view
-  const filteredProducts = useMemo(() => {
-    const list = products.filter((p) => {
+  // Products filtered by search, category, and assignment (unaffected by statusFilter)
+  const scopeProducts = useMemo(() => {
+    return products.filter((p) => {
       if (search.trim()) {
         const match = fuzzyMatchAny(
           [p.name, p.siteName, p.writerName, p.linkerName, p.categoryName],
           search
         );
         if (!match) return false;
-      }
-      if (statusFilter !== "ALL") {
-        if (statusFilter === "PAID" && p.paidCommissionAmount <= 0) return false;
-        if (statusFilter === "PENDING" && p.pendingCommissionAmount <= 0) return false;
-        if (statusFilter === "PARTIAL" && p.overallPaymentStatus !== "PARTIAL") return false;
       }
       const isAssigned = Boolean(
         p.writerName &&
@@ -695,6 +698,18 @@ export default function CommissionsPage() {
       if (assignmentFilter === "ASSIGNED" && !isAssigned) return false;
       if (assignmentFilter === "UNASSIGNED" && isAssigned) return false;
       if (categoryFilter !== "ALL" && p.categoryKey !== categoryFilter) return false;
+      return true;
+    });
+  }, [products, search, assignmentFilter, categoryFilter]);
+
+  // Filtered Products for the "By Products" view (applies statusFilter)
+  const filteredProducts = useMemo(() => {
+    const list = scopeProducts.filter((p) => {
+      if (statusFilter !== "ALL") {
+        if (statusFilter === "PAID" && p.paidCommissionAmount <= 0) return false;
+        if (statusFilter === "PENDING" && p.pendingCommissionAmount <= 0) return false;
+        if (statusFilter === "PARTIAL" && p.overallPaymentStatus !== "PARTIAL") return false;
+      }
       return true;
     });
 
@@ -720,9 +735,9 @@ export default function CommissionsPage() {
     });
 
     return list;
-  }, [products, search, statusFilter, assignmentFilter, categoryFilter, productSortBy]);
+  }, [scopeProducts, statusFilter, productSortBy]);
 
-  // Dynamic Summaries based on active view tab
+  // Dynamic Summaries based on active view tab (calculated from scope so summary cards do NOT collapse to 0)
   const productSummary = useMemo(() => {
     let totalCommission = 0;
     let totalPaid = 0;
@@ -731,7 +746,7 @@ export default function CommissionsPage() {
     let totalResales = 0;
     let totalSales = 0;
 
-    filteredProducts.forEach((p) => {
+    scopeProducts.forEach((p) => {
       totalCommission += p.totalCommissionAmount;
       totalPaid += p.paidCommissionAmount;
       totalPending += p.pendingCommissionAmount;
@@ -748,7 +763,7 @@ export default function CommissionsPage() {
       totalResales,
       totalSales,
     };
-  }, [filteredProducts]);
+  }, [scopeProducts]);
 
   const salesSummary = useMemo(() => {
     let totalCommission = 0;
@@ -758,7 +773,7 @@ export default function CommissionsPage() {
     let totalResales = 0;
     let totalRedirectSales = 0;
 
-    filteredSales.forEach((s) => {
+    scopeSales.forEach((s) => {
       totalCommission += s.amount;
       if (s.paymentStatus === "PAID") totalPaid += s.amount;
       else totalPending += s.amount;
@@ -774,9 +789,9 @@ export default function CommissionsPage() {
       totalFirstSales,
       totalResales,
       totalRedirectSales,
-      totalSales: filteredSales.length,
+      totalSales: scopeSales.length,
     };
-  }, [filteredSales]);
+  }, [scopeSales]);
 
   const productSelectOptions = useMemo(() => {
     return products.map((p) => {
@@ -1071,10 +1086,10 @@ export default function CommissionsPage() {
         <div
           onClick={() => setStatusFilter(statusFilter === "PAID" ? "ALL" : "PAID")}
           className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between relative overflow-hidden group transition cursor-pointer ${statusFilter === "PAID"
-              ? "border-emerald-500 ring-2 ring-emerald-500/20"
+              ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-950/20"
               : "border-emerald-200/70 dark:border-emerald-900/60 hover:border-emerald-400"
             }`}
-          title="Click to filter by Paid status"
+          title={statusFilter === "PAID" ? "Click to clear Paid filter" : "Click to filter by Paid status"}
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center gap-1.5">
@@ -1090,8 +1105,14 @@ export default function CommissionsPage() {
               Rs. {activeSummary.totalPaid.toFixed(2)}
             </div>
             <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-emerald-100 dark:border-emerald-950">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Settled Payouts</span>
-              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
+                {statusFilter === "PAID" ? "Filtered to Paid" : "Settled Payouts"}
+              </span>
+              <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${
+                statusFilter === "PAID"
+                  ? "bg-emerald-600 text-white shadow-2xs"
+                  : "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200"
+              }`}>
                 {activeSummary.totalCommission > 0
                   ? `${Math.round((activeSummary.totalPaid / activeSummary.totalCommission) * 100)}% Paid`
                   : "Settled"}
@@ -1104,10 +1125,10 @@ export default function CommissionsPage() {
         <div
           onClick={() => setStatusFilter(statusFilter === "PENDING" ? "ALL" : "PENDING")}
           className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs flex flex-col justify-between relative overflow-hidden group transition cursor-pointer ${statusFilter === "PENDING"
-              ? "border-amber-500 ring-2 ring-amber-500/20"
+              ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/30 dark:bg-amber-950/20"
               : "border-amber-200/70 dark:border-amber-900/60 hover:border-amber-400"
             }`}
-          title="Click to filter by Unpaid / Pending status"
+          title={statusFilter === "PENDING" ? "Click to clear Unpaid filter" : "Click to filter by Unpaid / Pending status"}
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase font-bold text-amber-600 dark:text-amber-400 tracking-wider flex items-center gap-1.5">
@@ -1123,8 +1144,14 @@ export default function CommissionsPage() {
               Rs. {activeSummary.totalPending.toFixed(2)}
             </div>
             <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-amber-100 dark:border-amber-950">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Awaiting Settlement</span>
-              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
+                {statusFilter === "PENDING" ? "Filtered to Pending" : "Awaiting Settlement"}
+              </span>
+              <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${
+                statusFilter === "PENDING"
+                  ? "bg-amber-600 text-white shadow-2xs"
+                  : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200"
+              }`}>
                 {activeSummary.totalCommission > 0
                   ? `${Math.round((activeSummary.totalPending / activeSummary.totalCommission) * 100)}% Unpaid`
                   : "Unpaid"}
@@ -1146,11 +1173,15 @@ export default function CommissionsPage() {
           </div>
           <div className="mt-2">
             <div className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-300 tracking-tight">
-              {activeViewTab === "PRODUCTS" ? `${filteredProducts.length} Products` : `${filteredSales.length} Sales`}
+              {activeViewTab === "PRODUCTS"
+                ? (statusFilter !== "ALL" ? `${filteredProducts.length} of ${scopeProducts.length} Products` : `${filteredProducts.length} Products`)
+                : (statusFilter !== "ALL" ? `${filteredSales.length} of ${scopeSales.length} Sales` : `${filteredSales.length} Sales`)}
             </div>
             <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-blue-100 dark:border-blue-950">
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
-                {startDate || endDate ? "In Selected Range" : "All Time"}
+                {statusFilter !== "ALL"
+                  ? `Showing ${statusFilter === "PAID" ? "Paid" : "Pending"}`
+                  : (startDate || endDate ? "In Selected Range" : "All Time")}
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200">
                 {sites.length} Active Sites
