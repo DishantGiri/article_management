@@ -140,40 +140,45 @@ export async function GET(req: NextRequest) {
     });
 
     // 3. Query products (optionally filtered by siteId)
+    const tabParam = (searchParams.get("tab") || searchParams.get("view") || "").toLowerCase();
+    const shouldLoadProducts = tabParam !== "list";
+
     const whereClause: any = {};
     if (siteIdParam && siteIdParam !== "ALL") {
       whereClause.siteId = parseInt(siteIdParam);
     }
 
-    const products = await prisma.product.findMany({
-      where: whereClause,
-      include: {
-        site: { select: { id: true, name: true, url: true } },
-        category: { select: { id: true, name: true } },
-        addedBy: { select: { id: true, name: true, role: true } },
-        article: {
-          select: {
-            id: true,
-            writerId: true,
-            status: true,
-            articleLink: true,
-            completedAt: true,
-            productCreatedAt: true,
-            writer: { select: { id: true, name: true, hasLeftCompany: true, commissionToPartyFund: true, approved: true } },
+    const products = shouldLoadProducts
+      ? await prisma.product.findMany({
+          where: whereClause,
+          include: {
+            site: { select: { id: true, name: true, url: true } },
+            category: { select: { id: true, name: true } },
+            addedBy: { select: { id: true, name: true, role: true } },
+            article: {
+              select: {
+                id: true,
+                writerId: true,
+                status: true,
+                articleLink: true,
+                completedAt: true,
+                productCreatedAt: true,
+                writer: { select: { id: true, name: true, hasLeftCompany: true, commissionToPartyFund: true, approved: true } },
+              },
+            },
+            linkLogs: {
+              take: 1,
+              orderBy: { addedAt: "desc" },
+              select: { id: true, affiliateName: true, addedBy: { select: { id: true, name: true, role: true } } },
+            },
+            commissionSales: {
+              where: Object.keys(saleDateFilter).length > 0 ? { saleDate: saleDateFilter } : undefined,
+              orderBy: { saleDate: "desc" },
+            },
           },
-        },
-        linkLogs: {
-          take: 1,
           orderBy: { addedAt: "desc" },
-          select: { id: true, affiliateName: true, addedBy: { select: { id: true, name: true, role: true } } },
-        },
-        commissionSales: {
-          where: Object.keys(saleDateFilter).length > 0 ? { saleDate: saleDateFilter } : undefined,
-          orderBy: { saleDate: "desc" },
-        },
-      },
-      orderBy: { addedAt: "desc" },
-    });
+        })
+      : [];
 
     // 4. Query all commission sales matching siteId (or all) and date range for the flat Commission List
     const saleWhere: any = {};
@@ -449,7 +454,7 @@ export async function GET(req: NextRequest) {
       products: enriched,
       sales: salesList,
       metrics: {
-        totalProducts: enriched.length,
+        totalProducts: shouldLoadProducts ? enriched.length : await prisma.product.count({ where: whereClause }),
         totalSales: salesList.length,
         totalCommissions: parseFloat(totalCommissions.toFixed(2)),
         totalPaid: parseFloat(totalPaid.toFixed(2)),

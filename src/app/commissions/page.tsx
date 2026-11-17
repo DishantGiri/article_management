@@ -266,13 +266,17 @@ export default function CommissionsPage() {
       }
       if (start) params.append("startDate", start);
       if (end) params.append("endDate", end);
+      params.append("tab", activeViewTab.toLowerCase());
 
       const res = await fetch(`/api/commissions?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load commissions data");
 
       const data = await res.json();
       setSites(data.sites || []);
-      setProducts(data.products || []);
+      // If products are returned, update products; if tab was list and products already loaded, keep them
+      if (Array.isArray(data.products) && data.products.length > 0) {
+        setProducts(data.products);
+      }
       setSales(data.sales || []);
       if (data.metrics) setMetrics(data.metrics);
     } catch (err: any) {
@@ -293,7 +297,7 @@ export default function CommissionsPage() {
         setLoading(false);
       }
     }
-  }, [activeSiteTab, startDate, endDate, status, canAccess]);
+  }, [activeSiteTab, activeViewTab, startDate, endDate, status, canAccess]);
 
   // Settle Product Payout
   const handleExecuteProductPayout = async () => {
@@ -773,6 +777,30 @@ export default function CommissionsPage() {
       totalSales: filteredSales.length,
     };
   }, [filteredSales]);
+
+  const productSelectOptions = useMemo(() => {
+    return products.map((p) => {
+      const isWriterUnassigned =
+        p.isUnassigned ||
+        !p.writerId ||
+        p.writerName.trim().toLowerCase() === "unassigned" ||
+        p.writerName.trim().toLowerCase() === "n/a";
+      const isLinkerUnassigned =
+        !p.linkerName ||
+        p.linkerName.trim().toLowerCase() === "unassigned";
+      const isDisabled =
+        modalSaleType === "REDIRECT"
+          ? isLinkerUnassigned
+          : isWriterUnassigned;
+      return {
+        value: String(p.id),
+        label: isDisabled
+          ? `${p.name} (${p.siteName}) — [${modalSaleType === "REDIRECT" ? "No Linker Assigned" : "Unassigned Article"}]`
+          : `${p.name} (${p.siteName} • ${p.categoryName})`,
+        disabled: isDisabled,
+      };
+    });
+  }, [products, modalSaleType]);
 
   const activeSummary = activeViewTab === "PRODUCTS" ? productSummary : salesSummary;
 
@@ -2014,27 +2042,7 @@ export default function CommissionsPage() {
                       setModalSaleType("RESALE");
                     }
                   }}
-                  options={products.map((p) => {
-                    const isWriterUnassigned =
-                      p.isUnassigned ||
-                      !p.writerId ||
-                      p.writerName.trim().toLowerCase() === "unassigned" ||
-                      p.writerName.trim().toLowerCase() === "n/a";
-                    const isLinkerUnassigned =
-                      !p.linkerName ||
-                      p.linkerName.trim().toLowerCase() === "unassigned";
-                    const isDisabled =
-                      modalSaleType === "REDIRECT"
-                        ? isLinkerUnassigned
-                        : isWriterUnassigned;
-                    return {
-                      value: String(p.id),
-                      label: isDisabled
-                        ? `${p.name} (${p.siteName}) — [${modalSaleType === "REDIRECT" ? "No Linker Assigned" : "Unassigned Article"}]`
-                        : `${p.name} (${p.siteName} • ${p.categoryName})`,
-                      disabled: isDisabled,
-                    };
-                  })}
+                  options={productSelectOptions}
                   placeholder="Select a product..."
                   searchable={true}
                   searchPlaceholder="Search product by name or site..."
