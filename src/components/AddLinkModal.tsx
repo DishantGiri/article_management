@@ -115,6 +115,23 @@ export default function AddLinkModal({
 
   const isInitializingRef = useRef(false);
 
+  // Per-site draft tracking so explicit user entries are kept per-site,
+  // while unconfigured/pending sites always start with a clean empty affiliate link state.
+  interface SiteDraft {
+    countryLinks: CountryLinkEntry[];
+    affiliateEntries: Array<{ affiliateName: string; affiliateLink: string; linkError?: string }>;
+    bridgePageLink: string;
+    buyLink: string;
+    geos: string[];
+    status: string;
+    linkerRemarks: string;
+    defaultAffiliateName: string;
+    useCountrySpecificLinks: boolean;
+  }
+
+  const userModifiedDraftsRef = useRef<Map<number, SiteDraft>>(new Map());
+  const hasUserModifiedCurrentSiteRef = useRef<boolean>(false);
+
   // Horizontal scroll navigation for site switcher bar
   const sitesScrollRef = useRef<HTMLDivElement>(null);
 
@@ -347,6 +364,7 @@ export default function AddLinkModal({
   }, [selectedProduct, siteBaseUrl, productSlug]);
 
   const addAffiliateEntry = () => {
+    hasUserModifiedCurrentSiteRef.current = true;
     setAffiliateEntries((prev) => [
       ...prev,
       { affiliateName: allAffiliates[0] || "", affiliateLink: "" },
@@ -355,10 +373,12 @@ export default function AddLinkModal({
 
   const removeAffiliateEntry = (index: number) => {
     if (affiliateEntries.length <= 1) return;
+    hasUserModifiedCurrentSiteRef.current = true;
     setAffiliateEntries((prev) => prev.filter((_, i) => i !== index));
   };
 
   const updateAffiliateEntry = (index: number, field: "affiliateName" | "affiliateLink", value: string) => {
+    hasUserModifiedCurrentSiteRef.current = true;
     setAffiliateEntries((prev) =>
       prev.map((entry, i) => {
         if (i !== index) return entry;
@@ -430,11 +450,20 @@ export default function AddLinkModal({
     const targetProd = products.find((p) => p.id === targetProductId);
     if (!targetProd) return;
 
-    const isSameProductName = Boolean(
-      currentProd?.name &&
-      targetProd.name &&
-      currentProd.name.trim().toLowerCase() === targetProd.name.trim().toLowerCase()
-    );
+    // 1. If user explicitly entered/modified links for current site, save that site's draft
+    if (selectedProductId && hasUserModifiedCurrentSiteRef.current) {
+      userModifiedDraftsRef.current.set(selectedProductId, {
+        countryLinks,
+        affiliateEntries,
+        bridgePageLink,
+        buyLink,
+        geos,
+        status,
+        linkerRemarks,
+        defaultAffiliateName,
+        useCountrySpecificLinks,
+      });
+    }
 
     const targetSiteUrl = targetProd?.site?.url?.replace(/\/+$/, "");
     const pSlug = targetProd.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -443,24 +472,52 @@ export default function AddLinkModal({
       .map((u) => u.trim().replace(/\/+$/, ""))
       .filter(Boolean)[0] || "";
 
-    if (targetProd.linkLogs && targetProd.linkLogs.length > 0) {
-      loadProductLogs(targetProd);
-    } else if (isSameProductName) {
-      // Preserve current affiliate link, country links, geos, remarks, status for the same product!
-      if (targetBridgeUrl && pSlug) {
-        setBridgePageLink(`${targetBridgeUrl}/${pSlug}`);
-      }
+    const hasSavedLogs = Boolean(targetProd.linkLogs && targetProd.linkLogs.length > 0);
+    const hasExplicitDraft = userModifiedDraftsRef.current.has(targetProductId);
 
-      if (targetSiteUrl && pSlug) {
-        setBuyLink(`${targetSiteUrl}/${pSlug}`);
-      }
+    if (hasExplicitDraft) {
+      // Restore user's explicit entries for this specific site
+      const draft = userModifiedDraftsRef.current.get(targetProductId)!;
+      isInitializingRef.current = true;
+      setCountryLinks(draft.countryLinks);
+      setAffiliateEntries(draft.affiliateEntries);
+      setBridgePageLink(draft.bridgePageLink);
+      setBuyLink(draft.buyLink);
+      setGeos(draft.geos);
+      setStatus(draft.status);
+      setLinkerRemarks(draft.linkerRemarks);
+      setDefaultAffiliateName(draft.defaultAffiliateName);
+      setUseCountrySpecificLinks(draft.useCountrySpecificLinks);
+      hasUserModifiedCurrentSiteRef.current = true;
+    } else if (hasSavedLogs) {
+      // Configured site: load saved logs
+      loadProductLogs(targetProd);
+      hasUserModifiedCurrentSiteRef.current = false;
     } else {
-      // Switched to a totally different product name:
-      setBridgePageLink("");
-      setBuyLink("");
-      setAffiliateEntries([{ affiliateName: allAffiliates[0] || "", affiliateLink: "" }]);
-      setCountryLinks([]);
-      setGeos([]);
+      // CLEAN PENDING STATE:
+      // Sites with a Pending status must display empty affiliate link input fields
+      // with placeholder text until a link is explicitly entered for that specific property.
+      isInitializingRef.current = true;
+
+      const defaultGeoList = geos.length > 0 ? geos : ["GLOBAL"];
+      const defAffName = defaultAffiliateName || allAffiliates[0] || "Standard";
+
+      setAffiliateEntries([{ affiliateName: defAffName, affiliateLink: "" }]);
+      setCountryLinks(
+        defaultGeoList.map((g) => ({
+          geo: g,
+          affiliateName: defAffName,
+          affiliateLink: "", // Clean empty affiliate link
+        }))
+      );
+      setGeos(defaultGeoList);
+
+      // Auto-derive site-specific bridge and buy links for this target site
+      setBridgePageLink(targetBridgeUrl && pSlug ? `${targetBridgeUrl}/${pSlug}` : "");
+      setBuyLink(targetSiteUrl && pSlug ? `${targetSiteUrl}/${pSlug}` : "");
+      setStatus("REQUESTED");
+      setLinkerRemarks("Standard affiliate setup - links verified active");
+      hasUserModifiedCurrentSiteRef.current = false;
     }
 
     setBridgeLinkError("");
@@ -472,6 +529,8 @@ export default function AddLinkModal({
 
   useEffect(() => {
     if (isOpen) {
+      userModifiedDraftsRef.current.clear();
+      hasUserModifiedCurrentSiteRef.current = false;
       setIsSitesExpanded(false);
       setLoadingProducts(true);
       setError("");
@@ -539,7 +598,7 @@ export default function AddLinkModal({
         return {
           geo,
           affiliateName: defName,
-          affiliateLink: prev[0]?.affiliateLink || "",
+          affiliateLink: "",
         };
       });
     });
@@ -550,6 +609,7 @@ export default function AddLinkModal({
   };
 
   const updateCountryLink = (geo: string, field: "affiliateName" | "affiliateLink", value: string) => {
+    hasUserModifiedCurrentSiteRef.current = true;
     setCountryLinks((prev) =>
       prev.map((item) => {
         if (item.geo.toUpperCase() !== geo.toUpperCase()) return item;
@@ -575,6 +635,7 @@ export default function AddLinkModal({
       toast.error("Please enter a valid URL (starting with http:// or https://)");
       return;
     }
+    hasUserModifiedCurrentSiteRef.current = true;
     setCountryLinks((prev) =>
       prev.map((c) => ({
         ...c,
@@ -816,6 +877,8 @@ export default function AddLinkModal({
           })
         );
 
+        userModifiedDraftsRef.current.clear();
+        hasUserModifiedCurrentSiteRef.current = false;
         setSaveSuccessNotification({
           siteName: `All ${availableSitesForProduct.length} Sites`,
           nextSite: null,
@@ -877,6 +940,10 @@ export default function AddLinkModal({
             `Successfully saved links for ${savedSiteName}! All sites for this product are now configured.`
           );
         }
+
+        // Clear draft for this site and reset modified flag after saving
+        userModifiedDraftsRef.current.delete(selectedProductId);
+        hasUserModifiedCurrentSiteRef.current = false;
 
         // Clear quick fill after saving
         setBatchLinkUrl("");
