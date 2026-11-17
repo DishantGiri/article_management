@@ -100,6 +100,108 @@ function mapLinkStatus(rawStatus?: string): "REQUESTED" | "ACCEPTED" | "CANCELED
   return "REQUESTED";
 }
 
+function isPlaceholderName(val?: string | null): boolean {
+  if (!val) return true;
+  const lower = val.trim().toLowerCase().replace(/^["']+|["']+$/g, "").trim();
+  return (
+    !lower ||
+    [
+      "n/a",
+      "na",
+      "n / a",
+      "nil",
+      "none",
+      "unassigned",
+      "-",
+      "--",
+      "---",
+      "null",
+      "undefined",
+      "no",
+      "no linker",
+      "no writer",
+      "anonymous",
+      "blank",
+    ].includes(lower)
+  );
+}
+
+function splitPersonNames(raw: string): string[] {
+  if (!raw || isPlaceholderName(raw)) return [];
+  const cleaned = raw.replace(/^["'\s]+|["'\s]+$/g, "").trim();
+  // Split on commas, &, +, word "and", or slash
+  const parts = cleaned.split(/,|\s+and\s+|\s*&\s*|\s*\+\s*|\s*\/\s*/i);
+  return parts
+    .map((p) => p.trim().replace(/^["']+|["']+$/g, ""))
+    .filter((p) => p.length > 0 && !isPlaceholderName(p));
+}
+
+function resolveUsers(raw: string, allDbUsers: any[], rolePreference?: string): any[] {
+  if (isPlaceholderName(raw)) return [];
+
+  const parts = splitPersonNames(raw);
+  if (parts.length === 0) return [];
+
+  const matched: any[] = [];
+  const matchedIds = new Set<number>();
+
+  // Filter out any placeholder accounts
+  const validUsers = allDbUsers.filter((u) => !isPlaceholderName(u.name));
+
+  const candidates = rolePreference
+    ? validUsers
+        .filter((u) => u.role === rolePreference)
+        .concat(validUsers.filter((u) => u.role !== rolePreference))
+    : validUsers;
+
+  for (const part of parts) {
+    const clean = part.trim().toLowerCase();
+    if (!clean) continue;
+
+    const cleanFirstName = clean.split(/\s+/)[0];
+    const stripped = clean.replace(/[^a-z0-9]/g, "");
+
+    // 1. Exact match on full name
+    let found = candidates.find((u) => u.name.toLowerCase() === clean);
+
+    // 2. Exact match on email or email prefix
+    if (!found) {
+      found = candidates.find(
+        (u) =>
+          u.email.toLowerCase() === clean ||
+          u.email.toLowerCase().split("@")[0] === stripped
+      );
+    }
+
+    // 3. User name starts with piece (e.g. DB: "Rahul Gupta", sheet: "Rahul")
+    if (!found) {
+      found = candidates.find((u) => u.name.toLowerCase().startsWith(clean + " "));
+    }
+
+    // 4. Piece starts with user name (e.g. DB: "Rahil", sheet: "Rahil Kunwar")
+    if (!found) {
+      found = candidates.find((u) => clean.startsWith(u.name.toLowerCase() + " "));
+    }
+
+    // 5. First name match (e.g. DB: "Prity Sewa", sheet: "Prity")
+    if (!found) {
+      found = candidates.find((u) => u.name.toLowerCase().split(/\s+/)[0] === cleanFirstName);
+    }
+
+    // 6. Common nickname aliases
+    if (!found && (clean === "sami" || clean === "samikshya k")) {
+      found = candidates.find((u) => u.name.toLowerCase().includes("samikshya"));
+    }
+
+    if (found && !matchedIds.has(found.id)) {
+      matched.push(found);
+      matchedIds.add(found.id);
+    }
+  }
+
+  return matched;
+}
+
 // POST /api/admin/import-merged-sheet
 export async function POST(req: NextRequest) {
   try {
@@ -345,7 +447,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 5. Extract Linker Name (Match existing users only; never auto-create users)
+      // 5. Extract Linker Name (Placeholder e.g. "n/a" means null; unrecognized names report an error)
       const rawLinker = (
         r["Linker Name"] ||
         r["linker_name"] ||
@@ -355,18 +457,24 @@ export async function POST(req: NextRequest) {
         ""
       ).trim();
 
-      const linkerUser = rawLinker
-        ? allDbUsers.find(
-            (u) =>
-              u.name.toLowerCase() === rawLinker.toLowerCase() ||
-              u.email.toLowerCase() === rawLinker.toLowerCase() ||
-              u.email.toLowerCase().split("@")[0] === rawLinker.toLowerCase()
-          )
-        : null;
+      let linkerUser: any = null;
+      let multiLinkerNote: string | null = null;
+
+      if (!isPlaceholderName(rawLinker)) {
+        const matchedLinkers = resolveUsers(rawLinker, allDbUsers, "LINKER");
+        if (matchedLinkers.length > 0) {
+          linkerUser = matchedLinkers[0];
+          if (matchedLinkers.length > 1 || splitPersonNames(rawLinker).length > 1) {
+            multiLinkerNote = `Linkers: ${rawLinker}`;
+          }
+        } else {
+          errors.push(`Row ${rowNum} ("${productName}"): Linker "${rawLinker}" was not found in database.`);
+        }
+      }
 
       const effectiveLinkerId = linkerUser?.id || currentUserId;
 
-      // 6. Extract Writer Name (Match existing users only; never auto-create users)
+      // 6. Extract Writer Name (Placeholder e.g. "n/a" means null; unrecognized names report an error)
       const rawWriter = (
         r["Writer Name"] ||
         r["writer_name"] ||
@@ -376,34 +484,33 @@ export async function POST(req: NextRequest) {
       ).trim();
 
       let writerUser: any = null;
-      const isWriterProvided =
-        rawWriter &&
-        !["unassigned", "n/a", "none", "-", "--"].includes(rawWriter.toLowerCase());
 
-      if (isWriterProvided) {
-        writerUser = allDbUsers.find(
-          (u) =>
-            u.name.toLowerCase() === rawWriter.toLowerCase() ||
-            u.email.toLowerCase() === rawWriter.toLowerCase() ||
-            u.email.toLowerCase().split("@")[0] === rawWriter.toLowerCase()
-        );
+      if (!isPlaceholderName(rawWriter)) {
+        const matchedWriters = resolveUsers(rawWriter, allDbUsers, "WRITER");
+        if (matchedWriters.length > 0) {
+          writerUser = matchedWriters[0];
 
-        // Grant site access to writer if resolved
-        if (writerUser && targetSite) {
-          const accessKey = `${writerUser.id}_${targetSite.id}`;
-          if (!knownSiteAccessSet.has(accessKey)) {
-            await prisma.siteAccess.upsert({
-              where: { userId_siteId: { userId: writerUser.id, siteId: targetSite.id } },
-              update: { canWrite: true },
-              create: {
-                userId: writerUser.id,
-                siteId: targetSite.id,
-                role: "WRITER",
-                canWrite: true,
-              },
-            }).catch(() => {});
-            knownSiteAccessSet.add(accessKey);
+          // Grant site access to all matched writers on this site
+          for (const w of matchedWriters) {
+            if (targetSite) {
+              const accessKey = `${w.id}_${targetSite.id}`;
+              if (!knownSiteAccessSet.has(accessKey)) {
+                await prisma.siteAccess.upsert({
+                  where: { userId_siteId: { userId: w.id, siteId: targetSite.id } },
+                  update: { canWrite: true },
+                  create: {
+                    userId: w.id,
+                    siteId: targetSite.id,
+                    role: "WRITER",
+                    canWrite: true,
+                  },
+                }).catch(() => {});
+                knownSiteAccessSet.add(accessKey);
+              }
+            }
           }
+        } else {
+          errors.push(`Row ${rowNum} ("${productName}"): Writer "${rawWriter}" was not found in database.`);
         }
       }
 
@@ -439,6 +546,7 @@ export async function POST(req: NextRequest) {
             affiliateName: rawAffiliate || product.affiliateName,
             addedById: linkerUser ? linkerUser.id : product.addedById,
             addedAt: addedDate,
+            remarks: multiLinkerNote || product.remarks,
           },
           include: { article: true, linkLogs: true },
         });
@@ -456,6 +564,7 @@ export async function POST(req: NextRequest) {
             affiliateName: rawAffiliate || null,
             addedById: effectiveLinkerId,
             addedAt: addedDate,
+            remarks: multiLinkerNote || null,
           },
           include: { article: true, linkLogs: true },
         });
@@ -513,6 +622,7 @@ export async function POST(req: NextRequest) {
               affiliateName: rawAffiliate || product.linkLogs[0].affiliateName,
               status: effectiveLinkStatus,
               updatedById: effectiveLinkerId,
+              linkerRemarks: multiLinkerNote || product.linkLogs[0].linkerRemarks,
             },
           });
           product.linkLogs[0] = updatedLink;
@@ -528,6 +638,7 @@ export async function POST(req: NextRequest) {
               affiliateName: rawAffiliate || "No Affiliate",
               status: effectiveLinkStatus,
               addedAt: addedDate,
+              linkerRemarks: multiLinkerNote || null,
             },
           });
           product.linkLogs = [createdLink];

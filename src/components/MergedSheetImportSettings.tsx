@@ -40,6 +40,53 @@ const EXPECTED_HEADERS = [
   "Link Status",
 ];
 
+function splitPersonNames(raw: string): string[] {
+  if (!raw) return [];
+  const cleaned = raw.replace(/^["'\s]+|["'\s]+$/g, "").trim();
+  const lower = cleaned.toLowerCase();
+  if (
+    [
+      "n/a",
+      "na",
+      "n / a",
+      "nil",
+      "none",
+      "unassigned",
+      "-",
+      "--",
+      "---",
+      "anonymous",
+      "blank",
+      "null",
+      "undefined",
+    ].includes(lower)
+  ) {
+    return [];
+  }
+  const parts = cleaned.split(/,|\s+and\s+|\s*&\s*|\s*\+\s*|\s*\/\s*/i);
+  return parts
+    .map((p) => p.trim().replace(/^["']+|["']+$/g, ""))
+    .filter(
+      (p) =>
+        p.length > 0 &&
+        ![
+          "n/a",
+          "na",
+          "n / a",
+          "nil",
+          "none",
+          "unassigned",
+          "-",
+          "--",
+          "---",
+          "anonymous",
+          "blank",
+          "null",
+          "undefined",
+        ].includes(p.toLowerCase())
+    );
+}
+
 export default function MergedSheetImportSettings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cancelImportRef = useRef(false);
@@ -228,14 +275,14 @@ export default function MergedSheetImportSettings() {
     return true;
   });
 
-  // Calculate Summary KPIs
+  // Calculate Summary KPIs (splits combined "name, name" strings)
   const uniqueProductsCount = new Set(allParsedRows.map((r) => r["Product Name"])).size;
   const uniqueSitesCount = new Set(allParsedRows.map((r) => r["Site Name"])).size;
   const uniqueLinkersCount = new Set(
-    allParsedRows.map((r) => r["Linker Name"]).filter((x) => x && x.trim() && x.toLowerCase() !== "unassigned")
+    allParsedRows.flatMap((r) => splitPersonNames(r["Linker Name"] || ""))
   ).size;
   const uniqueWritersCount = new Set(
-    allParsedRows.map((r) => r["Writer Name"]).filter((x) => x && x.trim() && x.toLowerCase() !== "unassigned")
+    allParsedRows.flatMap((r) => splitPersonNames(r["Writer Name"] || ""))
   ).size;
 
   // Execute Chunked Batch Import to prevent 504 Gateway Timeouts
