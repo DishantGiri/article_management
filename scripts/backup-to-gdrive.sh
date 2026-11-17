@@ -204,6 +204,19 @@ find "${BACKUP_DIR}" -type f -name "${BACKUP_TYPE}_${DB_NAME}_*.sql.gz" -mtime +
 # 7. 
 EOF
 
+# 7. Record status JSON for UI & APIs
+STATUS_FILE="${LOG_DIR}/last_${BACKUP_TYPE}_status.json"
+cat <<EOF > "${STATUS_FILE}"
+{
+  "type": "${BACKUP_TYPE}",
+  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "filename": "${BACKUP_FILENAME}",
+  "size": "${FILE_SIZE}",
+  "gdriveSynced": ${GDRIVE_SYNCED},
+  "success": true
+}
+EOF
+
 echo "======================================================================"
 echo "[$(date +"%Y-%m-%d %T")] ${BACKUP_TYPE^^} backup completed: ${BACKUP_FILENAME}"
 echo "======================================================================"
