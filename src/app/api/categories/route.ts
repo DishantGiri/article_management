@@ -55,6 +55,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    if (/^(n\/?a|none|null|na)$/i.test(cleanName)) {
+      return NextResponse.json(
+        { error: "Invalid category name. 'N/A' is not a valid category." },
+        { status: 400 }
+      );
+    }
+
     if (!/^[a-zA-Z0-9 &'\-/]+$/.test(cleanName)) {
       return NextResponse.json(
         { error: "Special characters are not allowed. Only letters, numbers, spaces, and (&, -, ', /) are permitted for product type names." },

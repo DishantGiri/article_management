@@ -392,13 +392,17 @@ export async function POST(req: NextRequest) {
       uniqueSites.add(targetSite.name);
 
       // 3. Extract Category
-      const rawCategory = (
+      let rawCategory = (
         r["Category"] ||
         r["category"] ||
         r["Product Type"] ||
         r["Type"] ||
         "Nutra"
       ).trim() || "Nutra";
+
+      if (/^(n\/?a|none|null|na)$/i.test(rawCategory)) {
+        rawCategory = "Nutra";
+      }
 
       let category = allDbCategories.find(
         (c) => c.name.toLowerCase() === rawCategory.toLowerCase()

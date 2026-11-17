@@ -138,6 +138,7 @@ export default function SiteDetailPage() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [datePreset, setDatePreset] = useState<string>("ALL");
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   const setPreset = (preset: "ALL" | "TODAY" | "YESTERDAY" | "LAST_7_DAYS" | "THIS_MONTH") => {
     setDatePreset(preset);
@@ -485,22 +486,70 @@ export default function SiteDetailPage() {
                 </div>
               )}
 
-              {/* Category Pills */}
-              <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                {site.categories && site.categories.length > 0 ? (
-                  site.categories.map((cat) => (
-                    <span
-                      key={cat.id}
-                      className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF9F5] dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-300 border border-[#CBCBCB]/70 dark:border-slate-700 flex items-center gap-1"
-                    >
-                      <Tag className="w-2.5 h-2.5 text-[#6D8196]" />
-                      {cat.name}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[11px] text-[#737373] dark:text-slate-500 italic">No product categories assigned</span>
-                )}
-              </div>
+              {/* Category Section */}
+              {(() => {
+                const validCategories = (site.categories || []).filter(
+                  (c) => c && c.name && !/^(n\/?a|none|null|na)$/i.test(c.name.trim())
+                );
+                const maxPreview = 8;
+                const displayed = showAllCategories ? validCategories : validCategories.slice(0, maxPreview);
+                const remaining = validCategories.length - maxPreview;
+
+                return (
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[11px] font-bold text-[#737373] dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <Tag className="w-3 h-3 text-[#6D8196]" />
+                        Categories
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-[#6D8196]/10 text-[#3D4F61] dark:text-slate-200">
+                          {validCategories.length}
+                        </span>
+                      </span>
+                      {validCategories.length > maxPreview && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllCategories((p) => !p)}
+                          className="text-[11px] font-bold text-[#6D8196] hover:underline cursor-pointer"
+                        >
+                          {showAllCategories ? "Show less" : `View all (${validCategories.length})`}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {validCategories.length > 0 ? (
+                        <>
+                          {displayed.map((cat) => (
+                            <span
+                              key={cat.id}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF9F5] dark:bg-slate-800 text-[#4A4A4A] dark:text-slate-300 border border-[#CBCBCB]/70 dark:border-slate-700 flex items-center gap-1"
+                            >
+                              <Tag className="w-2.5 h-2.5 text-[#6D8196]" />
+                              {cat.name}
+                            </span>
+                          ))}
+                          {!showAllCategories && remaining > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setShowAllCategories(true)}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 hover:bg-[#6D8196] text-slate-600 dark:text-slate-300 hover:text-white border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+                            >
+                              +{remaining} more
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2 py-0.5">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                            N/A
+                          </span>
+                          <span className="text-[11px] text-[#737373] dark:text-slate-500 italic">No categories assigned</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

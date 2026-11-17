@@ -65,6 +65,9 @@ export async function GET(req: NextRequest) {
 
     const formatted = sites.map(site => {
       const linksCount = site.products.reduce((acc, p) => acc + p._count.linkLogs, 0);
+      const validCategories = site.categories.filter(
+        (c) => c.name && !/^(n\/?a|none|null|na)$/i.test(c.name.trim())
+      );
       return {
         id: site.id,
         name: site.name,
@@ -72,9 +75,9 @@ export async function GET(req: NextRequest) {
         url: site.url,
         bridgeUrl: site.bridgeUrl,
         allowCountrySpecific: site.allowCountrySpecific ?? false,
-        categories: site.categories,
+        categories: validCategories,
         productsCount: site._count.products,
-        categoriesCount: site._count.categories,
+        categoriesCount: validCategories.length,
         linksCount: linksCount
       };
     });

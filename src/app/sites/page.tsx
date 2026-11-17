@@ -86,6 +86,16 @@ export default function SitesPage() {
   const [bridgeUrlError, setBridgeUrlError] = useState("");
 
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
+  const [expandedSiteCategories, setExpandedSiteCategories] = useState<Record<number, boolean>>({});
+
+  const toggleExpandCategories = (siteId: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedSiteCategories((prev) => ({
+      ...prev,
+      [siteId]: !prev[siteId],
+    }));
+  };
 
   const fetchSites = (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -111,7 +121,12 @@ export default function SitesPage() {
   const fetchCategories = () => {
     fetch("/api/categories")
       .then((r) => r.json())
-      .then((data) => setAllCategories(Array.isArray(data) ? data : []));
+      .then((data) => {
+        const raw = Array.isArray(data) ? data : [];
+        setAllCategories(
+          raw.filter((c: Category) => c && c.name && !/^(n\/?a|none|null|na)$/i.test(c.name.trim()))
+        );
+      });
   };
 
   useEffect(() => {
@@ -439,21 +454,79 @@ export default function SitesPage() {
                   )}
                 </div>
 
-                {/* Product Type Pills */}
-                <div className="mb-2 flex flex-wrap gap-1.5">
-                  {site.categories && site.categories.length > 0 ? (
-                    site.categories.map((c) => (
-                      <span
-                        key={c.id}
-                        className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF9F5] text-[#4A4A4A] border border-[#CBCBCB]"
-                      >
-                        {c.name}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-[10px] font-medium text-[#737373] italic">No product types assigned</span>
-                  )}
-                </div>
+                {/* Product Type / Categories Section */}
+                {(() => {
+                  const validCategories = (site.categories || []).filter(
+                    (c) => c && c.name && !/^(n\/?a|none|null|na)$/i.test(c.name.trim())
+                  );
+                  const isExpanded = !!expandedSiteCategories[site.id];
+                  const maxPreview = 5;
+                  const displayedCategories = isExpanded
+                    ? validCategories
+                    : validCategories.slice(0, maxPreview);
+                  const remainingCount = validCategories.length - maxPreview;
+
+                  return (
+                    <div className="mb-3 mt-1">
+                      {/* Section Header with Total Count */}
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#737373] uppercase tracking-wider">
+                          <Tag className="w-3 h-3 text-[#6D8196]" />
+                          <span>Categories</span>
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
+                            {validCategories.length}
+                          </span>
+                        </div>
+                        {validCategories.length > maxPreview && (
+                          <button
+                            type="button"
+                            onClick={(e) => toggleExpandCategories(site.id, e)}
+                            className="text-[11px] font-bold text-[#6D8196] hover:text-[#4A4A4A] transition hover:underline cursor-pointer"
+                          >
+                            {isExpanded ? "Show less" : `+${remainingCount} more`}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Pills Display */}
+                      {validCategories.length > 0 ? (
+                        <div
+                          className={`flex flex-wrap gap-1.5 transition-all ${
+                            isExpanded
+                              ? "max-h-48 overflow-y-auto p-1.5 bg-[#FAF9F5] rounded-xl border border-[#CBCBCB]/60"
+                              : ""
+                          }`}
+                        >
+                          {displayedCategories.map((c) => (
+                            <span
+                              key={c.id}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF9F5] text-[#4A4A4A] border border-[#CBCBCB] shadow-2xs hover:border-[#6D8196] transition"
+                              title={c.name}
+                            >
+                              {c.name}
+                            </span>
+                          ))}
+                          {!isExpanded && remainingCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => toggleExpandCategories(site.id, e)}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-[#6D8196] text-slate-600 hover:text-white border border-slate-200 hover:border-[#6D8196] transition cursor-pointer"
+                            >
+                              +{remainingCount} more
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 py-1">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                            N/A
+                          </span>
+                          <span className="text-[11px] text-[#737373] italic">No categories assigned</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Country-Specific Articles Badge */}
                 {site.allowCountrySpecific && (
@@ -467,30 +540,38 @@ export default function SitesPage() {
               </div>
 
               {/* Stats Footer & View Articles Button */}
-              <div className="border-t border-[#CBCBCB]/40 pt-3 mt-auto">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-[#4A4A4A]">{site.productsCount ?? 0}</p>
-                    <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Articles</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-[#4A4A4A]">{site.categoriesCount ?? 0}</p>
-                    <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Product Types</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-[#4A4A4A]">{site.linksCount ?? 0}</p>
-                    <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Links</p>
-                  </div>
-                </div>
+              {(() => {
+                const validCategoriesCount = (site.categories || []).filter(
+                  (c) => c && c.name && !/^(n\/?a|none|null|na)$/i.test(c.name.trim())
+                ).length;
 
-                <Link
-                  href={`/sites/${site.slug || slugifySite(site.name)}`}
-                  className="mt-3.5 w-full py-2 px-3 rounded-xl bg-[#FAF9F5] hover:bg-[#6D8196] text-[#4A4A4A] hover:text-white border border-[#CBCBCB]/70 hover:border-[#6D8196] text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs group/btn cursor-pointer"
-                >
-                  <span>View Articles ({site.productsCount ?? 0})</span>
-                  <ArrowUpRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
-                </Link>
-              </div>
+                return (
+                  <div className="border-t border-[#CBCBCB]/40 pt-3 mt-auto">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="text-center">
+                        <p className="text-lg font-bold text-[#4A4A4A]">{site.productsCount ?? 0}</p>
+                        <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Articles</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold text-[#4A4A4A]">{validCategoriesCount}</p>
+                        <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Categories</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold text-[#4A4A4A]">{site.linksCount ?? 0}</p>
+                        <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Links</p>
+                      </div>
+                    </div>
+
+                    <Link
+                      href={`/sites/${site.slug || slugifySite(site.name)}`}
+                      className="mt-3.5 w-full py-2 px-3 rounded-xl bg-[#FAF9F5] hover:bg-[#6D8196] text-[#4A4A4A] hover:text-white border border-[#CBCBCB]/70 hover:border-[#6D8196] text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs group/btn cursor-pointer"
+                    >
+                      <span>View Articles ({site.productsCount ?? 0})</span>
+                      <ArrowUpRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                    </Link>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>
