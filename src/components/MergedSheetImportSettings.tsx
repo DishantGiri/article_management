@@ -29,6 +29,7 @@ const EXPECTED_HEADERS = [
   "Linker Name",
   "Writer Name",
   "Article Link",
+  "Buy Now Link",
   "Bridge Page Link",
   "Affiliate Link",
   "Site Name",
@@ -38,6 +39,10 @@ const EXPECTED_HEADERS = [
   "Article Status",
   "Publish Date",
   "Link Status",
+  "US Link",
+  "UK Link",
+  "CA Link",
+  "AU Link",
 ];
 
 function splitPersonNames(raw: string): string[] {
@@ -87,6 +92,113 @@ function splitPersonNames(raw: string): string[] {
     );
 }
 
+function cleanUrl(raw?: any): string | null {
+  if (!raw) return null;
+  const str = String(raw).trim();
+  if (!str) return null;
+  const lower = str.toLowerCase();
+  if (
+    [
+      "n/a",
+      "na",
+      "n / a",
+      "nil",
+      "none",
+      "unassigned",
+      "-",
+      "--",
+      "---",
+      "null",
+      "undefined",
+      "no",
+      "no link",
+      "blank",
+      "0",
+    ].includes(lower)
+  ) {
+    return null;
+  }
+  if (str.startsWith("http://") || str.startsWith("https://")) {
+    return str;
+  }
+  if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\/.*)?$/.test(str)) {
+    return `https://${str}`;
+  }
+  return null;
+}
+
+function extractPreviewGeos(row: any): string[] {
+  const geos: string[] = [];
+
+  for (const k of Object.keys(row)) {
+    const cleaned = k.trim().replace(/^["']+|["']+$/g, "").trim();
+    const upper = cleaned.toUpperCase();
+    if (
+      [
+        "ID",
+        "NO",
+        "URL",
+        "STATUS",
+        "TYPE",
+        "DATE",
+        "SITE",
+        "SITE NAME",
+        "WEBSITE",
+        "NAME",
+        "PRODUCT NAME",
+        "TITLE",
+        "CATEGORY",
+        "NETWORK",
+        "AFFILIATE NETWORK",
+        "AFFILIATE LINK",
+        "ARTICLE LINK",
+        "BUY LINK",
+        "BUY NOW LINK",
+        "BRIDGE PAGE LINK",
+        "REMARKS",
+      ].includes(upper)
+    ) {
+      continue;
+    }
+
+    let geoCode: string | null = null;
+    if (/^[A-Z]{2}$/.test(upper) || upper === "GLOBAL" || upper === "WW") {
+      geoCode = upper === "WW" ? "GLOBAL" : upper;
+    } else {
+      const m = cleaned.match(/^([A-Za-z]{2}|GLOBAL|WW)\s*[-_]?\s*(link|affiliate\s*link|url)?$/i);
+      if (m && m[1]) geoCode = m[1].toUpperCase() === "WW" ? "GLOBAL" : m[1].toUpperCase();
+    }
+
+    if (geoCode) {
+      const url = cleanUrl(row[k]);
+      if (url && !geos.includes(geoCode)) {
+        geos.push(geoCode);
+      }
+    }
+  }
+
+  const combined = String(
+    row["Geo Links"] ||
+      row["Country Links"] ||
+      row["Multiple Geos"] ||
+      ""
+  ).trim();
+  if (combined) {
+    const lines = combined.split(/[\r\n;,|]+/);
+    for (const l of lines) {
+      const m = l.match(/^\s*([A-Za-z]{2}|GLOBAL|WW)\s*[:=\-–—\t]+\s*(.+)$/);
+      if (m) {
+        const code = m[1].toUpperCase() === "WW" ? "GLOBAL" : m[1].toUpperCase();
+        if (cleanUrl(m[2]) && !geos.includes(code)) {
+          geos.push(code);
+        }
+      }
+    }
+  }
+
+  return geos;
+}
+
 export default function MergedSheetImportSettings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cancelImportRef = useRef(false);
@@ -121,7 +233,8 @@ export default function MergedSheetImportSettings() {
           "Linker Name": "Muna Pun",
           "Writer Name": "Rahil Kunwar",
           "Article Link": "https://docs.google.com/document/d/sample1",
-          "Bridge Page Link": "https://dailyhealthsupplement.com/creatine",
+          "Buy Now Link": "https://dailyhealthsupplement.com/creatine",
+          "Bridge Page Link": "https://getbestsupplement.com/creatine",
           "Affiliate Link": "https://hop.clickbank.net/?affiliate=test&tid=dhs",
           "Site Name": "Daily Health Supplement",
           "Added Date": "2026-11-01",
@@ -130,13 +243,18 @@ export default function MergedSheetImportSettings() {
           "Article Status": "APPROVED",
           "Publish Date": "2026-11-03",
           "Link Status": "ACCEPTED",
+          "US Link": "https://hop.clickbank.net/?affiliate=test&tid=us",
+          "UK Link": "https://hop.clickbank.net/?affiliate=test&tid=uk",
+          "CA Link": "", // Empty geo link will be skipped automatically
+          "AU Link": "",
         },
         {
           "Product Name": "Alpha Whey Protein",
           "Linker Name": "Sandesh",
           "Writer Name": "Aayusha Adhikari",
           "Article Link": "https://docs.google.com/document/d/sample2",
-          "Bridge Page Link": "https://dailyhealthsupplement.com/alpha-whey",
+          "Buy Now Link": "https://dailyhealthsupplement.com/alpha-whey",
+          "Bridge Page Link": "https://getbestsupplement.com/alpha-whey",
           "Affiliate Link": "https://smashload.com/track/alpha-whey",
           "Site Name": "Daily Health Supplement",
           "Added Date": "2026-11-02",
@@ -145,6 +263,10 @@ export default function MergedSheetImportSettings() {
           "Article Status": "IN_PROGRESS",
           "Publish Date": "",
           "Link Status": "REQUESTED",
+          "US Link": "https://smashload.com/track/alpha-whey-us",
+          "UK Link": "",
+          "CA Link": "",
+          "AU Link": "",
         },
       ];
 
@@ -154,7 +276,8 @@ export default function MergedSheetImportSettings() {
           "Linker Name": "Muna Pun",
           "Writer Name": "Rahil Kunwar",
           "Article Link": "https://docs.google.com/document/d/sample3",
-          "Bridge Page Link": "https://supplementmag.com/spherefresh",
+          "Buy Now Link": "https://supplementmag.com/spherefresh",
+          "Bridge Page Link": "https://supplementexpose.com/spherefresh",
           "Affiliate Link": "https://mediascalers.com/offer/spherefresh",
           "Site Name": "Supplement Mag",
           "Added Date": "2026-11-01",
@@ -163,6 +286,10 @@ export default function MergedSheetImportSettings() {
           "Article Status": "COMPLETED",
           "Publish Date": "2026-11-04",
           "Link Status": "ACCEPTED",
+          "US Link": "https://mediascalers.com/offer/spherefresh-us",
+          "UK Link": "",
+          "CA Link": "",
+          "AU Link": "",
         },
       ];
 
@@ -333,6 +460,7 @@ export default function MergedSheetImportSettings() {
       createdSites: 0,
       assignedWriters: 0,
       configuredLinks: 0,
+      configuredGeos: 0,
       uniqueSites: new Set<string>(),
       errors: [] as string[],
     };
@@ -377,6 +505,7 @@ export default function MergedSheetImportSettings() {
           aggregatedStats.createdSites += data.stats.createdSites || 0;
           aggregatedStats.assignedWriters += data.stats.assignedWriters || 0;
           aggregatedStats.configuredLinks += data.stats.configuredLinks || 0;
+          aggregatedStats.configuredGeos += data.stats.configuredGeos || 0;
           if (Array.isArray(data.stats.uniqueSites)) {
             data.stats.uniqueSites.forEach((s: string) => aggregatedStats.uniqueSites.add(s));
           }
@@ -703,6 +832,7 @@ export default function MergedSheetImportSettings() {
                     <th className="py-2.5 px-3">Article Status</th>
                     <th className="py-2.5 px-3">Link Status</th>
                     <th className="py-2.5 px-3">Links Preview</th>
+                    <th className="py-2.5 px-3">GEO Links</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
@@ -744,10 +874,10 @@ export default function MergedSheetImportSettings() {
                               <span>Article</span>
                             </span>
                           )}
-                          {row["Bridge Page Link"] && (
-                            <span title={`Bridge: ${row["Bridge Page Link"]}`} className="text-purple-600 dark:text-purple-400 flex items-center gap-0.5">
+                          {(row["Buy Link"] || row["Buy Now Link"] || row["Bridge Page Link"]) && (
+                            <span title={`Buy Now: ${row["Buy Link"] || row["Buy Now Link"] || row["Bridge Page Link"]}`} className="text-purple-600 dark:text-purple-400 flex items-center gap-0.5 font-bold">
                               <Link2 className="w-3 h-3" />
-                              <span>Bridge</span>
+                              <span>Buy Now</span>
                             </span>
                           )}
                           {row["Affiliate Link"] && (
@@ -757,6 +887,26 @@ export default function MergedSheetImportSettings() {
                             </span>
                           )}
                         </div>
+                      </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        {(() => {
+                          const previewGeos = extractPreviewGeos(row);
+                          if (previewGeos.length === 0) {
+                            return <span className="text-slate-300 dark:text-slate-600 font-mono text-[10px]">—</span>;
+                          }
+                          return (
+                            <div className="flex flex-wrap gap-1 items-center max-w-[150px]">
+                              {previewGeos.map((g) => (
+                                <span
+                                  key={g}
+                                  className="px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold"
+                                >
+                                  {g}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
@@ -882,7 +1032,7 @@ export default function MergedSheetImportSettings() {
 
               {/* Stats breakdown */}
               {importResult.stats && (
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-xs pt-1">
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center border border-slate-200 dark:border-slate-700">
                     <span className="text-slate-400 text-[10px] font-bold uppercase block">New Products</span>
                     <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
@@ -905,6 +1055,12 @@ export default function MergedSheetImportSettings() {
                     <span className="text-slate-400 text-[10px] font-bold uppercase block">Links Saved</span>
                     <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
                       {importResult.stats.configuredLinks}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center border border-slate-200 dark:border-slate-700">
+                    <span className="text-slate-400 text-[10px] font-bold uppercase block">GEO Links</span>
+                    <span className="text-base font-black text-teal-600 dark:text-teal-400">
+                      {importResult.stats.configuredGeos || 0}
                     </span>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center border border-slate-200 dark:border-slate-700">

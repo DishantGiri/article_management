@@ -126,6 +126,333 @@ function isPlaceholderName(val?: string | null): boolean {
   );
 }
 
+function cleanUrl(raw?: any): string | null {
+  if (!raw) return null;
+  const str = String(raw).trim();
+  if (!str) return null;
+  const lower = str.toLowerCase();
+  if (
+    [
+      "n/a",
+      "na",
+      "n / a",
+      "nil",
+      "none",
+      "unassigned",
+      "-",
+      "--",
+      "---",
+      "null",
+      "undefined",
+      "no",
+      "no link",
+      "blank",
+      "0",
+    ].includes(lower)
+  ) {
+    return null;
+  }
+  if (str.startsWith("http://") || str.startsWith("https://")) {
+    return str;
+  }
+  if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\/.*)?$/.test(str)) {
+    return `https://${str}`;
+  }
+  return null;
+}
+
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  "UNITED STATES": "US",
+  "USA": "US",
+  "UNITED KINGDOM": "UK",
+  "UK": "UK",
+  "BRITAIN": "UK",
+  "GREAT BRITAIN": "UK",
+  "CANADA": "CA",
+  "AUSTRALIA": "AU",
+  "GERMANY": "DE",
+  "FRANCE": "FR",
+  "MEXICO": "MX",
+  "BRAZIL": "BR",
+  "ARGENTINA": "AR",
+  "COLOMBIA": "CO",
+  "CHILE": "CL",
+  "PERU": "PE",
+  "ECUADOR": "EC",
+  "VENEZUELA": "VE",
+  "URUGUAY": "UY",
+  "PARAGUAY": "PY",
+  "BOLIVIA": "BO",
+  "COSTA RICA": "CR",
+  "PANAMA": "PA",
+  "GUATEMALA": "GT",
+  "HONDURAS": "HN",
+  "EL SALVADOR": "SV",
+  "NICARAGUA": "NI",
+  "DOMINICAN REPUBLIC": "DO",
+  "CUBA": "CU",
+  "HAITI": "HT",
+  "JAMAICA": "JM",
+  "TRINIDAD AND TOBAGO": "TT",
+  "GUYANA": "GY",
+  "SURINAME": "SR",
+  "BELIZE": "BZ",
+  "PUERTO RICO": "PR",
+  "FRENCH GUIANA": "GF",
+  "NEW ZEALAND": "NZ",
+  "IRELAND": "IE",
+  "SPAIN": "ES",
+  "ITALY": "IT",
+  "NETHERLANDS": "NL",
+  "INDIA": "IN",
+  "SINGAPORE": "SG",
+  "PHILIPPINES": "PH",
+  "SOUTH AFRICA": "ZA",
+  "GLOBAL": "GLOBAL",
+  "WORLDWIDE": "GLOBAL",
+  "WW": "GLOBAL",
+};
+
+const IGNORED_COLUMN_NAMES = new Set([
+  "ID",
+  "NO",
+  "URL",
+  "URI",
+  "STATUS",
+  "TYPE",
+  "DATE",
+  "SITE",
+  "SITE NAME",
+  "SITENAME",
+  "WEBSITE",
+  "NAME",
+  "TITLE",
+  "SLUG",
+  "PRODUCT",
+  "PRODUCT NAME",
+  "PRODUCTNAME",
+  "CATEGORY",
+  "NETWORK",
+  "AFFILIATE NETWORK",
+  "AFFILIATE",
+  "AFFILIATE LINK",
+  "AFFILIATELINK",
+  "LINKER",
+  "LINKER NAME",
+  "RESEARCHER",
+  "RESEARCHED BY",
+  "WRITER",
+  "WRITER NAME",
+  "AUTHOR",
+  "ARTICLE LINK",
+  "ARTICLE URL",
+  "ARTICLE STATUS",
+  "LINK STATUS",
+  "BUY LINK",
+  "BUY NOW LINK",
+  "BUY NOW",
+  "BRIDGE PAGE LINK",
+  "BRIDGE LINK",
+  "BRIDGEPAGE LINK",
+  "REMARKS",
+  "NOTE",
+  "NOTES",
+  "ADDED DATE",
+  "PUBLISH DATE",
+  "COMPLETED DATE",
+]);
+
+function normalizeGeoCode(rawKey: string): string | null {
+  if (!rawKey) return null;
+  const cleaned = rawKey.trim().replace(/^["']+|["']+$/g, "").trim();
+  const upper = cleaned.toUpperCase();
+
+  if (IGNORED_COLUMN_NAMES.has(upper)) {
+    return null;
+  }
+
+  // 1. Direct code (e.g. "US", "UK", "CA", "AU", "GLOBAL")
+  if (/^[A-Z]{2}$/.test(upper) || upper === "GLOBAL" || upper === "WORLDWIDE" || upper === "WW") {
+    return upper === "WW" || upper === "WORLDWIDE" ? "GLOBAL" : upper;
+  }
+
+  // 2. Direct country name match
+  if (COUNTRY_NAME_TO_CODE[upper]) {
+    return COUNTRY_NAME_TO_CODE[upper];
+  }
+
+  // 3. Pattern: "[GEO] Link", "[GEO]_Link", "[GEO] Affiliate Link", etc.
+  const m1 = cleaned.match(/^([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)\s*[-_]?\s*(link|affiliate\s*link|affiliate|url)?$/i);
+  if (m1 && m1[1]) {
+    const code = m1[1].toUpperCase();
+    if (/^[A-Z]{2}$/.test(code) || code === "GLOBAL" || code === "WW" || code === "WORLDWIDE") {
+      return code === "WW" || code === "WORLDWIDE" ? "GLOBAL" : code;
+    }
+  }
+
+  const m2 = cleaned.match(/^(?:link|affiliate\s*link|url)\s*[-_]?\s*([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)$/i);
+  if (m2 && m2[1]) {
+    const code = m2[1].toUpperCase();
+    if (/^[A-Z]{2}$/.test(code) || code === "GLOBAL" || code === "WW" || code === "WORLDWIDE") {
+      return code === "WW" || code === "WORLDWIDE" ? "GLOBAL" : code;
+    }
+  }
+
+  const m3 = cleaned.match(/^(?:affiliate\s*link|link)\s*\(([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)\)$/i);
+  if (m3 && m3[1]) {
+    const code = m3[1].toUpperCase();
+    return code === "WW" || code === "WORLDWIDE" ? "GLOBAL" : code;
+  }
+
+  // 4. Country name + "Link" (e.g. "United States Link", "Canada Link")
+  for (const [name, code] of Object.entries(COUNTRY_NAME_TO_CODE)) {
+    if (upper.startsWith(name + " ") || upper.startsWith(name + "_") || upper.startsWith(name + "-")) {
+      const rest = upper.slice(name.length).replace(/[-_\s]+/g, " ").trim();
+      if (rest === "LINK" || rest === "AFFILIATE LINK" || rest === "URL") {
+        return code;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractGeoLinksFromRow(
+  r: any,
+  defaultAffiliateName: string
+): Array<{ geo: string; affiliateLink: string; affiliateName: string }> {
+  const geoMap = new Map<string, { geo: string; affiliateLink: string; affiliateName: string }>();
+
+  // 1. Scan all row columns for dedicated country columns (e.g. "US", "UK Link", "Canada", etc.)
+  for (const key of Object.keys(r)) {
+    const geoCode = normalizeGeoCode(key);
+    if (!geoCode) continue;
+
+    // Check if cell has a valid link
+    const validUrl = cleanUrl(r[key]);
+    if (validUrl) {
+      geoMap.set(geoCode, {
+        geo: geoCode,
+        affiliateLink: validUrl,
+        affiliateName: defaultAffiliateName,
+      });
+    }
+    // If no link on geo: DO NOT ADD!
+  }
+
+  // 2. Scan combined geo links columns (e.g. "Geo Links", "Country Links", "Multiple Geos")
+  const combinedRaw = (
+    r["Geo Links"] ||
+    r["GEO Links"] ||
+    r["geo_links"] ||
+    r["Country Links"] ||
+    r["country_links"] ||
+    r["Multiple Geos"] ||
+    r["multiple_geos"] ||
+    r["Country Specific Links"] ||
+    ""
+  ).trim();
+
+  if (combinedRaw) {
+    if (combinedRaw.startsWith("[") || combinedRaw.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(combinedRaw);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            const gCode = normalizeGeoCode(item.geo || item.country || "");
+            const vUrl = cleanUrl(item.affiliateLink || item.link || item.url);
+            if (gCode && vUrl) {
+              geoMap.set(gCode, {
+                geo: gCode,
+                affiliateLink: vUrl,
+                affiliateName: item.affiliateName || defaultAffiliateName,
+              });
+            }
+          }
+        }
+      } catch {
+        // Fall back to text parsing
+      }
+    }
+
+    if (geoMap.size === 0) {
+      const lines = combinedRaw.split(/[\r\n]+|(?<=[^\s])[,;|](?=\s*[A-Za-z]{2,}\s*[:=\-–—])/);
+      for (const line of lines) {
+        const match = line.match(/^\s*([A-Za-z]{2,}|GLOBAL|WORLDWIDE|WW)\s*[:=\-–—\t]+\s*(.+)$/);
+        if (match) {
+          const gCode = normalizeGeoCode(match[1]);
+          const vUrl = cleanUrl(match[2]);
+          if (gCode && vUrl) {
+            geoMap.set(gCode, {
+              geo: gCode,
+              affiliateLink: vUrl,
+              affiliateName: defaultAffiliateName,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Scan multi-line content inside "Affiliate Link"
+  const rawAffCell = String(r["Affiliate Link"] || r["affiliate_link"] || "").trim();
+  if (rawAffCell.includes("\n") || /^[A-Za-z]{2,}\s*[:=\-–—]/.test(rawAffCell)) {
+    const lines = rawAffCell.split(/[\r\n]+|(?<=[^\s])[,;|](?=\s*[A-Za-z]{2,}\s*[:=\-–—])/);
+    for (const line of lines) {
+      const match = line.match(/^\s*([A-Za-z]{2,}|GLOBAL|WORLDWIDE|WW)\s*[:=\-–—\t]+\s*(.+)$/);
+      if (match) {
+        const gCode = normalizeGeoCode(match[1]);
+        const vUrl = cleanUrl(match[2]);
+        if (gCode && vUrl) {
+          geoMap.set(gCode, {
+            geo: gCode,
+            affiliateLink: vUrl,
+            affiliateName: defaultAffiliateName,
+          });
+        }
+      }
+    }
+  }
+
+  // 4. Fallback: single Affiliate Link + specified target GEOs
+  if (geoMap.size === 0) {
+    const singleAffLink = cleanUrl(r["Affiliate Link"] || r["affiliate_link"]);
+    if (singleAffLink) {
+      const rawTargetGeos = (
+        r["GEO"] ||
+        r["Geo"] ||
+        r["Geos"] ||
+        r["Target GEOs"] ||
+        r["Target Geos"] ||
+        r["Countries"] ||
+        ""
+      ).trim();
+      if (rawTargetGeos) {
+        const tokens = rawTargetGeos.split(/[,;\s/]+/).map((t: string) => t.trim()).filter(Boolean);
+        for (const token of tokens) {
+          const gCode = normalizeGeoCode(token);
+          if (gCode) {
+            geoMap.set(gCode, {
+              geo: gCode,
+              affiliateLink: singleAffLink,
+              affiliateName: defaultAffiliateName,
+            });
+          }
+        }
+      }
+      if (geoMap.size === 0) {
+        geoMap.set("GLOBAL", {
+          geo: "GLOBAL",
+          affiliateLink: singleAffLink,
+          affiliateName: defaultAffiliateName,
+        });
+      }
+    }
+  }
+
+  return Array.from(geoMap.values());
+}
+
 function splitPersonNames(raw: string): string[] {
   if (!raw || isPlaceholderName(raw)) return [];
   const cleaned = raw.replace(/^["'\s]+|["'\s]+$/g, "").trim();
@@ -317,7 +644,7 @@ export async function POST(req: NextRequest) {
             where: {
               name: { in: candidateProductNames },
             },
-            include: { article: true, linkLogs: true },
+            include: { article: true, linkLogs: { include: { geos: true } } },
           })
         : [];
 
@@ -334,6 +661,7 @@ export async function POST(req: NextRequest) {
     let createdSitesCount = 0;
     let assignedWritersCount = 0;
     let configuredLinksCount = 0;
+    let configuredGeosCount = 0;
     const errors: string[] = [];
     const uniqueSites = new Set<string>();
 
@@ -522,14 +850,10 @@ export async function POST(req: NextRequest) {
       const addedDate = parseExcelDate(r["Added Date"] || r["added_date"] || r["Date"] || r["date"]) || new Date();
       const publishDate = parseExcelDate(r["Publish Date"] || r["publish_date"] || r["Completed Date"]) || addedDate;
 
-      // 8. Links and Statuses
-      const articleLink = (r["Article Link"] || r["article_link"] || r["Article URL"] || "").trim() || null;
-      const bridgePageLink = (r["Bridge Page Link"] || r["bridge_page_link"] || r["Bridge Link"] || "").trim() || null;
-      const affiliateLink = (r["Affiliate Link"] || r["affiliate_link"] || "").trim() || "";
-
+      // 8. Article and Link Statuses
+      const articleLink = cleanUrl(r["Article Link"] || r["article_link"] || r["Article URL"]);
       const rawArticleStatus = r["Article Status"] || r["article_status"] || r["Status"] || "";
       const mappedArticleStatus = mapArticleStatus(rawArticleStatus);
-
       const rawLinkStatus = r["Link Status"] || r["link_status"] || "";
       const mappedLinkStatus = mapLinkStatus(rawLinkStatus);
 
@@ -552,7 +876,7 @@ export async function POST(req: NextRequest) {
             addedAt: addedDate,
             remarks: multiLinkerNote || product.remarks,
           },
-          include: { article: true, linkLogs: true },
+          include: { article: true, linkLogs: { include: { geos: true } } },
         });
         productMap.set(pKey, product);
         updatedProductsCount++;
@@ -570,7 +894,7 @@ export async function POST(req: NextRequest) {
             addedAt: addedDate,
             remarks: multiLinkerNote || null,
           },
-          include: { article: true, linkLogs: true },
+          include: { article: true, linkLogs: { include: { geos: true } } },
         });
         productMap.set(pKey, product);
         createdProductsCount++;
@@ -609,11 +933,90 @@ export async function POST(req: NextRequest) {
         if (writerUser) assignedWritersCount++;
       }
 
-      // 11. Update or create Link Log
-      const hasLinkData = Boolean(bridgePageLink || affiliateLink || rawAffiliate);
+      // 11. Links and Multi-GEO handling
+      // User requirement: "here in bulk sheet merger here bridgepage link in sheet that is buynow link in website"
+      const rawSheetBuy = cleanUrl(
+        r["Buy Link"] ||
+        r["buy_link"] ||
+        r["Buy Now Link"] ||
+        r["buynow_link"] ||
+        r["Buy Now"] ||
+        r["buynow"] ||
+        r["Direct Buy Link"] ||
+        r["Landing Link"] ||
+        r["Landing Page Link"]
+      );
+
+      const rawSheetBridge = cleanUrl(
+        r["Bridge Page Link"] ||
+        r["bridge_page_link"] ||
+        r["Bridge Link"] ||
+        r["bridge_link"] ||
+        r["Bridgepage Link"] ||
+        r["bridgepage_link"] ||
+        r["Bridge URL"] ||
+        r["Bridge"]
+      );
+
+      let effectiveBuyLink: string | null = null;
+      let effectiveBridgeLink: string | null = null;
+
+      if (rawSheetBuy) {
+        effectiveBuyLink = rawSheetBuy;
+        effectiveBridgeLink = rawSheetBridge || null;
+      } else if (rawSheetBridge) {
+        // "here bridgepage link in sheet that is buynow link in website"
+        effectiveBuyLink = rawSheetBridge;
+        effectiveBridgeLink = null;
+      }
+
+      const pSlug =
+        product.slug ||
+        productName
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+
+      // Auto-derive site Bridge Page Link if site.bridgeUrl is configured
+      if (!effectiveBridgeLink && targetSite?.bridgeUrl && pSlug) {
+        const targetBridgeBase = targetSite.bridgeUrl
+          .split(/[\n,]+/)[0]
+          ?.trim()
+          .replace(/\/+$/, "");
+        if (targetBridgeBase) {
+          effectiveBridgeLink = `${targetBridgeBase}/${pSlug}`;
+        }
+      }
+
+      // Auto-derive Buy Link from targetSite.url if still missing
+      if (!effectiveBuyLink && targetSite?.url && pSlug) {
+        const targetSiteBase = targetSite.url.trim().replace(/\/+$/, "");
+        if (targetSiteBase) {
+          effectiveBuyLink = `${targetSiteBase}/${pSlug}`;
+        }
+      }
+
+      // User requirement: "and there is multipal geo links aslo if there is no link on geo then do not add geo link fix that"
+      const validGeoLinks = extractGeoLinksFromRow(r, rawAffiliate || "Standard");
+
+      const directAffLink = cleanUrl(r["Affiliate Link"] || r["affiliate_link"]);
+      const effectiveAffiliateLink =
+        directAffLink ||
+        (validGeoLinks.length > 0 ? validGeoLinks[0].affiliateLink : "");
+
+      const hasLinkData = Boolean(
+        effectiveBuyLink ||
+        effectiveBridgeLink ||
+        effectiveAffiliateLink ||
+        validGeoLinks.length > 0 ||
+        (rawAffiliate && rawAffiliate.toLowerCase() !== "none" && rawAffiliate.toLowerCase() !== "no affiliate")
+      );
+
       if (hasLinkData) {
         const effectiveLinkStatus =
-          mappedLinkStatus === "REQUESTED" && (bridgePageLink || affiliateLink)
+          mappedLinkStatus === "REQUESTED" &&
+          (effectiveBuyLink || effectiveBridgeLink || effectiveAffiliateLink || validGeoLinks.length > 0)
             ? "ACCEPTED"
             : mappedLinkStatus;
 
@@ -621,14 +1024,41 @@ export async function POST(req: NextRequest) {
           const updatedLink = await prisma.linkLog.update({
             where: { id: product.linkLogs[0].id },
             data: {
-              bridgePageLink: bridgePageLink || product.linkLogs[0].bridgePageLink,
-              affiliateLink: affiliateLink || product.linkLogs[0].affiliateLink,
-              affiliateName: rawAffiliate || product.linkLogs[0].affiliateName,
+              bridgePageLink: effectiveBridgeLink || product.linkLogs[0].bridgePageLink || null,
+              buyLink: effectiveBuyLink || product.linkLogs[0].buyLink || null,
+              affiliateLink: effectiveAffiliateLink || product.linkLogs[0].affiliateLink || "",
+              affiliateName: rawAffiliate || product.linkLogs[0].affiliateName || "No Affiliate",
               status: effectiveLinkStatus,
               updatedById: effectiveLinkerId,
               linkerRemarks: multiLinkerNote || product.linkLogs[0].linkerRemarks,
             },
           });
+
+          // Sync GEO links
+          if (validGeoLinks.length > 0) {
+            await prisma.linkGeo.deleteMany({
+              where: { linkLogId: updatedLink.id },
+            });
+            await prisma.linkGeo.createMany({
+              data: validGeoLinks.map((g) => ({
+                linkLogId: updatedLink.id,
+                geo: g.geo,
+                affiliateLink: g.affiliateLink,
+                affiliateName: g.affiliateName || rawAffiliate || "Standard",
+              })),
+              skipDuplicates: true,
+            });
+            configuredGeosCount += validGeoLinks.length;
+          } else {
+            // Clean up any empty geo links with no link
+            await prisma.linkGeo.deleteMany({
+              where: {
+                linkLogId: updatedLink.id,
+                OR: [{ affiliateLink: "" }, { affiliateLink: null }],
+              },
+            });
+          }
+
           product.linkLogs[0] = updatedLink;
           productMap.set(pKey, product);
           configuredLinksCount++;
@@ -637,14 +1067,32 @@ export async function POST(req: NextRequest) {
             data: {
               productId: product.id,
               addedById: effectiveLinkerId,
-              bridgePageLink,
-              affiliateLink,
+              bridgePageLink: effectiveBridgeLink || null,
+              buyLink: effectiveBuyLink || null,
+              affiliateLink: effectiveAffiliateLink || "",
               affiliateName: rawAffiliate || "No Affiliate",
               status: effectiveLinkStatus,
               addedAt: addedDate,
               linkerRemarks: multiLinkerNote || null,
+              ...(validGeoLinks.length > 0
+                ? {
+                    geos: {
+                      create: validGeoLinks.map((g) => ({
+                        geo: g.geo,
+                        affiliateLink: g.affiliateLink,
+                        affiliateName: g.affiliateName || rawAffiliate || "Standard",
+                      })),
+                    },
+                  }
+                : {}),
             },
+            include: { geos: true },
           });
+
+          if (validGeoLinks.length > 0) {
+            configuredGeosCount += validGeoLinks.length;
+          }
+
           product.linkLogs = [createdLink];
           productMap.set(pKey, product);
           configuredLinksCount++;
@@ -669,6 +1117,7 @@ export async function POST(req: NextRequest) {
         createdSites: createdSitesCount,
         assignedWriters: assignedWritersCount,
         configuredLinks: configuredLinksCount,
+        configuredGeos: configuredGeosCount,
         uniqueSites: Array.from(uniqueSites),
         errors: errors.slice(0, 50),
       },
