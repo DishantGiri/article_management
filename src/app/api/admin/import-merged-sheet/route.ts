@@ -3,62 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import * as XLSX from "xlsx";
+import { resolveSite } from "@/lib/site-resolver";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Known site abbreviation aliases
-const SITE_ALIASES: Record<string, string> = {
-  dhs: "Daily Health Supplement",
-  smg: "Supplement Mag",
-  mag: "Supplement Mag",
-  tbr: "The Buyers Reviews",
-  grc: "Guru Review Club",
-  sc: "Supplement Coach",
-  sv: "Supplement Vibes",
-  sd: "Supplement Dolphin",
-  st: "Supplement Tiger",
-  sp: "Supplements and Powders",
-  jir: "Justin Reviews",
-  jr: "Justin Reviews",
-  rbr: "Ryans Best Reviews",
-  hsb: "Health Supplement Bucket",
-};
-
-function resolveSite(key: string, sites: any[]) {
-  if (!key) return null;
-  const cleanKey = key.trim().toLowerCase();
-  const strippedKey = cleanKey.replace(/[^a-z0-9]/g, "");
-
-  // 1. Direct alias check
-  const aliasName = SITE_ALIASES[strippedKey] || SITE_ALIASES[cleanKey];
-  if (aliasName) {
-    const s = sites.find((x) => x.name.toLowerCase() === aliasName.toLowerCase());
-    if (s) return s;
-  }
-
-  // 2. Exact name match
-  let site = sites.find((s) => s.name.toLowerCase() === cleanKey);
-  if (site) return site;
-
-  // 3. Stripped name match
-  site = sites.find((s) => s.name.toLowerCase().replace(/[^a-z0-9]/g, "") === strippedKey);
-  if (site) return site;
-
-  // 4. URL match
-  site = sites.find((s) => s.url && s.url.toLowerCase().includes(strippedKey));
-  if (site) return site;
-
-  // 5. Acronym match (e.g. "Daily Health Supplement" -> "dhs")
-  site = sites.find((s) => {
-    const words = s.name.split(/\s+/);
-    const acronym = words.map((w: string) => w[0]).join("").toLowerCase();
-    return acronym === strippedKey || acronym === cleanKey;
-  });
-  if (site) return site;
-
-  return null;
-}
 
 function parseExcelDate(val: any): Date | null {
   if (!val) return null;
@@ -705,17 +654,24 @@ export async function POST(req: NextRequest) {
       let targetSite = resolveSite(rawSiteName, allDbSites);
       if (!targetSite) {
         try {
-          targetSite = await prisma.site.create({
+          const created = await prisma.site.create({
             data: {
               name: rawSiteName,
             },
+            include: {
+              categories: true,
+            },
           });
-          allDbSites.push(targetSite);
+          allDbSites.push(created);
+          targetSite = created;
           createdSitesCount++;
         } catch (e: any) {
           errors.push(`Row ${rowNum} ("${productName}"): Failed to create site "${rawSiteName}": ${e.message}`);
           continue;
         }
+      }
+      if (!targetSite) {
+        continue;
       }
       uniqueSites.add(targetSite.name);
 

@@ -4,26 +4,9 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getOrCreateResearchSite } from "@/lib/researchSite";
+import { resolveSite } from "@/lib/site-resolver";
 
 // POST /api/products/import - Import products from parsed CSV
-// Known site abbreviation aliases
-const SITE_ALIASES: Record<string, string> = {
-  dhs: "Daily Health Supplement",
-  smg: "Supplement Mag",
-  mag: "Supplement Mag",
-  tbr: "The Buyers Reviews",
-  grc: "Guru Review Club",
-  sc: "Supplement Coach",
-  sv: "Supplement Vibes",
-  sd: "Supplement Dolphin",
-  st: "Supplement Tiger",
-  sp: "Supplements and Powders",
-  jir: "Justin Reviews",
-  jr: "Justin Reviews",
-  rbr: "Ryans Best Reviews",
-  hsb: "Health Supplement Bucket",
-};
-
 function isPositiveMark(val: any): boolean {
   if (val === undefined || val === null) return false;
   if (typeof val === "boolean") return val;
@@ -33,39 +16,6 @@ function isPositiveMark(val: any): boolean {
   return !negative.includes(str);
 }
 
-function resolveSite(key: string, sites: any[]) {
-  const cleanKey = key.trim().toLowerCase();
-  const strippedKey = cleanKey.replace(/[^a-z0-9]/g, "");
-
-  // 1. Direct alias check (e.g. "dhs" -> "Daily Health Supplement")
-  const aliasName = SITE_ALIASES[strippedKey] || SITE_ALIASES[cleanKey];
-  if (aliasName) {
-    const s = sites.find((x) => x.name.toLowerCase() === aliasName.toLowerCase());
-    if (s) return s;
-  }
-
-  // 2. Exact name match
-  let site = sites.find((s) => s.name.toLowerCase() === cleanKey);
-  if (site) return site;
-
-  // 3. Stripped name match
-  site = sites.find((s) => s.name.toLowerCase().replace(/[^a-z0-9]/g, "") === strippedKey);
-  if (site) return site;
-
-  // 4. URL match
-  site = sites.find((s) => s.url && s.url.toLowerCase().includes(strippedKey));
-  if (site) return site;
-
-  // 5. Acronym match (e.g. "Daily Health Supplement" -> "dhs")
-  site = sites.find((s) => {
-    const words = s.name.split(/\s+/);
-    const acronym = words.map((w: string) => w[0]).join("").toLowerCase();
-    return acronym === strippedKey || acronym === cleanKey;
-  });
-  if (site) return site;
-
-  return null;
-}
 
 export async function POST(req: NextRequest) {
   try {
