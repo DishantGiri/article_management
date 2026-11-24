@@ -393,7 +393,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
         })
         .catch((e) => console.error("Failed to load geos", e));
 
-      fetch("/api/products")
+      fetch("/api/products?slim=true")
         .then((r) => r.json())
         .then((data) => {
           if (Array.isArray(data)) setAllProducts(data);

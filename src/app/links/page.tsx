@@ -238,7 +238,7 @@ function LinksPageContent() {
     Promise.all([
       fetch(`/api/links?userId=${uId}`).then((r) => (r.ok ? r.json() : [])),
       fetch(`/api/dashboard?userId=${uId}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/products?userId=${uId}`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/products?userId=${uId}&unlinked=true&slim=true`).then((r) => (r.ok ? r.json() : [])),
     ]).then(([linksData, dashboardData, productsData]) => {
       const rawArr = Array.isArray(linksData) ? linksData : [];
       // Consolidate duplicate entries for same product so one product is displayed with all its geo links

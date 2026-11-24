@@ -162,10 +162,7 @@ function ArticlesContent() {
       if (siteFilter) q.set("site", siteFilter);
       if (currentUserRole) q.set("role", currentUserRole);
 
-      const [artRes, dashRes] = await Promise.all([
-        fetch(`/api/articles?${q.toString()}`),
-        fetch(`/api/dashboard?userId=${uid}${currentUserRole ? `&role=${currentUserRole}` : ""}`),
-      ]);
+      const artRes = await fetch(`/api/articles?${q.toString()}`);
       const artData = await artRes.json();
       if (artData && Array.isArray(artData.articles)) {
         setArticles(artData.articles);
@@ -174,14 +171,24 @@ function ArticlesContent() {
         setArticles(artData);
         setTotalCount(artData.length);
       }
-      const dashData = await dashRes.json();
-      if (dashData) setStats(dashData);
     } catch {
       // ignore
     } finally {
       setLoading(false);
     }
   }, [session?.user?.id, currentUserId, currentPage, itemsPerPage, search, isExact, statusFilter, writerFilter, siteFilter, currentUserRole]);
+
+  // Fetch dashboard stats once per session/role (not on every page change or keystroke)
+  useEffect(() => {
+    const uid = session?.user?.id || currentUserId;
+    if (!uid) return;
+    fetch(`/api/dashboard?userId=${uid}${currentUserRole ? `&role=${currentUserRole}` : ""}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((dashData) => {
+        if (dashData) setStats(dashData);
+      })
+      .catch(() => {});
+  }, [session?.user?.id, currentUserId, currentUserRole]);
 
   const handleSendEditRequest = async () => {
     if (!requestingUpdateArticle || !requestEditReason.trim() || !currentUserId) return;

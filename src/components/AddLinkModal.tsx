@@ -543,7 +543,7 @@ export default function AddLinkModal({
       setGeos([]);
 
       Promise.all([
-        fetch("/api/products").then((r) => r.json()),
+        fetch("/api/products?slim=true").then((r) => r.json()),
         fetch("/api/affiliates").then((r) => r.json()),
         fetch("/api/geos").then((r) => r.json()),
       ])
@@ -950,7 +950,7 @@ export default function AddLinkModal({
       }
 
       // Refresh products list from server in background
-      fetch("/api/products")
+      fetch("/api/products?slim=true")
         .then((r) => r.json())
         .then((data) => {
           if (Array.isArray(data)) setProducts(data);

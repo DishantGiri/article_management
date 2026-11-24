@@ -580,12 +580,23 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const siteId = searchParams.get("siteId");
+  const site = searchParams.get("site");
   const categoryId = searchParams.get("categoryId");
+  const search = searchParams.get("search");
+  const exact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
+  const status = searchParams.get("status");
+  const user = searchParams.get("user");
+  const startDate = searchParams.get("startDate");
+  const endDate = searchParams.get("endDate");
+  const native = searchParams.get("native");
+  const unlinked = searchParams.get("unlinked") === "true" || searchParams.get("unlinked") === "1";
+  const slim = searchParams.get("slim") === "true" || searchParams.get("slim") === "1";
+  const all = searchParams.get("all") === "true" || searchParams.get("all") === "1";
 
   // Pagination parameters
   const pageParam = searchParams.get("page");
   const limitParam = searchParams.get("limit");
-  const isPaginated = pageParam !== null || limitParam !== null;
+  const isPaginated = !all && (pageParam !== null || limitParam !== null);
   const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10", 10) || 10));
 
@@ -651,22 +662,185 @@ export async function GET(req: NextRequest) {
     siteFilterCondition = parsedSiteId;
   }
 
-  const cacheKey = `products:${effectiveRole}:${userId || 0}:${parsedSiteId ?? "all"}:${categoryId ?? "all"}:${isPaginated ? `p${page}_l${limit}` : "all"}`;
+  const cacheKey = `products:${effectiveRole}:${userId || 0}:${parsedSiteId ?? site ?? "all"}:${categoryId ?? "all"}:${isPaginated ? `p${page}_l${limit}` : (all ? "all" : "full")}:${slim ? "slim" : "rich"}:${unlinked ? "unlinked" : "any"}:${search || "none"}:${exact ? "1" : "0"}:${status || "none"}:${user || "none"}:${startDate || "none"}:${endDate || "none"}:${native || "none"}`;
 
   const result = await cached(cacheKey, 60, async () => {
-    const productWhere: any = {
-      ...(siteFilterCondition !== undefined ? { siteId: siteFilterCondition } : {}),
-      ...(categoryId ? { categoryId: parseInt(categoryId) } : {}),
-      ...(excludeCompletedForWriter
-        ? {
+    const andConditions: any[] = [];
+
+    if (siteFilterCondition !== undefined) {
+      andConditions.push({ siteId: siteFilterCondition });
+    }
+    if (site && site.trim()) {
+      const sTrim = site.trim();
+      if (!isNaN(Number(sTrim))) {
+        andConditions.push({ siteId: parseInt(sTrim, 10) });
+      } else {
+        andConditions.push({
+          OR: [
+            { site: { name: sTrim } },
+            { targetSites: { contains: sTrim } },
+          ],
+        });
+      }
+    }
+    if (categoryId && categoryId.trim()) {
+      const cTrim = categoryId.trim();
+      if (!isNaN(Number(cTrim))) {
+        andConditions.push({ categoryId: parseInt(cTrim, 10) });
+      } else {
+        andConditions.push({
+          OR: [
+            { category: { name: cTrim } },
+            { productCategory: cTrim },
+          ],
+        });
+      }
+    }
+    if (unlinked) {
+      andConditions.push({
+        linkLogs: { none: {} },
+        site: { name: { notIn: ["Product Research", "Product Research Hub"] } },
+      });
+    }
+    if (native === "native") {
+      andConditions.push({ isNative: true });
+    } else if (native === "non_native") {
+      andConditions.push({ isNative: false });
+    }
+    if (user && user.trim()) {
+      const uTrim = user.trim();
+      andConditions.push({
+        OR: [
+          { addedBy: { name: uTrim } },
+          { article: { writer: { name: uTrim } } },
+        ],
+      });
+    }
+    if (startDate) {
+      const sDate = new Date(startDate);
+      if (!isNaN(sDate.getTime())) {
+        sDate.setHours(0, 0, 0, 0);
+        andConditions.push({ addedAt: { gte: sDate } });
+      }
+    }
+    if (endDate) {
+      const eDate = new Date(endDate);
+      if (!isNaN(eDate.getTime())) {
+        eDate.setHours(23, 59, 59, 999);
+        andConditions.push({ addedAt: { lte: eDate } });
+      }
+    }
+    if (status && status.trim()) {
+      const cleanStatus = status.trim().toUpperCase();
+      if (cleanStatus === "NO_LINKS") {
+        andConditions.push({
+          article: {
+            OR: [
+              { articleLink: { not: null } },
+              { status: { in: ["APPROVED", "COMPLETED"] } },
+            ],
+          },
+          linkLogs: {
+            none: {
+              OR: [
+                { affiliateLink: { not: "" } },
+                { geos: { some: {} } },
+              ],
+            },
+          },
+        });
+      } else if (cleanStatus === "REDIRECTED") {
+        andConditions.push({
+          OR: [
+            { article: { status: "REDIRECTED" as any } },
+            { linkLogs: { some: { status: "REDIRECTED" } } },
+          ],
+        });
+      } else if (cleanStatus === "PENDING") {
+        andConditions.push({
           OR: [
             { article: null },
-            { article: { status: { in: ["PENDING", "IN_PROGRESS", "REDO"] } } },
+            { article: { status: "PENDING" } },
             { article: { writerId: null } },
           ],
-        }
-        : {}),
-    };
+        });
+      } else if (["IN_PROGRESS", "COMPLETED", "APPROVED", "REDO"].includes(cleanStatus)) {
+        andConditions.push({
+          article: { status: cleanStatus as any },
+        });
+      }
+    } else if (excludeCompletedForWriter) {
+      andConditions.push({
+        OR: [
+          { article: null },
+          { article: { status: { in: ["PENDING", "IN_PROGRESS", "REDO"] } } },
+          { article: { writerId: null } },
+        ],
+      });
+    }
+    if (search && search.trim()) {
+      const q = search.trim();
+      if (exact) {
+        andConditions.push({
+          OR: [
+            { name: { equals: q } },
+            { slug: { equals: q } },
+          ],
+        });
+      } else {
+        andConditions.push({
+          OR: [
+            { name: { contains: q } },
+            { slug: { contains: q } },
+            { site: { name: { contains: q } } },
+            { category: { name: { contains: q } } },
+            { productCategory: { contains: q } },
+            { source: { contains: q } },
+            { affiliateName: { contains: q } },
+            { addedBy: { name: { contains: q } } },
+          ],
+        });
+      }
+    }
+
+    const productWhere: any = andConditions.length > 0 ? { AND: andConditions } : {};
+
+    // Fast slim mode for dropdowns / unlinked-products checks (skips heavy linkLogs, geos, and availability SQL)
+    if (slim) {
+      const [totalSlim, slimProducts] = await Promise.all([
+        isPaginated ? prisma.product.count({ where: productWhere }) : Promise.resolve(0),
+        prisma.product.findMany({
+          where: productWhere,
+          ...(isPaginated ? { skip: (page - 1) * limit, take: limit } : {}),
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            siteId: true,
+            categoryId: true,
+            country: true,
+            addedAt: true,
+            site: { select: { id: true, name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
+            category: { select: { id: true, name: true } },
+            article: { select: { id: true, status: true, articleLink: true, country: true } },
+          },
+          orderBy: { addedAt: "desc" },
+        }),
+      ]);
+
+      if (isPaginated) {
+        return {
+          products: slimProducts,
+          pagination: {
+            total: totalSlim,
+            page,
+            limit,
+            totalPages: Math.ceil(totalSlim / limit),
+          },
+        };
+      }
+      return slimProducts;
+    }
 
     const [totalProductsCount, products, totalPublishingSites] = await Promise.all([
       isPaginated ? prisma.product.count({ where: productWhere }) : Promise.resolve(0),
@@ -697,12 +871,21 @@ export async function GET(req: NextRequest) {
         ? (allowedSiteIds.length > 0 ? Prisma.sql`AND p.siteId IN (${Prisma.join(allowedSiteIds)})` : Prisma.sql`AND 1=0`)
         : Prisma.empty;
 
+      const pageProductNames = isPaginated
+        ? Array.from(new Set(products.map((p) => p.name).filter(Boolean)))
+        : [];
+      const nameFilterSql =
+        isPaginated && pageProductNames.length > 0
+          ? Prisma.sql`AND p.name IN (${Prisma.join(pageProductNames)})`
+          : Prisma.empty;
+
       productSiteOccurrences = await prisma.$queryRaw<Array<{ name: string; siteId: number }>>`
         SELECT LOWER(TRIM(p.name)) as name, p.siteId 
         FROM Product p
         JOIN Site s ON p.siteId = s.id
         WHERE s.name != "Product Research"
         ${siteFilterSql}
+        ${nameFilterSql}
         GROUP BY LOWER(TRIM(p.name)), p.siteId
       `;
     }

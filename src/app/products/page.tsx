@@ -136,6 +136,10 @@ function ProductsPageContent() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeTab, setActiveTab] = useState<"products" | "my-articles">("products");
   const [myArticles, setMyArticles] = useState<any[]>([]);
+  const [totalProductsCount, setTotalProductsCount] = useState(0);
+  const [totalMyArticlesCount, setTotalMyArticlesCount] = useState(0);
+  const [allSitesList, setAllSitesList] = useState<string[]>([]);
+  const [allUsersList, setAllUsersList] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const itemsPerPage = 8;
 
@@ -237,27 +241,69 @@ function ProductsPageContent() {
     }
   };
 
-  const refreshProductsData = (showLoading = false) => {
+  const buildProductFilterParams = (extra?: Record<string, string>) => {
+    const uRole = getActiveWorkspace(session?.user?.role, (session?.user as any)?.roles);
+    const q = new URLSearchParams({
+      userId: String(session?.user?.id || ""),
+      role: uRole,
+    });
+    if (search.trim()) q.set("search", search.trim());
+    if (isExact) q.set("exact", "true");
+    if (siteFilter) q.set("site", siteFilter);
+    if (categoryFilter) q.set("categoryId", categoryFilter);
+    if (statusFilter) q.set("status", statusFilter);
+    if (userFilter) q.set("user", userFilter);
+    if (startDate) q.set("startDate", startDate);
+    if (endDate) q.set("endDate", endDate);
+    if (nativeFilter) q.set("native", nativeFilter);
+    if (extra) {
+      Object.entries(extra).forEach(([k, v]) => q.set(k, v));
+    }
+    return q;
+  };
+
+  const refreshProductsData = (showLoading = false, targetPage = currentPage) => {
     if (!session?.user?.id) return;
     const mockUserId = session.user.id;
     const uRole = getActiveWorkspace(session.user.role, (session.user as any)?.roles);
     setCurrentUserRole(uRole);
 
-    if (showLoading && products.length === 0) setLoading(true);
-    Promise.all([
-      fetch(`/api/products?userId=${mockUserId}&role=${uRole}`).then((r) => (r.ok ? r.json() : [])),
-      fetch("/api/categories").then((r) => (r.ok ? r.json() : [])),
-      fetch(`/api/dashboard?userId=${mockUserId}&role=${uRole}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/articles?writerId=${mockUserId}&role=${uRole}`).then((r) => (r.ok ? r.json() : [])),
-      fetch(`/api/notifications?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
-    ])
-      .then(([productsData, categoriesData, dashboardData, articlesData, notifsData]) => {
+    if (showLoading) setLoading(true);
+
+    if (activeTab === "my-articles") {
+      const aq = new URLSearchParams({
+        writerId: String(mockUserId),
+        role: uRole,
+        page: String(targetPage),
+        limit: String(itemsPerPage),
+      });
+      if (search.trim()) aq.set("search", search.trim());
+      if (isExact) aq.set("exact", "true");
+      if (siteFilter) aq.set("site", siteFilter);
+      if (statusFilter) aq.set("status", statusFilter);
+
+      fetch(`/api/articles?${aq.toString()}`)
+        .then((r) => (r.ok ? r.json() : { articles: [], pagination: { total: 0 } }))
+        .then((articlesData) => {
+          const list = Array.isArray(articlesData) ? articlesData : (articlesData?.articles || []);
+          setMyArticles(list);
+          setTotalMyArticlesCount(articlesData?.pagination?.total ?? list.length);
+        })
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    const pq = buildProductFilterParams({
+      page: String(targetPage),
+      limit: String(itemsPerPage),
+    });
+
+    fetch(`/api/products?${pq.toString()}`)
+      .then((r) => (r.ok ? r.json() : { products: [], pagination: { total: 0 } }))
+      .then((productsData) => {
         const prods = Array.isArray(productsData) ? productsData : (productsData?.products || []);
         setProducts(prods);
-        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
-        setStats(dashboardData);
-        setMyArticles(Array.isArray(articlesData) ? articlesData : (articlesData?.articles || []));
-        setNotifications(Array.isArray(notifsData) ? notifsData : []);
+        setTotalProductsCount(productsData?.pagination?.total ?? prods.length);
         setSelectedProduct((curr) => {
           if (!curr) return null;
           const updated = prods.find((p: any) => p.id === curr.id || (p.name && curr.name && p.name.trim().toLowerCase() === curr.name.trim().toLowerCase()));
@@ -268,6 +314,36 @@ function ProductsPageContent() {
         setLoading(false);
       });
   };
+
+  // Load metadata (categories, sites, users, stats, notifications) once per session/role
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const mockUserId = session.user.id;
+    const uRole = getActiveWorkspace(session.user.role, (session.user as any)?.roles);
+    setCurrentUserRole(uRole);
+
+    Promise.all([
+      fetch("/api/categories").then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/sites?role=${uRole}`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/dashboard?userId=${mockUserId}&role=${uRole}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/notifications?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
+      (uRole === "ADMIN" || uRole === "SUPER_ADMIN")
+        ? fetch("/api/users").then((r) => (r.ok ? r.json() : []))
+        : Promise.resolve([]),
+    ])
+      .then(([categoriesData, sitesData, dashboardData, notifsData, usersData]) => {
+        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+        if (Array.isArray(sitesData)) {
+          setAllSitesList(sitesData.map((s: any) => s.name).filter(Boolean));
+        }
+        setStats(dashboardData);
+        setNotifications(Array.isArray(notifsData) ? notifsData : []);
+        if (Array.isArray(usersData)) {
+          setAllUsersList(Array.from(new Set(usersData.map((u: any) => u.name).filter(Boolean))) as string[]);
+        }
+      })
+      .catch(() => {});
+  }, [session?.user?.id, currentUserRole]);
 
   useEffect(() => {
     if (activeRole === "LINKER" && activeTab === "my-articles") {
@@ -283,7 +359,7 @@ function ProductsPageContent() {
     const handleWorkspaceChanged = (e: any) => {
       if (e.detail?.role) {
         setCurrentUserRole(e.detail.role.toUpperCase());
-        refreshProductsData(false);
+        setCurrentPage(1);
       }
     };
     window.addEventListener("workspace-changed", handleWorkspaceChanged);
@@ -297,70 +373,75 @@ function ProductsPageContent() {
     }
   }, [session?.user]);
 
+  // Fetch paginated products/articles whenever page, tab, role, or filters change (debounced for search)
   useEffect(() => {
-    refreshProductsData(true);
-
     if (!session?.user?.id) return;
-    const currentUserId = session.user.id;
+    const timer = setTimeout(() => {
+      refreshProductsData(true, currentPage);
+    }, 150);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    session?.user?.id,
+    currentUserRole,
+    activeTab,
+    currentPage,
+    search,
+    isExact,
+    siteFilter,
+    categoryFilter,
+    statusFilter,
+    userFilter,
+    startDate,
+    endDate,
+    nativeFilter,
+  ]);
 
-    // Live status updates via WebSocket
-    let ws: WebSocket | null = null;
-    try {
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsHost = window.location.host;
-      ws = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
-      ws.onopen = () => {
-        ws?.send(JSON.stringify({ type: "register", userId: currentUserId }));
-      };
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === "ARTICLE_STATUS_UPDATED" && msg.data) {
-            const updated = msg.data;
-            setProducts((prev) => {
-              if (currentUserRole === "WRITER" && (updated.status === "COMPLETED" || updated.status === "APPROVED")) {
-                return prev.filter((p) => p.id !== updated.productId);
-              }
-              return prev.map((p) =>
-                p.id === updated.productId
-                  ? {
-                    ...p,
-                    article: {
-                      id: updated.id,
-                      status: updated.status,
-                      writer: updated.writer,
-                    },
-                  }
-                  : p
-              );
-            });
-            // Also patch selectedProduct if it's open
-            setSelectedProduct((prev) =>
-              prev && prev.id === updated.productId
-                ? {
-                  ...prev,
+  // Reuse Sidebar's WebSocket live-notification event instead of opening a duplicate socket
+  useEffect(() => {
+    const handleLiveNotif = (e: Event) => {
+      const msg = (e as CustomEvent).detail;
+      if (msg?.type === "ARTICLE_STATUS_UPDATED" && msg.data) {
+        const updated = msg.data;
+        setProducts((prev) => {
+          if (currentUserRole === "WRITER" && (updated.status === "COMPLETED" || updated.status === "APPROVED")) {
+            return prev.filter((p) => p.id !== updated.productId);
+          }
+          return prev.map((p) =>
+            p.id === updated.productId
+              ? {
+                  ...p,
                   article: {
                     id: updated.id,
                     status: updated.status,
                     writer: updated.writer,
                   },
                 }
-                : prev
-            );
-          }
-        } catch (e) { }
-      };
-      ws.onerror = () => { };
-    } catch (e) { }
-
-    return () => {
-      ws?.close();
+              : p
+          );
+        });
+        setSelectedProduct((prev) =>
+          prev && prev.id === updated.productId
+            ? {
+                ...prev,
+                article: {
+                  id: updated.id,
+                  status: updated.status,
+                  writer: updated.writer,
+                },
+              }
+            : prev
+        );
+      }
     };
-  }, [session?.user?.id]);
+    window.addEventListener("live-notification", handleLiveNotif);
+    return () => window.removeEventListener("live-notification", handleLiveNotif);
+  }, [currentUserRole]);
 
   const uniqueSites = useMemo(() => {
     return Array.from(
       new Set([
+        ...allSitesList,
         ...products.map((p) => p.site?.name),
         ...products.flatMap((p) =>
           p.targetSites
@@ -369,16 +450,17 @@ function ProductsPageContent() {
         ),
       ].filter(Boolean))
     ) as string[];
-  }, [products]);
+  }, [allSitesList, products]);
 
   const uniqueUsers = useMemo(() => {
     return Array.from(
       new Set([
+        ...allUsersList,
         ...products.map((p) => p.addedBy?.name),
         ...products.map((p) => p.article?.writer?.name),
       ].filter(Boolean))
     ) as string[];
-  }, [products]);
+  }, [allUsersList, products]);
 
   const filtered = useMemo(() => {
     const cleanQuery = (search || "").trim().toLowerCase();
@@ -691,10 +773,10 @@ function ProductsPageContent() {
     setSelectedProduct(fullProd as any);
   };
 
-  const activeTotalCount = activeTab === "products" ? sortedFiltered.length : sortedFilteredMyArticles.length;
-  const totalPages = Math.ceil(activeTotalCount / itemsPerPage);
-  const paginated = sortedFiltered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const paginatedMyArticles = sortedFilteredMyArticles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const activeTotalCount = activeTab === "products" ? totalProductsCount : totalMyArticlesCount;
+  const totalPages = Math.max(1, Math.ceil(activeTotalCount / itemsPerPage));
+  const paginated = sortedFiltered;
+  const paginatedMyArticles = sortedFilteredMyArticles;
 
   const formatTableDate = (dateStr: string) => {
     if (!dateStr) return "-";
