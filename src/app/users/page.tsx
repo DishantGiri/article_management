@@ -241,18 +241,15 @@ export default function UsersPage() {
 
     try {
       if (showLoading && users.length === 0) setLoading(true);
-      const [usersRes, sitesRes, dashRes] = await Promise.all([
+      const [usersRes, sitesRes] = await Promise.all([
         fetch("/api/users"),
         fetch("/api/sites"),
-        fetch(`/api/dashboard?userId=${stored}`),
       ]);
       const usersData = usersRes.ok ? await usersRes.json() : [];
       const sitesData = sitesRes.ok ? await sitesRes.json() : [];
-      const dashData = dashRes.ok ? await dashRes.json() : null;
 
       setUsers(Array.isArray(usersData) ? usersData : []);
       setSites(Array.isArray(sitesData) ? sitesData : []);
-      setStats(dashData);
     } catch (e) {
       console.error(e);
       toast.error("Failed to load users data");

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { cached } from "@/lib/redis";
 
 export async function GET() {
   try {
@@ -11,36 +12,42 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: Number(session.user.id) },
-      select: { role: true },
-    });
-
+    const role = session.user.role;
     if (
-      user?.role !== "SUPER_ADMIN" &&
-      user?.role !== "ADMIN" &&
-      user?.role !== "LINKER" &&
-      user?.role !== "TEAM_LEAD"
+      role !== "SUPER_ADMIN" &&
+      role !== "ADMIN" &&
+      role !== "LINKER" &&
+      role !== "TEAM_LEAD"
     ) {
       return NextResponse.json({ error: "Forbidden: Access denied" }, { status: 403 });
     }
 
+    const combined = await cached("history:latest", 45, async () => {
     const [articleHistories, linkHistories] = await Promise.all([
       prisma.articleHistory.findMany({
+        take: 250,
         include: {
           updatedBy: { select: { id: true, name: true, role: true, email: true } },
           article: {
-            include: {
+            select: {
               writer: { select: { id: true, name: true, role: true, email: true } },
               product: {
                 select: { id: true, name: true, site: { select: { name: true } } },
               },
               reviews: {
-                include: { reviewedBy: { select: { id: true, name: true, role: true, email: true } } },
+                take: 3,
+                select: {
+                  approved: true,
+                  suggestion: true,
+                  reviewedAt: true,
+                  reviewedBy: { select: { id: true, name: true, role: true, email: true } },
+                },
                 orderBy: { reviewedAt: "desc" },
               },
               specialApproval: {
-                include: { approvedBy: { select: { id: true, name: true, role: true, email: true } } },
+                select: {
+                  approvedBy: { select: { id: true, name: true, role: true, email: true } },
+                },
               },
             },
           },
@@ -48,10 +55,11 @@ export async function GET() {
         orderBy: { updatedAt: "desc" },
       }),
       prisma.linkHistory.findMany({
+        take: 250,
         include: {
           updatedBy: { select: { id: true, name: true, role: true, email: true } },
           linkLog: {
-            include: {
+            select: {
               addedBy: { select: { id: true, name: true, role: true, email: true } },
               product: {
                 select: { id: true, name: true, site: { select: { name: true } } },
@@ -194,9 +202,10 @@ export async function GET() {
       };
     });
 
-    const combined = [...formattedArticles, ...formattedLinks].sort(
+    return [...formattedArticles, ...formattedLinks].sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
+    });
 
     return NextResponse.json(combined);
   } catch (err: any) {

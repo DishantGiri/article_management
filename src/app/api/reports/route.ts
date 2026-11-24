@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { cached } from "@/lib/redis";
 
 export async function GET(req: NextRequest) {
   try {
@@ -41,6 +42,9 @@ export async function GET(req: NextRequest) {
     // ─────────────────────────────────────────────────────────────────────────
     const startDateParam = req.nextUrl.searchParams.get("startDate");
     const endDateParam = req.nextUrl.searchParams.get("endDate");
+
+    const reportCacheKey = `reports:${targetUserId}:${startDateParam || "all"}:${endDateParam || "all"}`;
+    const reportPayload = await cached(reportCacheKey, 45, async () => {
 
     let dateStart: Date | undefined = undefined;
     let dateEnd: Date | undefined = undefined;
@@ -412,7 +416,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    return {
       caller: {
         id: callerId,
         role: callerRole,
@@ -478,7 +482,10 @@ export async function GET(req: NextRequest) {
           },
         },
       },
+    };
     });
+
+    return NextResponse.json(reportPayload);
   } catch (err: any) {
     console.error("[GET /api/reports]", err);
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });

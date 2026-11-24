@@ -744,6 +744,7 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   onClick={() => setIsMobileOpen(false)}
                   className={`flex items-center gap-3 mx-3 px-3.5 py-2.5 text-sm transition-all duration-200 group rounded-xl ${active
                       ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-2xs"

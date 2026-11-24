@@ -97,7 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   window.addEventListener('DOMContentLoaded', function() {
                     setTimeout(function() {
                       observer.disconnect();
-                    }, 4000);
+                    }, 1500);
                   });
                 } catch (e) {}
               }

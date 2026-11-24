@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { validateUserName } from "@/lib/user-validation";
+import { cached, delByPattern } from "@/lib/redis";
 
 // GET /api/users - list all users with their accesses
 export async function GET() {
@@ -16,19 +17,21 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // If Admin (and not Super Admin), filter out Super Admin users
-  const whereClause = session.user.role === "ADMIN" ? { role: { not: "SUPER_ADMIN" as const } } : {};
+  const users = await cached(`users:${session.user.role}`, 60, async () => {
+    // If Admin (and not Super Admin), filter out Super Admin users
+    const whereClause = session.user.role === "ADMIN" ? { role: { not: "SUPER_ADMIN" as const } } : {};
 
-  const users = await prisma.user.findMany({
-    where: whereClause,
-    include: {
-      siteAccess: {
-        include: { site: { select: { id: true, name: true } } },
+    return prisma.user.findMany({
+      where: whereClause,
+      include: {
+        siteAccess: {
+          include: { site: { select: { id: true, name: true } } },
+        },
+        teamLead: { select: { id: true, name: true } },
+        teamMembers: { select: { id: true, name: true } },
       },
-      teamLead: { select: { id: true, name: true } },
-      teamMembers: { select: { id: true, name: true } },
-    },
-    orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" },
+    });
   });
   return NextResponse.json(users);
 }
@@ -149,6 +152,8 @@ export async function POST(req: NextRequest) {
         siteAccess: { include: { site: { select: { id: true, name: true } } } },
       },
     });
+
+    await Promise.all([delByPattern("users:*"), delByPattern("dashboard:*")]);
 
     return NextResponse.json(user, { status: 201 });
   } catch (err) {

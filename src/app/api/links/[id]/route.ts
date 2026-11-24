@@ -516,6 +516,7 @@ export async function PATCH(
     await Promise.all([
       delByPattern("products:*"),
       delByPattern("articles:*"),
+      delByPattern("links:*"),
       delByPattern("dashboard:*"),
     ]);
 
@@ -560,6 +561,7 @@ export async function DELETE(
     await Promise.all([
       delByPattern("products:*"),
       delByPattern("articles:*"),
+      delByPattern("links:*"),
       delByPattern("dashboard:*"),
     ]);
 

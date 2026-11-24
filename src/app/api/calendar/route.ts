@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { cached } from "@/lib/redis";
 import moment from "moment";
 
 const NPT_OFFSET = "+05:45";
@@ -90,6 +91,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const calendarCacheKey = `calendar:${sessionUserId}:${sessionUserRole || ""}:${targetUserId}:${monthParam || "current"}`;
+    const calendarPayload = await cached(calendarCacheKey, 45, async () => {
     // Fetch list of users that the current session user is permitted to select
     let selectableUsers: Array<{ id: number; name: string; email: string; role: string | null }> = [];
     if (sessionUserRole === "SUPER_ADMIN") {
@@ -530,7 +533,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    return {
       targetUser: {
         id: targetUser.id,
         name: targetUser.name,
@@ -549,7 +552,10 @@ export async function GET(req: NextRequest) {
         totalWritingTimeMin: totalMonthWritingTime,
       },
       days,
+    };
     });
+
+    return NextResponse.json(calendarPayload);
   } catch (err: any) {
     console.error("[GET /api/calendar]", err);
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });

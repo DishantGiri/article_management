@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canUserAddLinkOnSite, getUserAuthorizedSiteIds, isAdmin } from "@/lib/permissions";
 import { isResearchSite } from "@/lib/researchSite";
-import { delByPattern } from "@/lib/redis";
+import { cached, delByPattern } from "@/lib/redis";
 
 // GET /api/links?productId=X
 export async function GET(req: NextRequest) {
@@ -16,50 +16,57 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const productId = searchParams.get("productId");
 
-  let allowedSiteIds: number[] | undefined = undefined;
-
   const userId = session.user.id;
-  const userRole = session.user.role;
-  const allowLinkLogAccess = session.user.approved && session.user.role !== "WRITER"; // Standard check or check DB user
+  const userRole = session.user.role || "";
 
-  // Check database for allowLinkLogAccess flag for WRITER
-  const dbUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true, allowLinkLogAccess: true },
-  });
-
-  if (dbUser?.role === "WRITER" && !dbUser.allowLinkLogAccess) {
-    return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
-  }
-
-  // Restrict to authorized sites if user has site-specific roles or team lead restrictions
-  if (!isAdmin(dbUser?.role)) {
-    const authorizedSites = await getUserAuthorizedSiteIds(userId, dbUser?.role, "ADD_LINK");
-    if (authorizedSites !== null) {
-      allowedSiteIds = authorizedSites;
+  // Check database for allowLinkLogAccess flag only for WRITER
+  if (userRole === "WRITER") {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { allowLinkLogAccess: true },
+    });
+    if (!dbUser?.allowLinkLogAccess) {
+      return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
     }
   }
 
-  const links = await prisma.linkLog.findMany({
-    where: {
-      ...(productId ? { productId: parseInt(productId) } : {}),
-      ...(allowedSiteIds !== undefined ? { product: { siteId: { in: allowedSiteIds } } } : {}),
-    },
-    include: {
-      geos: true,
-      addedBy: { select: { id: true, name: true, role: true, email: true } },
-      updatedBy: { select: { id: true, name: true, role: true, email: true } },
-      product: {
-        select: {
-          name: true,
-          slug: true,
-          site: { select: { id: true, name: true, url: true, bridgeUrl: true } },
-          article: { select: { articleLink: true } }
-        }
+  const cacheKey = isAdmin(userRole)
+    ? `links:global:${productId || "all"}`
+    : `links:user:${userId}:${userRole}:${productId || "all"}`;
+
+  const links = await cached(cacheKey, 45, async () => {
+    let allowedSiteIds: number[] | undefined = undefined;
+
+    // Restrict to authorized sites if user has site-specific roles or team lead restrictions
+    if (!isAdmin(userRole)) {
+      const authorizedSites = await getUserAuthorizedSiteIds(userId, userRole, "ADD_LINK");
+      if (authorizedSites !== null) {
+        allowedSiteIds = authorizedSites;
+      }
+    }
+
+    return prisma.linkLog.findMany({
+      where: {
+        ...(productId ? { productId: parseInt(productId) } : {}),
+        ...(allowedSiteIds !== undefined ? { product: { siteId: { in: allowedSiteIds } } } : {}),
       },
-    },
-    orderBy: { addedAt: "desc" },
+      include: {
+        geos: true,
+        addedBy: { select: { id: true, name: true, role: true, email: true } },
+        updatedBy: { select: { id: true, name: true, role: true, email: true } },
+        product: {
+          select: {
+            name: true,
+            slug: true,
+            site: { select: { id: true, name: true, url: true, bridgeUrl: true } },
+            article: { select: { articleLink: true } }
+          }
+        },
+      },
+      orderBy: { addedAt: "desc" },
+    });
   });
+
   return NextResponse.json(links);
 }
 
@@ -411,6 +418,7 @@ export async function POST(req: NextRequest) {
     await Promise.all([
       delByPattern("products:*"),
       delByPattern("articles:*"),
+      delByPattern("links:*"),
       delByPattern("dashboard:*"),
     ]);
 
