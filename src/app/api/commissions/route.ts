@@ -653,10 +653,11 @@ export async function POST(req: NextRequest) {
     const writerTransferredToParty = isWriterToParty ? baseWriterAmount : 0;
     const writerAmount = isWriterToParty ? 0 : baseWriterAmount;
 
-    // Linker commission routed to party fund if linker has commissionToPartyFund or no valid linker assigned
+    // Linker commission routed to party fund if linker has left the company, unapproved, has commissionToPartyFund or no valid linker assigned
     let linkerTransferred = 0;
     let linkerAmount = effectiveLinkerRate;
-    if (!linker || linker.role === "PRODUCT_RESEARCHER" || linker.commissionToPartyFund) {
+    const isLinkerLeft = Boolean(linker?.hasLeftCompany || (linker && !linker.approved) || linker?.commissionToPartyFund);
+    if (!linker || linker.role === "PRODUCT_RESEARCHER" || isLinkerLeft) {
       linkerTransferred = effectiveLinkerRate;
       linkerAmount = 0;
     }
@@ -670,11 +671,11 @@ export async function POST(req: NextRequest) {
       // Writer has a separate assigned Team Lead - credit TL commission to them
       const tl = await prisma.user.findUnique({
         where: { id: writer.teamLeadId },
-        select: { id: true, name: true, commissionToPartyFund: true },
+        select: { id: true, name: true, commissionToPartyFund: true, hasLeftCompany: true, approved: true },
       });
       teamLeadId = tl?.id || null;
       teamLeadName = tl?.name || null;
-      if (tl?.commissionToPartyFund) {
+      if (tl?.commissionToPartyFund || tl?.hasLeftCompany || !tl?.approved) {
         tlTransferred = tlAmount;
         tlAmount = 0;
       }
@@ -683,7 +684,7 @@ export async function POST(req: NextRequest) {
       // Both writer commission AND TL commission go to this same user.
       teamLeadId = writer.id;
       teamLeadName = writer.name;
-      if (writer.commissionToPartyFund) {
+      if (writer.commissionToPartyFund || writer.hasLeftCompany || !writer.approved) {
         tlTransferred = tlAmount;
         tlAmount = 0;
       }

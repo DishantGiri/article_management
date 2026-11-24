@@ -335,7 +335,7 @@ export async function PATCH(
       );
     }
 
-    // Enforce mutual exclusion: if hasLeftCompany is true, approved must be false (and commissionToPartyFund false)
+    // Enforce mutual exclusion: if hasLeftCompany is true, approved must be false and commission routes to Party Fund
     // If approved is true, hasLeftCompany must be false
     let finalApproved = typeof approved === 'boolean' ? approved : undefined;
     let finalHasLeftCompany = typeof hasLeftCompany === 'boolean' ? hasLeftCompany : undefined;
@@ -343,7 +343,7 @@ export async function PATCH(
 
     if (finalHasLeftCompany === true) {
       finalApproved = false;
-      finalCommissionToPartyFund = false;
+      finalCommissionToPartyFund = true;
     } else if (finalApproved === true) {
       finalHasLeftCompany = false;
     }

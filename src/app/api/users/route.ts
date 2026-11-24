@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       );
     }
     let finalApproved = finalHasLeft ? false : (typeof approved === 'boolean' ? approved : true);
-    let finalCommToParty = finalHasLeft ? false : Boolean(commissionToPartyFund);
+    let finalCommToParty = finalHasLeft ? true : Boolean(commissionToPartyFund);
 
     let siteAccessCreate = undefined;
     if (Array.isArray(body.siteAccess) && body.siteAccess.length > 0) {

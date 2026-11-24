@@ -13,6 +13,7 @@
     "restore": "bash ./scripts/restore-from-backup.sh",
     "restore:latest": "bash ./scripts/restore-from-backup.sh --latest --yes",
     "seed": "tsx prisma/seed.ts",
+    "seed:users": "tsx prisma/seed-users.ts",
     "db:clean": "tsx prisma/clean.ts",
     "postinstall": "prisma generate"
   },

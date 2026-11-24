@@ -32,6 +32,25 @@ const providers: any[] = [
       });
 
       if (!user) {
+        // Also check if user exists by short prefix
+        const prefix = email.split("@")[0];
+        user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email },
+              { email: { startsWith: prefix + "@" } },
+            ],
+          },
+        });
+      }
+
+      // Strictly deny login if user has left the company
+      if (user?.hasLeftCompany) {
+        console.log(`Authorize Rejected: User has left company: ${email}`);
+        return null;
+      }
+
+      if (!user) {
         const rawName = email.split("@")[0].replace(/[._-]/g, " ");
         const initialName = sanitizeUserName(rawName) || "User";
         user = await prisma.user.create({
@@ -51,6 +70,7 @@ const providers: any[] = [
         image: user.image,
         role: user.role,
         approved: user.approved,
+        hasLeftCompany: user.hasLeftCompany,
       } as any;
     },
   }),
@@ -73,16 +93,28 @@ export const authOptions: NextAuthOptions = {
       }
 
       try {
-        // Find existing user by email
-        let dbUser = await prisma.user.findUnique({
-          where: { email: user.email },
+        const prefix = email.split("@")[0];
+        // Find existing user by email or prefix
+        let dbUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: user.email },
+              { email: { startsWith: prefix + "@" } },
+            ],
+          },
         });
+
+        // Strictly reject login if user has left company
+        if (dbUser?.hasLeftCompany) {
+          console.log(`SignIn Rejected: User has left company: ${email}`);
+          return false;
+        }
 
         if (dbUser) {
           // Update profile image if it has changed or is newly available
           if (user.image && dbUser.image !== user.image) {
             dbUser = await prisma.user.update({
-              where: { email: user.email },
+              where: { id: dbUser.id },
               data: { image: user.image },
             });
           }
@@ -119,13 +151,19 @@ export const authOptions: NextAuthOptions = {
 
       if (token.email && shouldRefresh) {
         try {
-          const dbUser = await prisma.user.findUnique({
-            where: { email: token.email },
+          const dbUser = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { email: token.email },
+                { id: token.id ? Number(token.id) : undefined },
+              ],
+            },
             select: {
               id: true,
               name: true,
               role: true,
               approved: true,
+              hasLeftCompany: true,
               image: true,
               siteAccess: {
                 select: {
@@ -138,7 +176,8 @@ export const authOptions: NextAuthOptions = {
           if (dbUser) {
             token.id = dbUser.id;
             token.name = dbUser.name;
-            token.approved = dbUser.approved;
+            token.hasLeftCompany = Boolean(dbUser.hasLeftCompany);
+            token.approved = dbUser.hasLeftCompany ? false : dbUser.approved;
             token.image = dbUser.image;
             const roleSet = new Set<string>();
             if (dbUser.role) roleSet.add(dbUser.role.toUpperCase());
@@ -187,6 +226,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = fallbackRole;
         session.user.roles = token.roles || (fallbackRole ? [fallbackRole] : ["GUEST"]);
         session.user.approved = token.approved;
+        (session.user as any).hasLeftCompany = Boolean(token.hasLeftCompany);
         session.user.image = token.image as string | null | undefined;
       }
       return session;

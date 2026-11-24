@@ -48,8 +48,22 @@ export default withAuth(
       return NextResponse.next();
     }
 
+    // 0. If user has left the company, deny all access immediately
+    if (token && (token as any).hasLeftCompany) {
+      if (pathname === "/auth/signin") {
+        return NextResponse.next();
+      }
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Access Denied: Account Deactivated" }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL("/auth/signin?error=AccessDenied", req.url));
+    }
+
     // 1. Redirect logged-in users away from sign-in page to the home page (dashboard)
     if (token && pathname === "/auth/signin") {
+      if ((token as any).hasLeftCompany) {
+        return NextResponse.next();
+      }
       return NextResponse.redirect(new URL("/", req.url));
     }
 

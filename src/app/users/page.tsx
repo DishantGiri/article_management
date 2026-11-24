@@ -648,7 +648,7 @@ export default function UsersPage() {
 
       if (payload.hasLeftCompany) {
         payload.approved = false;
-        payload.commissionToPartyFund = false;
+        payload.commissionToPartyFund = true;
       } else if (payload.approved) {
         payload.hasLeftCompany = false;
       }
