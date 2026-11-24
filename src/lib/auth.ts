@@ -107,7 +107,17 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async jwt({ token, trigger, session }) {
-      if (token.email) {
+      const now = Date.now();
+      const lastChecked = (token.lastChecked as number | undefined) ?? 0;
+      // Revalidate unapproved/GUEST users frequently (5s), approved users every 60s
+      const ttlMs = token.approved === false ? 5_000 : 60_000;
+      const shouldRefresh =
+        trigger === "signIn" ||
+        trigger === "update" ||
+        !token.id ||
+        now - lastChecked > ttlMs;
+
+      if (token.email && shouldRefresh) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: token.email },
@@ -145,6 +155,7 @@ export const authOptions: NextAuthOptions = {
             if (roleSet.size === 0) roleSet.add("GUEST");
             token.role = computedRole;
             token.roles = Array.from(roleSet);
+            token.lastChecked = now;
 
             // If user role is null in DB, persist GUEST role to User table
             if (!dbUser.role) {

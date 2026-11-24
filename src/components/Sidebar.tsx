@@ -232,7 +232,7 @@ export default function Sidebar() {
 
     const userId = session.user.id;
     const audioObj = new Audio("/mixkit-software-interface-back-2575.wav");
-    audioObj.load();
+    audioObj.preload = "none";
 
     // Fetch initial unread count
     fetch(`/api/notifications?userId=${userId}`)

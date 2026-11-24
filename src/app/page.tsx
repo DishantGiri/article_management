@@ -61,9 +61,7 @@ import {
   SlidersHorizontal,
   Tag,
 } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { ChartPieInteractive } from "@/components/ChartPieInteractive";
-import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
+import dynamic from "next/dynamic";
 import { toast } from "react-hot-toast";
 import FormattedRemarks from "@/components/FormattedRemarks";
 import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
@@ -72,11 +70,24 @@ import { fuzzyMatchAny } from "@/lib/fuzzy";
 import CustomSelect from "@/components/CustomSelect";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 import TopHeader from "@/components/TopHeader";
-import AddProductModal from "@/components/AddProductModal";
-import EditProductModal from "@/components/EditProductModal";
-import AddLinkModal from "@/components/AddLinkModal";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 import { consolidateLinkLogs } from "@/lib/utils";
+
+const ChartPieInteractive = dynamic(
+  () => import("@/components/ChartPieInteractive").then((m) => m.ChartPieInteractive),
+  { ssr: false, loading: () => <div className="h-[340px] rounded-2xl bg-slate-100/70 dark:bg-zinc-900 animate-pulse" /> }
+);
+const ChartLineLabelCustom = dynamic(
+  () => import("@/components/ChartLineLabelCustom").then((m) => m.ChartLineLabelCustom),
+  { ssr: false, loading: () => <div className="h-[340px] rounded-2xl bg-slate-100/70 dark:bg-zinc-900 animate-pulse" /> }
+);
+const WriterPerformanceBarChart = dynamic(
+  () => import("@/components/WriterPerformanceBarChart"),
+  { ssr: false, loading: () => <div className="h-full w-full rounded-xl bg-slate-100/70 dark:bg-zinc-900 animate-pulse" /> }
+);
+const AddProductModal = dynamic(() => import("@/components/AddProductModal"), { ssr: false });
+const EditProductModal = dynamic(() => import("@/components/EditProductModal"), { ssr: false });
+const AddLinkModal = dynamic(() => import("@/components/AddLinkModal"), { ssr: false });
 
 interface DashboardData {
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER";
@@ -1006,24 +1017,7 @@ function ExecutiveCommandCenter({ data, role }: { data: DashboardData; role: str
             {writerPerformance.length === 0 ? (
               <p className="text-center text-slate-400 text-xs py-20">No writer performance metrics available yet.</p>
             ) : (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <BarChart data={writerPerformance} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "#475569", fontWeight: 600 }}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "#f8fafc" }}
-                    contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.05)" }}
-                  />
-                  <Bar dataKey="completed" fill="#6D8196" radius={[0, 6, 6, 0]} barSize={22} />
-                </BarChart>
-              </ResponsiveContainer>
+              <WriterPerformanceBarChart data={writerPerformance} layout="vertical" />
             )}
           </div>
         </div>
@@ -1371,18 +1365,7 @@ function TeamLeadMissionControl({
             {tl.writerPerformance.length === 0 ? (
               <p className="text-center text-slate-400 text-xs py-20">No writer performance logs yet.</p>
             ) : (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <BarChart data={tl.writerPerformance} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    cursor={{ fill: "#f8fafc" }}
-                    contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}
-                  />
-                  <Bar dataKey="completed" fill="#6D8196" radius={[4, 4, 0, 0]} barSize={28} />
-                </BarChart>
-              </ResponsiveContainer>
+              <WriterPerformanceBarChart data={tl.writerPerformance} layout="horizontal" />
             )}
           </div>
         </div>

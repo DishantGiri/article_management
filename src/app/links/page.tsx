@@ -3,20 +3,22 @@
 
 import { useEffect, useState, useMemo, Suspense } from "react";
 import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check, GitCompare, Users, Link2 } from "lucide-react";
-import SiteProductComparison from "@/components/SiteProductComparison";
-import UserLinksView from "@/components/UserLinksView";
+import dynamic from "next/dynamic";
 import { toast } from "react-hot-toast";
-import AddLinkModal from "@/components/AddLinkModal";
 import FormattedRemarks from "@/components/FormattedRemarks";
-import EditLinkModal from "@/components/EditLinkModal";
-import AffiliateManageModal from "@/components/AffiliateManageModal";
-import GeoManageModal from "@/components/GeoManageModal";
-import LinkHistoryModal from "@/components/LinkHistoryModal";
 import DateRangePicker from "@/components/DateRangePicker";
 import CustomSelect from "@/components/CustomSelect";
 import PendingLinkLogsSection from "@/components/PendingLinkLogsSection";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import LoadingScreen from "@/components/LoadingScreen";
+
+const SiteProductComparison = dynamic(() => import("@/components/SiteProductComparison"), { ssr: false });
+const UserLinksView = dynamic(() => import("@/components/UserLinksView"), { ssr: false });
+const AddLinkModal = dynamic(() => import("@/components/AddLinkModal"), { ssr: false });
+const EditLinkModal = dynamic(() => import("@/components/EditLinkModal"), { ssr: false });
+const AffiliateManageModal = dynamic(() => import("@/components/AffiliateManageModal"), { ssr: false });
+const GeoManageModal = dynamic(() => import("@/components/GeoManageModal"), { ssr: false });
+const LinkHistoryModal = dynamic(() => import("@/components/LinkHistoryModal"), { ssr: false });
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";

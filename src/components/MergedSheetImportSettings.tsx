@@ -22,7 +22,6 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import * as XLSX from "xlsx";
 
 const EXPECTED_HEADERS = [
   "Product Name",
@@ -234,8 +233,9 @@ export default function MergedSheetImportSettings() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Generate and Download Sample Excel Template
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     try {
+      const XLSX = await import("xlsx");
       const wb = XLSX.utils.book_new();
 
       // Tab 1: Daily Health Supplement
@@ -382,7 +382,7 @@ export default function MergedSheetImportSettings() {
     setImportResult(null);
 
     try {
-      const buffer = await file.arrayBuffer();
+      const [XLSX, buffer] = await Promise.all([import("xlsx"), file.arrayBuffer()]);
       const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
 
       const detectedSheets: string[] = [];

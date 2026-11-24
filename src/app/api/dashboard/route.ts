@@ -43,13 +43,8 @@ export async function GET(req: NextRequest) {
 
     const [
       totalProducts,
-      pendingArticles,
-      inProgressArticles,
-      completedArticles,
-      totalLinks,
-      requestedLinks,
-      acceptedLinks,
-      issueLinks,
+      articleStatusGroups,
+      linkStatusGroups,
       todaysProducts,
       totalSites,
       totalCategories,
@@ -65,51 +60,52 @@ export async function GET(req: NextRequest) {
       deadLinksCount,
       flaggedLinks,
     ] = await Promise.all([
-      // General counts
+      // General counts (grouped to avoid 7 separate COUNT queries)
       prisma.product.count(),
-      prisma.article.count({ where: { status: "PENDING" } }),
-      prisma.article.count({ where: { status: { in: ["IN_PROGRESS", "REDO"] } } }),
-      prisma.article.count({ where: { status: { in: ["COMPLETED", "APPROVED"] } } }),
-      prisma.linkLog.count(),
-      prisma.linkLog.count({ where: { status: "REQUESTED" } }),
-      prisma.linkLog.count({ where: { status: "ACCEPTED" } }),
-      prisma.linkLog.count({ where: { status: "ISSUE" } }),
+      prisma.article.groupBy({ by: ["status"], _count: { _all: true } }),
+      prisma.linkLog.groupBy({ by: ["status"], _count: { _all: true } }),
       prisma.product.count({ where: { addedAt: { gte: startOfToday } } }),
       prisma.site.count(),
       prisma.category.count(),
 
-      // General recent products
-      prisma.product.findMany({
-        take: 5,
-        orderBy: { addedAt: "desc" },
-        include: {
-          site: { select: { id: true, name: true } },
-          category: { select: { id: true, name: true } },
-          addedBy: { select: { name: true } },
-          article: { select: { status: true } },
-        },
-      }),
+      // General recent products (not needed for WRITER)
+      role !== "WRITER"
+        ? prisma.product.findMany({
+            take: 5,
+            orderBy: { addedAt: "desc" },
+            include: {
+              site: { select: { id: true, name: true } },
+              category: { select: { id: true, name: true } },
+              addedBy: { select: { name: true } },
+              article: { select: { status: true } },
+            },
+          })
+        : Promise.resolve([]),
 
-      // General recent articles
-      prisma.article.findMany({
-        take: 5,
-        orderBy: { updatedAt: "desc" },
-        where: { status: { in: ["IN_PROGRESS", "COMPLETED", "APPROVED", "REDO"] } },
-        include: {
-          product: { select: { name: true } },
-          writer: { select: { name: true } },
-        },
-      }),
+      // General recent articles (not needed for WRITER)
+      role !== "WRITER"
+        ? prisma.article.findMany({
+            take: 5,
+            orderBy: { updatedAt: "desc" },
+            where: { status: { in: ["IN_PROGRESS", "COMPLETED", "APPROVED", "REDO"] } },
+            include: {
+              product: { select: { name: true } },
+              writer: { select: { name: true } },
+            },
+          })
+        : Promise.resolve([]),
 
       // Unlinked products (Alerts for Linkers/Admins) - only for products assigned to publishing sites
-      prisma.product.findMany({
-        where: {
-          linkLogs: { none: {} },
-          site: { name: { notIn: ["Product Research", "Product Research Hub"] } },
-        },
-        select: { id: true, name: true, site: { select: { name: true } } },
-        take: 5,
-      }),
+      role !== "WRITER"
+        ? prisma.product.findMany({
+            where: {
+              linkLogs: { none: {} },
+              site: { name: { notIn: ["Product Research", "Product Research Hub"] } },
+            },
+            select: { id: true, name: true, site: { select: { name: true } } },
+            take: 5,
+          })
+        : Promise.resolve([]),
 
       // WRITER & TEAM_LEAD: Pending articles on their assigned sites
       role === "WRITER" || role === "TEAM_LEAD"
@@ -224,6 +220,17 @@ export async function GET(req: NextRequest) {
         })
         : Promise.resolve([]),
     ]);
+
+    const articleCountMap = new Map(articleStatusGroups.map((g) => [g.status, g._count._all]));
+    const pendingArticles = articleCountMap.get("PENDING") ?? 0;
+    const inProgressArticles = (articleCountMap.get("IN_PROGRESS") ?? 0) + (articleCountMap.get("REDO") ?? 0);
+    const completedArticles = (articleCountMap.get("COMPLETED") ?? 0) + (articleCountMap.get("APPROVED") ?? 0);
+
+    const linkCountMap = new Map(linkStatusGroups.map((g) => [g.status, g._count._all]));
+    const totalLinks = linkStatusGroups.reduce((sum, g) => sum + g._count._all, 0);
+    const requestedLinks = linkCountMap.get("REQUESTED") ?? 0;
+    const acceptedLinks = linkCountMap.get("ACCEPTED") ?? 0;
+    const issueLinks = linkCountMap.get("ISSUE") ?? 0;
 
     // ─────────────────────────────────────────────
     // ROLE SPECIFIC DATA FETCHING
@@ -377,43 +384,40 @@ export async function GET(req: NextRequest) {
         today.setHours(0, 0, 0, 0);
 
         const [
-          totalWriters, totalLinkers, totalTeamLeads,
-          affiliateNetworksGroupSuper,
-          deadLinksSuper, issueLinksSuper,
-          completedArticlesList,
+          userRoleGroups,
+          avgWritingTimeAgg,
           allWriters,
           allProductsRecent,
           allArticlesRecent,
           allLinksRecent
         ] = await Promise.all([
-          prisma.user.count({ where: { role: "WRITER" } }),
-          prisma.user.count({ where: { role: "LINKER" } }),
-          prisma.user.count({ where: { role: "TEAM_LEAD" } }),
-          prisma.affiliateName.findMany({ select: { name: true } }),
-          prisma.linkLog.count({
-            where: {
-              status: "ISSUE",
-              OR: [
-                { linkerRemarks: { contains: "dead" } },
-                { linkerRemarks: { contains: "down" } },
-                { linkerRemarks: { contains: "404" } },
-                { linkerRemarks: { contains: "broken" } }
-              ]
-            }
+          prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
+          prisma.article.aggregate({
+            where: { status: { in: ["COMPLETED", "APPROVED"] }, writingTimeMin: { not: null } },
+            _avg: { writingTimeMin: true },
           }),
-          prisma.linkLog.count({ where: { status: "ISSUE" } }),
-          prisma.article.findMany({ where: { status: { in: ["COMPLETED", "APPROVED"] }, writingTimeMin: { not: null } }, select: { writingTimeMin: true } }),
           prisma.user.findMany({
             where: { role: "WRITER" },
-            include: { _count: { select: { articles: { where: { status: { in: ["COMPLETED", "APPROVED"] } } } } } }
+            select: {
+              name: true,
+              _count: { select: { articles: { where: { status: { in: ["COMPLETED", "APPROVED"] } } } } },
+            },
           }),
-          prisma.product.findMany({ take: 20, orderBy: { addedAt: 'desc' }, include: { addedBy: { select: { name: true } } } }),
-          prisma.article.findMany({ take: 20, orderBy: { updatedAt: 'desc' }, include: { product: { select: { name: true } }, writer: { select: { name: true } } } }),
-          prisma.linkLog.findMany({ take: 20, orderBy: { addedAt: 'desc' }, include: { product: { select: { name: true } }, addedBy: { select: { name: true } } } })
+          prisma.product.findMany({ take: 20, orderBy: { addedAt: 'desc' }, select: { id: true, name: true, addedAt: true, addedBy: { select: { name: true } } } }),
+          prisma.article.findMany({ take: 20, orderBy: { updatedAt: 'desc' }, select: { id: true, status: true, updatedAt: true, product: { select: { name: true } }, writer: { select: { name: true } } } }),
+          prisma.linkLog.findMany({ take: 20, orderBy: { addedAt: 'desc' }, select: { id: true, status: true, addedAt: true, product: { select: { name: true } }, addedBy: { select: { name: true } } } })
         ]);
 
-        const avgWritingTime = completedArticlesList.length > 0
-          ? (completedArticlesList.reduce((acc, a) => acc + (a.writingTimeMin || 0), 0) / completedArticlesList.length) / 60
+        const roleCountMap = new Map(userRoleGroups.map((g) => [g.role, g._count._all]));
+        const totalWriters = roleCountMap.get("WRITER") ?? 0;
+        const totalLinkers = roleCountMap.get("LINKER") ?? 0;
+        const totalTeamLeads = roleCountMap.get("TEAM_LEAD") ?? 0;
+        const affiliateNetworksGroupSuper = affiliateNetworksGroup;
+        const deadLinksSuper = deadLinksCount;
+        const issueLinksSuper = issueLinks;
+
+        const avgWritingTime = avgWritingTimeAgg._avg.writingTimeMin
+          ? avgWritingTimeAgg._avg.writingTimeMin / 60
           : 0;
 
         // --- Monthly Data (Mocked from actual DB if possible, but for now we aggregate the last 6 months from recent) ---
@@ -632,6 +636,7 @@ export async function GET(req: NextRequest) {
 
     // ─── PRODUCT_RESEARCHER METRICS & BREAKDOWN ───
     let productResearcherData = null;
+    if (role === "PRODUCT_RESEARCHER" || normalizedUserRoles.includes("PRODUCT_RESEARCHER")) {
     try {
       const targetResearcherId = Number(userId);
       const [
@@ -640,6 +645,9 @@ export async function GET(req: NextRequest) {
         recentResearched,
         siteGroup,
         catGroup,
+        allPublishingSites,
+        liveSiteProductCounts,
+        researchedProductsWithTargets,
       ] = await Promise.all([
         prisma.product.count({ where: { addedById: targetResearcherId } }),
         prisma.product.count({
@@ -671,20 +679,28 @@ export async function GET(req: NextRequest) {
           orderBy: { _count: { id: "desc" } },
           take: 6,
         }),
+        prisma.site.findMany({
+          where: { name: { not: "Product Research" } },
+          select: { id: true, name: true },
+        }),
+        prisma.product.groupBy({
+          by: ["siteId"],
+          where: {
+            site: { name: { not: "Product Research" } },
+          },
+          _count: { id: true },
+        }),
+        prisma.product.findMany({
+          where: {
+            targetSites: { not: null },
+          },
+          select: {
+            id: true,
+            targetSites: true,
+            site: { select: { name: true } },
+          },
+        }),
       ]);
-
-      const allPublishingSites = await prisma.site.findMany({
-        where: { name: { not: "Product Research" } },
-        select: { id: true, name: true },
-      });
-
-      const liveSiteProductCounts = await prisma.product.groupBy({
-        by: ["siteId"],
-        where: {
-          site: { name: { not: "Product Research" } },
-        },
-        _count: { id: true },
-      });
 
       const siteCountMap = new Map<string, number>();
       const siteIdToNameMap = new Map<number, string>();
@@ -699,17 +715,6 @@ export async function GET(req: NextRequest) {
           siteCountMap.set(sName.toLowerCase(), (siteCountMap.get(sName.toLowerCase()) || 0) + group._count.id);
         }
       }
-
-      const researchedProductsWithTargets = await prisma.product.findMany({
-        where: {
-          targetSites: { not: null },
-        },
-        select: {
-          id: true,
-          targetSites: true,
-          site: { select: { name: true } },
-        },
-      });
 
       for (const p of researchedProductsWithTargets) {
         if (!p.targetSites) continue;
@@ -758,6 +763,7 @@ export async function GET(req: NextRequest) {
       };
     } catch (err) {
       console.error("Failed to compute productResearcherData:", err);
+    }
     }
 
     // ─────────────────────────────────────────────

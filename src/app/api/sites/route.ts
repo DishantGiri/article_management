@@ -35,40 +35,46 @@ export async function GET(req: NextRequest) {
         allowedSiteIds = accesses.map((a) => a.siteId);
       }
 
-      const sites = await prisma.site.findMany({
-        where: {
-          ...(categoryId ? { categories: { some: { id: parseInt(categoryId) } } } : {}),
-          ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
-          name: { notIn: ["Product Research", "Product Research Hub"] },
-        },
-        select: {
-          id: true,
-          name: true,
-          url: true,
-          bridgeUrl: true,
-          allowCountrySpecific: true,
-          categories: {
-            select: { id: true, name: true }
+      const [sites, linkCountsRaw] = await Promise.all([
+        prisma.site.findMany({
+          where: {
+            ...(categoryId ? { categories: { some: { id: parseInt(categoryId) } } } : {}),
+            ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
+            name: { notIn: ["Product Research", "Product Research Hub"] },
           },
-          _count: {
-            select: {
-              products: true,
-              categories: true
-            }
-          },
-          products: {
-            select: {
-              _count: {
-                select: { linkLogs: true }
+          select: {
+            id: true,
+            name: true,
+            url: true,
+            bridgeUrl: true,
+            allowCountrySpecific: true,
+            categories: {
+              select: { id: true, name: true }
+            },
+            _count: {
+              select: {
+                products: true,
+                categories: true
               }
-            }
-          }
-        },
-        orderBy: { name: "asc" },
-      });
+            },
+          },
+          orderBy: { name: "asc" },
+        }),
+        prisma.$queryRaw<Array<{ siteId: number; linkCount: bigint }>>`
+          SELECT p.siteId, COUNT(l.id) AS linkCount
+          FROM LinkLog l
+          INNER JOIN Product p ON l.productId = p.id
+          GROUP BY p.siteId
+        `,
+      ]);
+
+      const linkCountBySite = new Map<number, number>();
+      for (const row of linkCountsRaw) {
+        linkCountBySite.set(Number(row.siteId), Number(row.linkCount));
+      }
 
       return sites.map(site => {
-        const linksCount = site.products.reduce((acc, p) => acc + p._count.linkLogs, 0);
+        const linksCount = linkCountBySite.get(site.id) ?? 0;
         const validCategories = site.categories.filter(
           (c) => c.name && !/^(n\/?a|none|null|na)$/i.test(c.name.trim())
         );

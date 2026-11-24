@@ -23,12 +23,20 @@ import {
   ChevronRight,
   Filter,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
-import { ChartPieInteractive } from "@/components/ChartPieInteractive";
-import { ChartLineLabelCustom } from "@/components/ChartLineLabelCustom";
 import CustomSelect from "@/components/CustomSelect";
 import DateRangePicker from "@/components/DateRangePicker";
+
+const ChartPieInteractive = dynamic(
+  () => import("@/components/ChartPieInteractive").then((m) => m.ChartPieInteractive),
+  { ssr: false, loading: () => <div className="h-[320px] rounded-2xl bg-slate-100/70 dark:bg-zinc-900 animate-pulse" /> }
+);
+const ChartLineLabelCustom = dynamic(
+  () => import("@/components/ChartLineLabelCustom").then((m) => m.ChartLineLabelCustom),
+  { ssr: false, loading: () => <div className="h-[320px] rounded-2xl bg-slate-100/70 dark:bg-zinc-900 animate-pulse" /> }
+);
 
 export default function ReportsPage() {
   const [reportData, setReportData] = useState<any>(null);

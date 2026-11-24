@@ -4,7 +4,34 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import moment from "moment";
+
+function getCurrentNptMonth(): string {
+  // Nepal Time is UTC+05:45 (+345 minutes)
+  const npt = new Date(Date.now() + 345 * 60 * 1000);
+  const y = npt.getUTCFullYear();
+  const m = String(npt.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function shiftYearMonth(ym: string, deltaMonths: number): string {
+  const [yStr, mStr] = ym.split("-");
+  const d = new Date(Date.UTC(Number(yStr), Number(mStr) - 1 + deltaMonths, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatLongDate(dateStr: string): string {
+  const parts = dateStr.split("-");
+  const d =
+    parts.length === 3
+      ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+      : new Date(dateStr);
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -104,7 +131,7 @@ function CalendarContent() {
   const [error, setError] = useState("");
 
   const [selectedMonth, setSelectedMonth] = useState(
-    searchParams.get("month") || moment().utcOffset("+05:45").format("YYYY-MM")
+    searchParams.get("month") || getCurrentNptMonth()
   );
   const [selectedUserId, setSelectedUserId] = useState<number | null>(
     searchParams.get("userId") ? parseInt(searchParams.get("userId")!) : null
@@ -163,17 +190,15 @@ function CalendarContent() {
   }, [session?.user?.id, selectedMonth, selectedUserId]);
 
   const handlePrevMonth = () => {
-    const prev = moment(selectedMonth, "YYYY-MM").subtract(1, "month").format("YYYY-MM");
-    setSelectedMonth(prev);
+    setSelectedMonth(shiftYearMonth(selectedMonth, -1));
   };
 
   const handleNextMonth = () => {
-    const next = moment(selectedMonth, "YYYY-MM").add(1, "month").format("YYYY-MM");
-    setSelectedMonth(next);
+    setSelectedMonth(shiftYearMonth(selectedMonth, 1));
   };
 
   const handleTodayMonth = () => {
-    setSelectedMonth(moment().utcOffset("+05:45").format("YYYY-MM"));
+    setSelectedMonth(getCurrentNptMonth());
   };
 
   const formatWritingTime = (mins: number) => {
@@ -506,7 +531,7 @@ function CalendarContent() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    {moment(inspectingDay.date).format("dddd, MMMM D, YYYY")}
+                    {formatLongDate(inspectingDay.date)}
                   </h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     {inspectingDay.isWorkingDay ? (
