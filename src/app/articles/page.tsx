@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useState, useMemo, Suspense } from "react";
+import { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, Download, MoreHorizontal, CheckCircle2, PlayCircle, FileText, Activity, Flame, RotateCcw, Clock, Check, X, UserPlus, Flag, Calendar, Lock, Info, AlertTriangle } from "lucide-react";
@@ -79,11 +79,16 @@ function ArticlesContent() {
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [isExact, setIsExact] = useState(urlExact);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 10;
 
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "");
   const [writerFilter, setWriterFilter] = useState(searchParams.get("writer") || "");
   const [siteFilter, setSiteFilter] = useState(searchParams.get("site") || "");
+  const [allSites, setAllSites] = useState<string[]>([]);
+  const [allWriters, setAllWriters] = useState<string[]>([]);
+  const [writerActiveArticle, setWriterActiveArticle] = useState<any>(null);
+  const [writerActiveRevision, setWriterActiveRevision] = useState<any>(null);
 
   const [currentUserRole, setCurrentUserRole] = useState("");
   const [stats, setStats] = useState<any>(null);
@@ -140,22 +145,43 @@ function ArticlesContent() {
 
   const isManager = currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD";
 
-  const fetchArticlesList = async () => {
+  const fetchArticlesList = useCallback(async (targetPage = currentPage) => {
     const uid = session?.user?.id || currentUserId;
     if (!uid) return;
+    setLoading(true);
     try {
+      const q = new URLSearchParams({
+        userId: String(uid),
+        page: String(targetPage),
+        limit: String(itemsPerPage),
+      });
+      if (search.trim()) q.set("search", search.trim());
+      if (isExact) q.set("exact", "true");
+      if (statusFilter) q.set("status", statusFilter);
+      if (writerFilter) q.set("writer", writerFilter);
+      if (siteFilter) q.set("site", siteFilter);
+      if (currentUserRole) q.set("role", currentUserRole);
+
       const [artRes, dashRes] = await Promise.all([
-        fetch(`/api/articles?userId=${uid}`),
-        fetch(`/api/dashboard?userId=${uid}`),
+        fetch(`/api/articles?${q.toString()}`),
+        fetch(`/api/dashboard?userId=${uid}${currentUserRole ? `&role=${currentUserRole}` : ""}`),
       ]);
-      const data = await artRes.json();
-      if (Array.isArray(data)) setArticles(data);
+      const artData = await artRes.json();
+      if (artData && Array.isArray(artData.articles)) {
+        setArticles(artData.articles);
+        setTotalCount(artData.pagination?.total ?? artData.articles.length);
+      } else if (Array.isArray(artData)) {
+        setArticles(artData);
+        setTotalCount(artData.length);
+      }
       const dashData = await dashRes.json();
       if (dashData) setStats(dashData);
     } catch {
       // ignore
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [session?.user?.id, currentUserId, currentPage, itemsPerPage, search, isExact, statusFilter, writerFilter, siteFilter, currentUserRole]);
 
   const handleSendEditRequest = async () => {
     if (!requestingUpdateArticle || !requestEditReason.trim() || !currentUserId) return;
@@ -381,21 +407,68 @@ function ArticlesContent() {
         .catch(() => { });
     }
 
-    Promise.all([
-      fetch(`/api/articles?userId=${stored}`).then((r) => r.json()),
-      fetch(`/api/dashboard?userId=${stored}`).then((r) => r.json()),
-    ]).then(([articlesData, dashboardData]) => {
-      setArticles(Array.isArray(articlesData) ? articlesData : []);
-      setStats(dashboardData);
-    }).finally(() => setLoading(false));
+    // Load full list of sites and writers for filter dropdowns
+    fetch("/api/sites")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setAllSites(Array.from(new Set(data.map((s: any) => s.name).filter(Boolean))));
+        }
+      })
+      .catch(() => {});
+
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setAllWriters(
+            Array.from(
+              new Set(
+                data
+                  .filter((u: any) => u.role === "WRITER" || u.role === "TEAM_LEAD")
+                  .map((u: any) => u.name)
+                  .filter(Boolean)
+              )
+            )
+          );
+        }
+      })
+      .catch(() => {});
+
+    // For writers: load active writing & active revision articles
+    if (uRole === "WRITER") {
+      fetch(`/api/articles?writerId=${stored}&status=IN_PROGRESS&limit=1`)
+        .then((r) => r.json())
+        .then((data) => {
+          const list = Array.isArray(data) ? data : (data.articles || []);
+          setWriterActiveArticle(list.find((a: any) => !!a.startedAt) || null);
+        })
+        .catch(() => {});
+
+      fetch(`/api/articles?writerId=${stored}&status=REDO&limit=1`)
+        .then((r) => r.json())
+        .then((data) => {
+          const list = Array.isArray(data) ? data : (data.articles || []);
+          setWriterActiveRevision(list.find((a: any) => !!a.startedAt) || null);
+        })
+        .catch(() => {});
+    }
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id && !currentUserId) return;
+    const timer = setTimeout(() => {
+      fetchArticlesList(currentPage);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [fetchArticlesList, currentPage]);
 
   useEffect(() => {
     const handleWorkspaceChanged = (e: any) => {
       if (e.detail?.role) {
         const newRole = e.detail.role.toUpperCase();
         setCurrentUserRole(newRole);
-        fetchArticlesList();
+        setCurrentPage(1);
       }
     };
     window.addEventListener("workspace-changed", handleWorkspaceChanged);
@@ -403,65 +476,14 @@ function ArticlesContent() {
   }, []);
 
   const uniqueWriters = useMemo(() => {
-    return Array.from(new Set(articles.map((a) => a.writer?.name).filter(Boolean))) as string[];
-  }, [articles]);
+    const fromArticles = articles.map((a) => a.writer?.name).filter(Boolean) as string[];
+    return Array.from(new Set([...allWriters, ...fromArticles])).sort();
+  }, [allWriters, articles]);
 
   const uniqueSites = useMemo(() => {
-    return Array.from(new Set(articles.map((a) => a.product.site.name).filter(Boolean))) as string[];
-  }, [articles]);
-
-  const filtered = useMemo(() => {
-    const cleanQuery = (search || "").trim().toLowerCase();
-    const hasExactAny =
-      isExact && cleanQuery
-        ? articles.some(
-            (art) =>
-              (art.product?.name || "").trim().toLowerCase() === cleanQuery ||
-              (art.product?.slug || "").trim().toLowerCase() === cleanQuery
-          )
-        : false;
-
-    return articles.filter((a) => {
-      const cleanProductName = (a.product?.name || "").trim().toLowerCase();
-      const cleanProductSlug = (a.product?.slug || "").trim().toLowerCase();
-
-      let matchSearch = false;
-      if (!search) {
-        matchSearch = true;
-      } else if (isExact) {
-        if (hasExactAny) {
-          matchSearch =
-            cleanProductName === cleanQuery ||
-            cleanProductSlug === cleanQuery;
-        } else {
-          matchSearch = cleanProductName.includes(cleanQuery);
-        }
-      } else {
-        matchSearch = fuzzyMatchAny(
-          [
-            a.product?.name,
-            a.product?.slug,
-            a.writer?.name,
-            a.product?.site?.name,
-            String(a.id),
-            String(a.product?.id),
-          ],
-          search
-        );
-      }
-
-      const matchStatus = !statusFilter
-        ? true
-        : statusFilter === "NO_LINKS"
-        ? (Boolean(a.articleLink || a.status === "APPROVED" || a.status === "COMPLETED") &&
-           (!a.product?.linkLogs || a.product.linkLogs.length === 0 || !a.product.linkLogs.some((l: any) => l.affiliateLink || (l.geos && l.geos.length > 0))))
-        : a.status?.toUpperCase() === statusFilter.toUpperCase();
-      const matchWriter = !writerFilter || (a.writer?.name ? a.writer.name.toLowerCase() === writerFilter.toLowerCase() : false);
-      const matchSite = !siteFilter || (a.product?.site?.name ? a.product.site.name.toLowerCase() === siteFilter.toLowerCase() : false);
-
-      return matchSearch && matchStatus && matchWriter && matchSite;
-    });
-  }, [articles, search, isExact, statusFilter, writerFilter, siteFilter]);
+    const fromArticles = articles.map((a) => a.product?.site?.name).filter(Boolean) as string[];
+    return Array.from(new Set([...allSites, ...fromArticles])).sort();
+  }, [allSites, articles]);
 
   const activeFiltersCount = [
     Boolean(search),
@@ -479,21 +501,8 @@ function ArticlesContent() {
     router.replace("/articles");
   };
 
-  const sortedFiltered = useMemo(() => {
-    if (!search || !search.trim()) return filtered;
-    const q = search.trim().toLowerCase();
-    return [...filtered].sort((a, b) => {
-      const aName = (a.product?.name || "").toLowerCase();
-      const bName = (b.product?.name || "").toLowerCase();
-      const aExact = aName === q ? 3 : aName.startsWith(q) ? 2 : (a.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
-      const bExact = bName === q ? 3 : bName.startsWith(q) ? 2 : (b.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
-      if (aExact !== bExact) return bExact - aExact;
-      return 0;
-    });
-  }, [filtered, search]);
-
-  const totalPages = Math.ceil(sortedFiltered.length / itemsPerPage);
-  const paginated = sortedFiltered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const paginated = articles;
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -511,7 +520,7 @@ function ArticlesContent() {
     return (
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 py-3 px-2 border-t border-slate-100">
         <p className="text-xs font-semibold text-slate-400">
-          Showing {filtered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length}
+          Showing {totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount}
         </p>
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
@@ -627,35 +636,61 @@ function ArticlesContent() {
 
   const getLinkerRemarks = (article: any) => getLinkerRemarksInfo(article).remarks;
 
-  const handleExportCSV = () => {
-    const headers = ["ID", "Product", "Site", "Category", "Writer", "Status", "Article Link", "Date", "Writer Remarks", "Linker Remarks"];
-    const rows = filtered.map((a) => [
-      a.id.toString(),
-      a.product.name,
-      a.product.site.name,
-      a.product.category.name,
-      a.writer?.name || "Unassigned",
-      a.status,
-      a.articleLink || "",
-      new Date(a.updatedAt).toLocaleDateString(),
-      getWriterRemarks(a),
-      getLinkerRemarks(a)
-    ]);
+  const handleExportCSV = async () => {
+    const toastId = toast.loading("Preparing CSV export...");
+    try {
+      const q = new URLSearchParams({
+        userId: String(session?.user?.id || currentUserId || ""),
+        all: "true",
+      });
+      if (search.trim()) q.set("search", search.trim());
+      if (isExact) q.set("exact", "true");
+      if (statusFilter) q.set("status", statusFilter);
+      if (writerFilter) q.set("writer", writerFilter);
+      if (siteFilter) q.set("site", siteFilter);
+      if (currentUserRole) q.set("role", currentUserRole);
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.map(val => `"${(val || "").replace(/"/g, '""')}"`).join(","))
-    ].join("\n");
+      const res = await fetch(`/api/articles?${q.toString()}`);
+      const data = await res.json();
+      const exportList = Array.isArray(data) ? data : (data.articles || []);
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `articles_export_${new Date().toISOString().slice(0, 10)}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (exportList.length === 0) {
+        toast.error("No articles found to export", { id: toastId });
+        return;
+      }
+
+      const headers = ["ID", "Product", "Site", "Category", "Writer", "Status", "Article Link", "Date", "Writer Remarks", "Linker Remarks"];
+      const rows = exportList.map((a: any) => [
+        a.id.toString(),
+        a.product?.name || "",
+        a.product?.site?.name || "",
+        a.product?.category?.name || "",
+        a.writer?.name || "Unassigned",
+        a.status || "",
+        a.articleLink || "",
+        new Date(a.updatedAt).toLocaleDateString(),
+        getWriterRemarks(a),
+        getLinkerRemarks(a)
+      ]);
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row: string[]) => row.map((val) => `"${(val || "").replace(/"/g, '""')}"`).join(","))
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `articles_export_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`Exported ${exportList.length} articles!`, { id: toastId });
+    } catch {
+      toast.error("Failed to export CSV", { id: toastId });
+    }
   };
 
   const ensureExternalUrl = (url: string | null | undefined) => {
@@ -677,17 +712,17 @@ function ArticlesContent() {
   };
 
   const activeRevisionArticle = useMemo(() => {
-    return articles.find((art) => isMyArticle(art) && art.status === "REDO" && !!art.startedAt);
-  }, [articles, currentUserId, session?.user?.name]);
+    return writerActiveRevision || articles.find((art) => isMyArticle(art) && art.status === "REDO" && !!art.startedAt);
+  }, [writerActiveRevision, articles, currentUserId, session?.user?.name]);
 
   const activeWritingArticle = useMemo(() => {
-    return articles.find((art) => isMyArticle(art) && art.status === "IN_PROGRESS" && !!art.startedAt);
-  }, [articles, currentUserId, session?.user?.name]);
+    return writerActiveArticle || articles.find((art) => isMyArticle(art) && art.status === "IN_PROGRESS" && !!art.startedAt);
+  }, [writerActiveArticle, articles, currentUserId, session?.user?.name]);
 
   const hasActiveRevision = !!activeRevisionArticle;
   const hasActiveWriting = !!activeWritingArticle;
 
-  const hasActiveAssignment = articles.some(
+  const hasActiveAssignment = hasActiveRevision || hasActiveWriting || articles.some(
     (art) => isMyArticle(art) && (art.status === "IN_PROGRESS" || art.status === "REDO")
   );
 
@@ -1002,7 +1037,7 @@ function ArticlesContent() {
               size="md"
             />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : articles.length === 0 ? (
           <div className="p-16 text-center">
             <p className="text-slate-500 font-medium">No articles found</p>
           </div>
@@ -1568,8 +1603,7 @@ function ArticlesContent() {
                       setUpdateLink("");
                       setUpdateReason("");
                       // Refresh articles list
-                      const refreshed = await fetch(`/api/articles?userId=${currentUserId}`).then(r => r.json());
-                      setArticles(Array.isArray(refreshed) ? refreshed : []);
+                      await fetchArticlesList();
                     } catch {
                       toast.error("Something went wrong.");
                     } finally {

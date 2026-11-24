@@ -250,11 +250,11 @@ function ProductsPageContent() {
       fetch(`/api/notifications?userId=${mockUserId}`).then((r) => (r.ok ? r.json() : [])),
     ])
       .then(([productsData, categoriesData, dashboardData, articlesData, notifsData]) => {
-        const prods = Array.isArray(productsData) ? productsData : [];
+        const prods = Array.isArray(productsData) ? productsData : (productsData?.products || []);
         setProducts(prods);
         setCategories(Array.isArray(categoriesData) ? categoriesData : []);
         setStats(dashboardData);
-        setMyArticles(Array.isArray(articlesData) ? articlesData : []);
+        setMyArticles(Array.isArray(articlesData) ? articlesData : (articlesData?.articles || []));
         setNotifications(Array.isArray(notifsData) ? notifsData : []);
         setSelectedProduct((curr) => {
           if (!curr) return null;

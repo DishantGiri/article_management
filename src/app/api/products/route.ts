@@ -582,6 +582,13 @@ export async function GET(req: NextRequest) {
   const siteId = searchParams.get("siteId");
   const categoryId = searchParams.get("categoryId");
 
+  // Pagination parameters
+  const pageParam = searchParams.get("page");
+  const limitParam = searchParams.get("limit");
+  const isPaginated = pageParam !== null || limitParam !== null;
+  const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10", 10) || 10));
+
   let allowedSiteIds: number[] | undefined = undefined;
   let excludeCompletedForWriter = false;
 
@@ -644,41 +651,45 @@ export async function GET(req: NextRequest) {
     siteFilterCondition = parsedSiteId;
   }
 
-  const cacheKey = `products:${effectiveRole}:${userId || 0}:${parsedSiteId ?? "all"}:${categoryId ?? "all"}`;
+  const cacheKey = `products:${effectiveRole}:${userId || 0}:${parsedSiteId ?? "all"}:${categoryId ?? "all"}:${isPaginated ? `p${page}_l${limit}` : "all"}`;
 
-  const enrichedProducts = await cached(cacheKey, 60, async () => {
-    const products = await prisma.product.findMany({
-      where: {
-        ...(siteFilterCondition !== undefined ? { siteId: siteFilterCondition } : {}),
-        ...(categoryId ? { categoryId: parseInt(categoryId) } : {}),
-        ...(excludeCompletedForWriter
-          ? {
-            OR: [
-              { article: null },
-              { article: { status: { in: ["PENDING", "IN_PROGRESS", "REDO"] } } },
-              { article: { writerId: null } },
-            ],
-          }
-          : {}),
-      },
-      include: {
-        site: { select: { id: true, name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
-        category: { select: { id: true, name: true } },
-        addedBy: { select: { id: true, name: true, role: true } },
-        updatedBy: { select: { id: true, name: true, role: true } },
-        article: { select: { id: true, status: true, articleLink: true, country: true, writer: { select: { id: true, name: true } } } },
-        linkLogs: { include: { geos: true } },
-      },
-      orderBy: { addedAt: "desc" },
-    });
+  const result = await cached(cacheKey, 60, async () => {
+    const productWhere: any = {
+      ...(siteFilterCondition !== undefined ? { siteId: siteFilterCondition } : {}),
+      ...(categoryId ? { categoryId: parseInt(categoryId) } : {}),
+      ...(excludeCompletedForWriter
+        ? {
+          OR: [
+            { article: null },
+            { article: { status: { in: ["PENDING", "IN_PROGRESS", "REDO"] } } },
+            { article: { writerId: null } },
+          ],
+        }
+        : {}),
+    };
 
-    // Get total live publishing sites (excluding internal "Product Research" catalog)
-    const totalPublishingSites = await prisma.site.count({
-      where: {
-        name: { not: "Product Research" },
-        ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
-      },
-    });
+    const [totalProductsCount, products, totalPublishingSites] = await Promise.all([
+      isPaginated ? prisma.product.count({ where: productWhere }) : Promise.resolve(0),
+      prisma.product.findMany({
+        where: productWhere,
+        ...(isPaginated ? { skip: (page - 1) * limit, take: limit } : {}),
+        include: {
+          site: { select: { id: true, name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
+          category: { select: { id: true, name: true } },
+          addedBy: { select: { id: true, name: true, role: true } },
+          updatedBy: { select: { id: true, name: true, role: true } },
+          article: { select: { id: true, status: true, articleLink: true, country: true, writer: { select: { id: true, name: true } } } },
+          linkLogs: { include: { geos: true } },
+        },
+        orderBy: { addedAt: "desc" },
+      }),
+      prisma.site.count({
+        where: {
+          name: { not: "Product Research" },
+          ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
+        },
+      }),
+    ]);
 
     let productSiteOccurrences: { name: string; siteId: number }[] = [];
     if (products.length > 0) {
@@ -705,7 +716,7 @@ export async function GET(req: NextRequest) {
       availabilityMap.get(key)!.add(item.siteId);
     }
 
-    return products.map((p) => {
+    const enrichedProducts = products.map((p) => {
       const key = p.name.trim().toLowerCase();
       const liveSiteIds = availabilityMap.get(key) || new Set<number>();
       const isResearchSite = p.site?.name === "Product Research";
@@ -720,7 +731,21 @@ export async function GET(req: NextRequest) {
         totalSitesCount: totalPublishingSites,
       };
     });
+
+    if (isPaginated) {
+      return {
+        products: enrichedProducts,
+        pagination: {
+          total: totalProductsCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalProductsCount / limit),
+        },
+      };
+    }
+
+    return enrichedProducts;
   });
 
-  return NextResponse.json(enrichedProducts);
+  return NextResponse.json(result);
 }

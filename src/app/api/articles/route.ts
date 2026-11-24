@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { consolidateLinkLogs } from "@/lib/utils";
 import { cached } from "@/lib/redis";
 
-// GET /api/articles - list articles
+// GET /api/articles - list articles with server-side pagination & filtering
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -14,10 +14,22 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const writerId = searchParams.get("writerId");
+  const writer = searchParams.get("writer");
   const status = searchParams.get("status");
   const productId = searchParams.get("productId");
+  const siteId = searchParams.get("siteId");
+  const site = searchParams.get("site");
+  const search = searchParams.get("search");
+  const exact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
+  const all = searchParams.get("all") === "true" || searchParams.get("all") === "1";
 
-  let allowedFilter: any = {};
+  // Pagination parameters
+  const pageParam = searchParams.get("page");
+  const limitParam = searchParams.get("limit");
+  const isPaginated = !all && (pageParam !== null || limitParam !== null);
+  const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10", 10) || 10));
+
   const userId = Number(session.user.id);
   const userRole = session.user.role;
 
@@ -29,80 +41,184 @@ export async function GET(req: NextRequest) {
     ? requestedRole.toUpperCase()
     : (userRole || "");
 
+  const whereConditions: any[] = [];
+
   if (effectiveRole === "TEAM_LEAD") {
     const accesses = await prisma.siteAccess.findMany({
       where: { userId },
       select: { siteId: true },
     });
     const siteIds = accesses.map((a) => a.siteId);
-    allowedFilter = {
+    whereConditions.push({
       product: { siteId: { in: siteIds } },
       OR: [
         { writerId: userId },
         { writer: { teamLeadId: userId } },
         { status: "PENDING" },
       ],
-    };
+    });
   } else if (effectiveRole === "WRITER") {
     const accesses = await prisma.siteAccess.findMany({
       where: { userId },
       select: { siteId: true },
     });
     const siteIds = accesses.map((a) => a.siteId);
-    allowedFilter = {
+    whereConditions.push({
       OR: [
         { product: { siteId: { in: siteIds } } },
         { writerId: userId },
       ],
-    };
+    });
   }
 
-  const cacheKey = `articles:${effectiveRole}:${userId || 0}:${writerId || "all"}:${status || "all"}:${productId || "all"}`;
+  if (writerId) {
+    whereConditions.push({ writerId: parseInt(writerId, 10) });
+  } else if (writer && writer.trim()) {
+    const trimmedWriter = writer.trim();
+    if (!isNaN(Number(trimmedWriter))) {
+      whereConditions.push({ writerId: parseInt(trimmedWriter, 10) });
+    } else {
+      whereConditions.push({ writer: { name: trimmedWriter } });
+    }
+  }
 
-  const articles = await cached(cacheKey, 60, async () => {
-    const list = await prisma.article.findMany({
-      where: {
-        ...(writerId ? { writerId: parseInt(writerId) } : {}),
-        ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO" | "REDIRECTED" } : {}),
-        ...(productId ? { productId: parseInt(productId) } : {}),
-        ...allowedFilter,
-      },
-      include: {
+  if (siteId) {
+    whereConditions.push({ product: { siteId: parseInt(siteId, 10) } });
+  } else if (site && site.trim()) {
+    const trimmedSite = site.trim();
+    if (!isNaN(Number(trimmedSite))) {
+      whereConditions.push({ product: { siteId: parseInt(trimmedSite, 10) } });
+    } else {
+      whereConditions.push({ product: { site: { name: trimmedSite } } });
+    }
+  }
+
+  if (productId) {
+    whereConditions.push({ productId: parseInt(productId, 10) });
+  }
+
+  if (status && status.trim()) {
+    const cleanStatus = status.trim().toUpperCase();
+    if (cleanStatus === "NO_LINKS") {
+      whereConditions.push({
+        OR: [
+          { articleLink: { not: null } },
+          { status: { in: ["APPROVED", "COMPLETED"] } },
+        ],
         product: {
-          include: {
-            site: { select: { id: true, name: true, url: true, allowCountrySpecific: true } },
-            category: { select: { id: true, name: true } },
-            addedBy: { select: { id: true, name: true } },
-            linkLogs: {
-              include: { geos: true },
-              orderBy: { addedAt: "desc" },
-              take: 5,
+          linkLogs: {
+            none: {
+              OR: [
+                { affiliateLink: { not: "" } },
+                { geos: { some: {} } },
+              ],
             },
           },
         },
-        writer: { select: { id: true, name: true } },
-        reviews: {
-          include: { reviewedBy: { select: { name: true } } },
-          orderBy: { reviewedAt: "desc" },
-          take: 1,
-        },
-        history: {
-          select: { notes: true, updatedAt: true },
-          orderBy: { updatedAt: "desc" },
-          take: 2,
+      });
+    } else if (["PENDING", "IN_PROGRESS", "COMPLETED", "APPROVED", "REDO", "REDIRECTED"].includes(cleanStatus)) {
+      whereConditions.push({ status: cleanStatus });
+    }
+  }
+
+  if (search && search.trim()) {
+    const q = search.trim();
+    if (exact) {
+      whereConditions.push({
+        OR: [
+          { product: { name: { equals: q } } },
+          { product: { slug: { equals: q } } },
+        ],
+      });
+    } else {
+      const searchConditions: any[] = [
+        { product: { name: { contains: q } } },
+        { product: { slug: { contains: q } } },
+        { writer: { name: { contains: q } } },
+        { product: { site: { name: { contains: q } } } },
+      ];
+      if (!isNaN(Number(q))) {
+        searchConditions.push({ id: parseInt(q, 10) });
+        searchConditions.push({ productId: parseInt(q, 10) });
+      }
+      whereConditions.push({ OR: searchConditions });
+    }
+  }
+
+  const where = whereConditions.length > 0 ? { AND: whereConditions } : {};
+
+  const includeQuery = {
+    product: {
+      include: {
+        site: { select: { id: true, name: true, url: true, allowCountrySpecific: true } },
+        category: { select: { id: true, name: true } },
+        addedBy: { select: { id: true, name: true } },
+        linkLogs: {
+          include: { geos: true },
+          orderBy: { addedAt: "desc" as const },
+          take: 5,
         },
       },
-      orderBy: { updatedAt: "desc" },
-    });
+    },
+    writer: { select: { id: true, name: true } },
+    reviews: {
+      include: { reviewedBy: { select: { name: true } } },
+      orderBy: { reviewedAt: "desc" as const },
+      take: 1,
+    },
+    history: {
+      select: { notes: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" as const },
+      take: 2,
+    },
+  };
 
-    for (const a of list) {
-      if (a.product?.linkLogs) {
-        (a.product as any).linkLogs = consolidateLinkLogs(a.product.linkLogs);
+  const cacheKey = `articles:${effectiveRole}:${userId || 0}:${isPaginated ? `p${page}_l${limit}` : "all"}:${search || "none"}:${status || "none"}:${writerId || writer || "none"}:${siteId || site || "none"}:${productId || "none"}:${exact ? "1" : "0"}`;
+
+  const result = await cached(cacheKey, 60, async () => {
+    if (isPaginated) {
+      const [total, list] = await Promise.all([
+        prisma.article.count({ where }),
+        prisma.article.findMany({
+          where,
+          skip: (page - 1) * limit,
+          take: limit,
+          include: includeQuery,
+          orderBy: { updatedAt: "desc" },
+        }),
+      ]);
+
+      for (const a of list) {
+        if (a.product?.linkLogs) {
+          (a.product as any).linkLogs = consolidateLinkLogs(a.product.linkLogs);
+        }
       }
-    }
 
-    return list;
+      return {
+        articles: list,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } else {
+      const list = await prisma.article.findMany({
+        where,
+        include: includeQuery,
+        orderBy: { updatedAt: "desc" },
+      });
+
+      for (const a of list) {
+        if (a.product?.linkLogs) {
+          (a.product as any).linkLogs = consolidateLinkLogs(a.product.linkLogs);
+        }
+      }
+
+      return list;
+    }
   });
 
-  return NextResponse.json(articles);
+  return NextResponse.json(result);
 }

@@ -298,7 +298,7 @@ function LinksPageContent() {
       setLinks(arr);
       setStats(dashboardData);
 
-      const prods = Array.isArray(productsData) ? productsData : [];
+      const prods = Array.isArray(productsData) ? productsData : (productsData?.products || []);
       const unlinked = prods.filter(
         (p: any) => (!p.linkLogs || p.linkLogs.length === 0) && p.site && !isResearchSite(p.site.name)
       );
