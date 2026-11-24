@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { delByPattern } from "@/lib/redis";
 
 // POST /api/reviews - Team Lead submits a review remark (Approve or Redo)
 export async function POST(req: NextRequest) {
@@ -130,6 +131,8 @@ export async function POST(req: NextRequest) {
         writer: { select: { id: true, name: true } },
       },
     });
+
+    delByPattern("dashboard:*").catch(() => {});
 
     // 4. Log to ArticleHistory
     try {

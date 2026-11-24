@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { delByPattern } from "@/lib/redis";
 
 // POST /api/approvals - Team Lead approves/rejects edit request on an approved article
 export async function POST(req: NextRequest) {
@@ -124,6 +125,8 @@ export async function POST(req: NextRequest) {
         notes: `Update request approved by ${approverRole} ${approverName}. Article unlocked for writer ${article.writer?.name || ""}. Reason: ${reason || "Approved for revisions"}`,
       },
     });
+
+    delByPattern("dashboard:*").catch(() => {});
 
     // Notify the writer
     if (article.writer?.id) {
