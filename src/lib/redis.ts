@@ -98,7 +98,7 @@ async function ensureConnected(): Promise<boolean> {
     if (redis.status === "wait" || redis.status === "end") {
       await redis.connect();
     }
-    return redis.status === "ready";
+    return (redis.status as string) === "ready";
   } catch {
     globalForRedis.redisCooldownUntil = Date.now() + 30_000;
     return false;
