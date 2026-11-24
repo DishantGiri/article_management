@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { delByPattern } from "@/lib/redis";
 
 // Calculate date range for bulk payout time periods
 function getDateRangeForPeriod(period?: string, customStart?: string, customEnd?: string) {
@@ -128,6 +129,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      await delByPattern("dashboard:*");
+      await delByPattern("commissions:*");
+
       return NextResponse.json({
         message: `Successfully settled Rs. ${settledAmount.toFixed(2)} across ${settledSalesCount} sale(s) for this product!`,
         count: settledSalesCount,
@@ -238,6 +242,9 @@ export async function POST(req: NextRequest) {
           ? "This Month's"
           : "Selected Period";
 
+      await delByPattern("dashboard:*");
+      await delByPattern("commissions:*");
+
       return NextResponse.json({
         message: `Bulk Payout complete: Settled Rs. ${settledAmount.toFixed(2)} across ${settledSalesCount} transaction(s) for ${periodLabel}!`,
         count: settledSalesCount,
@@ -308,6 +315,9 @@ export async function POST(req: NextRequest) {
           settledAmount += salePaidPortion;
         }
       }
+
+      await delByPattern("dashboard:*");
+      await delByPattern("commissions:*");
 
       return NextResponse.json({
         message: `Successfully settled Rs. ${settledAmount.toFixed(2)} across ${settledSalesCount} commission item(s) for this user!`,

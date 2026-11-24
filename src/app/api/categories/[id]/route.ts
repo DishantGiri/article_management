@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { delByPattern } from "@/lib/redis";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -57,6 +58,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       where: { id },
       data: { name: cleanName },
     });
+
+    await delByPattern("lookup:categories:*");
+    await delByPattern("dashboard:*");
 
     return NextResponse.json(updatedCategory);
   } catch (err: any) {
@@ -116,6 +120,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     await prisma.category.delete({
       where: { id },
     });
+
+    await delByPattern("lookup:categories:*");
+    await delByPattern("dashboard:*");
 
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { slugifySite } from "@/lib/siteUtils";
+import { delByPattern } from "@/lib/redis";
 
 // GET /api/sites/[id] - retrieve site details and all articles by ID or slug
 export async function GET(
@@ -257,6 +258,9 @@ export async function PATCH(
       },
     });
 
+    await delByPattern("sites:*");
+    await delByPattern("dashboard:*");
+
     return NextResponse.json(updated);
   } catch (err) {
     console.error("[PATCH /api/sites/[id]]", err);
@@ -285,6 +289,9 @@ export async function DELETE(
     await prisma.site.delete({
       where: { id: parseInt(id) },
     });
+
+    await delByPattern("sites:*");
+    await delByPattern("dashboard:*");
 
     return NextResponse.json({ success: true });
   } catch (err) {

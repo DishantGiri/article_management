@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { slugifySite } from "@/lib/siteUtils";
+import { cached, delByPattern } from "@/lib/redis";
 
 // GET /api/sites?categoryId=123  or  GET /api/sites  (all authorized)
 export async function GET(req: NextRequest) {
@@ -20,66 +21,70 @@ export async function GET(req: NextRequest) {
       ? requestedRole.toUpperCase()
       : (userRole || "");
 
-    let allowedSiteIds: number[] | undefined = undefined;
-    // WRITER and TEAM_LEAD can only view their assigned sites
-    if (effectiveRole === "WRITER" || effectiveRole === "TEAM_LEAD") {
-      const accesses = await prisma.siteAccess.findMany({
-        where: { userId },
-        select: { siteId: true },
-      });
-      allowedSiteIds = accesses.map((a) => a.siteId);
-    }
     const categoryId = searchParams.get("categoryId");
+    const cacheKey = `sites:${effectiveRole}:${userId || 0}:${categoryId || "all"}`;
 
-    const sites = await prisma.site.findMany({
-      where: {
-        ...(categoryId ? { categories: { some: { id: parseInt(categoryId) } } } : {}),
-        ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
-        name: { notIn: ["Product Research", "Product Research Hub"] },
-      },
-      select: {
-        id: true,
-        name: true,
-        url: true,
-        bridgeUrl: true,
-        allowCountrySpecific: true,
-        categories: {
-          select: { id: true, name: true }
+    const formatted = await cached(cacheKey, 300, async () => {
+      let allowedSiteIds: number[] | undefined = undefined;
+      // WRITER and TEAM_LEAD can only view their assigned sites
+      if (effectiveRole === "WRITER" || effectiveRole === "TEAM_LEAD") {
+        const accesses = await prisma.siteAccess.findMany({
+          where: { userId },
+          select: { siteId: true },
+        });
+        allowedSiteIds = accesses.map((a) => a.siteId);
+      }
+
+      const sites = await prisma.site.findMany({
+        where: {
+          ...(categoryId ? { categories: { some: { id: parseInt(categoryId) } } } : {}),
+          ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
+          name: { notIn: ["Product Research", "Product Research Hub"] },
         },
-        _count: {
-          select: {
-            products: true,
-            categories: true
-          }
-        },
-        products: {
-          select: {
-            _count: {
-              select: { linkLogs: true }
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          bridgeUrl: true,
+          allowCountrySpecific: true,
+          categories: {
+            select: { id: true, name: true }
+          },
+          _count: {
+            select: {
+              products: true,
+              categories: true
+            }
+          },
+          products: {
+            select: {
+              _count: {
+                select: { linkLogs: true }
+              }
             }
           }
-        }
-      },
-      orderBy: { name: "asc" },
-    });
+        },
+        orderBy: { name: "asc" },
+      });
 
-    const formatted = sites.map(site => {
-      const linksCount = site.products.reduce((acc, p) => acc + p._count.linkLogs, 0);
-      const validCategories = site.categories.filter(
-        (c) => c.name && !/^(n\/?a|none|null|na)$/i.test(c.name.trim())
-      );
-      return {
-        id: site.id,
-        name: site.name,
-        slug: slugifySite(site.name),
-        url: site.url,
-        bridgeUrl: site.bridgeUrl,
-        allowCountrySpecific: site.allowCountrySpecific ?? false,
-        categories: validCategories,
-        productsCount: site._count.products,
-        categoriesCount: validCategories.length,
-        linksCount: linksCount
-      };
+      return sites.map(site => {
+        const linksCount = site.products.reduce((acc, p) => acc + p._count.linkLogs, 0);
+        const validCategories = site.categories.filter(
+          (c) => c.name && !/^(n\/?a|none|null|na)$/i.test(c.name.trim())
+        );
+        return {
+          id: site.id,
+          name: site.name,
+          slug: slugifySite(site.name),
+          url: site.url,
+          bridgeUrl: site.bridgeUrl,
+          allowCountrySpecific: site.allowCountrySpecific ?? false,
+          categories: validCategories,
+          productsCount: site._count.products,
+          categoriesCount: validCategories.length,
+          linksCount: linksCount
+        };
+      });
     });
 
     return NextResponse.json(formatted);
@@ -131,6 +136,9 @@ export async function POST(req: NextRequest) {
         }
       },
     });
+
+    await delByPattern("sites:*");
+    await delByPattern("dashboard:*");
 
     return NextResponse.json(site, { status: 201 });
   } catch (err) {

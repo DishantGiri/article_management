@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import * as XLSX from "xlsx";
 import { resolveSite } from "@/lib/site-resolver";
+import { delByPattern } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -1061,6 +1062,11 @@ export async function POST(req: NextRequest) {
         errors.push(`Row ${rowNum} (${r["Product Name"] || "Unknown"}): ${rowErr.message || "Failed to process row"}`);
       }
     }
+
+    // Invalidate Redis caches so dashboard & lookups reflect new imports immediately
+    await delByPattern("dashboard:*");
+    await delByPattern("sites:*");
+    await delByPattern("lookup:*");
 
     return NextResponse.json({
       success: true,

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { DEFAULT_COMMISSION_TIERS } from "@/app/api/commission-settings/route";
+import { delByPattern } from "@/lib/redis";
 
 // Helper to determine category key: NUTRA or ECOM
 export function resolveCategoryKey(catName?: string | null): "NUTRA" | "ECOM" {
@@ -735,6 +736,10 @@ export async function POST(req: NextRequest) {
         : isAlreadyFirstSold && saleType === "FIRST_SALE"
         ? "Resale recorded! (Product already has a 1st Sale, so this sale was automatically classified as a Resale)"
         : `${type === "FIRST_SALE" ? "1st Sale" : "Resale"} recorded successfully!`;
+
+    // Invalidate dashboard & commission caches
+    await delByPattern("dashboard:*");
+    await delByPattern("commissions:*");
 
     return NextResponse.json({
       message: successMsg,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { delByPattern } from "@/lib/redis";
 
 // PATCH /api/commissions/[id] - Toggle payment status or update notes
 export async function PATCH(
@@ -67,6 +68,9 @@ export async function PATCH(
       data,
     });
 
+    await delByPattern("dashboard:*");
+    await delByPattern("commissions:*");
+
     return NextResponse.json({
       message: "Sale record updated successfully",
       sale: updated,
@@ -103,6 +107,9 @@ export async function DELETE(
     await prisma.commissionSale.delete({
       where: { id: saleId },
     });
+
+    await delByPattern("dashboard:*");
+    await delByPattern("commissions:*");
 
     return NextResponse.json({
       message: "Sale record deleted successfully",

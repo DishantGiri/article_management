@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getOrCreateResearchSite } from "@/lib/researchSite";
 import { resolveSite } from "@/lib/site-resolver";
+import { delByPattern } from "@/lib/redis";
 
 // POST /api/products/import - Import products from parsed CSV
 function isPositiveMark(val: any): boolean {
@@ -521,6 +522,10 @@ export async function POST(req: NextRequest) {
         }
       }
     }
+
+    // Invalidate Redis caches so dashboard reflects newly imported products immediately
+    await delByPattern("dashboard:*");
+    await delByPattern("sites:*");
 
     return NextResponse.json({
       success: importedProducts.length > 0 || (errors.length === 0 && skippedDuplicates.length > 0),

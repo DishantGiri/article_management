@@ -2,19 +2,22 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { cached, delByPattern } from "@/lib/redis";
 
 // GET /api/categories - fetch all global categories
 export async function GET() {
   try {
-    const categories = await prisma.category.findMany({
-      select: {
-        id: true,
-        name: true,
-        _count: {
-          select: { sites: true, products: true }
-        }
-      },
-      orderBy: { name: "asc" },
+    const categories = await cached("lookup:categories:all", 900, async () => {
+      return prisma.category.findMany({
+        select: {
+          id: true,
+          name: true,
+          _count: {
+            select: { sites: true, products: true }
+          }
+        },
+        orderBy: { name: "asc" },
+      });
     });
 
     return NextResponse.json(categories);
@@ -72,6 +75,9 @@ export async function POST(req: Request) {
     const category = await prisma.category.create({
       data: { name: cleanName },
     });
+
+    await delByPattern("lookup:categories:*");
+    await delByPattern("dashboard:*");
 
     return NextResponse.json(category);
   } catch (err: any) {

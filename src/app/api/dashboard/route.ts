@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { cached } from "@/lib/redis";
 
 // GET /api/dashboard - role-aware stats
 export async function GET(req: NextRequest) {
@@ -19,20 +20,26 @@ export async function GET(req: NextRequest) {
       ? requestedRole.toUpperCase()
       : userRole;
 
-    let allowedSiteIds: number[] = [];
     const userId = session.user.id;
+    const cacheKey =
+      role === "SUPER_ADMIN" || role === "ADMIN"
+        ? `dashboard:global:${role}`
+        : `dashboard:user:${userId}:${role}`;
 
-    // Fetch site access
-    if (role === "WRITER" || role === "TEAM_LEAD" || role === "LINKER" || role === "PRODUCT_RESEARCHER") {
-      const accesses = await prisma.siteAccess.findMany({
-        where: { userId },
-        select: { siteId: true },
-      });
-      allowedSiteIds = accesses.map((a) => a.siteId);
-    }
+    const dashboardPayload = await cached(cacheKey, 45, async () => {
+      let allowedSiteIds: number[] = [];
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+      // Fetch site access
+      if (role === "WRITER" || role === "TEAM_LEAD" || role === "LINKER" || role === "PRODUCT_RESEARCHER") {
+        const accesses = await prisma.siteAccess.findMany({
+          where: { userId },
+          select: { siteId: true },
+        });
+        allowedSiteIds = accesses.map((a) => a.siteId);
+      }
+
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
 
     const [
       totalProducts,
@@ -819,42 +826,45 @@ export async function GET(req: NextRequest) {
         productResearcherData.recentResearchedProducts.map(enrichDashboardProduct);
     }
 
-    return NextResponse.json({
-      role,
-      general: {
-        totalProducts,
-        pendingArticles,
-        inProgressArticles,
-        completedArticles,
-        totalLinks,
-        requestedLinks,
-        acceptedLinks,
-        issueLinks,
-        todaysProducts,
-        totalSites,
-        totalCategories,
-      },
-      linkStats: {
-        affiliateNetworks: generalAffiliateNames.size,
-        deadLinks: deadLinksCount,
-        issueLinks: issueLinks,
-      },
-      superAdmin: superAdminData,
-      superAdminError,
-      teamLead: teamLeadData,
-      productResearcher: productResearcherData,
-      recentProducts: enrichedRecentProducts,
-      recentArticles,
-      unlinkedProducts,
-      writerPendingArticles,
-      writerInProgressArticles,
-      writerCompletedArticles,
-      linkerProducts: enrichedLinkerProducts,
-      linkerLinks,
-      flaggedLinks,
-      individualCommission,
-      writerStats,
+      return {
+        role,
+        general: {
+          totalProducts,
+          pendingArticles,
+          inProgressArticles,
+          completedArticles,
+          totalLinks,
+          requestedLinks,
+          acceptedLinks,
+          issueLinks,
+          todaysProducts,
+          totalSites,
+          totalCategories,
+        },
+        linkStats: {
+          affiliateNetworks: generalAffiliateNames.size,
+          deadLinks: deadLinksCount,
+          issueLinks: issueLinks,
+        },
+        superAdmin: superAdminData,
+        superAdminError,
+        teamLead: teamLeadData,
+        productResearcher: productResearcherData,
+        recentProducts: enrichedRecentProducts,
+        recentArticles,
+        unlinkedProducts,
+        writerPendingArticles,
+        writerInProgressArticles,
+        writerCompletedArticles,
+        linkerProducts: enrichedLinkerProducts,
+        linkerLinks,
+        flaggedLinks,
+        individualCommission,
+        writerStats,
+      };
     });
+
+    return NextResponse.json(dashboardPayload);
   } catch (e: any) {
     return NextResponse.json({ error: e.message, stack: e.stack }, { status: 500 });
   }
