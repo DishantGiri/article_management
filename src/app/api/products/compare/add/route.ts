@@ -4,6 +4,7 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getUserAuthorizedSiteIds } from "@/lib/permissions";
+import { delByPattern } from "@/lib/redis";
 
 export async function POST(req: NextRequest) {
   try {
@@ -267,6 +268,12 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    await Promise.all([
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("dashboard:*"),
+    ]);
 
     return NextResponse.json(
       {

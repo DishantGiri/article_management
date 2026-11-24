@@ -1063,10 +1063,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Invalidate Redis caches so dashboard & lookups reflect new imports immediately
-    await delByPattern("dashboard:*");
-    await delByPattern("sites:*");
-    await delByPattern("lookup:*");
+    // Invalidate Redis caches so dashboard, products, articles & lookups reflect new imports immediately
+    await Promise.all([
+      delByPattern("dashboard:*"),
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("sites:*"),
+      delByPattern("lookup:*"),
+    ]);
 
     return NextResponse.json({
       success: true,

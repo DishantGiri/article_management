@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { consolidateLinkLogs } from "@/lib/utils";
+import { cached } from "@/lib/redis";
 
 // GET /api/articles - list articles
 export async function GET(req: NextRequest) {
@@ -56,44 +57,52 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  const articles = await prisma.article.findMany({
-    where: {
-      ...(writerId ? { writerId: parseInt(writerId) } : {}),
-      ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO" | "REDIRECTED" } : {}),
-      ...(productId ? { productId: parseInt(productId) } : {}),
-      ...allowedFilter,
-    },
-    include: {
-      product: {
-        include: {
-          site: { select: { id: true, name: true, url: true, allowCountrySpecific: true } },
-          category: { select: { id: true, name: true } },
-          addedBy: { select: { id: true, name: true } },
-          linkLogs: {
-            include: { geos: true },
-            orderBy: { addedAt: "desc" },
+  const cacheKey = `articles:${effectiveRole}:${userId || 0}:${writerId || "all"}:${status || "all"}:${productId || "all"}`;
+
+  const articles = await cached(cacheKey, 60, async () => {
+    const list = await prisma.article.findMany({
+      where: {
+        ...(writerId ? { writerId: parseInt(writerId) } : {}),
+        ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO" | "REDIRECTED" } : {}),
+        ...(productId ? { productId: parseInt(productId) } : {}),
+        ...allowedFilter,
+      },
+      include: {
+        product: {
+          include: {
+            site: { select: { id: true, name: true, url: true, allowCountrySpecific: true } },
+            category: { select: { id: true, name: true } },
+            addedBy: { select: { id: true, name: true } },
+            linkLogs: {
+              include: { geos: true },
+              orderBy: { addedAt: "desc" },
+              take: 5,
+            },
           },
         },
+        writer: { select: { id: true, name: true } },
+        reviews: {
+          include: { reviewedBy: { select: { name: true } } },
+          orderBy: { reviewedAt: "desc" },
+          take: 1,
+        },
+        history: {
+          select: { notes: true, updatedAt: true },
+          orderBy: { updatedAt: "desc" },
+          take: 2,
+        },
       },
-      writer: { select: { id: true, name: true } },
-      reviews: {
-        include: { reviewedBy: { select: { name: true } } },
-        orderBy: { reviewedAt: "desc" },
-        take: 1,
-      },
-      history: {
-        select: { notes: true, updatedAt: true },
-        orderBy: { updatedAt: "desc" }
-      }
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+      orderBy: { updatedAt: "desc" },
+    });
 
-  for (const a of articles) {
-    if (a.product?.linkLogs) {
-      (a.product as any).linkLogs = consolidateLinkLogs(a.product.linkLogs);
+    for (const a of list) {
+      if (a.product?.linkLogs) {
+        (a.product as any).linkLogs = consolidateLinkLogs(a.product.linkLogs);
+      }
     }
-  }
+
+    return list;
+  });
 
   return NextResponse.json(articles);
 }

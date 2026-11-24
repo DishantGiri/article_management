@@ -132,7 +132,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    delByPattern("dashboard:*").catch(() => {});
+    Promise.all([
+      delByPattern("dashboard:*"),
+      delByPattern("articles:*"),
+    ]).catch(() => {});
 
     // 4. Log to ArticleHistory
     try {

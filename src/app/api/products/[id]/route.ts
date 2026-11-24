@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { delByPattern } from "@/lib/redis";
 
 // GET /api/products/[id] - retrieve product details
 export async function GET(
@@ -299,6 +300,12 @@ export async function PATCH(
       },
     });
 
+    await Promise.all([
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("dashboard:*"),
+    ]);
+
     return NextResponse.json(updated);
   } catch (err) {
     console.error("[PATCH /api/products/:id]", err);
@@ -356,6 +363,12 @@ export async function DELETE(
     await prisma.product.delete({
       where: { id: numericId },
     });
+
+    await Promise.all([
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("dashboard:*"),
+    ]);
 
     return NextResponse.json({
       success: true,

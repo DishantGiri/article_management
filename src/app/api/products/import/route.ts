@@ -523,9 +523,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Invalidate Redis caches so dashboard reflects newly imported products immediately
-    await delByPattern("dashboard:*");
-    await delByPattern("sites:*");
+    // Invalidate Redis caches so dashboard, products, and articles reflect newly imported products immediately
+    await Promise.all([
+      delByPattern("dashboard:*"),
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("sites:*"),
+    ]);
 
     return NextResponse.json({
       success: importedProducts.length > 0 || (errors.length === 0 && skippedDuplicates.length > 0),

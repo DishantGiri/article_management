@@ -536,8 +536,11 @@ export async function PATCH(
       },
     });
 
-    // Invalidate dashboard caches when article state changes
-    delByPattern("dashboard:*").catch(() => {});
+    // Invalidate dashboard and article caches when article state changes
+    Promise.all([
+      delByPattern("dashboard:*"),
+      delByPattern("articles:*"),
+    ]).catch(() => {});
 
     try {
       const baseUrl = (process.env.NEXTAUTH_URL || process.env.SITE_URL || process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${process.env.PORT || "3022"}`).replace(/\/$/, "");

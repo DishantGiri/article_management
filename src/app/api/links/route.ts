@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canUserAddLinkOnSite, getUserAuthorizedSiteIds, isAdmin } from "@/lib/permissions";
 import { isResearchSite } from "@/lib/researchSite";
+import { delByPattern } from "@/lib/redis";
 
 // GET /api/links?productId=X
 export async function GET(req: NextRequest) {
@@ -406,6 +407,12 @@ export async function POST(req: NextRequest) {
         })
       )
     );
+
+    await Promise.all([
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("dashboard:*"),
+    ]);
 
     return NextResponse.json(createdLinks.length === 1 ? createdLinks[0] : createdLinks, { status: 201 });
   } catch (err: any) {

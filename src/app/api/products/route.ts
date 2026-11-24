@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getUserAuthorizedSiteIds, isAdmin } from "@/lib/permissions";
 import { getOrCreateResearchSite } from "@/lib/researchSite";
+import { cached, delByPattern } from "@/lib/redis";
 
 function isValidUrl(url?: string | null): boolean {
   if (!url || typeof url !== "string") return false;
@@ -557,6 +558,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    await Promise.all([
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("dashboard:*"),
+    ]);
+
     return NextResponse.json(createdProducts, { status: 201 });
   } catch (err) {
     console.error("[POST /api/products]", err);
@@ -637,78 +644,82 @@ export async function GET(req: NextRequest) {
     siteFilterCondition = parsedSiteId;
   }
 
-  const products = await prisma.product.findMany({
-    where: {
-      ...(siteFilterCondition !== undefined ? { siteId: siteFilterCondition } : {}),
-      ...(categoryId ? { categoryId: parseInt(categoryId) } : {}),
-      ...(excludeCompletedForWriter
-        ? {
-          OR: [
-            { article: null },
-            { article: { status: { in: ["PENDING", "IN_PROGRESS", "REDO"] } } },
-            { article: { writerId: null } },
-          ],
-        }
-        : {}),
-    },
-    include: {
-      site: { select: { id: true, name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
-      category: { select: { id: true, name: true } },
-      addedBy: { select: { id: true, name: true, role: true } },
-      updatedBy: { select: { id: true, name: true, role: true } },
-      article: { select: { id: true, status: true, articleLink: true, country: true, writer: { select: { id: true, name: true } } } },
-      linkLogs: { include: { geos: true } },
-    },
-    orderBy: { addedAt: "desc" },
-  });
+  const cacheKey = `products:${effectiveRole}:${userId || 0}:${parsedSiteId ?? "all"}:${categoryId ?? "all"}`;
 
-  // Get total live publishing sites (excluding internal "Product Research" catalog)
-  const totalPublishingSites = await prisma.site.count({
-    where: {
-      name: { not: "Product Research" },
-      ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
-    },
-  });
+  const enrichedProducts = await cached(cacheKey, 60, async () => {
+    const products = await prisma.product.findMany({
+      where: {
+        ...(siteFilterCondition !== undefined ? { siteId: siteFilterCondition } : {}),
+        ...(categoryId ? { categoryId: parseInt(categoryId) } : {}),
+        ...(excludeCompletedForWriter
+          ? {
+            OR: [
+              { article: null },
+              { article: { status: { in: ["PENDING", "IN_PROGRESS", "REDO"] } } },
+              { article: { writerId: null } },
+            ],
+          }
+          : {}),
+      },
+      include: {
+        site: { select: { id: true, name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
+        category: { select: { id: true, name: true } },
+        addedBy: { select: { id: true, name: true, role: true } },
+        updatedBy: { select: { id: true, name: true, role: true } },
+        article: { select: { id: true, status: true, articleLink: true, country: true, writer: { select: { id: true, name: true } } } },
+        linkLogs: { include: { geos: true } },
+      },
+      orderBy: { addedAt: "desc" },
+    });
 
-  let productSiteOccurrences: { name: string; siteId: number }[] = [];
-  if (products.length > 0) {
-    const siteFilterSql = allowedSiteIds !== undefined
-      ? (allowedSiteIds.length > 0 ? Prisma.sql`AND p.siteId IN (${Prisma.join(allowedSiteIds)})` : Prisma.sql`AND 1=0`)
-      : Prisma.empty;
+    // Get total live publishing sites (excluding internal "Product Research" catalog)
+    const totalPublishingSites = await prisma.site.count({
+      where: {
+        name: { not: "Product Research" },
+        ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
+      },
+    });
 
-    productSiteOccurrences = await prisma.$queryRaw<Array<{ name: string; siteId: number }>>`
-      SELECT LOWER(TRIM(p.name)) as name, p.siteId 
-      FROM Product p
-      JOIN Site s ON p.siteId = s.id
-      WHERE s.name != "Product Research"
-      ${siteFilterSql}
-      GROUP BY LOWER(TRIM(p.name)), p.siteId
-    `;
-  }
+    let productSiteOccurrences: { name: string; siteId: number }[] = [];
+    if (products.length > 0) {
+      const siteFilterSql = allowedSiteIds !== undefined
+        ? (allowedSiteIds.length > 0 ? Prisma.sql`AND p.siteId IN (${Prisma.join(allowedSiteIds)})` : Prisma.sql`AND 1=0`)
+        : Prisma.empty;
 
-  const availabilityMap = new Map<string, Set<number>>();
-  for (const item of productSiteOccurrences) {
-    const key = item.name.trim().toLowerCase();
-    if (!availabilityMap.has(key)) {
-      availabilityMap.set(key, new Set());
+      productSiteOccurrences = await prisma.$queryRaw<Array<{ name: string; siteId: number }>>`
+        SELECT LOWER(TRIM(p.name)) as name, p.siteId 
+        FROM Product p
+        JOIN Site s ON p.siteId = s.id
+        WHERE s.name != "Product Research"
+        ${siteFilterSql}
+        GROUP BY LOWER(TRIM(p.name)), p.siteId
+      `;
     }
-    availabilityMap.get(key)!.add(item.siteId);
-  }
 
-  const enrichedProducts = products.map((p) => {
-    const key = p.name.trim().toLowerCase();
-    const liveSiteIds = availabilityMap.get(key) || new Set<number>();
-    const isResearchSite = p.site?.name === "Product Research";
-    const availableCount = liveSiteIds.size;
-    const missingCount = Math.max(0, totalPublishingSites - availableCount);
+    const availabilityMap = new Map<string, Set<number>>();
+    for (const item of productSiteOccurrences) {
+      const key = item.name.trim().toLowerCase();
+      if (!availabilityMap.has(key)) {
+        availabilityMap.set(key, new Set());
+      }
+      availabilityMap.get(key)!.add(item.siteId);
+    }
 
-    return {
-      ...p,
-      isResearchSite,
-      availableCount,
-      missingCount,
-      totalSitesCount: totalPublishingSites,
-    };
+    return products.map((p) => {
+      const key = p.name.trim().toLowerCase();
+      const liveSiteIds = availabilityMap.get(key) || new Set<number>();
+      const isResearchSite = p.site?.name === "Product Research";
+      const availableCount = liveSiteIds.size;
+      const missingCount = Math.max(0, totalPublishingSites - availableCount);
+
+      return {
+        ...p,
+        isResearchSite,
+        availableCount,
+        missingCount,
+        totalSitesCount: totalPublishingSites,
+      };
+    });
   });
 
   return NextResponse.json(enrichedProducts);

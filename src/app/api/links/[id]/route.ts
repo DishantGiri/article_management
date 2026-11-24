@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { canUserAddLinkOnSite } from "@/lib/permissions";
 import { isResearchSite } from "@/lib/researchSite";
+import { delByPattern } from "@/lib/redis";
 
 // PATCH /api/links/[id] - update link details / status
 export async function PATCH(
@@ -512,6 +513,12 @@ export async function PATCH(
       }
     }
 
+    await Promise.all([
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("dashboard:*"),
+    ]);
+
     return NextResponse.json(updated);
   } catch (err) {
     console.error("[PATCH /api/links/:id]", err);
@@ -549,6 +556,12 @@ export async function DELETE(
     await prisma.linkLog.delete({
       where: { id: parseInt(id) },
     });
+
+    await Promise.all([
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("dashboard:*"),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (err) {

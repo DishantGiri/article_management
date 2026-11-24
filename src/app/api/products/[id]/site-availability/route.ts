@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sendRealtimeNotification } from "@/lib/notifier";
 import { isResearchSite } from "@/lib/researchSite";
+import { delByPattern } from "@/lib/redis";
 
 // GET /api/products/[id]/site-availability
 // Returns all sites and indicates which ones have this product available
@@ -556,6 +557,12 @@ export async function POST(
       return NextResponse.json({ error: errors.join(" ") }, { status: 400 });
     }
 
+    await Promise.all([
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("dashboard:*"),
+    ]);
+
     return NextResponse.json({
       success: true,
       createdCount: createdList.length,
@@ -710,6 +717,12 @@ export async function DELETE(
     await prisma.product.delete({
       where: { id: prodToDelete.id },
     });
+
+    await Promise.all([
+      delByPattern("products:*"),
+      delByPattern("articles:*"),
+      delByPattern("dashboard:*"),
+    ]);
 
     return NextResponse.json({
       success: true,

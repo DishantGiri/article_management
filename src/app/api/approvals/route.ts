@@ -126,7 +126,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    delByPattern("dashboard:*").catch(() => {});
+    Promise.all([
+      delByPattern("dashboard:*"),
+      delByPattern("articles:*"),
+    ]).catch(() => {});
 
     // Notify the writer
     if (article.writer?.id) {
