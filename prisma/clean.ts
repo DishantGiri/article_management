@@ -1,19 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "dotenv/config";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "../src/generated/prisma/client";
-
-const adapter = new PrismaMariaDb({
-  host: process.env.DATABASE_HOST || "localhost",
-  user: process.env.DATABASE_USER || "root",
-  password: process.env.DATABASE_PASSWORD || "",
-  database: process.env.DATABASE_NAME || "article_mg",
-  port: parseInt(process.env.DATABASE_PORT || "3306"),
-  connectionLimit: 5,
-  allowPublicKeyRetrieval: true,
-});
-
-const prisma = new PrismaClient({ adapter });
+import { prisma } from "../src/lib/prisma";
+import { delByPattern } from "../src/lib/redis";
 
 async function clean() {
   console.log("🧹 Wiping all records from the database...");
@@ -24,11 +12,14 @@ async function clean() {
   await prisma.specialApproval.deleteMany({}).catch(() => {});
   await prisma.articleReview.deleteMany({}).catch(() => {});
   await prisma.linkGeo.deleteMany({}).catch(() => {});
+  await prisma.linkHistory.deleteMany({}).catch(() => {});
   await prisma.linkLog.deleteMany({}).catch(() => {});
+  await prisma.articleHistory.deleteMany({}).catch(() => {});
   await prisma.article.deleteMany({}).catch(() => {});
+  await prisma.trendmapProduct.deleteMany({}).catch(() => {});
+  await prisma.commissionSale.deleteMany({}).catch(() => {});
   await prisma.product.deleteMany({}).catch(() => {});
   await prisma.siteAccess.deleteMany({}).catch(() => {});
-  await prisma.commissionSale.deleteMany({}).catch(() => {});
   await prisma.commissionSetting.deleteMany({}).catch(() => {});
   await prisma.category.deleteMany({}).catch(() => {});
   await prisma.site.deleteMany({}).catch(() => {});
@@ -36,6 +27,15 @@ async function clean() {
   await prisma.geo.deleteMany({}).catch(() => {});
   await prisma.affiliateName.deleteMany({}).catch(() => {});
   await prisma.productCategory.deleteMany({}).catch(() => {});
+  await prisma.systemSetting.deleteMany({}).catch(() => {});
+
+  await Promise.all([
+    delByPattern("users:*"),
+    delByPattern("dashboard:*"),
+    delByPattern("commissions:*"),
+    delByPattern("articles:*"),
+    delByPattern("products:*"),
+  ]).catch(() => {});
 
   console.log("✅ Database has been completely cleaned and emptied!");
 }

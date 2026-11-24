@@ -1,35 +1,95 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "dotenv/config";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "../src/generated/prisma/client";
+import path from "path";
+import fs from "fs";
+import * as xlsx from "xlsx";
+import { prisma } from "../src/lib/prisma";
+import { delByPattern } from "../src/lib/redis";
 
-const adapter = new PrismaMariaDb({
-  host: process.env.DATABASE_HOST || "localhost",
-  user: process.env.DATABASE_USER || "root",
-  password: process.env.DATABASE_PASSWORD || "",
-  database: process.env.DATABASE_NAME || "article_mg",
-  port: parseInt(process.env.DATABASE_PORT || "3306"),
-  connectionLimit: 5,
-  allowPublicKeyRetrieval: true,
-});
+function normalizeKey(str: string): string {
+  return (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
 
-const prisma = new PrismaClient({ adapter });
+const DEFAULT_COMMISSION_TIERS = [
+  {
+    category: "NUTRA",
+    saleType: "FIRST_SALE",
+    rateType: "FIXED",
+    currency: "NPR",
+    linker: 200,
+    writer: 280,
+    tl: 140,
+    seo: 80,
+    bonusPool: 120,
+    partyFund: 0,
+    total: 820,
+    notes: "Commission distribution for new customer acquisitions & initial conversions",
+  },
+  {
+    category: "NUTRA",
+    saleType: "RESALE",
+    rateType: "FIXED",
+    currency: "NPR",
+    linker: 100,
+    writer: 140,
+    tl: 70,
+    seo: 40,
+    bonusPool: 80,
+    partyFund: 0,
+    total: 430,
+    notes: "Commission distribution for repeat purchases & recurring customer renewals",
+  },
+  {
+    category: "ECOM",
+    saleType: "FIRST_SALE",
+    rateType: "FIXED",
+    currency: "NPR",
+    linker: 80,
+    writer: 150,
+    tl: 70,
+    seo: 60,
+    bonusPool: 80,
+    partyFund: 0,
+    total: 440,
+    notes: "Commission distribution for new customer acquisitions & initial conversions",
+  },
+  {
+    category: "ECOM",
+    saleType: "RESALE",
+    rateType: "FIXED",
+    currency: "NPR",
+    linker: 60,
+    writer: 120,
+    tl: 60,
+    seo: 30,
+    bonusPool: 50,
+    partyFund: 0,
+    total: 320,
+    notes: "Commission distribution for repeat purchases & recurring customer renewals",
+  },
+];
 
 async function main() {
-  console.log("🌱 Cleaning database and running fresh seed...");
+  console.log("==========================================================");
+  console.log("🌱 STARTING FULL DATABASE WIPE & SEED");
+  console.log("==========================================================");
 
-  // 1. Clear existing data in reverse dependency order
+  // 1. Wipe all existing records in reverse foreign-key order
+  console.log("🧹 Clearing all existing database records...");
   await prisma.noticeAcknowledgment.deleteMany({}).catch(() => {});
   await prisma.notice.deleteMany({}).catch(() => {});
   await prisma.notification.deleteMany({}).catch(() => {});
   await prisma.specialApproval.deleteMany({}).catch(() => {});
   await prisma.articleReview.deleteMany({}).catch(() => {});
   await prisma.linkGeo.deleteMany({}).catch(() => {});
+  await prisma.linkHistory.deleteMany({}).catch(() => {});
   await prisma.linkLog.deleteMany({}).catch(() => {});
+  await prisma.articleHistory.deleteMany({}).catch(() => {});
   await prisma.article.deleteMany({}).catch(() => {});
+  await prisma.trendmapProduct.deleteMany({}).catch(() => {});
+  await prisma.commissionSale.deleteMany({}).catch(() => {});
   await prisma.product.deleteMany({}).catch(() => {});
   await prisma.siteAccess.deleteMany({}).catch(() => {});
-  await prisma.commissionSale.deleteMany({}).catch(() => {});
   await prisma.commissionSetting.deleteMany({}).catch(() => {});
   await prisma.category.deleteMany({}).catch(() => {});
   await prisma.site.deleteMany({}).catch(() => {});
@@ -37,20 +97,19 @@ async function main() {
   await prisma.geo.deleteMany({}).catch(() => {});
   await prisma.affiliateName.deleteMany({}).catch(() => {});
   await prisma.productCategory.deleteMany({}).catch(() => {});
-
-  console.log("Cleared existing database records.");
+  await prisma.systemSetting.deleteMany({}).catch(() => {});
+  console.log("✅ Database emptied.");
 
   // 2. Seed GEOs
-  console.log("Creating Affiliates and GEOs...");
-  const geoUS = await prisma.geo.create({ data: { code: "US" } });
-  const geoUK = await prisma.geo.create({ data: { code: "UK" } });
-  const geoCA = await prisma.geo.create({ data: { code: "CA" } });
-  const geoDE = await prisma.geo.create({ data: { code: "DE" } });
-  const geoFR = await prisma.geo.create({ data: { code: "FR" } });
-  const geoGlobal = await prisma.geo.create({ data: { code: "GLOBAL" } });
+  console.log("🌍 Creating GEOs...");
+  const geoCodes = ["US", "UK", "CA", "DE", "FR", "GLOBAL", "AU"];
+  for (const code of geoCodes) {
+    await prisma.geo.create({ data: { code } });
+  }
+  console.log(`Created ${geoCodes.length} GEOs.`);
 
   // 3. Seed Affiliates
-  console.log("Creating Affiliates...");
+  console.log("🤝 Creating Affiliates...");
   const affiliateNames = [
     "BuyGoods",
     "SmashLoud",
@@ -76,17 +135,14 @@ async function main() {
     "BlitzAds",
     "Meta Cpa",
   ];
-
   for (const name of affiliateNames) {
-    await prisma.affiliateName.create({
-      data: { name: name.trim() },
-    });
+    await prisma.affiliateName.create({ data: { name: name.trim() } });
   }
-  console.log(`Created ${affiliateNames.length} affiliates.`);
+  console.log(`Created ${affiliateNames.length} Affiliates.`);
 
-  // 4. Seed Sites
-  console.log("Creating Sites...");
-  const siteDefinitions: Array<{ name: string; url: string; bridgeUrl: string | null }> = [
+  // 4. Seed all 17 Sites
+  console.log("🌐 Creating Sites...");
+  const siteDefinitions = [
     { name: "The Buyers Reviews", url: "https://thebuyersreviews.com", bridgeUrl: "https://bestproductpicks.com" },
     { name: "Supplement Mag", url: "https://supplementmag.com", bridgeUrl: "https://supplementexpose.com" },
     { name: "Guru Review Club", url: "https://gurureviewclub.com", bridgeUrl: "https://productcomparelab.com" },
@@ -100,9 +156,14 @@ async function main() {
     { name: "Health Supplement Bucket", url: "https://healthsupplementbucket.com", bridgeUrl: null },
     { name: "Supplements and Powders", url: "https://supplementsandpowders.com", bridgeUrl: null },
     { name: "Health Supplements Expert", url: "https://healthsupplementsexpert.com", bridgeUrl: "https://healthysupplementstalk.com" },
+    { name: "Product Research", url: "https://product-research.internal", bridgeUrl: null },
+    { name: "BeautyHealthFitnessRemedies", url: null, bridgeUrl: null },
+    { name: "HealthSolutions Blog", url: null, bridgeUrl: null },
+    { name: "HonestProductReview", url: null, bridgeUrl: null },
   ];
 
   const createdSites = [];
+  const siteMap = new Map<string, any>();
   for (const s of siteDefinitions) {
     const site = await prisma.site.create({
       data: {
@@ -112,11 +173,17 @@ async function main() {
       },
     });
     createdSites.push(site);
+    siteMap.set(normalizeKey(site.name), site);
   }
-  console.log(`Created ${createdSites.length} sites.`);
+  // Common aliases
+  const guruSite = siteMap.get("gurureviewclub");
+  if (guruSite) {
+    siteMap.set("gurureviewsclub", guruSite);
+  }
+  console.log(`Created ${createdSites.length} Sites.`);
 
   // 5. Seed Product Types (Categories) connected to all sites
-  console.log("Creating Product Types (Categories)...");
+  console.log("📂 Creating Product Types (Categories)...");
   const productTypes = ["Nutra", "Ecom", "Multi-Lang"];
   for (const typeName of productTypes) {
     await prisma.category.create({
@@ -126,10 +193,10 @@ async function main() {
       },
     });
   }
-  console.log(`Created ${productTypes.length} Product Types (Nutra, Ecom, Multi-Lang).`);
+  console.log(`Created ${productTypes.length} Product Types.`);
 
-  // 5b. Seed Product Categories
-  console.log("Creating Product Categories...");
+  // 6. Seed Product Categories
+  console.log("🏷️ Creating Product Categories...");
   const productCategoryNames = [
     "Anti Aging Products",
     "Anti Fungal Products",
@@ -200,50 +267,152 @@ async function main() {
     "Weight Loss Shake",
     "Weight Loss Supplement",
   ];
-
   for (const catName of productCategoryNames) {
-    await prisma.productCategory.create({
-      data: { name: catName },
-    });
+    await prisma.productCategory.create({ data: { name: catName } });
   }
   console.log(`Created ${productCategoryNames.length} Product Categories.`);
 
-  // 6. Seed Users (Super Admin and 1 User)
-  console.log("Creating Super Admin and User...");
-  const superAdmin = await prisma.user.create({
-    data: {
-      name: "Super Admin",
-      email: "abishekkhadka@fishtailinfosolutions.com",
-      role: "SUPER_ADMIN",
-      approved: true,
-      allowLinkLogAccess: true,
-    },
-  });
+  // 7. Seed Commission Settings
+  console.log("💰 Creating Commission Settings...");
+  for (const tier of DEFAULT_COMMISSION_TIERS) {
+    await prisma.commissionSetting.create({
+      data: { ...tier },
+    });
+  }
+  console.log(`Created ${DEFAULT_COMMISSION_TIERS.length} default commission settings.`);
 
-  // Secondary alias for Super Admin in case domain articlemgmt.com is used
+  // 8. Seed Users from Excel file Merged_User_List_2026-11-24.xlsx
+  console.log("👥 Seeding Users from Merged_User_List_2026-11-24.xlsx...");
+  const excelPath = path.resolve(process.cwd(), "Merged_User_List_2026-11-24.xlsx");
+  if (!fs.existsSync(excelPath)) {
+    throw new Error(`Excel file not found at ${excelPath}`);
+  }
+
+  const workbook = xlsx.readFile(excelPath);
+  const worksheet = workbook.Sheets["Merged User List"];
+  if (!worksheet) {
+    throw new Error("Worksheet 'Merged User List' not found in Excel workbook");
+  }
+
+  const rows: any[] = xlsx.utils.sheet_to_json(worksheet);
+  console.log(`Read ${rows.length} rows from Excel sheet.`);
+
+  let createdUsersCount = 0;
+  let leftUsersCount = 0;
+  let activeUsersCount = 0;
+  let siteAccessCount = 0;
+  let superAdminUser: any = null;
+
+  for (const row of rows) {
+    const rawName = (row.Name || "").toString().trim();
+    const email = (row.Email || "").toString().trim().toLowerCase();
+    const isLeft = (row["Already left the company"] || "").toString().trim().toLowerCase() === "yes";
+    const dept = (row.Department || "").toString().trim();
+    const sitesStr = (row.Sites || "").toString().trim();
+
+    if (!email) {
+      console.warn(`Skipping user without email: ${rawName}`);
+      continue;
+    }
+
+    if (isLeft) leftUsersCount++;
+    else activeUsersCount++;
+
+    // Role assignment: Abishek Khadka is SUPER_ADMIN
+    let role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST" = "GUEST";
+
+    if (email === "abishekkhadka@fishtailinfosolutions.com" || email === "abishekkhadka@articlemgmt.com") {
+      role = "SUPER_ADMIN";
+    } else if (dept === "Management") {
+      role = "ADMIN";
+    } else if (sitesStr || dept === "SEO") {
+      role = "WRITER";
+    } else {
+      role = "GUEST";
+    }
+
+    const hasLeftCompany = isLeft;
+    const approved = !isLeft;
+    const commissionToPartyFund = isLeft;
+
+    const user = await prisma.user.create({
+      data: {
+        name: rawName,
+        email: email,
+        role,
+        approved,
+        hasLeftCompany,
+        commissionToPartyFund,
+        allowLinkLogAccess: role === "SUPER_ADMIN" || role === "ADMIN",
+      },
+    });
+
+    createdUsersCount++;
+    if (role === "SUPER_ADMIN" && email === "abishekkhadka@fishtailinfosolutions.com") {
+      superAdminUser = user;
+    }
+
+    // SiteAccess for users with sites assigned
+    if (sitesStr) {
+      const siteNames = sitesStr.split(",").map((s: string) => s.trim()).filter(Boolean);
+      for (const sName of siteNames) {
+        const matchedSite = siteMap.get(normalizeKey(sName));
+        if (matchedSite) {
+          const userSiteRole = role === "ADMIN" ? "ADMIN" : "WRITER";
+          await prisma.siteAccess.create({
+            data: {
+              userId: user.id,
+              siteId: matchedSite.id,
+              role: userSiteRole,
+              roles: userSiteRole,
+              canWrite: true,
+              canReview: false,
+              canAddLink: false,
+              canAddProduct: false,
+            },
+          });
+          siteAccessCount++;
+        }
+      }
+    }
+  }
+
+  // Also create secondary alias for Super Admin (articlemgmt domain)
   const superAdminAlias = await prisma.user.create({
     data: {
       name: "Super Admin (articlemgmt)",
       email: "abishekkhadka@articlemgmt.com",
       role: "SUPER_ADMIN",
       approved: true,
+      hasLeftCompany: false,
+      commissionToPartyFund: false,
       allowLinkLogAccess: true,
     },
   });
 
-
-
-  const allUsers = [superAdmin, superAdminAlias];
-
-  // 7. Site Access: Assign all 12 sites with all permissions to the users
-  console.log("Assigning Site Access to Super Admin and User...");
-  for (const u of allUsers) {
-    for (const s of createdSites) {
-      await prisma.siteAccess.create({
-        data: {
-          userId: u.id,
-          siteId: s.id,
-          role: u.role || "ADMIN",
+  // Assign Super Admin all 17 sites with full permissions
+  const superAdmins = [superAdminUser, superAdminAlias].filter(Boolean);
+  for (const sa of superAdmins) {
+    for (const site of createdSites) {
+      await prisma.siteAccess.upsert({
+        where: {
+          userId_siteId: {
+            userId: sa.id,
+            siteId: site.id,
+          },
+        },
+        create: {
+          userId: sa.id,
+          siteId: site.id,
+          role: "SUPER_ADMIN",
+          roles: "SUPER_ADMIN,ADMIN,LINKER,WRITER,TEAM_LEAD,PRODUCT_RESEARCHER",
+          canAddProduct: true,
+          canAddLink: true,
+          canWrite: true,
+          canReview: true,
+        },
+        update: {
+          role: "SUPER_ADMIN",
           roles: "SUPER_ADMIN,ADMIN,LINKER,WRITER,TEAM_LEAD,PRODUCT_RESEARCHER",
           canAddProduct: true,
           canAddLink: true,
@@ -251,29 +420,39 @@ async function main() {
           canReview: true,
         },
       });
+      siteAccessCount++;
     }
   }
 
-  console.log("✅ Seed completed successfully!");
-  console.log("-----------------------------------------");
-  console.log(`Created ${createdSites.length} Sites:`);
-  siteDefinitions.forEach((s) =>
-    console.log(`   - ${s.name} (${s.url}) [Bridge: ${s.bridgeUrl || "None"}]`)
-  );
-  console.log(`Created ${affiliateNames.length} Affiliates:`);
-  affiliateNames.forEach((a) => console.log(`   - ${a}`));
-  console.log(`Created ${productTypes.length} Product Types:`);
-  productTypes.forEach((t) => console.log(`   - ${t}`));
-  console.log(`Created ${productCategoryNames.length} Product Categories.`);
-  console.log("Created Users:");
-  console.log(`   - Super Admin: superadmin@fishtailinfosolutions.com (or superadmin@articlemgmt.com)`);
-  console.log(`   - User:        user@fishtailinfosolutions.com`);
-  console.log("-----------------------------------------");
+  // 9. Flush redis caches
+  await Promise.all([
+    delByPattern("users:*"),
+    delByPattern("dashboard:*"),
+    delByPattern("commissions:*"),
+    delByPattern("articles:*"),
+    delByPattern("products:*"),
+    delByPattern("sites:*"),
+  ]).catch(() => {});
+
+  console.log("==========================================================");
+  console.log("✅ FULL SEED COMPLETED SUCCESSFULLY!");
+  console.log("📊 Summary:");
+  console.log(`   - Sites Created:           ${createdSites.length}`);
+  console.log(`   - Affiliates Created:      ${affiliateNames.length}`);
+  console.log(`   - Product Types Created:   ${productTypes.length}`);
+  console.log(`   - Product Categories:      ${productCategoryNames.length}`);
+  console.log(`   - Commission Tiers:        ${DEFAULT_COMMISSION_TIERS.length}`);
+  console.log(`   - Total Users Seeded:      ${createdUsersCount + 1} (93 from Excel + 1 superadmin alias)`);
+  console.log(`   - Super Admin:             abishekkhadka@fishtailinfosolutions.com (role: SUPER_ADMIN)`);
+  console.log(`   - Active Users:            ${activeUsersCount + 1} (Approved: true, Left: false)`);
+  console.log(`   - Departed Users:          ${leftUsersCount} (Approved: false, Left: true, PartyFund: true)`);
+  console.log(`   - Site Access Records:     ${siteAccessCount}`);
+  console.log("==========================================================");
 }
 
 main()
   .catch((err) => {
-    console.error("❌ Seed failed:", err);
+    console.error("❌ Full seed failed:", err);
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
