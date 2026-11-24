@@ -210,17 +210,39 @@ function getGreeting(): string {
   return "Good evening";
 }
 
+const DASHBOARD_CACHE_TTL_MS = 45_000;
+const dashboardCache = new Map<string, { data: DashboardData; timestamp: number }>();
+const dashboardInFlight = new Map<string, Promise<DashboardData | null>>();
+const notificationsCache = new Map<number, { data: any[]; timestamp: number }>();
+
+function getInitialDashboardCache(session: any): { data: DashboardData | null; role: string; notifications: any[] } {
+  const uId = session?.user?.id;
+  if (!uId) return { data: null, role: "", notifications: [] };
+  const uRole = session.user.role || "";
+  const sRoles: string[] = session.user.roles || (uRole ? [uRole] : []);
+  const distinctRoles = Array.from(new Set([uRole, ...sRoles].filter(Boolean).map((r) => r.toUpperCase())));
+  const active = getActiveWorkspace(uRole, distinctRoles);
+  const cachedEntry = dashboardCache.get(`${uId}:${active}`) || dashboardCache.get(`${uId}:${uRole.toUpperCase()}`);
+  const cachedNotifs = notificationsCache.get(uId)?.data || [];
+  return {
+    data: cachedEntry?.data || null,
+    role: active,
+    notifications: cachedNotifs,
+  };
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialCache = useMemo(() => getInitialDashboardCache(session), []);
+  const [data, setData] = useState<DashboardData | null>(initialCache.data);
+  const [loading, setLoading] = useState(!initialCache.data);
   const [refreshing, setRefreshing] = useState(false);
-  const [currentUserRole, setCurrentUserRole] = useState<string>("");
+  const [currentUserRole, setCurrentUserRole] = useState<string>(session?.user?.role || "");
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
-  const [activeRoleView, setActiveRoleView] = useState<string>("");
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [activeRoleView, setActiveRoleView] = useState<string>(initialCache.role);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(session?.user?.id ?? null);
+  const [notifications, setNotifications] = useState<any[]>(initialCache.notifications);
   const [showBellDropdown, setShowBellDropdown] = useState(false);
   const [tlTab, setTlTab] = useState<"check" | "write">("check");
   const [showCommission, setShowCommission] = useState(false);
@@ -277,12 +299,14 @@ export default function DashboardPage() {
     }
   }, [session?.user, activeRoleView]);
 
+  const fetchDashboardRef = useRef<(showLoading?: boolean, roleOverride?: string, force?: boolean) => void>(() => {});
+
   useEffect(() => {
     const handleWorkspaceChanged = (e: any) => {
       if (e.detail?.role) {
         const newRole = e.detail.role.toUpperCase();
         setActiveRoleView(newRole);
-        fetchDashboardData(false, newRole);
+        fetchDashboardRef.current(false, newRole, false);
       }
     };
     window.addEventListener("workspace-changed", handleWorkspaceChanged);
@@ -293,7 +317,7 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const fetchDashboardData = (showLoading = false, roleOverride?: string) => {
+  const fetchDashboardData = (showLoading = false, roleOverride?: string, force = false) => {
     if (!session?.user?.id) return;
     const uId = session.user.id;
     setCurrentUserId(uId);
@@ -301,33 +325,81 @@ export default function DashboardPage() {
       setCurrentUserRole(session.user.role);
     }
 
-    const targetRole = roleOverride || activeRoleView || session.user.role;
+    const uRole = session.user.role || "";
+    const sRoles: string[] = (session.user as any)?.roles || (uRole ? [uRole] : []);
+    const distinctRoles = Array.from(new Set([uRole, ...sRoles].filter(Boolean).map((r) => r.toUpperCase())));
+    const targetRole = (roleOverride || activeRoleView || getActiveWorkspace(uRole, distinctRoles) || uRole).toUpperCase();
+    const cacheKey = `${uId}:${targetRole}`;
+    const now = Date.now();
+    const cachedEntry = dashboardCache.get(cacheKey);
 
-    if (showLoading && !data) setLoading(true);
+    // Serve cached dashboard data immediately if available
+    if (!force && cachedEntry) {
+      setData(cachedEntry.data);
+      setLoading(false);
+      // Skip network request entirely if cache is still fresh
+      if (now - cachedEntry.timestamp < DASHBOARD_CACHE_TTL_MS) {
+        const cachedNotifs = notificationsCache.get(uId);
+        if (cachedNotifs) setNotifications(cachedNotifs.data);
+        return;
+      }
+    }
+
+    if (showLoading && !cachedEntry && !data) setLoading(true);
     else setRefreshing(true);
 
-    fetch(`/api/dashboard?userId=${uId}${targetRole ? `&role=${targetRole}` : ""}`)
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to fetch dashboard");
-        return r.json();
-      })
-      .then((resData) => {
-        setData(resData);
-      })
-      .catch((e) => console.error("Failed to load dashboard data", e))
-      .finally(() => {
-        setLoading(false);
-        setRefreshing(false);
-      });
+    // Deduplicate concurrent requests for the same user+role
+    let requestPromise = !force ? dashboardInFlight.get(cacheKey) : undefined;
+    if (!requestPromise) {
+      requestPromise = fetch(
+        `/api/dashboard?userId=${uId}${targetRole ? `&role=${targetRole}` : ""}`,
+        force ? { cache: "no-store" } : undefined
+      )
+        .then((r) => {
+          if (!r.ok) throw new Error("Failed to fetch dashboard");
+          return r.json();
+        })
+        .then((resData: DashboardData) => {
+          dashboardCache.set(cacheKey, { data: resData, timestamp: Date.now() });
+          return resData;
+        })
+        .catch((e) => {
+          console.error("Failed to load dashboard data", e);
+          return null;
+        })
+        .finally(() => {
+          dashboardInFlight.delete(cacheKey);
+        });
+      dashboardInFlight.set(cacheKey, requestPromise);
+    }
 
-    fetch(`/api/notifications?userId=${uId}`)
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to fetch notifications");
-        return r.json();
-      })
-      .then(setNotifications)
-      .catch((e) => console.error("Failed to load notifications", e));
+    requestPromise.then((resData) => {
+      if (resData) {
+        setData(resData);
+      }
+      setLoading(false);
+      setRefreshing(false);
+    });
+
+    // Only fetch notifications when forced or cache is stale/missing
+    const cachedNotifs = notificationsCache.get(uId);
+    if (force || !cachedNotifs || now - cachedNotifs.timestamp >= DASHBOARD_CACHE_TTL_MS) {
+      fetch(`/api/notifications?userId=${uId}`, force ? { cache: "no-store" } : undefined)
+        .then((r) => {
+          if (!r.ok) throw new Error("Failed to fetch notifications");
+          return r.json();
+        })
+        .then((notifData) => {
+          notificationsCache.set(uId, { data: notifData, timestamp: Date.now() });
+          setNotifications(notifData);
+        })
+        .catch((e) => console.error("Failed to load notifications", e));
+    } else {
+      setNotifications(cachedNotifs.data);
+    }
   };
+
+  fetchDashboardRef.current = fetchDashboardData;
 
   const handleMarkAllAsRead = async () => {
     if (!currentUserId) return;
@@ -381,7 +453,9 @@ export default function DashboardPage() {
     const handleLiveNotif = (e: Event) => {
       const notif = (e as CustomEvent).detail;
       if (notif.type === "ARTICLE_STATUS_UPDATED" || notif.type === "LINK_STATUS_UPDATED") {
-        fetchDashboardData(false);
+        // Invalidate client cache for this user so live updates reflect immediately
+        dashboardCache.clear();
+        fetchDashboardRef.current(false, undefined, true);
       }
       if (!notif.silent && notif.message) {
         setNotifications((prev) => [notif, ...prev]);
@@ -413,7 +487,8 @@ export default function DashboardPage() {
         toast.success("Assignment started! Loading workspace...");
         window.scrollTo({ top: 0, behavior: "smooth" });
         setTlTab("write");
-        fetchDashboardData(false);
+        dashboardCache.clear();
+        fetchDashboardData(false, undefined, true);
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to start writing");
@@ -450,7 +525,7 @@ export default function DashboardPage() {
         <h2 className="text-base font-bold text-slate-800">Unable to load dashboard data</h2>
         <p className="text-xs text-slate-500">Please check your database connection or refresh the page.</p>
         <button
-          onClick={() => fetchDashboardData(true)}
+          onClick={() => fetchDashboardData(true, undefined, true)}
           className="px-4 py-2 bg-[#6D8196] text-white rounded-xl text-xs font-bold hover:bg-[#5A6D81] transition cursor-pointer"
         >
           Try Again
@@ -531,7 +606,7 @@ export default function DashboardPage() {
 
             {/* Refresh Live Data Button */}
             <button
-              onClick={() => fetchDashboardData(false)}
+              onClick={() => fetchDashboardData(false, undefined, true)}
               disabled={refreshing}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-slate-900 hover:bg-slate-200/70 dark:hover:bg-slate-800 border border-slate-200/70 dark:border-slate-700/80 flex items-center justify-center text-slate-600 dark:text-slate-300 transition shadow-2xs cursor-pointer"
               title="Refresh Live Data"
@@ -553,9 +628,8 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (effectiveRole === "TEAM_LEAD") return;
                   setActiveWorkspace("TEAM_LEAD", availableRoles);
-                  setActiveRoleView("TEAM_LEAD");
-                  fetchDashboardData(false, "TEAM_LEAD");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "TEAM_LEAD"
@@ -576,9 +650,8 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (effectiveRole === "WRITER") return;
                   setActiveWorkspace("WRITER", availableRoles);
-                  setActiveRoleView("WRITER");
-                  fetchDashboardData(false, "WRITER");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "WRITER"
@@ -599,9 +672,8 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (effectiveRole === "LINKER") return;
                   setActiveWorkspace("LINKER", availableRoles);
-                  setActiveRoleView("LINKER");
-                  fetchDashboardData(false, "LINKER");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "LINKER"
@@ -622,9 +694,8 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (effectiveRole === "PRODUCT_RESEARCHER") return;
                   setActiveWorkspace("PRODUCT_RESEARCHER", availableRoles);
-                  setActiveRoleView("PRODUCT_RESEARCHER");
-                  fetchDashboardData(false, "PRODUCT_RESEARCHER");
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   effectiveRole === "PRODUCT_RESEARCHER"
@@ -719,7 +790,7 @@ export default function DashboardPage() {
             <TeamLeadMissionControl
               data={data}
               currentUserId={currentUserId}
-              onRefresh={() => fetchDashboardData(false)}
+              onRefresh={() => { dashboardCache.clear(); fetchDashboardData(false, undefined, true); }}
             />
           ) : (
             <WriterFocusStudio
@@ -728,7 +799,7 @@ export default function DashboardPage() {
               globalSearchQuery={overviewSearch}
               onGlobalSearchChange={setOverviewSearch}
               onStartWriting={handleStartWriting}
-              onRefresh={() => fetchDashboardData(false)}
+              onRefresh={() => { dashboardCache.clear(); fetchDashboardData(false, undefined, true); }}
             />
           )}
         </div>
@@ -741,7 +812,7 @@ export default function DashboardPage() {
           router={router}
           globalSearchQuery={overviewSearch}
           onGlobalSearchChange={setOverviewSearch}
-          onRefresh={() => fetchDashboardData(false)}
+          onRefresh={() => { dashboardCache.clear(); fetchDashboardData(false, undefined, true); }}
         />
       )}
 
@@ -752,7 +823,7 @@ export default function DashboardPage() {
           router={router}
           globalSearchQuery={overviewSearch}
           onGlobalSearchChange={setOverviewSearch}
-          onRefresh={() => fetchDashboardData(false)}
+          onRefresh={() => { dashboardCache.clear(); fetchDashboardData(false, undefined, true); }}
         />
       )}
 
@@ -764,7 +835,7 @@ export default function DashboardPage() {
           globalSearchQuery={overviewSearch}
           onGlobalSearchChange={setOverviewSearch}
           onStartWriting={handleStartWriting}
-          onRefresh={() => fetchDashboardData(false)}
+          onRefresh={() => { dashboardCache.clear(); fetchDashboardData(false, undefined, true); }}
         />
       )}
 

@@ -6,6 +6,12 @@ import { Toaster } from "react-hot-toast";
 import { useEffect } from "react";
 import { ThemeProvider } from "@/context/ThemeContext";
 import NoticePopupModal from "@/components/NoticePopupModal";
+import { installClientFetchCache } from "@/lib/clientFetchCache";
+
+// Install immediately on client module evaluation so child pages' initial fetches use the cache
+if (typeof window !== "undefined") {
+  installClientFetchCache();
+}
 
 export default function Providers({
   children,
