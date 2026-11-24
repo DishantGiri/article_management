@@ -29,7 +29,6 @@ const EXPECTED_HEADERS = [
   "Linker Name",
   "Writer Name",
   "Article Link",
-  "Buy Now Link",
   "Bridge Page Link",
   "Affiliate Link",
   "Site Name",
@@ -154,8 +153,20 @@ function extractPreviewGeos(row: any): string[] {
         "ARTICLE LINK",
         "BUY LINK",
         "BUY NOW LINK",
+        "BRIDGE LINK",
         "BRIDGE PAGE LINK",
+        "BRIDGEPAGE LINK",
+        "LINK STATUS",
+        "ARTICLE STATUS",
+        "ADDED DATE",
+        "PUBLISH DATE",
+        "WRITER",
+        "WRITER NAME",
+        "LINKER",
+        "LINKER NAME",
         "REMARKS",
+        "NOTES",
+        "NOTE",
       ].includes(upper)
     ) {
       continue;
@@ -227,14 +238,14 @@ export default function MergedSheetImportSettings() {
     try {
       const wb = XLSX.utils.book_new();
 
+      // Tab 1: Daily Health Supplement
       const sampleRowsSite1 = [
         {
           "Product Name": "Creatine Monohydrate 500g",
-          "Linker Name": "Muna Pun",
-          "Writer Name": "Rahil Kunwar",
-          "Article Link": "https://docs.google.com/document/d/sample1",
-          "Buy Now Link": "https://dailyhealthsupplement.com/creatine",
-          "Bridge Page Link": "https://getbestsupplement.com/creatine",
+          "Linker Name": "Muna",
+          "Writer Name": "Rahil",
+          "Article Link": "https://docs.google.com/document/d/sample-creatine",
+          "Bridge Page Link": "https://dailyhealthsupplement.com/creatine",
           "Affiliate Link": "https://hop.clickbank.net/?affiliate=test&tid=dhs",
           "Site Name": "Daily Health Supplement",
           "Added Date": "2026-11-01",
@@ -243,18 +254,17 @@ export default function MergedSheetImportSettings() {
           "Article Status": "APPROVED",
           "Publish Date": "2026-11-03",
           "Link Status": "ACCEPTED",
-          "US Link": "https://hop.clickbank.net/?affiliate=test&tid=us",
-          "UK Link": "https://hop.clickbank.net/?affiliate=test&tid=uk",
-          "CA Link": "", // Empty geo link will be skipped automatically
+          "US Link": "https://hop.clickbank.net/?affiliate=test&tid=creatine-us",
+          "UK Link": "https://hop.clickbank.net/?affiliate=test&tid=creatine-uk",
+          "CA Link": "", // Empty geo link will be skipped automatically (no empty geo added)
           "AU Link": "",
         },
         {
           "Product Name": "Alpha Whey Protein",
-          "Linker Name": "Sandesh",
-          "Writer Name": "Aayusha Adhikari",
-          "Article Link": "https://docs.google.com/document/d/sample2",
-          "Buy Now Link": "https://dailyhealthsupplement.com/alpha-whey",
-          "Bridge Page Link": "https://getbestsupplement.com/alpha-whey",
+          "Linker Name": "Rahul Gupta",
+          "Writer Name": "Sujima",
+          "Article Link": "https://docs.google.com/document/d/sample-alpha-whey",
+          "Bridge Page Link": "https://dailyhealthsupplement.com/alpha-whey",
           "Affiliate Link": "https://smashload.com/track/alpha-whey",
           "Site Name": "Daily Health Supplement",
           "Added Date": "2026-11-02",
@@ -270,14 +280,37 @@ export default function MergedSheetImportSettings() {
         },
       ];
 
+      // Tab 2: Guru Review Club
       const sampleRowsSite2 = [
         {
+          "Product Name": "Puravive Exotic Rice Method",
+          "Linker Name": "Muna",
+          "Writer Name": "Ayush",
+          "Article Link": "https://docs.google.com/document/d/sample-puravive",
+          "Bridge Page Link": "https://gurureviewclub.com/puravive",
+          "Affiliate Link": "https://hop.clickbank.net/?affiliate=test&tid=grc",
+          "Site Name": "Guru Review Club",
+          "Added Date": "2026-11-04",
+          "Affiliate Network": "ClickBank",
+          "Category": "Nutra",
+          "Article Status": "COMPLETED",
+          "Publish Date": "2026-11-06",
+          "Link Status": "ACCEPTED",
+          "US Link": "https://hop.clickbank.net/?affiliate=test&tid=puravive-us",
+          "UK Link": "https://hop.clickbank.net/?affiliate=test&tid=puravive-uk",
+          "CA Link": "https://hop.clickbank.net/?affiliate=test&tid=puravive-ca",
+          "AU Link": "",
+        },
+      ];
+
+      // Tab 3: Supplement Mag
+      const sampleRowsSite3 = [
+        {
           "Product Name": "SphereFresh Fridge Deodoriser",
-          "Linker Name": "Muna Pun",
-          "Writer Name": "Rahil Kunwar",
-          "Article Link": "https://docs.google.com/document/d/sample3",
-          "Buy Now Link": "https://supplementmag.com/spherefresh",
-          "Bridge Page Link": "https://supplementexpose.com/spherefresh",
+          "Linker Name": "Pratiksha",
+          "Writer Name": "Bibek",
+          "Article Link": "https://docs.google.com/document/d/sample-spherefresh",
+          "Bridge Page Link": "https://supplementmag.com/spherefresh",
           "Affiliate Link": "https://mediascalers.com/offer/spherefresh",
           "Site Name": "Supplement Mag",
           "Added Date": "2026-11-01",
@@ -293,17 +326,44 @@ export default function MergedSheetImportSettings() {
         },
       ];
 
+      // Tab 4: The Buyers Reviews
+      const sampleRowsSite4 = [
+        {
+          "Product Name": "ProDentim Advanced Oral Health",
+          "Linker Name": "Anjali",
+          "Writer Name": "Rahil",
+          "Article Link": "https://docs.google.com/document/d/sample-prodentim",
+          "Bridge Page Link": "https://thebuyersreviews.com/prodentim",
+          "Affiliate Link": "https://buygoods.com/affiliate/prodentim",
+          "Site Name": "The Buyers Reviews",
+          "Added Date": "2026-11-03",
+          "Affiliate Network": "BuyGoods",
+          "Category": "Dental health",
+          "Article Status": "APPROVED",
+          "Publish Date": "2026-11-05",
+          "Link Status": "ACCEPTED",
+          "US Link": "https://buygoods.com/affiliate/prodentim-us",
+          "UK Link": "https://buygoods.com/affiliate/prodentim-uk",
+          "CA Link": "",
+          "AU Link": "",
+        },
+      ];
+
       // Sheet 1: Daily Health Supplement
       const ws1 = XLSX.utils.json_to_sheet(sampleRowsSite1, { header: EXPECTED_HEADERS });
       XLSX.utils.book_append_sheet(wb, ws1, "Daily Health Supplement");
 
-      // Sheet 2: SupplementMag
+      // Sheet 2: Guru Review Club
       const ws2 = XLSX.utils.json_to_sheet(sampleRowsSite2, { header: EXPECTED_HEADERS });
-      XLSX.utils.book_append_sheet(wb, ws2, "SupplementMag");
+      XLSX.utils.book_append_sheet(wb, ws2, "Guru Review Club");
 
-      // Sheet 3: TheBuyersReviews
-      const ws3 = XLSX.utils.json_to_sheet([], { header: EXPECTED_HEADERS });
-      XLSX.utils.book_append_sheet(wb, ws3, "TheBuyersReviews");
+      // Sheet 3: Supplement Mag
+      const ws3 = XLSX.utils.json_to_sheet(sampleRowsSite3, { header: EXPECTED_HEADERS });
+      XLSX.utils.book_append_sheet(wb, ws3, "Supplement Mag");
+
+      // Sheet 4: The Buyers Reviews
+      const ws4 = XLSX.utils.json_to_sheet(sampleRowsSite4, { header: EXPECTED_HEADERS });
+      XLSX.utils.book_append_sheet(wb, ws4, "The Buyers Reviews");
 
       XLSX.writeFile(wb, "Merged_Data_Sheet_Template.xlsx");
       toast.success("Downloaded sample Excel template!");
@@ -630,7 +690,7 @@ export default function MergedSheetImportSettings() {
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Expected Column Headers (Image 1)
+                Expected Column Headers
               </span>
               <span className="text-[11px] text-slate-400">
                 Matches spreadsheet order
@@ -765,7 +825,7 @@ export default function MergedSheetImportSettings() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                  Workbook Site Tabs (Image 2)
+                  Workbook Site Tabs
                 </span>
                 <span className="text-[11px] text-slate-400">
                   Click a tab to view rows parsed for that specific site
@@ -874,8 +934,21 @@ export default function MergedSheetImportSettings() {
                               <span>Article</span>
                             </span>
                           )}
-                          {(row["Buy Link"] || row["Buy Now Link"] || row["Bridge Page Link"]) && (
-                            <span title={`Buy Now: ${row["Buy Link"] || row["Buy Now Link"] || row["Bridge Page Link"]}`} className="text-purple-600 dark:text-purple-400 flex items-center gap-0.5 font-bold">
+                          {(row["Buy Link"] ||
+                            row["Buy Now Link"] ||
+                            row["Bridge Page Link"] ||
+                            row["Bridgepage Link"] ||
+                            row["Bridge Link"]) && (
+                            <span
+                              title={`Buy Now: ${
+                                row["Buy Link"] ||
+                                row["Buy Now Link"] ||
+                                row["Bridge Page Link"] ||
+                                row["Bridgepage Link"] ||
+                                row["Bridge Link"]
+                              }`}
+                              className="text-purple-600 dark:text-purple-400 flex items-center gap-0.5 font-bold"
+                            >
                               <Link2 className="w-3 h-3" />
                               <span>Buy Now</span>
                             </span>
