@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { delByPattern } from "@/lib/redis";
 
 // POST /api/users/[id]/access - assign site access to a writer
 export async function POST(
@@ -60,6 +61,8 @@ export async function POST(
       include: { site: true },
     });
 
+    await Promise.all([delByPattern("users:*"), delByPattern("dashboard:*")]);
+
     return NextResponse.json(access);
   } catch (err) {
     console.error("[POST /api/users/[id]/access]", err);
@@ -99,6 +102,8 @@ export async function DELETE(
         },
       },
     });
+
+    await Promise.all([delByPattern("users:*"), delByPattern("dashboard:*")]);
 
     return NextResponse.json({ success: true });
   } catch (err) {

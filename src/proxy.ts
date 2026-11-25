@@ -124,19 +124,26 @@ export default withAuth(
     // 5. Enforce role-based path authorization (pages only, bypass api paths and websocket)
     if (token && isApproved && hasRole && !pathname.startsWith("/api/") && pathname !== "/ws") {
       const activeWorkspace = req.cookies.get("active_workspace_role")?.value;
-      const userRolesCookie = req.cookies.get("user_roles")?.value;
-      const parsedRoles = userRolesCookie ? userRolesCookie.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean) : [];
-
-      const candidateRoles = new Set<string>();
-      if (token.role) candidateRoles.add(token.role.toUpperCase());
-      if (activeWorkspace) candidateRoles.add(activeWorkspace.toUpperCase());
+      const tokenRoles = new Set<string>();
+      if (token.role) tokenRoles.add(String(token.role).toUpperCase());
       if (Array.isArray(token.roles)) {
-        token.roles.forEach((r: string) => candidateRoles.add(r.toUpperCase()));
+        token.roles.forEach((r: string) => {
+          if (r) tokenRoles.add(String(r).toUpperCase());
+        });
       }
-      parsedRoles.forEach((r) => candidateRoles.add(r));
 
-      if (!isRouteAllowed(pathname, token.role, Array.from(candidateRoles))) {
-        console.log(`Access Denied: Roles ${JSON.stringify(Array.from(candidateRoles))} cannot access route ${pathname}`);
+      const upperActiveWorkspace = activeWorkspace?.trim().toUpperCase();
+      const effectiveRolesForRoute =
+        upperActiveWorkspace && tokenRoles.has(upperActiveWorkspace)
+          ? [
+              upperActiveWorkspace,
+              ...(tokenRoles.has("SUPER_ADMIN") ? ["SUPER_ADMIN"] : []),
+              ...(tokenRoles.has("ADMIN") ? ["ADMIN"] : []),
+            ]
+          : Array.from(tokenRoles);
+
+      if (!isRouteAllowed(pathname, token.role, effectiveRolesForRoute)) {
+        console.log(`Access Denied: Roles ${JSON.stringify(effectiveRolesForRoute)} cannot access route ${pathname}`);
         return NextResponse.redirect(new URL("/", req.url));
       }
     }

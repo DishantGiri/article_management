@@ -142,7 +142,7 @@ export const authOptions: NextAuthOptions = {
       const now = Date.now();
       const lastChecked = (token.lastChecked as number | undefined) ?? 0;
       // Revalidate unapproved/GUEST users frequently (5s), approved users every 60s
-      const ttlMs = token.approved === false ? 5_000 : 60_000;
+      const ttlMs = token.approved === false ? 5_000 : 15_000;
       const shouldRefresh =
         trigger === "signIn" ||
         trigger === "update" ||
@@ -196,8 +196,8 @@ export const authOptions: NextAuthOptions = {
             token.roles = Array.from(roleSet);
             token.lastChecked = now;
 
-            // If user role is null in DB, persist GUEST role to User table
-            if (!dbUser.role) {
+            // If user role is null in DB during signIn/background check, persist GUEST role to User table
+            if (!dbUser.role && trigger !== "update") {
               prisma.user.update({
                 where: { id: dbUser.id },
                 data: { role: "GUEST" },

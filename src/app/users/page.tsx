@@ -38,6 +38,7 @@ import {
   Lock,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { setActiveWorkspace } from "@/lib/workspace";
 import CustomSelect from "@/components/CustomSelect";
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "react-hot-toast";
@@ -151,7 +152,20 @@ export default function UsersPage() {
   const itemsPerPage = viewMode === "CARD" ? 12 : 10;
 
   // Session & Access info
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
+
+  const syncOwnSessionIfSelf = async (updatedUser: User) => {
+    if (!updatedUser || updatedUser.id !== Number(currentUserId)) return;
+    const roleSet = new Set<string>();
+    if (updatedUser.role) roleSet.add(updatedUser.role.toUpperCase());
+    (updatedUser.siteAccess || []).forEach((sa) => {
+      parseSiteRoles(sa.roles, sa.role).forEach((r) => roleSet.add(r));
+    });
+    const nextRoles = roleSet.size > 0 ? Array.from(roleSet) : ["GUEST"];
+    const nextPrimary = (updatedUser.role || nextRoles[0] || "GUEST").toUpperCase();
+    setActiveWorkspace(nextPrimary, nextRoles);
+    await updateSession();
+  };
   const [currentUserRole, setCurrentUserRole] = useState("");
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
@@ -377,6 +391,7 @@ export default function UsersPage() {
       }
       const updatedUser = await res.json();
       setUsers((prev) => prev.map((u) => (u.id === migrateSitesUser.id ? updatedUser : u)));
+      await syncOwnSessionIfSelf(updatedUser);
       toast.success(`Updated site access & roles for ${migrateSitesUser.name}!`);
       setMigrateSitesUser(null);
     } catch (e: any) {
@@ -409,6 +424,7 @@ export default function UsersPage() {
       }
       const updatedUser = await res.json();
       setUsers((prev) => prev.map((u) => (u.id === promoteRoleUser.id ? updatedUser : u)));
+      await syncOwnSessionIfSelf(updatedUser);
       toast.success(
         `Changed ${promoteRoleUser.name}'s role to ${ROLE_LABELS[selectedNewRole] || selectedNewRole}!`
       );
@@ -630,13 +646,18 @@ export default function UsersPage() {
     try {
       const url = editingUserId ? `/api/users/${editingUserId}` : "/api/users";
       const method = editingUserId ? "PATCH" : "POST";
-      const siteAccess = form.siteIds.map((siteId) => ({
-        siteId,
-        roles: form.siteRolesMap[siteId] || [form.role || "WRITER"],
-      }));
+      const isGlobalOrGuestFormRole =
+        form.role === "ADMIN" || form.role === "SUPER_ADMIN" || form.role === "GUEST";
+      const siteAccess = isGlobalOrGuestFormRole
+        ? []
+        : form.siteIds.map((siteId) => ({
+            siteId,
+            roles: form.siteRolesMap[siteId] || [form.role || "WRITER"],
+          }));
 
       const payload: any = {
         ...form,
+        ...(isGlobalOrGuestFormRole ? { siteIds: [], siteRolesMap: {}, teamLeadId: "" } : {}),
         name: trimmedName,
         creatorId: currentUserId,
         siteAccess,
@@ -663,6 +684,7 @@ export default function UsersPage() {
 
       if (editingUserId) {
         setUsers((prev) => prev.map((u) => (u.id === editingUserId ? data : u)));
+        await syncOwnSessionIfSelf(data);
         toast.success("User updated successfully!");
       } else {
         setUsers((prev) => [data, ...prev]);
@@ -2289,7 +2311,35 @@ export default function UsersPage() {
                   </label>
                   <CustomSelect
                     value={form.role}
-                    onChange={(val) => setForm({ ...form, role: val })}
+                    onChange={(val) => {
+                      setForm((prev) => {
+                        const prevRole = (prev.role || "").toUpperCase();
+                        const nextRole = (val || "").toUpperCase();
+                        if (nextRole === "ADMIN" || nextRole === "SUPER_ADMIN" || nextRole === "GUEST") {
+                          return {
+                            ...prev,
+                            role: val,
+                            teamLeadId: "",
+                            siteIds: [],
+                            siteRolesMap: {},
+                          };
+                        }
+                        const nextMap: Record<number, string[]> = {};
+                        for (const sId of prev.siteIds) {
+                          const existing = prev.siteRolesMap[sId] || [];
+                          const updated = existing
+                            .map((r) => (r.toUpperCase() === prevRole ? nextRole : r.toUpperCase()))
+                            .filter(Boolean);
+                          nextMap[sId] = Array.from(new Set(updated.length > 0 ? updated : [nextRole]));
+                        }
+                        return {
+                          ...prev,
+                          role: val,
+                          teamLeadId: nextRole === "WRITER" ? prev.teamLeadId : "",
+                          siteRolesMap: nextMap,
+                        };
+                      });
+                    }}
                     placeholder="Select Role..."
                     options={[
                       { value: "WRITER", label: "Writer" },

@@ -106,10 +106,8 @@ function ProductsPageContent() {
   });
 
   const activeRole = useMemo(() => {
-    if (currentUserRole) return currentUserRole.toUpperCase();
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("active_workspace_role")?.toUpperCase();
-      if (stored) return stored;
+    if (currentUserRole && sessionRoles.includes(currentUserRole.toUpperCase())) {
+      return currentUserRole.toUpperCase();
     }
     return getActiveWorkspace(userRole, sessionRoles);
   }, [currentUserRole, userRole, sessionRoles]);

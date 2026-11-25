@@ -3,6 +3,54 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { validateUserName, sanitizeUserName } from "@/lib/user-validation";
+import { delByPattern } from "@/lib/redis";
+
+type UserRole = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST";
+
+const VALID_ROLES = new Set<string>([
+  "SUPER_ADMIN",
+  "ADMIN",
+  "LINKER",
+  "WRITER",
+  "TEAM_LEAD",
+  "PRODUCT_RESEARCHER",
+  "GUEST",
+]);
+
+function toValidRole(value: unknown, fallback: UserRole = "WRITER"): UserRole {
+  const upper = String(value || "").trim().toUpperCase();
+  return VALID_ROLES.has(upper) ? (upper as UserRole) : fallback;
+}
+
+function buildSiteAccessCreateRow(siteId: number, rolesArr: string[], primaryRole: string) {
+  const normalizedRoles = Array.from(
+    new Set((rolesArr.length > 0 ? rolesArr : [primaryRole]).map((r) => r.toUpperCase()).filter(Boolean))
+  );
+  const effectivePrimary = toValidRole(primaryRole || normalizedRoles[0], "WRITER");
+  return {
+    siteId,
+    role: effectivePrimary,
+    roles: normalizedRoles.join(","),
+    canAddProduct:
+      normalizedRoles.includes("LINKER") ||
+      normalizedRoles.includes("PRODUCT_RESEARCHER") ||
+      effectivePrimary === "LINKER" ||
+      effectivePrimary === "PRODUCT_RESEARCHER",
+    canAddLink: normalizedRoles.includes("LINKER") || effectivePrimary === "LINKER",
+    canWrite: normalizedRoles.includes("WRITER") || effectivePrimary === "WRITER",
+    canReview: normalizedRoles.includes("TEAM_LEAD") || effectivePrimary === "TEAM_LEAD",
+  };
+}
+
+async function invalidateUserRelatedCaches() {
+  await Promise.all([
+    delByPattern("users:*"),
+    delByPattern("dashboard:*"),
+    delByPattern("articles:*"),
+    delByPattern("products:*"),
+    delByPattern("links:*"),
+  ]);
+}
 
 // Cascades display name updates across all notifications, link logs, history records, and products
 async function cascadeUserNameUpdate(
@@ -250,22 +298,39 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    const targetId = parseInt(id, 10);
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
     const body = await req.json();
     const { name, email, role, image, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany, commissionToPartyFund } = body;
 
+    if (role !== undefined && role !== null && !VALID_ROLES.has(String(role).toUpperCase())) {
+      return NextResponse.json({ error: `Invalid role: ${role}` }, { status: 400 });
+    }
+    const normalizedRequestedRole = role ? String(role).toUpperCase() : undefined;
+
     const callerId = Number(session.user.id);
     const callerRole = session.user.role || "";
-    const isSelf = callerId === parseInt(id);
+    const isSelf = callerId === targetId;
     const isAdmin = callerRole === "ADMIN" || callerRole === "SUPER_ADMIN";
 
     if (!isSelf && !isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get target user details first
+    // Get target user details including current siteAccess
     const targetUser = await prisma.user.findUnique({
-      where: { id: parseInt(id) },
-      select: { id: true, name: true, email: true, role: true },
+      where: { id: targetId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        siteAccess: {
+          select: { siteId: true, role: true, roles: true },
+        },
+      },
     });
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -301,7 +366,16 @@ export async function PATCH(
     }
 
     // Non-admin cannot modify role, approval, or site access
-    if (!isAdmin && (role || approved !== undefined || siteIds !== undefined || allowLinkLogAccess !== undefined || hasLeftCompany !== undefined || commissionToPartyFund !== undefined)) {
+    if (
+      !isAdmin &&
+      (normalizedRequestedRole !== undefined ||
+        approved !== undefined ||
+        siteIds !== undefined ||
+        body.siteAccess !== undefined ||
+        allowLinkLogAccess !== undefined ||
+        hasLeftCompany !== undefined ||
+        commissionToPartyFund !== undefined)
+    ) {
       return NextResponse.json({ error: "Forbidden: Only administrators can modify roles and permissions." }, { status: 403 });
     }
 
@@ -315,13 +389,20 @@ export async function PATCH(
       return NextResponse.json({ error: "Only Super Admins can modify Admin user roles." }, { status: 403 });
     }
 
-    // Only SUPER_ADMIN can assign ADMIN or SUPER_ADMIN role
-    if ((role === "SUPER_ADMIN" || role === "ADMIN") && callerRole !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: `Only Super Admins can assign ${role === "SUPER_ADMIN" ? "Super Admin" : "Admin"} roles.` }, { status: 403 });
+    // Only SUPER_ADMIN can assign or promote to ADMIN or SUPER_ADMIN role
+    if (
+      (normalizedRequestedRole === "SUPER_ADMIN" || normalizedRequestedRole === "ADMIN") &&
+      normalizedRequestedRole !== targetUser.role &&
+      callerRole !== "SUPER_ADMIN"
+    ) {
+      return NextResponse.json(
+        { error: `Only Super Admins can assign ${normalizedRequestedRole === "SUPER_ADMIN" ? "Super Admin" : "Admin"} roles.` },
+        { status: 403 }
+      );
     }
 
     // Safety guard: ensure the platform has at least 1 Super Admin remaining if demoting
-    if (targetUser.role === "SUPER_ADMIN" && role && role !== "SUPER_ADMIN") {
+    if (targetUser.role === "SUPER_ADMIN" && normalizedRequestedRole && normalizedRequestedRole !== "SUPER_ADMIN") {
       const superAdminCount = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
       if (superAdminCount <= 1) {
         return NextResponse.json({ error: "Cannot change role: The system must maintain at least one Super Admin." }, { status: 400 });
@@ -350,8 +431,8 @@ export async function PATCH(
 
     const incomingSiteAccess = body.siteAccess;
 
-    // Handle site access sync if siteAccess or siteIds is provided
-    let resolvedRole = role;
+    // Handle site access sync when role changes or siteAccess/siteIds are provided
+    let resolvedRole: string | undefined = normalizedRequestedRole;
     if (!resolvedRole && !targetUser.role) {
       if (incomingSiteAccess && Array.isArray(incomingSiteAccess) && incomingSiteAccess.length > 0) {
         const firstSa = incomingSiteAccess[0];
@@ -360,50 +441,66 @@ export async function PATCH(
           : typeof firstSa.roles === "string"
           ? firstSa.roles.split(",").map((s: string) => s.trim()).filter(Boolean)
           : [];
-        resolvedRole = firstSa.role || firstRoles[0] || "WRITER";
+        resolvedRole = (firstSa.role || firstRoles[0] || "WRITER").toUpperCase();
       } else if (siteIds && Array.isArray(siteIds) && siteIds.length > 0) {
         resolvedRole = "WRITER";
       } else if (finalApproved === true) {
         resolvedRole = "WRITER";
       }
     }
-    const newRole = resolvedRole || targetUser.role;
+    const newRole = (resolvedRole || targetUser.role || "").toUpperCase() || null;
+    const roleChanged = Boolean(resolvedRole && resolvedRole !== targetUser.role);
+    const isGlobalOrGuest = newRole === "ADMIN" || newRole === "SUPER_ADMIN" || newRole === "GUEST";
     let siteAccessUpdate = undefined;
 
-    if (incomingSiteAccess !== undefined && Array.isArray(incomingSiteAccess)) {
+    if (isGlobalOrGuest) {
+      if (targetUser.siteAccess.length > 0 || incomingSiteAccess !== undefined || siteIds !== undefined) {
+        siteAccessUpdate = { deleteMany: {} };
+      }
+    } else if (incomingSiteAccess !== undefined && Array.isArray(incomingSiteAccess)) {
+      const cleanRows = incomingSiteAccess.filter(
+        (sa: any) => Number.isInteger(Number(sa.siteId)) && Number(sa.siteId) > 0
+      );
       siteAccessUpdate = {
         deleteMany: {},
-        create: incomingSiteAccess.map((sa: any) => {
+        create: cleanRows.map((sa: any) => {
           const rolesArr = Array.isArray(sa.roles)
             ? sa.roles
             : typeof sa.roles === "string"
             ? sa.roles.split(",").map((s: string) => s.trim()).filter(Boolean)
             : [];
-          const primaryRole = sa.role || rolesArr[0] || newRole || "WRITER";
-          const rolesStr = rolesArr.length > 0 ? rolesArr.join(",") : (sa.role || primaryRole);
-          return {
-            siteId: Number(sa.siteId),
-            role: primaryRole,
-            roles: rolesStr,
-            canAddProduct: Boolean(sa.canAddProduct || rolesArr.includes("LINKER") || rolesArr.includes("PRODUCT_RESEARCHER") || primaryRole === "LINKER" || primaryRole === "PRODUCT_RESEARCHER"),
-            canAddLink: Boolean(sa.canAddLink || rolesArr.includes("LINKER") || primaryRole === "LINKER"),
-            canWrite: Boolean(sa.canWrite || rolesArr.includes("WRITER") || primaryRole === "WRITER"),
-            canReview: Boolean(sa.canReview || rolesArr.includes("TEAM_LEAD") || primaryRole === "TEAM_LEAD"),
-          };
+          const primaryRole = (sa.role || rolesArr[0] || newRole || "WRITER").toUpperCase();
+          return buildSiteAccessCreateRow(Number(sa.siteId), rolesArr, primaryRole);
         }),
       };
     } else if (siteIds !== undefined && Array.isArray(siteIds)) {
+      const cleanSiteIds = siteIds
+        .map((s: any) => Number(s))
+        .filter((n: number) => Number.isInteger(n) && n > 0);
+      const effRole = newRole || "WRITER";
       siteAccessUpdate = {
         deleteMany: {},
-        create: siteIds.map((siteId: number) => ({
-          siteId: Number(siteId),
-          role: newRole || "WRITER",
-          roles: newRole || "WRITER",
-          canAddProduct: newRole === "LINKER" || newRole === "PRODUCT_RESEARCHER",
-          canAddLink: newRole === "LINKER",
-          canWrite: newRole === "WRITER",
-          canReview: newRole === "TEAM_LEAD",
-        })),
+        create: cleanSiteIds.map((siteId: number) => buildSiteAccessCreateRow(siteId, [effRole], effRole)),
+      };
+    } else if (roleChanged && resolvedRole && targetUser.siteAccess.length > 0) {
+      const oldRoleUpper = targetUser.role ? targetUser.role.toUpperCase() : null;
+      const nextRoleUpper = resolvedRole.toUpperCase();
+      siteAccessUpdate = {
+        deleteMany: {},
+        create: targetUser.siteAccess.map((sa) => {
+          const prevRoles = new Set<string>();
+          if (sa.role) prevRoles.add(sa.role.toUpperCase());
+          if (sa.roles) {
+            sa.roles
+              .split(",")
+              .map((r) => r.trim().toUpperCase())
+              .filter(Boolean)
+              .forEach((r) => prevRoles.add(r));
+          }
+          if (oldRoleUpper) prevRoles.delete(oldRoleUpper);
+          prevRoles.add(nextRoleUpper);
+          return buildSiteAccessCreateRow(sa.siteId, Array.from(prevRoles), nextRoleUpper);
+        }),
       };
     }
 
@@ -412,11 +509,20 @@ export async function PATCH(
     if (newRole !== "WRITER") {
       resolvedTeamLeadId = null;
     } else if (teamLeadId !== undefined) {
-      resolvedTeamLeadId = teamLeadId && teamLeadId !== "none" && teamLeadId !== "" ? Number(teamLeadId) : null;
+      const parsedTl = teamLeadId && teamLeadId !== "none" && teamLeadId !== "" ? Number(teamLeadId) : null;
+      if (parsedTl !== null) {
+        if (!Number.isInteger(parsedTl) || parsedTl <= 0) {
+          return NextResponse.json({ error: "Invalid Team Lead selected." }, { status: 400 });
+        }
+        if (parsedTl === targetId) {
+          return NextResponse.json({ error: "A user cannot be assigned as their own Team Lead." }, { status: 400 });
+        }
+      }
+      resolvedTeamLeadId = parsedTl;
     }
 
     const updated = await prisma.user.update({
-      where: { id: parseInt(id) },
+      where: { id: targetId },
       data: {
         ...(finalSanitizedName ? { name: finalSanitizedName } : {}),
         ...(image !== undefined ? { image } : {}),
@@ -445,15 +551,14 @@ export async function PATCH(
     }
 
     // If commissionToPartyFund is turned on, divert any existing pending commissions for this user to Party Fund
-    if (commissionToPartyFund === true) {
-      const targetUserId = parseInt(id);
+    if (finalCommissionToPartyFund === true) {
       const pendingSales = await prisma.commissionSale.findMany({
         where: {
           paymentStatus: "PENDING",
           OR: [
-            { writerId: targetUserId, writerAmount: { gt: 0 } },
-            { linkerId: targetUserId, linkerAmount: { gt: 0 } },
-            { teamLeadId: targetUserId, tlAmount: { gt: 0 } },
+            { writerId: targetId, writerAmount: { gt: 0 } },
+            { linkerId: targetId, linkerAmount: { gt: 0 } },
+            { teamLeadId: targetId, tlAmount: { gt: 0 } },
           ],
         },
       });
@@ -462,16 +567,16 @@ export async function PATCH(
         let transfer = 0;
         const updateData: any = {};
 
-        if (sale.writerId === targetUserId && sale.writerAmount > 0) {
+        if (sale.writerId === targetId && sale.writerAmount > 0) {
           transfer += sale.writerAmount;
           updateData.writerAmount = 0;
           updateData.writerTransferredToParty = (sale.writerTransferredToParty || 0) + sale.writerAmount;
         }
-        if (sale.linkerId === targetUserId && sale.linkerAmount > 0) {
+        if (sale.linkerId === targetId && sale.linkerAmount > 0) {
           transfer += sale.linkerAmount;
           updateData.linkerAmount = 0;
         }
-        if (sale.teamLeadId === targetUserId && sale.tlAmount > 0) {
+        if (sale.teamLeadId === targetId && sale.tlAmount > 0) {
           transfer += sale.tlAmount;
           updateData.tlAmount = 0;
         }
@@ -486,10 +591,15 @@ export async function PATCH(
       }
     }
 
+    await invalidateUserRelatedCaches();
+
     return NextResponse.json(updated);
-  } catch (err) {
+  } catch (err: any) {
     console.error("[PATCH /api/users/[id]]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (err?.code === "P2025") {
+      return NextResponse.json({ error: "Referenced user or site record not found." }, { status: 400 });
+    }
+    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 });
   }
 }
 
@@ -545,6 +655,8 @@ export async function DELETE(
     await prisma.user.delete({
       where: { id: parseInt(id) }
     });
+
+    await invalidateUserRelatedCaches();
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

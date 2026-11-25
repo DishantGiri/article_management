@@ -464,10 +464,13 @@ export default function Sidebar() {
       if (!hasInitializedWorkspace.current) {
         hasInitializedWorkspace.current = true;
         setCurrentWorkspaceRole(active);
+        localStorage.setItem("active_workspace_role", active);
         document.cookie = `active_workspace_role=${active}; path=/; max-age=31536000; SameSite=Lax`;
       } else if (!distinctRoles.includes(currentWorkspaceRole)) {
         setCurrentWorkspaceRole(active);
+        localStorage.setItem("active_workspace_role", active);
         document.cookie = `active_workspace_role=${active}; path=/; max-age=31536000; SameSite=Lax`;
+        window.dispatchEvent(new CustomEvent("workspace-changed", { detail: { role: active } }));
       }
     }
   }, [session?.user, currentWorkspaceRole]);
@@ -883,10 +886,8 @@ export default function Sidebar() {
                                   body: JSON.stringify({ userId: currentUser.id, role: r }),
                                 });
                                 if (res.ok) {
+                                  setActiveWorkspace(r, [r]);
                                   await update({ role: r });
-                                  if (r) {
-                                    window.dispatchEvent(new CustomEvent("workspace-changed", { detail: { role: r } }));
-                                  }
                                   window.location.href = "/";
                                 }
                               } catch (err) {
@@ -910,6 +911,9 @@ export default function Sidebar() {
                                 body: JSON.stringify({ userId: currentUser.id, role: null }),
                               });
                               if (res.ok) {
+                                localStorage.removeItem("active_workspace_role");
+                                document.cookie = "active_workspace_role=; path=/; max-age=0; SameSite=Lax";
+                                document.cookie = "user_roles=; path=/; max-age=0; SameSite=Lax";
                                 await update({ role: null });
                                 window.dispatchEvent(new CustomEvent("workspace-changed", { detail: { role: null } }));
                                 window.location.href = "/";
