@@ -22,6 +22,8 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { cleanUrl, extractGeoLinksFromRow, isNullOrPlaceholder } from "@/lib/geo-link-parser";
+import { extractThreeDatesFromRow, formatNoonUtcYmd, isDateColumnKey } from "@/lib/sheet-dates";
 
 const EXPECTED_HEADERS = [
   "Product Name",
@@ -32,6 +34,7 @@ const EXPECTED_HEADERS = [
   "Affiliate Link",
   "Site Name",
   "Added Date",
+  "Write Date",
   "Affiliate Network",
   "Category",
   "Article Status",
@@ -107,150 +110,11 @@ function findRowVal(row: any, ...aliases: string[]): any {
   return "";
 }
 
-function cleanUrl(raw?: any): string | null {
-  if (raw === undefined || raw === null) return null;
-  const str = String(raw).trim();
-  if (!str) return null;
-  const lower = str.toLowerCase();
-  if (
-    [
-      "n/a",
-      "na",
-      "n / a",
-      "nil",
-      "none",
-      "unassigned",
-      "-",
-      "--",
-      "---",
-      "null",
-      "undefined",
-      "no",
-      "no link",
-      "blank",
-      "0",
-    ].includes(lower)
-  ) {
-    return null;
-  }
-  if (/^https?:\/\//i.test(str)) {
-    return str;
-  }
-  if (!/\s/.test(str) && /^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+([\/?#].*)?$/.test(str)) {
-    return `https://${str}`;
-  }
-  return null;
-}
-
-function extractPreviewGeos(row: any): string[] {
-  const geos: string[] = [];
-
-  for (const k of Object.keys(row || {})) {
-    const cleaned = k.trim().replace(/^["']+|["']+$/g, "").trim();
-    const upper = cleaned.toUpperCase();
-    if (
-      [
-        "ID",
-        "NO",
-        "URL",
-        "URI",
-        "STATUS",
-        "TYPE",
-        "DATE",
-        "SITE",
-        "SITE NAME",
-        "SITENAME",
-        "WEBSITE",
-        "NAME",
-        "PRODUCT NAME",
-        "PRODUCTNAME",
-        "TITLE",
-        "SLUG",
-        "CATEGORY",
-        "PRODUCT CATEGORY",
-        "PRODUCT CATEGORY NAME",
-        "PRODUCT TYPE",
-        "NETWORK",
-        "AFFILIATE NETWORK",
-        "AFFILIATE LINK",
-        "ARTICLE LINK",
-        "ARTICLE URL",
-        "BUY LINK",
-        "BUY NOW LINK",
-        "BUY NOW",
-        "DIRECT BUY LINK",
-        "LANDING LINK",
-        "LANDING PAGE LINK",
-        "BRIDGE LINK",
-        "BRIDGE PAGE LINK",
-        "BRIDGEPAGE LINK",
-        "BRIDGE URL",
-        "BRIDGE",
-        "LINK STATUS",
-        "ARTICLE STATUS",
-        "ADDED DATE",
-        "PUBLISH DATE",
-        "COMPLETED DATE",
-        "WRITER",
-        "WRITER NAME",
-        "AUTHOR",
-        "LINKER",
-        "LINKER NAME",
-        "REMARKS",
-        "REMARK",
-        "NOTES",
-        "NOTE",
-        "COMMENTS",
-        "LINKER REMARKS",
-        "GEO",
-        "GEOS",
-        "TARGET GEOS",
-        "COUNTRY",
-        "COUNTRIES",
-        "__SHEETNAME",
-        "__ROWID",
-      ].includes(upper)
-    ) {
-      continue;
-    }
-
-    let geoCode: string | null = null;
-    if (/^[A-Z]{2}$/.test(upper) || upper === "GLOBAL" || upper === "WORLDWIDE" || upper === "WW") {
-      geoCode = upper === "WW" || upper === "WORLDWIDE" ? "GLOBAL" : upper;
-    } else {
-      const m = cleaned.match(/^([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)\s*[-_]?\s*(link|affiliate\s*link|url)?$/i);
-      if (m && m[1]) {
-        const c = m[1].toUpperCase();
-        geoCode = c === "WW" || c === "WORLDWIDE" ? "GLOBAL" : c;
-      }
-    }
-
-    if (geoCode) {
-      const url = cleanUrl(row[k]);
-      if (url && !geos.includes(geoCode)) {
-        geos.push(geoCode);
-      }
-    }
-  }
-
-  const combined = String(
-    findRowVal(row, "Geo Links", "Country Links", "Multiple Geos", "Country Specific Links") || ""
-  ).trim();
-  if (combined) {
-    const lines = combined.split(/[\r\n;,|]+/);
-    for (const l of lines) {
-      const m = l.match(/^\s*([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)\s*[:=\-–—\t]+\s*(.+)$/);
-      if (m) {
-        const up = m[1].toUpperCase();
-        const code = up === "WW" || up === "WORLDWIDE" ? "GLOBAL" : up;
-        if (cleanUrl(m[2]) && !geos.includes(code)) {
-          geos.push(code);
-        }
-      }
-    }
-  }
-
-  return geos;
+function extractPreviewGeos(row: any): Array<{ geo: string; affiliateLink: string }> {
+  return extractGeoLinksFromRow(row, "Standard").geoLinks.map((g) => ({
+    geo: g.geo,
+    affiliateLink: g.affiliateLink,
+  }));
 }
 
 export default function MergedSheetImportSettings() {
@@ -293,6 +157,7 @@ export default function MergedSheetImportSettings() {
           "Affiliate Link": "https://hop.clickbank.net/?affiliate=test&tid=dhs",
           "Site Name": "Daily Health Supplement",
           "Added Date": "2026-11-01",
+          "Write Date": "2026-11-02",
           "Affiliate Network": "ClickBank",
           "Category": "Nutra",
           "Article Status": "APPROVED",
@@ -312,6 +177,7 @@ export default function MergedSheetImportSettings() {
           "Affiliate Link": "https://smashload.com/track/alpha-whey",
           "Site Name": "Daily Health Supplement",
           "Added Date": "2026-11-02",
+          "Write Date": "2026-11-03",
           "Affiliate Network": "Smashload",
           "Category": "Supplements",
           "Article Status": "IN_PROGRESS",
@@ -335,6 +201,7 @@ export default function MergedSheetImportSettings() {
           "Affiliate Link": "https://hop.clickbank.net/?affiliate=test&tid=grc",
           "Site Name": "Guru Review Club",
           "Added Date": "2026-11-04",
+          "Write Date": "2026-11-05",
           "Affiliate Network": "ClickBank",
           "Category": "Nutra",
           "Article Status": "COMPLETED",
@@ -358,6 +225,7 @@ export default function MergedSheetImportSettings() {
           "Affiliate Link": "https://mediascalers.com/offer/spherefresh",
           "Site Name": "Supplement Mag",
           "Added Date": "2026-11-01",
+          "Write Date": "2026-11-02",
           "Affiliate Network": "Mediascalers",
           "Category": "Ecom",
           "Article Status": "COMPLETED",
@@ -381,6 +249,7 @@ export default function MergedSheetImportSettings() {
           "Affiliate Link": "https://buygoods.com/affiliate/prodentim",
           "Site Name": "The Buyers Reviews",
           "Added Date": "2026-11-03",
+          "Write Date": "2026-11-04",
           "Affiliate Network": "BuyGoods",
           "Category": "Dental health",
           "Article Status": "APPROVED",
@@ -432,7 +301,6 @@ export default function MergedSheetImportSettings() {
 
       const detectedSheets: string[] = [];
       const parsedRows: any[] = [];
-      const DATE_COL_KEYS = new Set(["addeddate", "publishdate", "completeddate", "date"]);
 
       for (const name of workbook.SheetNames) {
         const clean = name.trim().toLowerCase();
@@ -451,8 +319,7 @@ export default function MergedSheetImportSettings() {
           // Normalize Excel serial dates on date columns into exact YYYY-MM-DD strings
           for (const k of Object.keys(rawRow)) {
             const val = rawRow[k];
-            const normK = normalizeCellKey(k);
-            if (DATE_COL_KEYS.has(normK) && typeof val === "number" && Number.isFinite(val)) {
+            if (isDateColumnKey(k) && typeof val === "number" && Number.isFinite(val)) {
               const dc = XLSX.SSF.parse_date_code(val);
               if (dc && dc.y >= 1900) {
                 const mm = String(dc.m).padStart(2, "0");
@@ -468,7 +335,7 @@ export default function MergedSheetImportSettings() {
             findRowVal(normalizedRow, "Product Name", "Product", "Title", "Name") || ""
           ).trim();
 
-          if (!prodName) continue;
+          if (!prodName || isNullOrPlaceholder(prodName)) continue;
 
           // If no site name in row, default to tab name
           const site = String(
@@ -955,6 +822,7 @@ export default function MergedSheetImportSettings() {
                     <th className="py-2.5 px-3">Network</th>
                     <th className="py-2.5 px-3">Article Status</th>
                     <th className="py-2.5 px-3">Link Status</th>
+                    <th className="py-2.5 px-3">Dates</th>
                     <th className="py-2.5 px-3">Links Preview</th>
                     <th className="py-2.5 px-3">GEO Links</th>
                   </tr>
@@ -990,30 +858,67 @@ export default function MergedSheetImportSettings() {
                           {String(findRowVal(row, "Link Status") || "REQUESTED")}
                         </span>
                       </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap text-[10px]">
+                        {(() => {
+                          const d = extractThreeDatesFromRow(row);
+                          const addStr = formatNoonUtcYmd(d.addedDate);
+                          const writeStr = formatNoonUtcYmd(d.writeDate);
+                          const pubStr = formatNoonUtcYmd(d.publishDate);
+                          if (!addStr && !writeStr && !pubStr) {
+                            return <span className="text-slate-300 dark:text-slate-600 font-mono">—</span>;
+                          }
+                          return (
+                            <div className="flex flex-col gap-0.5 font-mono">
+                              {addStr && <span className="text-slate-600 dark:text-slate-300">Add: {addStr}</span>}
+                              {writeStr && <span className="text-indigo-600 dark:text-indigo-400">Wrt: {writeStr}</span>}
+                              {pubStr && <span className="text-emerald-600 dark:text-emerald-400">Pub: {pubStr}</span>}
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="py-2.5 px-3 whitespace-nowrap text-slate-500 text-[11px]">
-                        <div className="flex items-center gap-2">
-                          {findRowVal(row, "Article Link", "Article URL") && (
-                            <span title={`Article: ${findRowVal(row, "Article Link", "Article URL")}`} className="text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
-                              <FileText className="w-3 h-3" />
-                              <span>Article</span>
-                            </span>
-                          )}
-                          {findRowVal(row, "Buy Link", "Buy Now Link", "Buy Now", "Direct Buy Link", "Landing Link", "Bridge Page Link", "Bridgepage Link", "Bridge Link", "Bridge URL", "Bridge") && (
-                            <span
-                              title={`Buy Now: ${findRowVal(row, "Buy Link", "Buy Now Link", "Buy Now", "Direct Buy Link", "Landing Link", "Bridge Page Link", "Bridgepage Link", "Bridge Link", "Bridge URL", "Bridge")}`}
-                              className="text-purple-600 dark:text-purple-400 flex items-center gap-0.5 font-bold"
-                            >
-                              <Link2 className="w-3 h-3" />
-                              <span>Buy Now</span>
-                            </span>
-                          )}
-                          {findRowVal(row, "Affiliate Link") && (
-                            <span title={`Affiliate: ${findRowVal(row, "Affiliate Link")}`} className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                              <ExternalLink className="w-3 h-3" />
-                              <span>Affiliate</span>
-                            </span>
-                          )}
-                        </div>
+                        {(() => {
+                          const artUrl = cleanUrl(findRowVal(row, "Article Link", "Article URL"));
+                          const buyUrl = cleanUrl(
+                            findRowVal(row, "Buy Link", "Buy Now Link", "Buy Now", "Direct Buy Link", "Landing Link", "Bridge Page Link", "Bridgepage Link", "Bridge Link", "Bridge URL", "Bridge")
+                          );
+                          const affUrl = cleanUrl(findRowVal(row, "Affiliate Link", "Affiliate URL", "Offer Link"));
+                          const prevUrl = cleanUrl(findRowVal(row, "Preview Link", "Preview URL", "Preview"));
+                          if (!artUrl && !buyUrl && !affUrl && !prevUrl) {
+                            return <span className="text-slate-300 dark:text-slate-600 font-mono text-[10px]">—</span>;
+                          }
+                          return (
+                            <div className="flex items-center gap-2">
+                              {artUrl && (
+                                <span title={`Article: ${artUrl}`} className="text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
+                                  <FileText className="w-3 h-3" />
+                                  <span>Article</span>
+                                </span>
+                              )}
+                              {buyUrl && (
+                                <span
+                                  title={`Buy Now: ${buyUrl}`}
+                                  className="text-purple-600 dark:text-purple-400 flex items-center gap-0.5 font-bold"
+                                >
+                                  <Link2 className="w-3 h-3" />
+                                  <span>Buy Now</span>
+                                </span>
+                              )}
+                              {affUrl && (
+                                <span title={`Affiliate: ${affUrl}`} className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                                  <ExternalLink className="w-3 h-3" />
+                                  <span>Affiliate</span>
+                                </span>
+                              )}
+                              {prevUrl && (
+                                <span title={`Preview: ${prevUrl}`} className="text-indigo-600 dark:text-indigo-400 flex items-center gap-0.5">
+                                  <ExternalLink className="w-3 h-3" />
+                                  <span>Preview</span>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         {(() => {
@@ -1022,13 +927,14 @@ export default function MergedSheetImportSettings() {
                             return <span className="text-slate-300 dark:text-slate-600 font-mono text-[10px]">—</span>;
                           }
                           return (
-                            <div className="flex flex-wrap gap-1 items-center max-w-[150px]">
+                            <div className="flex flex-wrap gap-1 items-center max-w-[160px]">
                               {previewGeos.map((g) => (
                                 <span
-                                  key={g}
+                                  key={g.geo}
+                                  title={`${g.geo}: ${g.affiliateLink}`}
                                   className="px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold"
                                 >
-                                  {g}
+                                  {g.geo}
                                 </span>
                               ))}
                             </div>

@@ -39,6 +39,7 @@ import {
 import { toast } from "react-hot-toast";
 import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
+import { cleanOptionalText, cleanUrl, getValidLogGeos, isValidLinkLog } from "@/lib/geo-link-parser";
 import { consolidateLinkLogs } from "@/lib/utils";
 import { isResearchSite } from "@/lib/researchSiteUtils";
 
@@ -69,10 +70,13 @@ export interface AssignmentProduct {
     status: string;
     priority?: string;
     country?: string | null;
+    articleLink?: string | null;
     writer?: { id?: number; name: string };
   };
   linkLogs?: Array<{
     id: number;
+    productId?: number;
+    siteName?: string | null;
     affiliateName: string;
     affiliateLink: string;
     bridgePageLink?: string | null;
@@ -103,6 +107,8 @@ export interface SiteAvailabilityItem {
     categoryId?: number;
     categoryName?: string;
     productCategory?: string | null;
+    previewLink?: string | null;
+    trendLink?: string | null;
     addedAt?: string;
     addedBy?: string;
     addedByRole?: string | null;
@@ -120,6 +126,7 @@ export interface SiteAvailabilityItem {
       isWritten?: boolean;
     } | null;
     linkCount?: number;
+    linkLogs?: AssignmentProduct["linkLogs"];
   } | null;
 }
 
@@ -223,7 +230,6 @@ export default function AssignmentDetailsModal({
   const [siteFilterTab, setSiteFilterTab] = useState<"all" | "available" | "missing">("all");
   const [siteSearchQuery, setSiteSearchQuery] = useState<string>("");
 
-  const isWriter = currentUserRole?.toUpperCase() === "WRITER";
   const canManageSites =
     currentUserRole === "LINKER" ||
     currentUserRole === "ADMIN" ||
@@ -440,29 +446,102 @@ export default function AssignmentDetailsModal({
   }, [siteAvailability, siteFilterTab, siteSearchQuery]);
 
   const linkLogs = useMemo(() => {
-    return consolidateLinkLogs(product.linkLogs || []);
-  }, [product.linkLogs]);
+    const prodIdToSiteName = new Map<number, string>();
+    for (const s of siteAvailability) {
+      if (s.isAvailable && s.product?.id) {
+        prodIdToSiteName.set(s.product.id, s.siteName);
+      }
+    }
+
+    const byId = new Map<number, NonNullable<AssignmentProduct["linkLogs"]>[0]>();
+    for (const l of product.linkLogs || []) {
+      const sanitizedGeos = getValidLogGeos(l);
+      const siteLabel =
+        l.siteName ||
+        (l.productId ? prodIdToSiteName.get(l.productId) : undefined) ||
+        (!isResearchSite(product.site?.name) ? product.site?.name : undefined);
+      const entry = {
+        ...l,
+        productId: l.productId || product.id,
+        siteName: siteLabel || null,
+        geos: sanitizedGeos,
+      };
+      if (isValidLinkLog(entry)) {
+        byId.set(entry.id, entry);
+      }
+    }
+
+    for (const s of siteAvailability) {
+      if (!s.isAvailable || !s.product?.linkLogs) continue;
+      for (const l of s.product.linkLogs) {
+        const sanitizedGeos = getValidLogGeos(l);
+        const entry = {
+          ...l,
+          productId: l.productId || s.product.id,
+          siteName: l.siteName || s.siteName,
+          geos: sanitizedGeos,
+        };
+        if (isValidLinkLog(entry) && !byId.has(entry.id)) {
+          byId.set(entry.id, entry);
+        }
+      }
+    }
+
+    return consolidateLinkLogs(Array.from(byId.values()));
+  }, [product.linkLogs, product.id, product.site?.name, siteAvailability]);
+
+  const effectivePreviewLink = useMemo(() => {
+    return (
+      cleanUrl(product.previewLink) ||
+      siteAvailability.map((s) => cleanUrl(s.product?.previewLink)).find(Boolean) ||
+      null
+    );
+  }, [product.previewLink, siteAvailability]);
+
+  const effectiveTrendLink = useMemo(() => {
+    return (
+      cleanUrl(product.trendLink) ||
+      siteAvailability.map((s) => cleanUrl(s.product?.trendLink)).find(Boolean) ||
+      null
+    );
+  }, [product.trendLink, siteAvailability]);
+
+  const effectiveArticleLink = useMemo(() => {
+    return (
+      cleanUrl(product.article?.articleLink) ||
+      siteAvailability.map((s) => cleanUrl(s.product?.article?.articleLink)).find(Boolean) ||
+      null
+    );
+  }, [product.article?.articleLink, siteAvailability]);
+
   const hasLinkLogs = linkLogs.length > 0;
   const currentLog = linkLogs[activeLogIndex] || linkLogs[0];
+  const validCurrentGeos = useMemo(() => getValidLogGeos(currentLog), [currentLog]);
+
+  useEffect(() => {
+    if (activeLogIndex >= linkLogs.length && linkLogs.length > 0) {
+      setActiveLogIndex(0);
+    }
+  }, [activeLogIndex, linkLogs.length]);
 
   useEffect(() => {
     setSelectedGeo(null);
   }, [activeLogIndex, product.id]);
 
-  const activeGeoEntry = currentLog?.geos?.find(
+  const activeGeoEntry = validCurrentGeos.find(
     (g) => g.geo.toUpperCase() === selectedGeo?.toUpperCase()
   );
 
   const activeAffiliateName =
     activeGeoEntry?.affiliateName?.trim() ||
     currentLog?.affiliateName?.trim() ||
-    currentLog?.geos?.[0]?.affiliateName?.trim() ||
+    validCurrentGeos[0]?.affiliateName?.trim() ||
     "Standard Affiliate";
 
   const activeAffiliateLink =
-    activeGeoEntry?.affiliateLink?.trim() ||
-    currentLog?.affiliateLink?.trim() ||
-    currentLog?.geos?.[0]?.affiliateLink?.trim() ||
+    cleanUrl(activeGeoEntry?.affiliateLink) ||
+    cleanUrl(currentLog?.affiliateLink) ||
+    cleanUrl(validCurrentGeos[0]?.affiliateLink) ||
     "";
 
   const handleCopy = (text: string, key: string, label: string) => {
@@ -476,30 +555,31 @@ export default function AssignmentDetailsModal({
   };
 
   const handleCopyAllLinks = (log: (typeof linkLogs)[0]) => {
+    const validLogGeos = getValidLogGeos(log);
     const activeGeo = selectedGeo
-      ? log.geos?.find((g) => g.geo.toUpperCase() === selectedGeo.toUpperCase())
+      ? validLogGeos.find((g) => g.geo.toUpperCase() === selectedGeo.toUpperCase())
       : null;
-    const affLink = activeGeo?.affiliateLink || log.affiliateLink;
+    const affLink = cleanUrl(activeGeo?.affiliateLink) || cleanUrl(log.affiliateLink);
     const affName = activeGeo?.affiliateName || log.affiliateName;
+    const bridge = cleanUrl(log.bridgePageLink);
+    const buy = cleanUrl(log.buyLink);
 
     const lines = [
       `Product: ${product.name}`,
-      `Site: ${product.site?.name || ""}`,
+      log.siteName || product.site?.name ? `Site: ${log.siteName || product.site?.name}` : null,
       selectedGeo
         ? `Selected Geo: ${selectedGeo} (${COUNTRY_NAMES[selectedGeo.toUpperCase()] || selectedGeo})`
         : null,
       affName ? `Affiliate Network: ${affName}` : null,
-      log.bridgePageLink ? `Bridge Page: ${log.bridgePageLink}` : null,
-      log.buyLink ? `Buy Link: ${log.buyLink}` : null,
-      isWriter
-        ? product.previewLink
-          ? `Preview Link: ${product.previewLink}`
-          : null
-        : affLink
-          ? `Affiliate Link: ${affLink}`
-          : null,
-      !selectedGeo && log.geos && log.geos.length > 0
-        ? `Target Geos: ${log.geos.map((g) => g.geo).join(", ")}`
+      bridge ? `Bridge Page: ${bridge}` : null,
+      buy ? `Buy Link: ${buy}` : null,
+      effectivePreviewLink ? `Preview Link: ${effectivePreviewLink}` : null,
+      affLink ? `Affiliate Link: ${affLink}` : null,
+      !selectedGeo && validLogGeos.length > 0
+        ? `Country Links:\n${validLogGeos
+            .map((g) => `  - ${g.geo}: ${cleanUrl(g.affiliateLink) || affLink || ""}`)
+            .filter((line) => !line.endsWith(": "))
+            .join("\n")}`
         : null,
     ].filter(Boolean);
 
@@ -701,13 +781,17 @@ export default function AssignmentDetailsModal({
                     </span>
                   )}
 
-                  {(product.country || product.article?.country) && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/60 shadow-2xs">
-                      <span>{getCountryFlag(product.country || product.article?.country || "")}</span>
-                      <span className="uppercase">{product.country || product.article?.country}</span>
-                      <span className="opacity-75 font-medium">({COUNTRY_NAMES[(product.country || product.article?.country || "").toUpperCase()] || (product.country || product.article?.country)})</span>
-                    </span>
-                  )}
+                  {(() => {
+                    const effectiveCountry = cleanOptionalText(product.country || product.article?.country);
+                    if (!effectiveCountry) return null;
+                    return (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/60 shadow-2xs">
+                        <span>{getCountryFlag(effectiveCountry)}</span>
+                        <span className="uppercase">{effectiveCountry}</span>
+                        <span className="opacity-75 font-medium">({COUNTRY_NAMES[effectiveCountry.toUpperCase()] || effectiveCountry})</span>
+                      </span>
+                    );
+                  })()}
 
                   {/* Researched by attribution */}
                   {originalResearcher ? (
@@ -766,17 +850,18 @@ export default function AssignmentDetailsModal({
                 </div>
               </div>
 
-              {/* Trend & Preview External Links */}
+              {/* Trend, Preview & Article External Links */}
               {(() => {
-                const cleanTrend = product.trendLink?.trim() || "";
-                const cleanPreview = product.previewLink?.trim() || "";
+                const cleanTrend = effectiveTrendLink || "";
+                const cleanPreview = effectivePreviewLink || "";
                 const normalizeUrl = (u: string) =>
                   u.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
                 const isSameLink = cleanTrend && cleanPreview && normalizeUrl(cleanTrend) === normalizeUrl(cleanPreview);
                 const showTrendLink = Boolean(cleanTrend && !isSameLink);
                 const showPreviewLink = Boolean(cleanPreview);
+                const showArticleLink = Boolean(effectiveArticleLink);
 
-                if (!showTrendLink && !showPreviewLink) return null;
+                if (!showTrendLink && !showPreviewLink && !showArticleLink) return null;
 
                 return (
                   <div className="flex flex-wrap items-center gap-2">
@@ -803,6 +888,19 @@ export default function AssignmentDetailsModal({
                         <Globe className="w-3.5 h-3.5 text-indigo-500" />
                         <span>Preview Link</span>
                         <ExternalLink className="w-3 h-3 text-indigo-400" />
+                      </a>
+                    )}
+
+                    {showArticleLink && effectiveArticleLink && (
+                      <a
+                        href={ensureExternalUrl(effectiveArticleLink)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-semibold border border-emerald-200/80 dark:border-emerald-800/50 shadow-2xs transition"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Article Link</span>
+                        <ExternalLink className="w-3 h-3 text-emerald-400" />
                       </a>
                     )}
                   </div>
@@ -1062,11 +1160,35 @@ export default function AssignmentDetailsModal({
                               ) : (
                                 <span className="text-slate-400 font-medium">Ready for Writer</span>
                               )}
-                              {site.product?.linkCount !== undefined && (
-                                <span className="text-slate-400 font-mono">
-                                  • {site.product.linkCount} Link{site.product.linkCount !== 1 ? "s" : ""}
-                                </span>
-                              )}
+                              {site.product?.linkCount !== undefined && site.product.linkCount > 0 && (() => {
+                                const siteGeos = Array.from(
+                                  new Set(
+                                    (site.product?.linkLogs || []).flatMap((l) =>
+                                      getValidLogGeos(l).map((g) => g.geo.toUpperCase())
+                                    )
+                                  )
+                                );
+                                const targetIdx = linkLogs.findIndex(
+                                  (l) => l.productId === site.product?.id || l.siteName === site.siteName
+                                );
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (targetIdx >= 0) setActiveLogIndex(targetIdx);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-1.5 py-0.2 rounded hover:bg-emerald-100 transition cursor-pointer"
+                                    title="Click to inspect links for this site"
+                                  >
+                                    <span>• {site.product.linkCount} Link{site.product.linkCount !== 1 ? "s" : ""}</span>
+                                    {siteGeos.length > 0 && (
+                                      <span className="text-[9px] text-indigo-700 dark:text-indigo-300">
+                                        ({siteGeos.join(", ")})
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })()}
                               {site.product?.researchedBy && (
                                 <span className="text-blue-600 dark:text-blue-400">
                                   • Researched by: <strong className="text-blue-700 dark:text-blue-300">{site.product.researchedBy}</strong>
@@ -1254,9 +1376,10 @@ export default function AssignmentDetailsModal({
                 {linkLogs.map((log, idx) => {
                   const statusStyle = LINK_STATUS_STYLES[log.status] || LINK_STATUS_STYLES.REQUESTED;
                   const isActive = activeLogIndex === idx;
+                  const logGeos = getValidLogGeos(log);
                   return (
                     <button
-                      key={log.id}
+                      key={`${log.id}-${idx}`}
                       onClick={() => setActiveLogIndex(idx)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap border ${isActive
                           ? "bg-[#6D8196] text-white border-[#6D8196] shadow-xs"
@@ -1264,6 +1387,22 @@ export default function AssignmentDetailsModal({
                         }`}
                     >
                       <span>{log.affiliateName || `Network #${log.id}`}</span>
+                      {log.siteName && (
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${isActive ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                            }`}
+                        >
+                          {log.siteName}
+                        </span>
+                      )}
+                      {logGeos.length > 0 && (
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${isActive ? "bg-white/20 text-white" : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300"
+                            }`}
+                        >
+                          {logGeos.length} Geo{logGeos.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
                       <span
                         className={`text-[9px] px-1.5 py-0.2 rounded-full font-extrabold ${isActive ? "bg-white/20 text-white" : `${statusStyle.bg} ${statusStyle.text}`
                           }`}
@@ -1279,7 +1418,7 @@ export default function AssignmentDetailsModal({
             {/* Main Link Log Display (Full-Width Adaptive Card) */}
             {!hasLinkLogs ? (
               <div className="space-y-3">
-                {product.previewLink && (
+                {effectivePreviewLink && (
                   <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <div className="flex items-center gap-1.5">
@@ -1293,7 +1432,7 @@ export default function AssignmentDetailsModal({
                         <button
                           onClick={() =>
                             handleCopy(
-                              product.previewLink!,
+                              effectivePreviewLink,
                               `preview-main`,
                               "Preview Link"
                             )
@@ -1315,7 +1454,7 @@ export default function AssignmentDetailsModal({
                         </button>
 
                         <a
-                          href={ensureExternalUrl(product.previewLink)}
+                          href={ensureExternalUrl(effectivePreviewLink)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
@@ -1327,12 +1466,50 @@ export default function AssignmentDetailsModal({
                     </div>
 
                     <a
-                      href={ensureExternalUrl(product.previewLink)}
+                      href={ensureExternalUrl(effectivePreviewLink)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
                     >
-                      {product.previewLink}
+                      {effectivePreviewLink}
+                    </a>
+                  </div>
+                )}
+
+                {effectiveArticleLink && (
+                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                          ARTICLE LINK
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleCopy(effectiveArticleLink, "article-main", "Article Link")}
+                          className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                        >
+                          {copiedKey === "article-main" ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                          <span>{copiedKey === "article-main" ? "Copied!" : "Copy"}</span>
+                        </button>
+                        <a
+                          href={ensureExternalUrl(effectiveArticleLink)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
+                        >
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
+                        </a>
+                      </div>
+                    </div>
+                    <a
+                      href={ensureExternalUrl(effectiveArticleLink)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-mono font-medium text-emerald-600 dark:text-emerald-400 hover:underline break-all block"
+                    >
+                      {effectiveArticleLink}
                     </a>
                   </div>
                 )}
@@ -1367,6 +1544,12 @@ export default function AssignmentDetailsModal({
                     <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                       {activeAffiliateName}
                     </span>
+                    {currentLog.siteName && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                        <Building2 className="w-3 h-3" />
+                        <span>{currentLog.siteName}</span>
+                      </span>
+                    )}
                     {selectedGeo && (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs">
                         <span>{getCountryFlag(selectedGeo)}</span>
@@ -1393,7 +1576,7 @@ export default function AssignmentDetailsModal({
                 {/* Destination Routing Cards Grid */}
                 <div className="grid grid-cols-1 gap-3">
                   {/* Bridge Page Link */}
-                  {currentLog.bridgePageLink && (
+                  {cleanUrl(currentLog.bridgePageLink) && (
                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-1.5">
@@ -1432,7 +1615,7 @@ export default function AssignmentDetailsModal({
                           </button>
 
                           <a
-                            href={currentLog.bridgePageLink}
+                            href={ensureExternalUrl(currentLog.bridgePageLink)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
@@ -1444,7 +1627,7 @@ export default function AssignmentDetailsModal({
                       </div>
 
                       <a
-                        href={currentLog.bridgePageLink}
+                        href={ensureExternalUrl(currentLog.bridgePageLink)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 hover:underline break-all block"
@@ -1455,7 +1638,7 @@ export default function AssignmentDetailsModal({
                   )}
 
                   {/* Buy Now Link */}
-                  {currentLog.buyLink && (
+                  {cleanUrl(currentLog.buyLink) && (
                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-1.5">
@@ -1510,7 +1693,7 @@ export default function AssignmentDetailsModal({
                   )}
 
                   {/* Dedicated Preview Link (displayed if present on product) */}
-                  {product.previewLink && (
+                  {effectivePreviewLink && (
                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-1.5">
@@ -1524,7 +1707,7 @@ export default function AssignmentDetailsModal({
                           <button
                             onClick={() =>
                               handleCopy(
-                                product.previewLink!,
+                                effectivePreviewLink,
                                 `preview-${currentLog.id}`,
                                 "Preview Link"
                               )
@@ -1546,7 +1729,7 @@ export default function AssignmentDetailsModal({
                           </button>
 
                           <a
-                            href={ensureExternalUrl(product.previewLink)}
+                            href={ensureExternalUrl(effectivePreviewLink)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
@@ -1558,18 +1741,18 @@ export default function AssignmentDetailsModal({
                       </div>
 
                       <a
-                        href={ensureExternalUrl(product.previewLink)}
+                        href={ensureExternalUrl(effectivePreviewLink)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 hover:underline break-all block"
                       >
-                        {product.previewLink}
+                        {effectivePreviewLink}
                       </a>
                     </div>
                   )}
 
-                  {/* Affiliate Destination Link (displayed for Team Lead, Admins, Linkers; or when country is selected) */}
-                  {(!isWriter || selectedGeo !== null || !product.previewLink) && activeAffiliateLink && (
+                  {/* Affiliate Destination Link (displayed whenever available) */}
+                  {activeAffiliateLink && (
                     <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:border-[#6D8196]/60 transition-colors">
                       <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -1639,7 +1822,7 @@ export default function AssignmentDetailsModal({
                   )}
 
                   {/* Fallback if no routing URLs exist */}
-                  {!currentLog.bridgePageLink && !currentLog.buyLink && !product.previewLink && !activeAffiliateLink && (!currentLog.geos || currentLog.geos.length === 0) && (
+                  {!cleanUrl(currentLog.bridgePageLink) && !cleanUrl(currentLog.buyLink) && !effectivePreviewLink && !activeAffiliateLink && validCurrentGeos.length === 0 && (
                     <div className="p-4 text-center text-xs text-slate-400 italic bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                       No routing URLs, buy now links, or preview links configured for this network yet.
                     </div>
@@ -1653,12 +1836,12 @@ export default function AssignmentDetailsModal({
                   </div>
                 )}
 
-                {/* Target Geos Section */}
-                <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
-                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                {/* Target Geos & All Country Links Section */}
+                <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Target Geos ({currentLog.geos?.length || 0})
+                        Target Geos &amp; Country Links ({validCurrentGeos.length})
                       </span>
                       {selectedGeo && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800/60">
@@ -1680,61 +1863,140 @@ export default function AssignmentDetailsModal({
                         </button>
                       )}
                       <span className="text-[10px] text-slate-400">
-                        Eligible audience country traffic • Click country to switch link
+                        Click country pill or copy country link directly
                       </span>
                     </div>
                   </div>
 
-                  {currentLog.geos && currentLog.geos.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {currentLog.geos.map((g) => {
-                        const flag = getCountryFlag(g.geo);
-                        const countryName =
-                          COUNTRY_NAMES[g.geo.toUpperCase()] ||
-                          COUNTRY_NAMES[g.geo] ||
-                          g.geo;
-                        const isSelected = selectedGeo?.toUpperCase() === g.geo.toUpperCase();
+                  {validCurrentGeos.length > 0 ? (
+                    <div className="space-y-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {validCurrentGeos.map((g) => {
+                          const flag = getCountryFlag(g.geo);
+                          const countryName =
+                            COUNTRY_NAMES[g.geo.toUpperCase()] ||
+                            COUNTRY_NAMES[g.geo] ||
+                            g.geo;
+                          const isSelected = selectedGeo?.toUpperCase() === g.geo.toUpperCase();
 
-                        return (
-                          <button
-                            key={g.geo}
-                            type="button"
-                            onClick={() => setSelectedGeo(isSelected ? null : g.geo)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shadow-2xs ${
-                              isSelected
-                                ? "bg-[#6D8196] text-white border-[#6D8196] ring-2 ring-[#6D8196]/30 shadow-xs dark:bg-indigo-600 dark:border-indigo-500"
-                                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196]/80 hover:bg-slate-50 dark:hover:bg-slate-800/80"
-                            }`}
-                            title={`Click to view ${g.geo} (${countryName}) affiliate link & network${
-                              g.affiliateName ? ` • ${g.affiliateName}` : ""
-                            }`}
-                          >
-                            <span className="text-sm leading-none">{flag}</span>
-                            <span className="uppercase tracking-wide">{g.geo}</span>
-                            <span
-                              className={`text-[10px] font-normal hidden sm:inline ${
-                                isSelected ? "text-white/80" : "text-slate-400"
+                          return (
+                            <button
+                              key={g.geo}
+                              type="button"
+                              onClick={() => setSelectedGeo(isSelected ? null : g.geo)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border shadow-2xs ${
+                                isSelected
+                                  ? "bg-[#6D8196] text-white border-[#6D8196] ring-2 ring-[#6D8196]/30 shadow-xs dark:bg-indigo-600 dark:border-indigo-500"
+                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196]/80 hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                              }`}
+                              title={`Click to focus ${g.geo} (${countryName}) link${
+                                g.affiliateName ? ` • ${g.affiliateName}` : ""
                               }`}
                             >
-                              ({countryName})
-                            </span>
-                            {g.affiliateName && (
+                              <span className="text-sm leading-none">{flag}</span>
+                              <span className="uppercase tracking-wide">{g.geo}</span>
                               <span
-                                className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
-                                  isSelected
-                                    ? "bg-white/20 text-white"
-                                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                className={`text-[10px] font-normal hidden sm:inline ${
+                                  isSelected ? "text-white/80" : "text-slate-400"
                                 }`}
                               >
-                                {g.affiliateName}
+                                ({countryName})
                               </span>
-                            )}
-                            {isSelected && (
-                              <Check className="w-3.5 h-3.5 text-white shrink-0 ml-0.5" />
-                            )}
-                          </button>
-                        );
-                      })}
+                              {g.affiliateName && (
+                                <span
+                                  className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                                    isSelected
+                                      ? "bg-white/20 text-white"
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                  }`}
+                                >
+                                  {g.affiliateName}
+                                </span>
+                              )}
+                              {isSelected && (
+                                <Check className="w-3.5 h-3.5 text-white shrink-0 ml-0.5" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Visible Country Links Cards (shows every non-null country link directly in preview) */}
+                      <div className="grid grid-cols-1 gap-2">
+                        {validCurrentGeos.map((g) => {
+                          const geoUrl = cleanUrl(g.affiliateLink) || cleanUrl(currentLog.affiliateLink) || "";
+                          if (!geoUrl) return null;
+                          const countryName =
+                            COUNTRY_NAMES[g.geo.toUpperCase()] ||
+                            COUNTRY_NAMES[g.geo] ||
+                            g.geo;
+                          const isSelected = selectedGeo?.toUpperCase() === g.geo.toUpperCase();
+                          const copyId = `geo-link-${currentLog.id}-${g.geo}`;
+
+                          return (
+                            <div
+                              key={g.geo}
+                              className={`p-2.5 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                                isSelected
+                                  ? "bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700"
+                                  : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-700/80"
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-extrabold uppercase">
+                                    {g.geo}
+                                  </span>
+                                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                    {countryName}
+                                  </span>
+                                  {g.affiliateName && (
+                                    <span className="text-[10px] text-slate-400">• {g.affiliateName}</span>
+                                  )}
+                                </div>
+                                <a
+                                  href={ensureExternalUrl(geoUrl)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-mono text-indigo-600 dark:text-indigo-400 hover:underline break-all block"
+                                >
+                                  {geoUrl}
+                                </a>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(geoUrl, copyId, `${g.geo} Link`)}
+                                  className="p-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                                  title={`Copy ${g.geo} Link`}
+                                >
+                                  {copiedKey === copyId ? (
+                                    <>
+                                      <Check className="w-3 h-3 text-emerald-600" />
+                                      <span className="text-emerald-600">Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3 text-slate-400" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                                <a
+                                  href={ensureExternalUrl(geoUrl)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 px-1.5 rounded-md bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-700"
+                                  title={`Open ${g.geo} Link`}
+                                >
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </a>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-xs text-slate-400 italic">

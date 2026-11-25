@@ -19,6 +19,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 import TopHeader from "@/components/TopHeader";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
+import { cleanOptionalText, getValidLogGeos, isValidLinkLog } from "@/lib/geo-link-parser";
 import { getActiveWorkspace } from "@/lib/workspace";
 
 interface Category {
@@ -685,10 +686,31 @@ function ProductsPageContent() {
     for (const p of filtered) {
       const key = (p.name || "").trim().toLowerCase() || `id-${p.id}`;
       if (!map.has(key)) {
-        map.set(key, { ...p, allProductIds: [p.id] });
+        const taggedLogs = (p.linkLogs || [])
+          .filter((l: any) => isValidLinkLog(l))
+          .map((l: any) => ({
+            ...l,
+            productId: l.productId || p.id,
+            siteName: l.siteName || p.site?.name || null,
+            geos: getValidLogGeos(l),
+          }));
+        map.set(key, {
+          ...p,
+          country: cleanOptionalText(p.country),
+          linkLogs: taggedLogs,
+          allProductIds: [p.id],
+        });
       } else {
         const existing = map.get(key)!;
-        const mergedLinkLogs = [...(existing.linkLogs || []), ...(p.linkLogs || [])];
+        const taggedIncoming = (p.linkLogs || [])
+          .filter((l: any) => isValidLinkLog(l))
+          .map((l: any) => ({
+            ...l,
+            productId: l.productId || p.id,
+            siteName: l.siteName || p.site?.name || null,
+            geos: getValidLogGeos(l),
+          }));
+        const mergedLinkLogs = [...(existing.linkLogs || []), ...taggedIncoming];
         const uniqueLinkLogs = Array.from(new Map(mergedLinkLogs.map((l) => [l.id, l])).values());
         const mergedProductIds = Array.from(new Set([...(existing.allProductIds || [existing.id]), p.id]));
         const prevMissing = existing.missingCount;
@@ -705,8 +727,10 @@ function ProductsPageContent() {
           missingCount: resolvedMissing,
           linkLogs: uniqueLinkLogs,
           article: existing.article || p.article,
-          country: existing.country || p.country,
-          source: existing.source || p.source,
+          country: cleanOptionalText(existing.country) || cleanOptionalText(p.country),
+          previewLink: existing.previewLink || p.previewLink,
+          trendLink: existing.trendLink || p.trendLink,
+          source: cleanOptionalText(existing.source) || cleanOptionalText(p.source),
           affiliateName:
             existing.affiliateName &&
             existing.affiliateName.toLowerCase() !== "general" &&
@@ -1433,7 +1457,27 @@ function ProductsPageContent() {
 
                         {/* Links (fades on hover) */}
                         <td className="px-4 py-3.5 text-center transition-opacity duration-200 group-hover:opacity-0">
-                          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{p.linkLogs?.length || 0}</span>
+                          {(() => {
+                            const validLogs = (p.linkLogs || []).filter((l: any) => isValidLinkLog(l));
+                            const geoCodes = Array.from(
+                              new Set(validLogs.flatMap((l: any) => getValidLogGeos(l).map((g: any) => g.geo.toUpperCase())))
+                            );
+                            return (
+                              <div className="inline-flex flex-col items-center gap-0.5">
+                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                  {validLogs.length}
+                                </span>
+                                {geoCodes.length > 0 && (
+                                  <span
+                                    className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-200/70 dark:border-indigo-800/60 max-w-[90px] truncate"
+                                    title={`Country links: ${geoCodes.join(", ")}`}
+                                  >
+                                    {geoCodes.join(", ")}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         {/* Date & Hover Action Slider */}

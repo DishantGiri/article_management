@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sendRealtimeNotification } from "@/lib/notifier";
 import { isResearchSite } from "@/lib/researchSite";
+import { cleanUrl, getValidLogGeos, isValidLinkLog } from "@/lib/geo-link-parser";
 import { delByPattern } from "@/lib/redis";
 
 // GET /api/products/[id]/site-availability
@@ -118,16 +119,16 @@ export async function GET(
             articleLink: true,
             completedAt: true,
             startedAt: true,
+            productCreatedAt: true,
             writerId: true,
             writer: { select: { id: true, name: true } },
           },
         },
         linkLogs: {
-          select: {
-            id: true,
-            status: true,
-            affiliateName: true,
+          include: {
+            geos: true,
           },
+          orderBy: { addedAt: "desc" },
         },
       },
       orderBy: { addedAt: "desc" },
@@ -147,6 +148,15 @@ export async function GET(
       .map((s) => s.trim())
       .filter(Boolean);
 
+    const sanitizeSiteLogs = (logs: any[], siteName: string) =>
+      (logs || [])
+        .map((l: any) => ({
+          ...l,
+          siteName,
+          geos: getValidLogGeos(l),
+        }))
+        .filter((l: any) => isValidLinkLog(l));
+
     const siteAvailability = allSites.map((site) => {
       const match = siteProductMap.get(site.id);
       const isTarget = researchedTargetsLower.some(
@@ -154,6 +164,7 @@ export async function GET(
           site.name.toLowerCase().includes(target) ||
           target.includes(site.name.toLowerCase())
       );
+      const validSiteLogs = match ? sanitizeSiteLogs(match.linkLogs, site.name) : [];
 
       return {
         siteId: site.id,
@@ -170,6 +181,8 @@ export async function GET(
               categoryId: match.categoryId,
               categoryName: match.category?.name,
               productCategory: match.productCategory,
+              previewLink: cleanUrl(match.previewLink),
+              trendLink: cleanUrl(match.trendLink),
               addedAt: match.addedAt,
               addedBy: match.addedBy?.name || "Unknown",
               addedByRole: match.addedBy?.role || null,
@@ -195,7 +208,8 @@ export async function GET(
                     ),
                   }
                 : null,
-              linkCount: match.linkLogs.length,
+              linkCount: validSiteLogs.length,
+              linkLogs: validSiteLogs,
             }
           : null,
       };
@@ -251,10 +265,10 @@ export async function GET(
         categoryId: baseProduct.categoryId,
         categoryName: baseProduct.category?.name,
         productCategory: baseProduct.productCategory,
-        trendLink: baseProduct.trendLink || null,
+        trendLink: cleanUrl(baseProduct.trendLink) || existingProducts.map((p) => cleanUrl(p.trendLink)).find(Boolean) || null,
         trendLevel: baseProduct.trendLevel || "HIGH",
         affiliateName: baseProduct.affiliateName || null,
-        previewLink: baseProduct.previewLink || null,
+        previewLink: cleanUrl(baseProduct.previewLink) || existingProducts.map((p) => cleanUrl(p.previewLink)).find(Boolean) || null,
         remarks: baseProduct.remarks || null,
         targetSites: baseProduct.targetSites,
         availableCount,

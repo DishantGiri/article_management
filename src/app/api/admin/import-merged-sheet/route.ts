@@ -6,6 +6,8 @@ import { authOptions } from "@/lib/auth";
 import * as XLSX from "xlsx";
 import { resolveSite } from "@/lib/site-resolver";
 import { resolveUsers, splitPersonNames, isPlaceholderName } from "@/lib/user-resolver";
+import { cleanOptionalText, cleanUrl, extractGeoLinksFromRow, isNullOrPlaceholder } from "@/lib/geo-link-parser";
+import { extractThreeDatesFromRow, parseSheetDate } from "@/lib/sheet-dates";
 import { delByPattern } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
@@ -61,70 +63,7 @@ function hasColumn(lookup: { normMap: Map<string, any> }, ...aliases: string[]):
 }
 
 function parseExcelDate(val: any): Date | null {
-  if (val === undefined || val === null || val === "") return null;
-
-  // Handle numeric Excel serial dates safely without timezone drift
-  if (typeof val === "number" && Number.isFinite(val)) {
-    const parsed = XLSX.SSF.parse_date_code(val);
-    if (parsed && parsed.y >= 1900 && parsed.m >= 1 && parsed.m <= 12 && parsed.d >= 1 && parsed.d <= 31) {
-      return new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d, 12, 0, 0));
-    }
-  }
-
-  if (val instanceof Date && !isNaN(val.getTime())) {
-    // Use local calendar parts at noon UTC so dates never shift between UTC and local TZ
-    const localAdjusted = new Date(val.getTime() + 60 * 1000); // guard against 59s float drift
-    return new Date(Date.UTC(localAdjusted.getFullYear(), localAdjusted.getMonth(), localAdjusted.getDate(), 12, 0, 0));
-  }
-
-  const str = String(val).trim();
-  if (!str || isPlaceholderName(str)) return null;
-
-  // Handle pure numeric string Excel serial
-  if (/^\d{5}(\.\d+)?$/.test(str)) {
-    const num = Number(str);
-    const parsed = XLSX.SSF.parse_date_code(num);
-    if (parsed && parsed.y >= 1900) {
-      return new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d, 12, 0, 0));
-    }
-  }
-
-  // Handle explicit YYYY-MM-DD
-  const ymd = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (ymd) {
-    return new Date(Date.UTC(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]), 12, 0, 0));
-  }
-
-  // Handle DD/MM/YYYY or MM/DD/YYYY or DD-MM-YYYY
-  const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-  if (dmy) {
-    const part1 = Number(dmy[1]);
-    const part2 = Number(dmy[2]);
-    let year = Number(dmy[3]);
-    if (year < 100) year += 2000;
-    let month: number;
-    let day: number;
-    if (part2 > 12) {
-      month = part1;
-      day = part2;
-    } else if (part1 > 12) {
-      day = part1;
-      month = part2;
-    } else {
-      // Default YYYY/M/D won't match here; prefer day/month when <= 12
-      day = part1;
-      month = part2;
-    }
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-    }
-  }
-
-  const d = new Date(str);
-  if (!isNaN(d.getTime())) {
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0));
-  }
-  return null;
+  return parseSheetDate(val);
 }
 
 function mapArticleStatus(rawStatus?: string): "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO" | "REDIRECTED" {
@@ -151,350 +90,11 @@ function mapLinkStatus(rawStatus?: string): "REQUESTED" | "ACCEPTED" | "CANCELED
   return "REQUESTED";
 }
 
-function cleanUrl(raw?: any): string | null {
-  if (raw === undefined || raw === null) return null;
-  const str = String(raw).trim();
-  if (!str) return null;
-  const lower = str.toLowerCase();
-  if (
-    [
-      "n/a",
-      "na",
-      "n / a",
-      "nil",
-      "none",
-      "unassigned",
-      "-",
-      "--",
-      "---",
-      "null",
-      "undefined",
-      "no",
-      "no link",
-      "blank",
-      "0",
-    ].includes(lower)
-  ) {
-    return null;
-  }
-  if (/^https?:\/\//i.test(str)) {
-    return str;
-  }
-  if (!/\s/.test(str) && /^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+([\/?#].*)?$/.test(str)) {
-    return `https://${str}`;
-  }
-  return null;
-}
-
-const COUNTRY_NAME_TO_CODE: Record<string, string> = {
-  "UNITED STATES": "US",
-  "USA": "US",
-  "UNITED KINGDOM": "UK",
-  "UK": "UK",
-  "BRITAIN": "UK",
-  "GREAT BRITAIN": "UK",
-  "CANADA": "CA",
-  "AUSTRALIA": "AU",
-  "GERMANY": "DE",
-  "FRANCE": "FR",
-  "MEXICO": "MX",
-  "BRAZIL": "BR",
-  "ARGENTINA": "AR",
-  "COLOMBIA": "CO",
-  "CHILE": "CL",
-  "PERU": "PE",
-  "ECUADOR": "EC",
-  "VENEZUELA": "VE",
-  "URUGUAY": "UY",
-  "PARAGUAY": "PY",
-  "BOLIVIA": "BO",
-  "COSTA RICA": "CR",
-  "PANAMA": "PA",
-  "GUATEMALA": "GT",
-  "HONDURAS": "HN",
-  "EL SALVADOR": "SV",
-  "NICARAGUA": "NI",
-  "DOMINICAN REPUBLIC": "DO",
-  "CUBA": "CU",
-  "HAITI": "HT",
-  "JAMAICA": "JM",
-  "TRINIDAD AND TOBAGO": "TT",
-  "GUYANA": "GY",
-  "SURINAME": "SR",
-  "BELIZE": "BZ",
-  "PUERTO RICO": "PR",
-  "FRENCH GUIANA": "GF",
-  "NEW ZEALAND": "NZ",
-  "IRELAND": "IE",
-  "SPAIN": "ES",
-  "ITALY": "IT",
-  "NETHERLANDS": "NL",
-  "INDIA": "IN",
-  "SINGAPORE": "SG",
-  "PHILIPPINES": "PH",
-  "SOUTH AFRICA": "ZA",
-  "GLOBAL": "GLOBAL",
-  "WORLDWIDE": "GLOBAL",
-  "WW": "GLOBAL",
-};
-
-const IGNORED_COLUMN_NAMES = new Set([
-  "ID",
-  "NO",
-  "URL",
-  "URI",
-  "STATUS",
-  "TYPE",
-  "DATE",
-  "SITE",
-  "SITE NAME",
-  "SITENAME",
-  "WEBSITE",
-  "NAME",
-  "TITLE",
-  "SLUG",
-  "PRODUCT",
-  "PRODUCT NAME",
-  "PRODUCTNAME",
-  "CATEGORY",
-  "NETWORK",
-  "AFFILIATE NETWORK",
-  "AFFILIATE",
-  "AFFILIATE LINK",
-  "AFFILIATELINK",
-  "LINKER",
-  "LINKER NAME",
-  "RESEARCHER",
-  "RESEARCHED BY",
-  "WRITER",
-  "WRITER NAME",
-  "AUTHOR",
-  "ARTICLE LINK",
-  "ARTICLE URL",
-  "ARTICLE STATUS",
-  "LINK STATUS",
-  "BUY LINK",
-  "BUY NOW LINK",
-  "BUY NOW",
-  "BRIDGE PAGE LINK",
-  "BRIDGE LINK",
-  "BRIDGEPAGE LINK",
-  "BRIDGE URL",
-  "BRIDGE",
-  "DIRECT BUY LINK",
-  "LANDING LINK",
-  "LANDING PAGE LINK",
-  "REMARKS",
-  "REMARK",
-  "NOTE",
-  "NOTES",
-  "COMMENTS",
-  "LINKER REMARKS",
-  "LINK REMARKS",
-  "ADDED DATE",
-  "PUBLISH DATE",
-  "COMPLETED DATE",
-  "PRODUCT CATEGORY",
-  "PRODUCT CATEGORY NAME",
-  "PRODUCT TYPE",
-  "PREVIEW LINK",
-  "TREND LINK",
-  "TREND LEVEL",
-  "SOURCE",
-  "GEO",
-  "GEOS",
-  "TARGET GEOS",
-  "COUNTRY",
-  "COUNTRIES",
-  "GEO LINKS",
-  "COUNTRY LINKS",
-  "MULTIPLE GEOS",
-  "COUNTRY SPECIFIC LINKS",
-]);
-
-function normalizeGeoCode(rawKey: string): string | null {
-  if (!rawKey) return null;
-  const cleaned = rawKey.trim().replace(/^["']+|["']+$/g, "").trim();
-  const upper = cleaned.toUpperCase();
-
-  if (IGNORED_COLUMN_NAMES.has(upper)) {
-    return null;
-  }
-
-  // 1. Direct code (e.g. "US", "UK", "CA", "AU", "GLOBAL")
-  if (/^[A-Z]{2}$/.test(upper) || upper === "GLOBAL" || upper === "WORLDWIDE" || upper === "WW") {
-    return upper === "WW" || upper === "WORLDWIDE" ? "GLOBAL" : upper;
-  }
-
-  // 2. Direct country name match
-  if (COUNTRY_NAME_TO_CODE[upper]) {
-    return COUNTRY_NAME_TO_CODE[upper];
-  }
-
-  // 3. Pattern: "[GEO] Link", "[GEO]_Link", "[GEO] Affiliate Link", etc.
-  const m1 = cleaned.match(/^([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)\s*[-_]?\s*(link|affiliate\s*link|affiliate|url)?$/i);
-  if (m1 && m1[1]) {
-    const code = m1[1].toUpperCase();
-    if (/^[A-Z]{2}$/.test(code) || code === "GLOBAL" || code === "WW" || code === "WORLDWIDE") {
-      return code === "WW" || code === "WORLDWIDE" ? "GLOBAL" : code;
-    }
-  }
-
-  const m2 = cleaned.match(/^(?:link|affiliate\s*link|url)\s*[-_]?\s*([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)$/i);
-  if (m2 && m2[1]) {
-    const code = m2[1].toUpperCase();
-    if (/^[A-Z]{2}$/.test(code) || code === "GLOBAL" || code === "WW" || code === "WORLDWIDE") {
-      return code === "WW" || code === "WORLDWIDE" ? "GLOBAL" : code;
-    }
-  }
-
-  const m3 = cleaned.match(/^(?:affiliate\s*link|link)\s*\(([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)\)$/i);
-  if (m3 && m3[1]) {
-    const code = m3[1].toUpperCase();
-    return code === "WW" || code === "WORLDWIDE" ? "GLOBAL" : code;
-  }
-
-  // 4. Country name + "Link" (e.g. "United States Link", "Canada Link")
-  for (const [name, code] of Object.entries(COUNTRY_NAME_TO_CODE)) {
-    if (upper.startsWith(name + " ") || upper.startsWith(name + "_") || upper.startsWith(name + "-")) {
-      const rest = upper.slice(name.length).replace(/[-_\s]+/g, " ").trim();
-      if (rest === "LINK" || rest === "AFFILIATE LINK" || rest === "URL") {
-        return code;
-      }
-    }
-  }
-
-  return null;
-}
-
-function extractGeoLinksFromRow(
-  r: any,
-  lookup: { normMap: Map<string, any> },
+function parseGeoLinksFromRow(
+  r: Record<string, any>,
   defaultAffiliateName: string
-): {
-  geoLinks: Array<{ geo: string; affiliateLink: string; affiliateName: string }>;
-  hasGeoColumns: boolean;
-} {
-  const geoMap = new Map<string, { geo: string; affiliateLink: string; affiliateName: string }>();
-  let hasGeoColumns = false;
-
-  // 1. Scan all row columns for dedicated country columns (e.g. "US", "UK Link", "Canada", etc.)
-  for (const key of Object.keys(r || {})) {
-    const geoCode = normalizeGeoCode(key);
-    if (!geoCode) continue;
-
-    hasGeoColumns = true;
-    const validUrl = cleanUrl(r[key]);
-    if (validUrl) {
-      geoMap.set(geoCode, {
-        geo: geoCode,
-        affiliateLink: validUrl,
-        affiliateName: defaultAffiliateName,
-      });
-    }
-    // If no link on geo: DO NOT ADD!
-  }
-
-  // 2. Scan combined geo links columns (e.g. "Geo Links", "Country Links", "Multiple Geos")
-  if (hasColumn(lookup, "Geo Links", "Country Links", "Multiple Geos", "Country Specific Links")) {
-    hasGeoColumns = true;
-  }
-  const combinedRaw = getCellString(
-    lookup,
-    "Geo Links",
-    "Country Links",
-    "Multiple Geos",
-    "Country Specific Links"
-  );
-
-  if (combinedRaw) {
-    let parsedJsonEntries = 0;
-    if (combinedRaw.startsWith("[") || combinedRaw.startsWith("{")) {
-      try {
-        const parsed = JSON.parse(combinedRaw);
-        if (Array.isArray(parsed)) {
-          for (const item of parsed) {
-            const gCode = normalizeGeoCode(item.geo || item.country || "");
-            const vUrl = cleanUrl(item.affiliateLink || item.link || item.url);
-            if (gCode && vUrl) {
-              geoMap.set(gCode, {
-                geo: gCode,
-                affiliateLink: vUrl,
-                affiliateName: item.affiliateName || defaultAffiliateName,
-              });
-              parsedJsonEntries++;
-            }
-          }
-        }
-      } catch {
-        // Fall back to text parsing
-      }
-    }
-
-    if (parsedJsonEntries === 0) {
-      const lines = combinedRaw.split(/[\r\n]+|(?<=[^\s])[,;|](?=\s*[A-Za-z]{2,}\s*[:=\-–—])/);
-      for (const line of lines) {
-        const match = line.match(/^\s*([A-Za-z]{2,}|GLOBAL|WORLDWIDE|WW)\s*[:=\-–—\t]+\s*(.+)$/);
-        if (match) {
-          const gCode = normalizeGeoCode(match[1]);
-          const vUrl = cleanUrl(match[2]);
-          if (gCode && vUrl) {
-            geoMap.set(gCode, {
-              geo: gCode,
-              affiliateLink: vUrl,
-              affiliateName: defaultAffiliateName,
-            });
-          }
-        }
-      }
-    }
-  }
-
-  // 3. Scan multi-line content inside "Affiliate Link"
-  const rawAffCell = getCellString(lookup, "Affiliate Link");
-  if (rawAffCell.includes("\n") || /^[A-Za-z]{2,}\s*[:=\-–—]/.test(rawAffCell)) {
-    const lines = rawAffCell.split(/[\r\n]+|(?<=[^\s])[,;|](?=\s*[A-Za-z]{2,}\s*[:=\-–—])/);
-    for (const line of lines) {
-      const match = line.match(/^\s*([A-Za-z]{2,}|GLOBAL|WORLDWIDE|WW)\s*[:=\-–—\t]+\s*(.+)$/);
-      if (match) {
-        const gCode = normalizeGeoCode(match[1]);
-        const vUrl = cleanUrl(match[2]);
-        if (gCode && vUrl) {
-          geoMap.set(gCode, {
-            geo: gCode,
-            affiliateLink: vUrl,
-            affiliateName: defaultAffiliateName,
-          });
-        }
-      }
-    }
-  }
-
-  // 4. Explicit Target GEOs column (ONLY if GEO/Target GEOs column is explicitly populated in sheet!)
-  // Do NOT invent a fake "GLOBAL" geo entry if no GEO column or target geo was specified in the sheet.
-  if (geoMap.size === 0) {
-    const singleAffLink = cleanUrl(rawAffCell);
-    const rawTargetGeos = getCellString(lookup, "GEO", "Geos", "Target GEOs", "Countries", "Country");
-    if (singleAffLink && rawTargetGeos && !isPlaceholderName(rawTargetGeos)) {
-      hasGeoColumns = true;
-      const tokens = rawTargetGeos.split(/[,;\s/]+/).map((t: string) => t.trim()).filter(Boolean);
-      for (const token of tokens) {
-        const gCode = normalizeGeoCode(token);
-        if (gCode) {
-          geoMap.set(gCode, {
-            geo: gCode,
-            affiliateLink: singleAffLink,
-            affiliateName: defaultAffiliateName,
-          });
-        }
-      }
-    }
-  }
-
-  return {
-    geoLinks: Array.from(geoMap.values()),
-    hasGeoColumns,
-  };
+) {
+  return extractGeoLinksFromRow(r, defaultAffiliateName);
 }
 
 // POST /api/admin/import-merged-sheet
@@ -625,6 +225,8 @@ export async function POST(req: NextRequest) {
     let assignedWritersCount = 0;
     let configuredLinksCount = 0;
     let configuredGeosCount = 0;
+    const touchedArticleIdsInBatch = new Set<number>();
+    const touchedLinkLogIdsInBatch = new Set<number>();
     const errors: string[] = [];
     const uniqueSites = new Set<string>();
 
@@ -634,11 +236,11 @@ export async function POST(req: NextRequest) {
       const lookup = buildRowLookup(r);
 
       try {
-        // 1. Extract Product Name
+        // 1. Extract Product Name (skip blank/null placeholders)
         const productName = getCellString(lookup, "Product Name", "Product", "Title", "Name");
 
-        if (!productName) {
-          // Skip empty rows
+        if (!productName || isNullOrPlaceholder(productName)) {
+          // Skip empty or null-placeholder rows
           continue;
         }
 
@@ -815,11 +417,35 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // 7. Slug & Remarks
+        // 7. Slug, Country, Preview/Trend Links & Remarks
         const hasSlugCol = hasColumn(lookup, "Slug");
-        const explicitSlug = getCellString(lookup, "Slug");
+        const explicitSlug = cleanOptionalText(getCellString(lookup, "Slug"));
         const generatedSlug = productName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
         const finalSlug = explicitSlug || generatedSlug || null;
+
+        const hasCountryCol = hasColumn(lookup, "Country", "Countries", "GEO", "Geos", "Target GEOs");
+        const countryVal = cleanOptionalText(getCellString(lookup, "Country", "Countries", "GEO", "Geos", "Target GEOs"));
+
+        const hasSourceCol = hasColumn(lookup, "Source", "Product Source");
+        const sourceVal = cleanOptionalText(getCellString(lookup, "Source", "Product Source"));
+
+        const hasPreviewLinkCol = hasColumn(lookup, "Preview Link", "Preview URL", "Preview");
+        const previewLinkVal = cleanUrl(getCell(lookup, "Preview Link", "Preview URL", "Preview"));
+
+        const hasTrendLinkCol = hasColumn(lookup, "Trend Link", "Trend URL");
+        const rawTrendCell = getCellString(lookup, "Trend", "Trend Level");
+        let trendLinkVal = cleanUrl(getCell(lookup, "Trend Link", "Trend URL"));
+        if (!trendLinkVal && rawTrendCell && /^https?:\/\//i.test(rawTrendCell)) {
+          trendLinkVal = cleanUrl(rawTrendCell);
+        }
+        const hasTrendLevelCol = hasColumn(lookup, "Trend Level", "Trend");
+        let trendLevelVal: string | null = null;
+        if (rawTrendCell && !/^https?:\/\//i.test(rawTrendCell) && !isNullOrPlaceholder(rawTrendCell)) {
+          const upperT = rawTrendCell.toUpperCase();
+          if (upperT.includes("MOD")) trendLevelVal = "MODERATE";
+          else if (upperT.includes("LOW")) trendLevelVal = "LOW";
+          else if (upperT.includes("HIGH")) trendLevelVal = "HIGH";
+        }
 
         const hasRemarksCol = hasColumn(lookup, "Remarks", "Remark", "Notes", "Note", "Comments");
         const sheetRemarksRaw = getCellString(lookup, "Remarks", "Remark", "Notes", "Note", "Comments");
@@ -833,10 +459,14 @@ export async function POST(req: NextRequest) {
           [sheetLinkerRemarks || sheetRemarks, multiLinkerNote].filter(Boolean).join(" | ") || null;
 
         // 8. Dates (preserved from sheet exact calendar date)
-        const explicitAddedDate = parseExcelDate(getCell(lookup, "Added Date", "Date"));
-        const addedDate = explicitAddedDate || new Date();
-        const hasPublishDateCol = hasColumn(lookup, "Publish Date", "Completed Date");
-        const explicitPublishDate = parseExcelDate(getCell(lookup, "Publish Date", "Completed Date"));
+        const {
+          addedDate: explicitAddedDate,
+          hasWriteDateCol,
+          writeDate: explicitWriteDate,
+          hasPublishDateCol,
+          publishDate: explicitPublishDate,
+        } = extractThreeDatesFromRow(r);
+        const addedDate = explicitAddedDate || explicitWriteDate || explicitPublishDate || new Date();
 
         // 9. Article Link & Status
         const hasArticleLinkCol = hasColumn(lookup, "Article Link", "Article URL");
@@ -864,16 +494,21 @@ export async function POST(req: NextRequest) {
             data: {
               name: productName,
               ...(hasSlugCol ? { slug: finalSlug } : {}),
+              ...(hasCountryCol && countryVal ? { country: countryVal } : {}),
+              ...(hasSourceCol && sourceVal ? { source: sourceVal } : {}),
+              ...(hasPreviewLinkCol && previewLinkVal ? { previewLink: previewLinkVal } : {}),
+              ...((hasTrendLinkCol || (rawTrendCell && /^https?:\/\//i.test(rawTrendCell))) && trendLinkVal ? { trendLink: trendLinkVal } : {}),
+              ...(hasTrendLevelCol && trendLevelVal ? { trendLevel: trendLevelVal } : {}),
               ...((hasTypeCol || hasCategoryCol) && category?.id ? { categoryId: category.id } : {}),
               ...(hasProductCategoryCol || (hasTypeCol && hasCategoryCol)
                 ? { productCategory: rawProductCategory }
                 : rawProductCategory
                 ? { productCategory: rawProductCategory }
                 : {}),
-              ...(hasAffiliateCol ? { affiliateName: cleanAffiliate || null } : {}),
+              ...(hasAffiliateCol && cleanAffiliate ? { affiliateName: cleanAffiliate } : {}),
               ...(linkerUser ? { addedById: linkerUser.id } : {}),
               ...(explicitAddedDate ? { addedAt: explicitAddedDate } : {}),
-              ...(hasRemarksCol
+              ...(hasRemarksCol && effectiveProductRemarks
                 ? { remarks: effectiveProductRemarks }
                 : multiLinkerNote
                 ? { remarks: multiLinkerNote }
@@ -888,6 +523,11 @@ export async function POST(req: NextRequest) {
             data: {
               name: productName,
               slug: finalSlug,
+              country: countryVal,
+              source: sourceVal,
+              previewLink: previewLinkVal,
+              trendLink: trendLinkVal,
+              trendLevel: trendLevelVal || "HIGH",
               siteId: targetSite.id,
               categoryId: category?.id || 1,
               productCategory: rawProductCategory,
@@ -902,46 +542,67 @@ export async function POST(req: NextRequest) {
           createdProductsCount++;
         }
 
-        // 11. Update or create Article (exact sheet values)
+        // 11. Update or create Article (exact sheet values + write/publish dates)
         const isCompletedOrApproved = mappedArticleStatus === "APPROVED" || mappedArticleStatus === "COMPLETED";
-        const effectiveCompletedAt =
-          explicitPublishDate || (isCompletedOrApproved ? explicitAddedDate || product.article?.completedAt || addedDate : null);
 
         if (product.article) {
+          const isArticleRepeatedInBatch = touchedArticleIdsInBatch.has(product.article.id);
           const nextWriterId = writerUser
             ? writerUser.id
-            : hasWriterCol && isPlaceholderName(rawWriter) && !writerNotFound
+            : !isArticleRepeatedInBatch && hasWriterCol && isPlaceholderName(rawWriter) && !writerNotFound
             ? null
             : product.article.writerId;
 
+          const effectiveCompletedAt =
+            explicitPublishDate ||
+            (isCompletedOrApproved ? product.article.completedAt || explicitAddedDate || addedDate : null);
+
+          const articleUpdateData: Record<string, any> = {
+            writerId: nextWriterId,
+            ...(hasArticleLinkCol && (!isArticleRepeatedInBatch || articleLink) ? { articleLink } : {}),
+            ...(hasArticleStatusCol && (!isArticleRepeatedInBatch || (rawArticleStatus && !isPlaceholderName(rawArticleStatus)))
+              ? { status: mappedArticleStatus }
+              : {}),
+          };
+
+          if (explicitWriteDate) {
+            articleUpdateData.startedAt = explicitWriteDate;
+          } else if (!isArticleRepeatedInBatch && hasWriteDateCol && hasArticleStatusCol && mappedArticleStatus === "PENDING") {
+            articleUpdateData.startedAt = null;
+          }
+
+          if (isArticleRepeatedInBatch) {
+            if (explicitPublishDate) {
+              articleUpdateData.completedAt = explicitPublishDate;
+              articleUpdateData.productCreatedAt = explicitPublishDate;
+            }
+          } else if (hasPublishDateCol || hasArticleStatusCol) {
+            articleUpdateData.completedAt = effectiveCompletedAt;
+            articleUpdateData.productCreatedAt = effectiveCompletedAt;
+          }
+
           const updatedArticle = await prisma.article.update({
             where: { id: product.article.id },
-            data: {
-              writerId: nextWriterId,
-              ...(hasArticleLinkCol ? { articleLink } : {}),
-              ...(hasArticleStatusCol ? { status: mappedArticleStatus } : {}),
-              ...(hasPublishDateCol || hasArticleStatusCol
-                ? {
-                    completedAt: effectiveCompletedAt,
-                    productCreatedAt: effectiveCompletedAt,
-                  }
-                : {}),
-            },
+            data: articleUpdateData,
           });
+          touchedArticleIdsInBatch.add(updatedArticle.id);
           product.article = updatedArticle;
           productMap.set(pKey, product);
           if (writerUser) assignedWritersCount++;
         } else {
+          const effectiveCompletedAt = explicitPublishDate || (isCompletedOrApproved ? addedDate : null);
           const createdArticle = await prisma.article.create({
             data: {
               productId: product.id,
               writerId: writerUser ? writerUser.id : null,
               articleLink,
               status: mappedArticleStatus,
-              completedAt: explicitPublishDate || (isCompletedOrApproved ? addedDate : null),
-              productCreatedAt: explicitPublishDate || (isCompletedOrApproved ? addedDate : null),
+              startedAt: explicitWriteDate || null,
+              completedAt: effectiveCompletedAt,
+              productCreatedAt: effectiveCompletedAt,
             },
           });
+          touchedArticleIdsInBatch.add(createdArticle.id);
           product.article = createdArticle;
           productMap.set(pKey, product);
           if (writerUser) assignedWritersCount++;
@@ -1001,91 +662,137 @@ export async function POST(req: NextRequest) {
           effectiveBridgeLink = null;
         }
 
-        const { geoLinks: validGeoLinks, hasGeoColumns } = extractGeoLinksFromRow(
+        const { geoLinks: validGeoLinks, hasGeoColumns } = parseGeoLinksFromRow(
           r,
-          lookup,
           cleanAffiliate || "Standard"
         );
 
-        const hasAffLinkCol = hasColumn(lookup, "Affiliate Link");
-        const directAffLink = cleanUrl(getCell(lookup, "Affiliate Link"));
+        const hasAffLinkCol = hasColumn(lookup, "Affiliate Link", "Affiliate URL", "Offer Link");
+        const directAffLink = cleanUrl(getCell(lookup, "Affiliate Link", "Affiliate URL", "Offer Link"));
         const effectiveAffiliateLink =
           directAffLink || (validGeoLinks.length > 0 ? validGeoLinks[0].affiliateLink : "");
 
-        const hasLinkData = Boolean(
+        const hasAnyRealLink = Boolean(
           effectiveBuyLink ||
             effectiveBridgeLink ||
             effectiveAffiliateLink ||
-            validGeoLinks.length > 0 ||
-            cleanAffiliate ||
-            hasExplicitLinkStatus
+            validGeoLinks.length > 0
         );
 
-        if (hasLinkData) {
+        if (hasAnyRealLink || (product.linkLogs && product.linkLogs.length > 0 && (hasExplicitLinkStatus || cleanAffiliate || hasGeoColumns))) {
           // Only default to ACCEPTED if the sheet left Link Status completely empty and links were provided
           const effectiveLinkStatus = hasExplicitLinkStatus
             ? mappedLinkStatus
-            : effectiveBuyLink || effectiveBridgeLink || effectiveAffiliateLink || validGeoLinks.length > 0
+            : hasAnyRealLink
             ? "ACCEPTED"
             : "REQUESTED";
 
           if (product.linkLogs && product.linkLogs.length > 0) {
-            const updatedLink = await prisma.linkLog.update({
-              where: { id: product.linkLogs[0].id },
-              data: {
-                ...(hasBridgeCol || hasBuyCol
-                  ? {
-                      bridgePageLink: effectiveBridgeLink,
-                      buyLink: effectiveBuyLink,
-                    }
-                  : {}),
-                ...(hasAffLinkCol || hasGeoColumns
-                  ? {
-                      affiliateLink: effectiveAffiliateLink || "",
-                    }
-                  : {}),
-                ...(hasAffiliateCol
-                  ? {
-                      affiliateName: cleanAffiliate || "No Affiliate",
-                    }
-                  : {}),
-                ...(hasLinkStatusCol ? { status: effectiveLinkStatus } : {}),
-                ...(explicitAddedDate ? { addedAt: explicitAddedDate } : {}),
-                updatedById: effectiveLinkerId,
-                ...(hasLinkerRemarksCol || hasRemarksCol
-                  ? { linkerRemarks: effectiveLinkerRemarks }
-                  : multiLinkerNote
-                  ? { linkerRemarks: multiLinkerNote }
-                  : {}),
-              },
-            });
+            const existingLog = product.linkLogs[0];
+            const isRepeatedInBatch = touchedLinkLogIdsInBatch.has(existingLog.id);
 
-            // Sync GEO links strictly to what is present in sheet
-            if (validGeoLinks.length > 0) {
-              await prisma.linkGeo.deleteMany({
-                where: { linkLogId: updatedLink.id },
+            // If a second row in the same import touches the same product+site without any links, preserve row 1's links
+            if (!isRepeatedInBatch || hasAnyRealLink || hasExplicitLinkStatus) {
+              const updatedLink = await prisma.linkLog.update({
+                where: { id: existingLog.id },
+                data: {
+                  ...(isRepeatedInBatch
+                    ? {
+                        ...(effectiveBridgeLink ? { bridgePageLink: effectiveBridgeLink } : {}),
+                        ...(effectiveBuyLink ? { buyLink: effectiveBuyLink } : {}),
+                        ...(effectiveAffiliateLink ? { affiliateLink: effectiveAffiliateLink } : {}),
+                        ...(cleanAffiliate ? { affiliateName: cleanAffiliate } : {}),
+                        ...(hasExplicitLinkStatus ? { status: effectiveLinkStatus } : {}),
+                      }
+                    : {
+                        ...(hasBridgeCol || hasBuyCol
+                          ? {
+                              bridgePageLink: effectiveBridgeLink,
+                              buyLink: effectiveBuyLink,
+                            }
+                          : {}),
+                        ...(hasAffLinkCol || hasGeoColumns
+                          ? {
+                              affiliateLink: effectiveAffiliateLink || existingLog.affiliateLink || "",
+                            }
+                          : {}),
+                        ...(hasAffiliateCol
+                          ? {
+                              affiliateName: cleanAffiliate || "No Affiliate",
+                            }
+                          : {}),
+                        ...(hasLinkStatusCol ? { status: effectiveLinkStatus } : {}),
+                      }),
+                  ...(explicitAddedDate && !isRepeatedInBatch ? { addedAt: explicitAddedDate } : {}),
+                  updatedById: effectiveLinkerId,
+                  ...(hasLinkerRemarksCol || hasRemarksCol
+                    ? effectiveLinkerRemarks
+                      ? { linkerRemarks: effectiveLinkerRemarks }
+                      : {}
+                    : multiLinkerNote
+                    ? { linkerRemarks: multiLinkerNote }
+                    : {}),
+                },
+                include: { geos: true },
               });
-              await prisma.linkGeo.createMany({
-                data: validGeoLinks.map((g) => ({
-                  linkLogId: updatedLink.id,
-                  geo: g.geo,
-                  affiliateLink: g.affiliateLink,
-                  affiliateName: g.affiliateName || cleanAffiliate || "Standard",
-                })),
-                skipDuplicates: true,
+
+              // Sync GEO links strictly to non-null URLs present in sheet
+              if (validGeoLinks.length > 0) {
+                if (isRepeatedInBatch) {
+                  // Merge additional geo/country links from subsequent rows for the same product+site
+                  for (const g of validGeoLinks) {
+                    const affName = g.affiliateName || cleanAffiliate || updatedLink.affiliateName || "Standard";
+                    const existingGeo = (updatedLink.geos || []).find((eg: any) => eg.geo === g.geo);
+                    await prisma.linkGeo.upsert({
+                      where: { linkLogId_geo: { linkLogId: updatedLink.id, geo: g.geo } },
+                      update: {
+                        affiliateLink: g.affiliateLink,
+                        affiliateName: affName,
+                      },
+                      create: {
+                        linkLogId: updatedLink.id,
+                        geo: g.geo,
+                        affiliateLink: g.affiliateLink,
+                        affiliateName: affName,
+                      },
+                    });
+                    if (!existingGeo) {
+                      configuredGeosCount++;
+                    }
+                  }
+                } else {
+                  await prisma.linkGeo.deleteMany({
+                    where: { linkLogId: updatedLink.id },
+                  });
+                  await prisma.linkGeo.createMany({
+                    data: validGeoLinks.map((g) => ({
+                      linkLogId: updatedLink.id,
+                      geo: g.geo,
+                      affiliateLink: g.affiliateLink,
+                      affiliateName: g.affiliateName || cleanAffiliate || "Standard",
+                    })),
+                    skipDuplicates: true,
+                  });
+                  configuredGeosCount += validGeoLinks.length;
+                }
+              } else if (hasGeoColumns && !isRepeatedInBatch && hasAnyRealLink) {
+                // First row in batch explicitly includes GEO columns and all geo links are null/empty -> clear stale DB geos
+                await prisma.linkGeo.deleteMany({
+                  where: { linkLogId: updatedLink.id },
+                });
+              }
+
+              const refreshedLink = await prisma.linkLog.findUnique({
+                where: { id: updatedLink.id },
+                include: { geos: true },
               });
-              configuredGeosCount += validGeoLinks.length;
-            } else if (hasGeoColumns) {
-              // Sheet includes GEO columns and all are empty -> remove any stale GEO links
-              await prisma.linkGeo.deleteMany({
-                where: { linkLogId: updatedLink.id },
-              });
+              touchedLinkLogIdsInBatch.add(updatedLink.id);
+              product.linkLogs[0] = refreshedLink || updatedLink;
+              productMap.set(pKey, product);
+              if (!isRepeatedInBatch) configuredLinksCount++;
             }
-
-            product.linkLogs[0] = updatedLink;
-            productMap.set(pKey, product);
-            configuredLinksCount++;
-          } else {
+          } else if (hasAnyRealLink) {
+            // Only create a new LinkLog when at least one non-null link or geo link exists
             const createdLink = await prisma.linkLog.create({
               data: {
                 productId: product.id,
@@ -1116,6 +823,7 @@ export async function POST(req: NextRequest) {
               configuredGeosCount += validGeoLinks.length;
             }
 
+            touchedLinkLogIdsInBatch.add(createdLink.id);
             product.linkLogs = [createdLink];
             productMap.set(pKey, product);
             configuredLinksCount++;

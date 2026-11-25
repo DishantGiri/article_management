@@ -6,18 +6,164 @@ import { authOptions } from "@/lib/auth";
 import { getOrCreateResearchSite } from "@/lib/researchSite";
 import { resolveSite } from "@/lib/site-resolver";
 import { resolveUsers, isPlaceholderName } from "@/lib/user-resolver";
+import {
+  cleanOptionalText,
+  cleanUrl,
+  extractGeoLinksFromRow,
+  isGeoColumnKey,
+  isNullOrPlaceholder,
+} from "@/lib/geo-link-parser";
+import { extractThreeDatesFromRow, isDateColumnKey } from "@/lib/sheet-dates";
 import { delByPattern } from "@/lib/redis";
 
 // POST /api/products/import - Import products from parsed CSV
 function isPositiveMark(val: any): boolean {
   if (val === undefined || val === null) return false;
   if (typeof val === "boolean") return val;
+  if (cleanUrl(val)) return false;
   const str = String(val).trim().toLowerCase();
   if (!str) return false;
   const negative = ["0", "false", "no", "n", "-", "--", "none", "nil", "null", "na", "n/a", "missing", "x_no"];
   return !negative.includes(str);
 }
 
+function mapImportedLinkStatus(rawStatus?: string): "REQUESTED" | "ACCEPTED" | "CANCELED" | "ISSUE" | "NEED_TO_CHECK" | "PRESELL_PAGE" | "REDIRECTED" | null {
+  if (!rawStatus || isNullOrPlaceholder(rawStatus)) return null;
+  const s = String(rawStatus).trim().toLowerCase();
+  if (s.includes("redirect")) return "REDIRECTED";
+  if (s.includes("not accept") || s.includes("unaccept") || s.includes("cancel") || s.includes("inactive") || s.includes("reject") || s.includes("declin")) return "CANCELED";
+  if (s.includes("accept") || s.includes("active") || s.includes("live") || s.includes("ok")) return "ACCEPTED";
+  if (s.includes("issue") || s.includes("broken") || s.includes("error")) return "ISSUE";
+  if (s.includes("check") || s.includes("review")) return "NEED_TO_CHECK";
+  if (s.includes("presell")) return "PRESELL_PAGE";
+  if (s.includes("request") || s.includes("pend")) return "REQUESTED";
+  return null;
+}
+
+function mapImportedArticleStatus(rawStatus?: string): "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO" | "REDIRECTED" {
+  if (!rawStatus || isNullOrPlaceholder(rawStatus)) return "PENDING";
+  const s = String(rawStatus).trim().toLowerCase();
+  if (s.includes("redirect")) return "REDIRECTED";
+  if (s.includes("redo") || s.includes("revis") || s.includes("reject")) return "REDO";
+  if (s.includes("approv") || s.includes("done") || s.includes("publish")) return "APPROVED";
+  if (s.includes("complet")) return "COMPLETED";
+  if (s.includes("progress") || s.includes("writ") || s.includes("start") || s.includes("draft")) return "IN_PROGRESS";
+  return "PENDING";
+}
+
+function getRowFieldValue(row: Record<string, any>, ...aliases: string[]): any {
+  const norm = (k: string) => String(k || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+  const targets = new Set(aliases.map(norm));
+  for (const k of Object.keys(row || {})) {
+    if (targets.has(norm(k))) {
+      const v = row[k];
+      if (v !== undefined && v !== null && String(v).trim() !== "") {
+        return v;
+      }
+    }
+  }
+  return "";
+}
+
+
+async function attachOrMergeImportedLink(params: {
+  productId: number;
+  existingLinkLog?: any | null;
+  addedById: number;
+  bridgePageLink: string | null;
+  buyLink: string | null;
+  affiliateLink: string;
+  affiliateName: string;
+  status: "REQUESTED" | "ACCEPTED" | "CANCELED" | "ISSUE" | "NEED_TO_CHECK" | "PRESELL_PAGE" | "REDIRECTED";
+  linkerRemarks: string | null;
+  addedAt: Date;
+  validGeoLinks: Array<{ geo: string; affiliateLink: string; affiliateName: string }>;
+}): Promise<{ linkLog: any | null; linkCreated: boolean; geosAdded: number }> {
+  const {
+    productId,
+    existingLinkLog,
+    addedById,
+    bridgePageLink,
+    buyLink,
+    affiliateLink,
+    affiliateName,
+    status,
+    linkerRemarks,
+    addedAt,
+    validGeoLinks,
+  } = params;
+
+  const hasAnyRealLink = Boolean(bridgePageLink || buyLink || affiliateLink || validGeoLinks.length > 0);
+  if (!hasAnyRealLink) {
+    return { linkLog: existingLinkLog || null, linkCreated: false, geosAdded: 0 };
+  }
+
+  if (existingLinkLog) {
+    const updated = await prisma.linkLog.update({
+      where: { id: existingLinkLog.id },
+      data: {
+        ...(bridgePageLink && !existingLinkLog.bridgePageLink ? { bridgePageLink } : {}),
+        ...(buyLink && !existingLinkLog.buyLink ? { buyLink } : {}),
+        ...(affiliateLink && !existingLinkLog.affiliateLink ? { affiliateLink } : {}),
+        updatedById: addedById,
+      },
+      include: { geos: true },
+    });
+
+    let geosAdded = 0;
+    for (const g of validGeoLinks) {
+      const existed = (updated.geos || []).some((eg: any) => eg.geo === g.geo);
+      await prisma.linkGeo.upsert({
+        where: { linkLogId_geo: { linkLogId: updated.id, geo: g.geo } },
+        update: {
+          affiliateLink: g.affiliateLink,
+          affiliateName: g.affiliateName || affiliateName || "Standard",
+        },
+        create: {
+          linkLogId: updated.id,
+          geo: g.geo,
+          affiliateLink: g.affiliateLink,
+          affiliateName: g.affiliateName || affiliateName || "Standard",
+        },
+      });
+      if (!existed) geosAdded++;
+    }
+
+    const refreshed = await prisma.linkLog.findUnique({
+      where: { id: updated.id },
+      include: { geos: true },
+    });
+    return { linkLog: refreshed || updated, linkCreated: false, geosAdded };
+  }
+
+  const created = await prisma.linkLog.create({
+    data: {
+      productId,
+      addedById,
+      bridgePageLink,
+      buyLink,
+      affiliateLink: affiliateLink || "",
+      affiliateName: affiliateName || "No Affiliate",
+      status,
+      addedAt,
+      linkerRemarks,
+      ...(validGeoLinks.length > 0
+        ? {
+            geos: {
+              create: validGeoLinks.map((g) => ({
+                geo: g.geo,
+                affiliateLink: g.affiliateLink,
+                affiliateName: g.affiliateName || affiliateName || "Standard",
+              })),
+            },
+          }
+        : {}),
+    },
+    include: { geos: true },
+  });
+
+  return { linkLog: created, linkCreated: true, geosAdded: validGeoLinks.length };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -120,30 +266,39 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    const importedProducts = [];
+    const importedProducts: any[] = [];
     const skippedDuplicates: string[] = [];
     const errors: string[] = [];
+    let importedLinksCount = 0;
+    let importedGeosCount = 0;
+    const batchCreatedResearchMap = new Map<string, any>();
+    const batchCreatedSiteMap = new Map<string, any>();
 
     const standardKeys = new Set([
-      "name", "productname", "product_name", "title", "slug", "country", "geo",
+      "name", "productname", "product_name", "title", "slug", "country", "geo", "countries", "geos", "targetgeos",
       "categoryname", "category", "producttype", "type",
-      "productcategory", "source", "trend", "trendlevel",
-      "trendlink", "previewlink", "remarks", "remark", "notes", "date",
-      "researchedby", "researcher", "addedby", "added_by", "user", "author", "creator",
+      "productcategory", "productcategoryname", "source", "productsource", "trend", "trendlevel",
+      "trendlink", "previewlink", "preview", "previewurl", "remarks", "remark", "notes", "note", "comments", "date", "addeddate", "addedat",
+      "researchedby", "researcher", "addedby", "addedbyname", "added_by", "user", "author", "creator",
       "productavailability", "availability", "affiliatenetwork",
       "affiliate", "network", "selectedsites", "sitename", "site", "website",
-      "isnative", "native"
+      "isnative", "native",
+      "affiliatelink", "affiliateurl", "offerlink", "buylink", "buynowlink", "buynow", "directbuylink",
+      "landinglink", "landingpagelink", "bridgepagelink", "bridgelink", "bridgepagelink", "bridgeurl", "bridge",
+      "linkstatus", "linkerremarks", "linkremarks", "articlelink", "articleurl", "articlestatus", "writer", "writername", "writtenby", "articlewriter",
+      "geolinks", "geolink", "countrylinks", "countrylink", "countrywiselinks", "multiplegeos", "multigeolinks", "countryspecificlinks"
     ]);
 
     for (let i = 0; i < products.length; i++) {
       const row = products[i];
       const rowNum = i + 1;
 
-      const name = String(row.name || row["Product Name"] || row["product_name"] || row.title || "").trim();
-      if (!name) {
-        errors.push(`Row ${rowNum}: Product Name is required.`);
+      const rawName = String(row.name || row["Product Name"] || row["product_name"] || row.title || "").trim();
+      if (!rawName || isNullOrPlaceholder(rawName)) {
+        // Skip blank or null-placeholder rows without importing null products
         continue;
       }
+      const name = rawName;
       if (name.length < 2) {
         errors.push(`Row ${rowNum} ("${name}"): Product name must be at least 2 characters.`);
         continue;
@@ -169,43 +324,43 @@ export async function POST(req: NextRequest) {
       ).trim();
 
       // Category / Product Type
-      const categoryName = String(
-        row.categoryName ||
-        row.category ||
-        row["Category Name"] ||
-        row.categoryname ||
-        row["Product Type"] ||
-        row.type ||
-        row["Type"] ||
-        "Supplements"
-      ).trim();
+      const rawCategoryName =
+        cleanOptionalText(
+          row.categoryName ||
+            row.category ||
+            row["Category Name"] ||
+            row.categoryname ||
+            row["Product Type"] ||
+            row.type ||
+            row["Type"]
+        ) || "Supplements";
+      const categoryName = rawCategoryName;
 
-      const productCategory = String(
-        row.productCategory ||
-        row["Product Category"] ||
-        row["Product Category Name"] ||
-        categoryName
-      ).trim();
+      const productCategory =
+        cleanOptionalText(row.productCategory || row["Product Category"] || row["Product Category Name"]) ||
+        categoryName;
 
-      const explicitSlug = String(row.slug || row["Slug"] || "").trim();
+      const explicitSlug = cleanOptionalText(row.slug || row["Slug"]);
       const generatedSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
       const productSlug = explicitSlug || generatedSlug || null;
 
-      const country = String(row.country || row["Country"] || row["GEO"] || "").trim() || null;
+      const country = cleanOptionalText(row.country || row["Country"] || row["GEO"]);
 
       // Source
-      const source = String(row.source || row["Source"] || "").trim() || null;
+      const source = cleanOptionalText(row.source || row["Source"]);
 
       // Trend Level & Link
       let trendLevel = "HIGH";
       const rawTrend = String(row.trendLevel || row.trend || row["Trend"] || "").trim().toUpperCase();
-      if (rawTrend.includes("MOD")) trendLevel = "MODERATE";
-      else if (rawTrend.includes("LOW")) trendLevel = "LOW";
-      else if (rawTrend.includes("HIGH")) trendLevel = "HIGH";
+      if (!isNullOrPlaceholder(rawTrend)) {
+        if (rawTrend.includes("MOD")) trendLevel = "MODERATE";
+        else if (rawTrend.includes("LOW")) trendLevel = "LOW";
+        else if (rawTrend.includes("HIGH")) trendLevel = "HIGH";
+      }
 
-      let trendLink = String(row.trendLink || row["Trend Link"] || "").trim() || null;
-      if (!trendLink && String(row.trend || "").startsWith("http")) {
-        trendLink = String(row.trend).trim();
+      let trendLink = cleanUrl(row.trendLink || row["Trend Link"] || row["Trend URL"]);
+      if (!trendLink && /^https?:\/\//i.test(String(row.trend || "").trim())) {
+        trendLink = cleanUrl(row.trend);
       }
 
       // Affiliate Network
@@ -222,41 +377,57 @@ export async function POST(req: NextRequest) {
 
       const isNoAffiliate =
         !rawAffiliate ||
-        ["-", "--", "none", "nil", "n/a", "na", "null", "no affiliate", "no", "general"].includes(
-          rawAffiliate.toLowerCase()
-        );
+        isNullOrPlaceholder(rawAffiliate) ||
+        rawAffiliate.toLowerCase() === "general";
       const affiliateName = isNoAffiliate ? "No Affiliate" : rawAffiliate;
 
       // Preview Link
-      const previewLink = String(row.previewLink || row["Preview Link"] || "").trim() || null;
+      const previewLink = cleanUrl(row.previewLink || row["Preview Link"] || row["Preview URL"] || row["Preview"]);
 
-      // Remarks & Availability (preserve exact sheet remarks cleanly)
-      let remarks = String(row.remarks || row["Remarks"] || row["Remark"] || row["Notes"] || "").trim();
-      const availability = String(row.productAvailability || row["Product Availability"] || "").trim();
+      // Remarks & Availability (preserve exact sheet remarks cleanly, ignore null placeholders)
+      let remarks = cleanOptionalText(row.remarks || row["Remarks"] || row["Remark"] || row["Notes"] || row["Note"] || row["Comments"]) || "";
+      const availability = cleanOptionalText(row.productAvailability || row["Product Availability"]) || "";
       if (
         availability &&
-        !["available", "yes", "true", "1", "ok"].includes(availability.toLowerCase()) &&
-        !isPlaceholderName(availability)
+        !["available", "yes", "true", "1", "ok"].includes(availability.toLowerCase())
       ) {
         const availNote = `Availability: ${availability}`;
         remarks = remarks ? `${remarks} | ${availNote}` : availNote;
       }
 
-      // Date (noon UTC avoids calendar day shift across timezones)
-      let addedAt = new Date();
-      const rawDate = row.date || row["Date"] || row["Added Date"];
-      if (rawDate) {
-        const dateStr = String(rawDate).trim();
-        const ymd = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-        if (ymd) {
-          addedAt = new Date(Date.UTC(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]), 12, 0, 0));
-        } else {
-          const parsedDate = new Date(dateStr);
-          if (!isNaN(parsedDate.getTime())) {
-            addedAt = parsedDate;
-          }
-        }
-      }
+      // Link & Multi-GEO extraction (only non-null valid URLs and non-null geo links are imported)
+      const defaultLinkAffName = isNoAffiliate ? "Standard" : affiliateName;
+      const { geoLinks: validGeoLinks } = extractGeoLinksFromRow(row, defaultLinkAffName);
+      const rawBuyLink = cleanUrl(
+        getRowFieldValue(row, "Buy Link", "Buy Now Link", "Buy Now", "Direct Buy Link", "Landing Link", "Landing Page Link")
+      );
+      const rawBridgeLink = cleanUrl(
+        getRowFieldValue(row, "Bridge Page Link", "Bridge Link", "Bridgepage Link", "Bridge URL", "Bridge")
+      );
+      const directAffLink = cleanUrl(getRowFieldValue(row, "Affiliate Link", "Affiliate URL", "Offer Link"));
+      const effectiveAffiliateLink =
+        directAffLink || (validGeoLinks.length > 0 ? validGeoLinks[0].affiliateLink : "");
+      const parsedLinkStatus = mapImportedLinkStatus(getRowFieldValue(row, "Link Status"));
+      const effectiveLinkStatus = parsedLinkStatus || (rawBuyLink || rawBridgeLink || effectiveAffiliateLink || validGeoLinks.length > 0 ? "ACCEPTED" : "REQUESTED");
+      const linkerRemarks = cleanOptionalText(getRowFieldValue(row, "Linker Remarks", "Link Remarks")) || (remarks || null);
+      const articleLink = cleanUrl(getRowFieldValue(row, "Article Link", "Article URL"));
+      const rawArticleStatus = cleanOptionalText(getRowFieldValue(row, "Article Status"));
+      const rawWriterName = cleanOptionalText(
+        getRowFieldValue(row, "Writer Name", "Writer", "Written By", "Article Writer")
+      );
+
+      // Dates (noon UTC avoids calendar day shift across timezones)
+      const {
+        addedDate: explicitAddedDate,
+        writeDate: explicitWriteDate,
+        publishDate: explicitPublishDate,
+      } = extractThreeDatesFromRow(row);
+      const addedAt = explicitAddedDate || explicitWriteDate || explicitPublishDate || new Date();
+      const effectiveArticleStatus = rawArticleStatus
+        ? mapImportedArticleStatus(rawArticleStatus)
+        : explicitPublishDate
+        ? "COMPLETED"
+        : "PENDING";
 
       // Determine Target Sites for this product
       const targetSites: typeof allDbSites = [];
@@ -270,7 +441,7 @@ export async function POST(req: NextRequest) {
       }
 
       // B. Check if single siteName column is present
-      const singleSite = String(row.siteName || row.site || row["Site Name"] || row.sitename || row.website || "").trim();
+      const singleSite = cleanOptionalText(row.siteName || row.site || row["Site Name"] || row.sitename || row.website) || "";
       if (singleSite) {
         const s = resolveSite(singleSite, allDbSites);
         if (s && !targetSites.some((t) => t.id === s.id)) targetSites.push(s);
@@ -279,7 +450,7 @@ export async function POST(req: NextRequest) {
       // C. Scan all row columns for site markers (DHS, SMG, TBR, GRC, SC, SV, SD, ST, SP, JiR, RBR, HSB, etc.)
       for (const [key, val] of Object.entries(row)) {
         const strippedKey = key.trim().toLowerCase().replace(/[\s_-]+/g, "");
-        if (standardKeys.has(strippedKey)) continue;
+        if (standardKeys.has(strippedKey) || isGeoColumnKey(key) || isDateColumnKey(key)) continue;
 
         const matchingSite = resolveSite(key, allDbSites);
         if (matchingSite) {
@@ -361,6 +532,30 @@ export async function POST(req: NextRequest) {
       // Simply list in the research pool with detected target sites. Linkers will publish to sites later.
       if (isProductResearcherUser) {
         try {
+          const researchBatchKey = name.toLowerCase();
+          const batchCreatedProd = batchCreatedResearchMap.get(researchBatchKey);
+
+          if (batchCreatedProd) {
+            // Same product in multiple rows of this batch (e.g. one row per geo/country link) -> merge non-null links
+            const mergeRes = await attachOrMergeImportedLink({
+              productId: batchCreatedProd.id,
+              existingLinkLog: batchCreatedProd._importedLinkLog || null,
+              addedById: Number(rowAddedById),
+              bridgePageLink: rawBridgeLink,
+              buyLink: rawBuyLink,
+              affiliateLink: effectiveAffiliateLink,
+              affiliateName,
+              status: effectiveLinkStatus,
+              linkerRemarks,
+              addedAt,
+              validGeoLinks,
+            });
+            batchCreatedProd._importedLinkLog = mergeRes.linkLog;
+            if (mergeRes.linkCreated) importedLinksCount++;
+            importedGeosCount += mergeRes.geosAdded;
+            continue;
+          }
+
           const existingInResearch = await prisma.product.findFirst({
             where: {
               OR: [
@@ -429,6 +624,26 @@ export async function POST(req: NextRequest) {
             },
           });
 
+          const linkRes = await attachOrMergeImportedLink({
+            productId: newProduct.id,
+            existingLinkLog: null,
+            addedById: Number(rowAddedById),
+            bridgePageLink: rawBridgeLink,
+            buyLink: rawBuyLink,
+            affiliateLink: effectiveAffiliateLink,
+            affiliateName,
+            status: effectiveLinkStatus,
+            linkerRemarks,
+            addedAt,
+            validGeoLinks,
+          });
+          if (linkRes.linkCreated) importedLinksCount++;
+          importedGeosCount += linkRes.geosAdded;
+
+          batchCreatedResearchMap.set(researchBatchKey, {
+            ...newProduct,
+            _importedLinkLog: linkRes.linkLog,
+          });
           importedProducts.push(newProduct);
         } catch (rowErr: any) {
           errors.push(`Row ${rowNum} ("${name}"): Failed to import due to: ${rowErr.message}`);
@@ -439,6 +654,30 @@ export async function POST(req: NextRequest) {
       // ─── NON-PRODUCT-RESEARCHER (Linker/Admin): ADD DIRECTLY TO TARGET SITES ───
       for (const site of targetSites) {
         try {
+          const siteBatchKey = `${site.id}_${name.toLowerCase()}`;
+          const batchCreatedOnSite = batchCreatedSiteMap.get(siteBatchKey);
+
+          if (batchCreatedOnSite) {
+            // Merge additional non-null geo/country links from another row for the same product+site in this batch
+            const mergeRes = await attachOrMergeImportedLink({
+              productId: batchCreatedOnSite.id,
+              existingLinkLog: batchCreatedOnSite._importedLinkLog || null,
+              addedById: Number(rowAddedById),
+              bridgePageLink: rawBridgeLink,
+              buyLink: rawBuyLink,
+              affiliateLink: effectiveAffiliateLink,
+              affiliateName,
+              status: effectiveLinkStatus,
+              linkerRemarks,
+              addedAt,
+              validGeoLinks,
+            });
+            batchCreatedOnSite._importedLinkLog = mergeRes.linkLog;
+            if (mergeRes.linkCreated) importedLinksCount++;
+            importedGeosCount += mergeRes.geosAdded;
+            continue;
+          }
+
           // Ensure Site and Category are connected
           const siteWithCategories = await prisma.site.findUnique({
             where: { id: site.id },
@@ -511,9 +750,52 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          // Auto-create article only if explicitly requested or linker adding to site
+          // Create LinkLog + valid multi-geo links if available (null values excluded)
+          const linkRes = await attachOrMergeImportedLink({
+            productId: newProduct.id,
+            existingLinkLog: null,
+            addedById: Number(rowAddedById),
+            bridgePageLink: rawBridgeLink,
+            buyLink: rawBuyLink,
+            affiliateLink: effectiveAffiliateLink,
+            affiliateName,
+            status: effectiveLinkStatus,
+            linkerRemarks,
+            addedAt,
+            validGeoLinks,
+          });
+          if (linkRes.linkCreated) importedLinksCount++;
+          importedGeosCount += linkRes.geosAdded;
+
+          batchCreatedSiteMap.set(siteBatchKey, {
+            ...newProduct,
+            _importedLinkLog: linkRes.linkLog,
+          });
+
+          // Resolve optional Writer for this site's article
+          let resolvedWriterId: number | null = null;
+          if (rawWriterName && !isPlaceholderName(rawWriterName)) {
+            const matchedWriters = resolveUsers(rawWriterName, allDbUsers, {
+              rolePreference: "WRITER",
+              targetSiteId: site.id,
+              siteAccessList: allDbSiteAccess,
+            });
+            resolvedWriterId = matchedWriters[0]?.id ?? null;
+          }
+
+          // Create article with exact sheet link, status, writer, write date & publish date
+          const isCompletedOrApproved = effectiveArticleStatus === "COMPLETED" || effectiveArticleStatus === "APPROVED";
+          const effectiveCompletedAt = explicitPublishDate || (isCompletedOrApproved ? addedAt : null);
           await prisma.article.create({
-            data: { productId: newProduct.id, status: "PENDING" },
+            data: {
+              productId: newProduct.id,
+              writerId: resolvedWriterId,
+              status: effectiveArticleStatus,
+              ...(articleLink ? { articleLink } : {}),
+              startedAt: explicitWriteDate || null,
+              completedAt: effectiveCompletedAt,
+              productCreatedAt: effectiveCompletedAt,
+            },
           });
 
           // Notify writers who have access to this site
@@ -542,17 +824,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Invalidate Redis caches so dashboard, products, and articles reflect newly imported products immediately
+    // Invalidate Redis caches so dashboard, products, links, and articles reflect newly imported products immediately
     await Promise.all([
       delByPattern("dashboard:*"),
       delByPattern("products:*"),
       delByPattern("articles:*"),
       delByPattern("sites:*"),
+      delByPattern("links:*"),
+      delByPattern("lookup:*"),
     ]);
 
     return NextResponse.json({
       success: importedProducts.length > 0 || (errors.length === 0 && skippedDuplicates.length > 0),
       importedCount: importedProducts.length,
+      importedLinksCount,
+      importedGeosCount,
       skippedCount: skippedDuplicates.length,
       skipped: skippedDuplicates,
       errors,

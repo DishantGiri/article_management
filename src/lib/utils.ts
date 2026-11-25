@@ -16,15 +16,20 @@ export function generateSlug(text: string): string {
     .replace(/^-+|-+$/g, ""); // trim leading and trailing dashes
 }
 
-export function consolidateLinkLogs<T extends { id?: number; affiliateName?: string | null; bridgePageLink?: string | null; buyLink?: string | null; affiliateLink?: string | null; status?: string; linkerRemarks?: string | null; geos?: any[] }>(logs: T[] | null | undefined): T[] {
-  if (!logs || !Array.isArray(logs) || logs.length <= 1) return (logs as T[]) || [];
+export function consolidateLinkLogs<T extends { id?: number; productId?: number; siteName?: string | null; affiliateName?: string | null; bridgePageLink?: string | null; buyLink?: string | null; affiliateLink?: string | null; status?: string; linkerRemarks?: string | null; geos?: any[] }>(logs: T[] | null | undefined): T[] {
+  if (!logs || !Array.isArray(logs) || logs.length === 0) return [];
   const map = new Map<string, T>();
   for (const log of logs) {
-    const key = (log.affiliateName || "standard").trim().toLowerCase();
+    const affKey = (log.affiliateName || "standard").trim().toLowerCase();
+    // Preserve separate logs when they come from different product/site records
+    const scopeKey = log.productId !== undefined && log.productId !== null ? `${log.productId}` : (log.siteName || "default");
+    const key = `${scopeKey}::${affKey}`;
+    const cleanGeos = (log.geos || []).filter((g: any) => g && g.geo && String(g.geo).trim() !== "");
+
     if (!map.has(key)) {
       map.set(key, {
         ...log,
-        geos: [...(log.geos || [])],
+        geos: [...cleanGeos],
       });
     } else {
       const existing = map.get(key)!;
@@ -32,7 +37,7 @@ export function consolidateLinkLogs<T extends { id?: number; affiliateName?: str
       if (!existing.buyLink && log.buyLink) existing.buyLink = log.buyLink;
       if (!existing.affiliateLink && log.affiliateLink) existing.affiliateLink = log.affiliateLink;
       if (log.status && existing.status === "REQUESTED" && log.status !== "REQUESTED") existing.status = log.status;
-      for (const g of log.geos || []) {
+      for (const g of cleanGeos) {
         const gCode = (g.geo || "").trim().toUpperCase();
         if (!existing.geos?.some((eg: any) => (eg.geo || "").trim().toUpperCase() === gCode)) {
           existing.geos?.push(g);

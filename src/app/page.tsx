@@ -71,6 +71,7 @@ import CustomSelect from "@/components/CustomSelect";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 import TopHeader from "@/components/TopHeader";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
+import { cleanUrl, getValidLogGeos, isValidLinkLog } from "@/lib/geo-link-parser";
 import { consolidateLinkLogs } from "@/lib/utils";
 
 const ChartPieInteractive = dynamic(
@@ -4647,51 +4648,92 @@ function WriterAvailableAssignments({
 
               {/* Configured Links Preview */}
               {(() => {
-                const drawerLogs = consolidateLinkLogs(selectedArticle.product.linkLogs);
+                const drawerLogs = consolidateLinkLogs(
+                  (selectedArticle.product.linkLogs || []).filter((l: any) => isValidLinkLog(l))
+                );
                 if (!drawerLogs || drawerLogs.length === 0) return null;
                 return (
                   <div className="space-y-2">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
                       Configured Links ({drawerLogs.length})
                     </span>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {drawerLogs.map((log: any) => (
-                      <div
-                        key={log.id}
-                        className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs flex items-center justify-between gap-3"
-                      >
-                        <div className="min-w-0">
-                          <span className="font-extrabold text-slate-800 dark:text-slate-200 block truncate">
-                            {log.affiliateName || "Affiliate Link"}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            Status: {log.status} • Geos: {log.geos?.map((g: any) => g.geo).join(", ") || "Global"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {log.buyLink && (
-                            <a
-                              href={log.buyLink.startsWith("http") ? log.buyLink : `https://${log.buyLink}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
-                            >
-                              Buy Now ↗
-                            </a>
-                          )}
-                          {log.affiliateLink && (
-                            <a
-                              href={log.affiliateLink.startsWith("http") ? log.affiliateLink : `https://${log.affiliateLink}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
-                            >
-                              Affiliate Link ↗
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                    <div className="space-y-2 max-h-56 overflow-y-auto">
+                      {drawerLogs.map((log: any) => {
+                        const validGeos = getValidLogGeos(log);
+                        const buyUrl = cleanUrl(log.buyLink);
+                        const bridgeUrl = cleanUrl(log.bridgePageLink);
+                        const affUrl = cleanUrl(log.affiliateLink);
+                        return (
+                          <div
+                            key={log.id}
+                            className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs space-y-2"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <span className="font-extrabold text-slate-800 dark:text-slate-200 block truncate">
+                                  {log.affiliateName || "Affiliate Link"}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  Status: {log.status} • Geos: {validGeos.length > 0 ? validGeos.map((g: any) => g.geo).join(", ") : "Global"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {bridgeUrl && (
+                                  <a
+                                    href={bridgeUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-purple-600 dark:text-purple-400 font-bold hover:underline"
+                                  >
+                                    Bridge ↗
+                                  </a>
+                                )}
+                                {buyUrl && (
+                                  <a
+                                    href={buyUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                                  >
+                                    Buy Now ↗
+                                  </a>
+                                )}
+                                {affUrl && (
+                                  <a
+                                    href={affUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                                  >
+                                    Affiliate Link ↗
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                            {validGeos.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                                {validGeos.map((g: any) => {
+                                  const gUrl = cleanUrl(g.affiliateLink) || affUrl;
+                                  if (!gUrl) return null;
+                                  return (
+                                    <a
+                                      key={g.geo}
+                                      href={gUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title={`${g.geo}: ${gUrl}`}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50"
+                                    >
+                                      <span>{g.geo}</span>
+                                      <ExternalLink className="w-2.5 h-2.5" />
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );

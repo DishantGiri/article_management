@@ -24,6 +24,7 @@ import {
   Edit3,
 } from "lucide-react";
 import EditProductModal from "@/components/EditProductModal";
+import { cleanUrl, getValidLogGeos, isValidLinkLog } from "@/lib/geo-link-parser";
 
 export interface SiteAvailabilityItem {
   siteId: number;
@@ -39,6 +40,8 @@ export interface SiteAvailabilityItem {
     categoryId?: number | null;
     categoryName?: string | null;
     productCategory?: string | null;
+    previewLink?: string | null;
+    trendLink?: string | null;
     addedAt?: string | null;
     addedBy?: string | null;
     addedByRole?: string | null;
@@ -51,6 +54,15 @@ export interface SiteAvailabilityItem {
       writerName?: string | null;
     } | null;
     linkCount?: number;
+    linkLogs?: Array<{
+      id: number;
+      affiliateName: string;
+      affiliateLink: string;
+      bridgePageLink?: string | null;
+      buyLink?: string | null;
+      status: string;
+      geos?: Array<{ geo: string; affiliateLink?: string | null; affiliateName?: string | null }>;
+    }>;
   } | null;
 }
 
@@ -705,6 +717,45 @@ export default function DuplicateProductPreviewModal({
                                     Added by {site.product.addedBy}
                                   </span>
                                 )}
+                                {(() => {
+                                  const validLogs = (site.product?.linkLogs || []).filter((l) => isValidLinkLog(l));
+                                  if (validLogs.length === 0) return null;
+                                  const firstLog = validLogs[0];
+                                  const validGeos = Array.from(
+                                    new Set(validLogs.flatMap((l) => getValidLogGeos(l).map((g) => g.geo)))
+                                  );
+                                  const primaryUrl =
+                                    cleanUrl(firstLog.buyLink) ||
+                                    cleanUrl(firstLog.bridgePageLink) ||
+                                    cleanUrl(firstLog.affiliateLink) ||
+                                    cleanUrl(getValidLogGeos(firstLog)[0]?.affiliateLink);
+                                  return (
+                                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                      <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 text-[10px] font-bold">
+                                        {validLogs.length} Link{validLogs.length !== 1 ? "s" : ""}
+                                      </span>
+                                      {validGeos.map((g) => (
+                                        <span
+                                          key={g}
+                                          className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60 text-[10px] font-bold"
+                                        >
+                                          {g}
+                                        </span>
+                                      ))}
+                                      {primaryUrl && (
+                                        <a
+                                          href={primaryUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
+                                        >
+                                          <span>Open</span>
+                                          <ExternalLink className="w-2.5 h-2.5" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             ) : (
                               <span className="text-slate-400 italic">

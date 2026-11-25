@@ -1089,7 +1089,7 @@ function ArticlesContent() {
                   <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[130px]">Writer</th>
                   <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24">Priority</th>
                   <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28">Status</th>
-                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28 whitespace-nowrap">Date</th>
+                  <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[140px] whitespace-nowrap">Dates</th>
                   <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center w-24">Remarks</th>
                   <th className="px-2 py-3.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center w-16">Link</th>
                   {(currentUserRole === "SUPER_ADMIN" || currentUserRole === "ADMIN" || currentUserRole === "TEAM_LEAD" || currentUserRole === "WRITER") && (
@@ -1237,7 +1237,35 @@ function ArticlesContent() {
                         </span>
                       </td>
                       <td className="px-3 py-3.5 whitespace-nowrap text-[12px] font-medium text-slate-500 dark:text-slate-400">
-                        {new Date(a.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {(() => {
+                          const fmt = (d?: string | null) =>
+                            d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null;
+                          const addStr = fmt(a.product?.addedAt);
+                          const writeStr = fmt(a.startedAt);
+                          const pubStr = fmt(a.completedAt || a.productCreatedAt);
+                          if (!addStr && !writeStr && !pubStr) {
+                            return fmt(a.updatedAt) || "—";
+                          }
+                          return (
+                            <div className="flex flex-col gap-0.5 text-[11px] leading-tight">
+                              {pubStr && (
+                                <span className="font-semibold text-emerald-700 dark:text-emerald-300" title="Publish Date">
+                                  Pub: {pubStr}
+                                </span>
+                              )}
+                              {writeStr && (
+                                <span className="text-indigo-600 dark:text-indigo-400" title="Article Write Date">
+                                  Wrt: {writeStr}
+                                </span>
+                              )}
+                              {addStr && (
+                                <span className="text-slate-500 dark:text-slate-400" title="Product Added Date">
+                                  Add: {addStr}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       {/* Writer's and Linker's Remarks cell */}
                       <td className="px-3 py-3.5 text-center whitespace-nowrap">
@@ -1289,6 +1317,10 @@ function ArticlesContent() {
                                       id: a.id,
                                       status: a.status,
                                       priority: a.priority,
+                                      articleLink: a.articleLink,
+                                      startedAt: a.startedAt,
+                                      completedAt: a.completedAt,
+                                      productCreatedAt: a.productCreatedAt,
                                       writer: a.writer,
                                     },
                                   });
