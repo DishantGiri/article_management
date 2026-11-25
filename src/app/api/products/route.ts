@@ -662,7 +662,7 @@ export async function GET(req: NextRequest) {
     siteFilterCondition = parsedSiteId;
   }
 
-  const cacheKey = `products:${effectiveRole}:${userId || 0}:${parsedSiteId ?? site ?? "all"}:${categoryId ?? "all"}:${isPaginated ? `p${page}_l${limit}` : (all ? "all" : "full")}:${slim ? "slim" : "rich"}:${unlinked ? "unlinked" : "any"}:${search || "none"}:${exact ? "1" : "0"}:${status || "none"}:${user || "none"}:${startDate || "none"}:${endDate || "none"}:${native || "none"}`;
+  const cacheKey = `products:v2:${effectiveRole}:${userId || 0}:${parsedSiteId ?? site ?? "all"}:${categoryId ?? "all"}:${isPaginated ? `p${page}_l${limit}` : (all ? "all" : "full")}:${slim ? "slim" : "rich"}:${unlinked ? "unlinked" : "any"}:${search || "none"}:${exact ? "1" : "0"}:${status || "none"}:${user || "none"}:${startDate || "none"}:${endDate || "none"}:${native || "none"}`;
 
   const result = await cached(cacheKey, 60, async () => {
     const andConditions: any[] = [];
@@ -764,9 +764,16 @@ export async function GET(req: NextRequest) {
             { article: { writerId: null } },
           ],
         });
-      } else if (["IN_PROGRESS", "COMPLETED", "APPROVED", "REDO"].includes(cleanStatus)) {
+      } else if (["IN_PROGRESS", "COMPLETED", "APPROVED"].includes(cleanStatus)) {
         andConditions.push({
-          article: { status: cleanStatus as any },
+          article: {
+            status: cleanStatus as any,
+            writerId: { not: null },
+          },
+        });
+      } else if (cleanStatus === "REDO") {
+        andConditions.push({
+          article: { status: "REDO" },
         });
       }
     } else if (excludeCompletedForWriter) {
@@ -842,28 +849,127 @@ export async function GET(req: NextRequest) {
       return slimProducts;
     }
 
-    const [totalProductsCount, products, totalPublishingSites] = await Promise.all([
-      isPaginated ? prisma.product.count({ where: productWhere }) : Promise.resolve(0),
-      prisma.product.findMany({
-        where: productWhere,
-        ...(isPaginated ? { skip: (page - 1) * limit, take: limit } : {}),
-        include: {
-          site: { select: { id: true, name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
-          category: { select: { id: true, name: true } },
-          addedBy: { select: { id: true, name: true, role: true } },
-          updatedBy: { select: { id: true, name: true, role: true } },
-          article: { select: { id: true, status: true, articleLink: true, country: true, writer: { select: { id: true, name: true } } } },
-          linkLogs: { include: { geos: true } },
-        },
-        orderBy: { addedAt: "desc" },
-      }),
-      prisma.site.count({
-        where: {
-          name: { not: "Product Research" },
-          ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
-        },
-      }),
-    ]);
+    // Paginate by UNIQUE product name in non-slim mode so every page returns `limit` distinct
+    // products (with all their site rows included for collapsing on the client).
+    let totalProductsCount = 0;
+    let pendingUniqueCount = 0;
+    let products: any[] = [];
+    let totalPublishingSites = 0;
+
+    if (isPaginated) {
+      const [allGroups, pendingGroups, pubSitesCount] = await Promise.all([
+        prisma.product.groupBy({
+          by: ["name"],
+          where: productWhere,
+          _max: { addedAt: true },
+          orderBy: [{ _max: { addedAt: "desc" } }, { name: "asc" }],
+        }),
+        prisma.product.groupBy({
+          by: ["name"],
+          where: {
+            AND: [
+              productWhere,
+              {
+                OR: [
+                  { article: null },
+                  { article: { status: "PENDING" } },
+                  { article: { writerId: null } },
+                ],
+              },
+            ],
+          },
+        }),
+        prisma.site.count({
+          where: {
+            name: { not: "Product Research" },
+            ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
+          },
+        }),
+      ]);
+
+      totalPublishingSites = pubSitesCount;
+
+      const normToRawNames = new Map<string, string[]>();
+      const orderedNormKeys: string[] = [];
+      for (const g of allGroups) {
+        const norm = (g.name || "").trim().toLowerCase();
+        if (!norm) continue;
+        if (!normToRawNames.has(norm)) {
+          normToRawNames.set(norm, []);
+          orderedNormKeys.push(norm);
+        }
+        normToRawNames.get(norm)!.push(g.name);
+      }
+
+      if (search && search.trim() && !exact) {
+        const q = search.trim().toLowerCase();
+        orderedNormKeys.sort((a, b) => {
+          const aScore = a === q ? 3 : a.startsWith(q) ? 2 : 0;
+          const bScore = b === q ? 3 : b.startsWith(q) ? 2 : 0;
+          return bScore - aScore;
+        });
+      }
+
+      totalProductsCount = orderedNormKeys.length;
+
+      const pendingNormSet = new Set<string>();
+      for (const pg of pendingGroups) {
+        const norm = (pg.name || "").trim().toLowerCase();
+        if (norm) pendingNormSet.add(norm);
+      }
+      pendingUniqueCount = pendingNormSet.size;
+
+      const pageNormKeys = orderedNormKeys.slice((page - 1) * limit, page * limit);
+      const pageRawNames = pageNormKeys.flatMap((k) => normToRawNames.get(k) || []);
+
+      if (pageRawNames.length > 0) {
+        products = await prisma.product.findMany({
+          where: {
+            AND: [productWhere, { name: { in: pageRawNames } }],
+          },
+          include: {
+            site: { select: { id: true, name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
+            category: { select: { id: true, name: true } },
+            addedBy: { select: { id: true, name: true, role: true } },
+            updatedBy: { select: { id: true, name: true, role: true } },
+            article: { select: { id: true, status: true, articleLink: true, country: true, writer: { select: { id: true, name: true } } } },
+            linkLogs: { include: { geos: true } },
+          },
+          orderBy: { addedAt: "desc" },
+        });
+
+        const normRank = new Map(pageNormKeys.map((k, idx) => [k, idx]));
+        products.sort((a, b) => {
+          const ra = normRank.get((a.name || "").trim().toLowerCase()) ?? 999999;
+          const rb = normRank.get((b.name || "").trim().toLowerCase()) ?? 999999;
+          if (ra !== rb) return ra - rb;
+          return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+        });
+      }
+    } else {
+      const [allProds, pubSitesCount] = await Promise.all([
+        prisma.product.findMany({
+          where: productWhere,
+          include: {
+            site: { select: { id: true, name: true, url: true, bridgeUrl: true, allowCountrySpecific: true } },
+            category: { select: { id: true, name: true } },
+            addedBy: { select: { id: true, name: true, role: true } },
+            updatedBy: { select: { id: true, name: true, role: true } },
+            article: { select: { id: true, status: true, articleLink: true, country: true, writer: { select: { id: true, name: true } } } },
+            linkLogs: { include: { geos: true } },
+          },
+          orderBy: { addedAt: "desc" },
+        }),
+        prisma.site.count({
+          where: {
+            name: { not: "Product Research" },
+            ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
+          },
+        }),
+      ]);
+      products = allProds;
+      totalPublishingSites = pubSitesCount;
+    }
 
     let productSiteOccurrences: { name: string; siteId: number }[] = [];
     if (products.length > 0) {
@@ -923,6 +1029,10 @@ export async function GET(req: NextRequest) {
           page,
           limit,
           totalPages: Math.ceil(totalProductsCount / limit),
+        },
+        summary: {
+          totalUniqueCount: totalProductsCount,
+          pendingUniqueCount,
         },
       };
     }

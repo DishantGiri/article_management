@@ -47,7 +47,7 @@ function parseCSVLine(line: string, delimiter = ","): string[] {
   return result.map((val) => val.replace(/^"|"$/g, "").trim());
 }
 
-const KNOWN_SITE_CODES = ["dhs", "smg", "tbr", "grc", "sc", "sv", "sd", "st", "sp", "jir", "rbr", "hsb"];
+const KNOWN_SITE_CODES = ["dhs", "smg", "tbr", "grc", "sc", "sv", "sd", "st", "sp", "jir", "rbr", "hsb", "hse", "bhfr", "hsblog", "hpr"];
 
 function isPositive(val: string): boolean {
   const s = val.trim().toLowerCase();
@@ -78,6 +78,10 @@ function parseCSV(text: string): Record<string, any>[] {
 
       if (h === "name" || h === "productname" || h === "product" || h === "title") {
         obj.name = val;
+      } else if (h === "slug") {
+        obj.slug = val;
+      } else if (h === "country" || h === "geo") {
+        obj.country = val;
       } else if (h === "category" || h === "categoryname" || h === "producttype" || h === "type") {
         obj.categoryName = val;
       } else if (h === "source" || h === "productsource") {

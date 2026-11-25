@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getOrCreateResearchSite } from "@/lib/researchSite";
 import { resolveSite } from "@/lib/site-resolver";
+import { resolveUsers, isPlaceholderName } from "@/lib/user-resolver";
 import { delByPattern } from "@/lib/redis";
 
 // POST /api/products/import - Import products from parsed CSV
@@ -110,19 +111,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const allDbUsers = await prisma.user.findMany({
-      select: { id: true, name: true, email: true },
-    });
+    const [allDbUsers, allDbSiteAccess] = await Promise.all([
+      prisma.user.findMany({
+        select: { id: true, name: true, email: true, role: true, hasLeftCompany: true },
+      }),
+      prisma.siteAccess.findMany({
+        select: { userId: true, siteId: true, role: true },
+      }),
+    ]);
 
     const importedProducts = [];
     const skippedDuplicates: string[] = [];
     const errors: string[] = [];
 
     const standardKeys = new Set([
-      "name", "productname", "product_name", "title",
+      "name", "productname", "product_name", "title", "slug", "country", "geo",
       "categoryname", "category", "producttype", "type",
       "productcategory", "source", "trend", "trendlevel",
-      "trendlink", "previewlink", "remarks", "date",
+      "trendlink", "previewlink", "remarks", "remark", "notes", "date",
       "researchedby", "researcher", "addedby", "added_by", "user", "author", "creator",
       "productavailability", "availability", "affiliatenetwork",
       "affiliate", "network", "selectedsites", "sitename", "site", "website",
@@ -133,7 +139,7 @@ export async function POST(req: NextRequest) {
       const row = products[i];
       const rowNum = i + 1;
 
-      const name = (row.name || row["Product Name"] || row["product_name"] || row.title || "").trim();
+      const name = String(row.name || row["Product Name"] || row["product_name"] || row.title || "").trim();
       if (!name) {
         errors.push(`Row ${rowNum}: Product Name is required.`);
         continue;
@@ -144,7 +150,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Added By / Researched By user matching from the sheet
-      const rawAddedBy = (
+      const rawAddedBy = String(
         row.researchedBy ||
         row["Researched By"] ||
         row["researched_by"] ||
@@ -162,25 +168,8 @@ export async function POST(req: NextRequest) {
         ""
       ).trim();
 
-      let rowAddedById = Number(addedById);
-      if (rawAddedBy) {
-        const targetSearch = rawAddedBy.toLowerCase();
-        const matchedUser = allDbUsers.find(
-          (u) =>
-            (u.name && u.name.trim().toLowerCase() === targetSearch) ||
-            (u.email && u.email.trim().toLowerCase() === targetSearch) ||
-            (u.email && u.email.trim().toLowerCase().split("@")[0] === targetSearch)
-        );
-
-        if (!matchedUser) {
-          errors.push(`Row ${rowNum} ("${name}"): User "${rawAddedBy}" specified in sheet not found in system.`);
-          continue;
-        }
-        rowAddedById = matchedUser.id;
-      }
-
       // Category / Product Type
-      const categoryName = (
+      const categoryName = String(
         row.categoryName ||
         row.category ||
         row["Category Name"] ||
@@ -191,30 +180,36 @@ export async function POST(req: NextRequest) {
         "Supplements"
       ).trim();
 
-      const productCategory = (
+      const productCategory = String(
         row.productCategory ||
         row["Product Category"] ||
         row["Product Category Name"] ||
         categoryName
       ).trim();
 
+      const explicitSlug = String(row.slug || row["Slug"] || "").trim();
+      const generatedSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const productSlug = explicitSlug || generatedSlug || null;
+
+      const country = String(row.country || row["Country"] || row["GEO"] || "").trim() || null;
+
       // Source
-      const source = (row.source || row["Source"] || "").trim() || null;
+      const source = String(row.source || row["Source"] || "").trim() || null;
 
       // Trend Level & Link
       let trendLevel = "HIGH";
-      const rawTrend = (row.trendLevel || row.trend || row["Trend"] || "").trim().toUpperCase();
+      const rawTrend = String(row.trendLevel || row.trend || row["Trend"] || "").trim().toUpperCase();
       if (rawTrend.includes("MOD")) trendLevel = "MODERATE";
       else if (rawTrend.includes("LOW")) trendLevel = "LOW";
       else if (rawTrend.includes("HIGH")) trendLevel = "HIGH";
 
-      let trendLink = (row.trendLink || row["Trend Link"] || "").trim() || null;
-      if (!trendLink && (row.trend || "").startsWith("http")) {
+      let trendLink = String(row.trendLink || row["Trend Link"] || "").trim() || null;
+      if (!trendLink && String(row.trend || "").startsWith("http")) {
         trendLink = String(row.trend).trim();
       }
 
       // Affiliate Network
-      const rawAffiliate = (
+      const rawAffiliate = String(
         row.affiliateName ||
         row["Affiliate Network"] ||
         row["affiliate_network"] ||
@@ -233,29 +228,33 @@ export async function POST(req: NextRequest) {
       const affiliateName = isNoAffiliate ? "No Affiliate" : rawAffiliate;
 
       // Preview Link
-      const previewLink = (row.previewLink || row["Preview Link"] || "").trim() || null;
+      const previewLink = String(row.previewLink || row["Preview Link"] || "").trim() || null;
 
-      // Remarks, Availability, Researched By
-      let remarks = (row.remarks || row["Remarks"] || "").trim();
-      const availability = (row.productAvailability || row["Product Availability"] || "").trim();
-      const researchedBy = rawAddedBy;
-      const extraNotes: string[] = [];
-      if (availability && !["available", "yes", "true", "1", "ok"].includes(availability.toLowerCase())) {
-        extraNotes.push(`Availability: ${availability}`);
-      }
-      if (researchedBy) {
-        extraNotes.push(`Researched by: ${researchedBy}`);
-      }
-      if (extraNotes.length > 0) {
-        remarks = remarks ? `${remarks} | ${extraNotes.join(" | ")}` : extraNotes.join(" | ");
+      // Remarks & Availability (preserve exact sheet remarks cleanly)
+      let remarks = String(row.remarks || row["Remarks"] || row["Remark"] || row["Notes"] || "").trim();
+      const availability = String(row.productAvailability || row["Product Availability"] || "").trim();
+      if (
+        availability &&
+        !["available", "yes", "true", "1", "ok"].includes(availability.toLowerCase()) &&
+        !isPlaceholderName(availability)
+      ) {
+        const availNote = `Availability: ${availability}`;
+        remarks = remarks ? `${remarks} | ${availNote}` : availNote;
       }
 
-      // Date
+      // Date (noon UTC avoids calendar day shift across timezones)
       let addedAt = new Date();
-      if (row.date || row["Date"]) {
-        const parsedDate = new Date(row.date || row["Date"]);
-        if (!isNaN(parsedDate.getTime())) {
-          addedAt = parsedDate;
+      const rawDate = row.date || row["Date"] || row["Added Date"];
+      if (rawDate) {
+        const dateStr = String(rawDate).trim();
+        const ymd = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (ymd) {
+          addedAt = new Date(Date.UTC(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]), 12, 0, 0));
+        } else {
+          const parsedDate = new Date(dateStr);
+          if (!isNaN(parsedDate.getTime())) {
+            addedAt = parsedDate;
+          }
         }
       }
 
@@ -271,7 +270,7 @@ export async function POST(req: NextRequest) {
       }
 
       // B. Check if single siteName column is present
-      const singleSite = (row.siteName || row.site || row["Site Name"] || row.sitename || row.website || "").trim();
+      const singleSite = String(row.siteName || row.site || row["Site Name"] || row.sitename || row.website || "").trim();
       if (singleSite) {
         const s = resolveSite(singleSite, allDbSites);
         if (s && !targetSites.some((t) => t.id === s.id)) targetSites.push(s);
@@ -308,6 +307,22 @@ export async function POST(req: NextRequest) {
             targetSites.push(allDbSites[0]);
           }
         }
+      }
+
+      // Match Added By / Researched By user using site-aware smart resolver
+      let rowAddedById = Number(addedById);
+      if (rawAddedBy && !isPlaceholderName(rawAddedBy)) {
+        const matchedUsers = resolveUsers(rawAddedBy, allDbUsers, {
+          rolePreference: isProductResearcherUser ? "PRODUCT_RESEARCHER" : "LINKER",
+          targetSiteId: targetSites[0]?.id ?? null,
+          siteAccessList: allDbSiteAccess,
+        });
+
+        if (matchedUsers.length === 0) {
+          errors.push(`Row ${rowNum} ("${name}"): User "${rawAddedBy}" specified in sheet not found in system.`);
+          continue;
+        }
+        rowAddedById = matchedUsers[0].id;
       }
 
       // Collect all detected site names for targetSites string
@@ -385,6 +400,8 @@ export async function POST(req: NextRequest) {
           const newProduct = await prisma.product.create({
             data: {
               name,
+              slug: productSlug,
+              country,
               siteId: researchSite.id, // Assigned to Product Research catalog, not live publishing sites!
               targetSites: targetSitesStr,
               categoryId: category.id,
@@ -465,6 +482,8 @@ export async function POST(req: NextRequest) {
           const newProduct = await prisma.product.create({
             data: {
               name,
+              slug: productSlug,
+              country,
               siteId: site.id,
               targetSites: targetSitesStr,
               categoryId: category.id,

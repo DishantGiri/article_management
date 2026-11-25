@@ -137,6 +137,7 @@ function ProductsPageContent() {
   const [activeTab, setActiveTab] = useState<"products" | "my-articles">("products");
   const [myArticles, setMyArticles] = useState<any[]>([]);
   const [totalProductsCount, setTotalProductsCount] = useState(0);
+  const [pendingProductsCount, setPendingProductsCount] = useState(0);
   const [totalMyArticlesCount, setTotalMyArticlesCount] = useState(0);
   const [allSitesList, setAllSitesList] = useState<string[]>([]);
   const [allUsersList, setAllUsersList] = useState<string[]>([]);
@@ -303,7 +304,12 @@ function ProductsPageContent() {
       .then((productsData) => {
         const prods = Array.isArray(productsData) ? productsData : (productsData?.products || []);
         setProducts(prods);
-        setTotalProductsCount(productsData?.pagination?.total ?? prods.length);
+        const uniqueInSlice = new Set(prods.map((p: any) => (p.name || "").trim().toLowerCase()).filter(Boolean)).size;
+        setTotalProductsCount(productsData?.pagination?.total ?? productsData?.summary?.totalUniqueCount ?? uniqueInSlice);
+        setPendingProductsCount(
+          productsData?.summary?.pendingUniqueCount ??
+            prods.filter((p: any) => !p.article || p.article.status === "PENDING").length
+        );
         setSelectedProduct((curr) => {
           if (!curr) return null;
           const updated = prods.find((p: any) => p.id === curr.id || (p.name && curr.name && p.name.trim().toLowerCase() === curr.name.trim().toLowerCase()));
@@ -719,10 +725,6 @@ function ProductsPageContent() {
     return Array.from(map.values());
   }, [filtered]);
 
-  const uniqueProductsCount = useMemo(() => {
-    return new Set(products.map((p) => (p.name || "").trim().toLowerCase()).filter(Boolean)).size;
-  }, [products]);
-
   const sortedFiltered = useMemo(() => {
     if (!search || !search.trim()) return collapsedProducts;
     const q = search.trim().toLowerCase();
@@ -1028,7 +1030,7 @@ function ProductsPageContent() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between h-28">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Products</span>
           <span className="text-3xl font-extrabold text-[#7C3AED] dark:text-[#A78BFA]">
-            {uniqueProductsCount}
+            {totalProductsCount}
           </span>
         </div>
 
@@ -1036,7 +1038,7 @@ function ProductsPageContent() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between h-28">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Pending Products</span>
           <span className="text-3xl font-extrabold text-[#F59E0B] dark:text-[#FBBF24]">
-            {stats?.unlinkedProducts?.length ?? products.filter((p) => !p.article || p.article.status === "PENDING").length}
+            {pendingProductsCount}
           </span>
         </div>
 

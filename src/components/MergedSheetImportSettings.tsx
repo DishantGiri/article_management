@@ -90,8 +90,25 @@ function splitPersonNames(raw: string): string[] {
     );
 }
 
+function normalizeCellKey(k: string): string {
+  return String(k || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function findRowVal(row: any, ...aliases: string[]): any {
+  const normSet = new Set(aliases.map(normalizeCellKey));
+  for (const k of Object.keys(row || {})) {
+    if (normSet.has(normalizeCellKey(k))) {
+      const val = row[k];
+      if (val !== undefined && val !== null && String(val).trim() !== "") {
+        return val;
+      }
+    }
+  }
+  return "";
+}
+
 function cleanUrl(raw?: any): string | null {
-  if (!raw) return null;
+  if (raw === undefined || raw === null) return null;
   const str = String(raw).trim();
   if (!str) return null;
   const lower = str.toLowerCase();
@@ -116,10 +133,10 @@ function cleanUrl(raw?: any): string | null {
   ) {
     return null;
   }
-  if (str.startsWith("http://") || str.startsWith("https://")) {
+  if (/^https?:\/\//i.test(str)) {
     return str;
   }
-  if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\/.*)?$/.test(str)) {
+  if (!/\s/.test(str) && /^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+([\/?#].*)?$/.test(str)) {
     return `https://${str}`;
   }
   return null;
@@ -128,7 +145,7 @@ function cleanUrl(raw?: any): string | null {
 function extractPreviewGeos(row: any): string[] {
   const geos: string[] = [];
 
-  for (const k of Object.keys(row)) {
+  for (const k of Object.keys(row || {})) {
     const cleaned = k.trim().replace(/^["']+|["']+$/g, "").trim();
     const upper = cleaned.toUpperCase();
     if (
@@ -136,47 +153,76 @@ function extractPreviewGeos(row: any): string[] {
         "ID",
         "NO",
         "URL",
+        "URI",
         "STATUS",
         "TYPE",
         "DATE",
         "SITE",
         "SITE NAME",
+        "SITENAME",
         "WEBSITE",
         "NAME",
         "PRODUCT NAME",
+        "PRODUCTNAME",
         "TITLE",
+        "SLUG",
         "CATEGORY",
+        "PRODUCT CATEGORY",
+        "PRODUCT CATEGORY NAME",
+        "PRODUCT TYPE",
         "NETWORK",
         "AFFILIATE NETWORK",
         "AFFILIATE LINK",
         "ARTICLE LINK",
+        "ARTICLE URL",
         "BUY LINK",
         "BUY NOW LINK",
+        "BUY NOW",
+        "DIRECT BUY LINK",
+        "LANDING LINK",
+        "LANDING PAGE LINK",
         "BRIDGE LINK",
         "BRIDGE PAGE LINK",
         "BRIDGEPAGE LINK",
+        "BRIDGE URL",
+        "BRIDGE",
         "LINK STATUS",
         "ARTICLE STATUS",
         "ADDED DATE",
         "PUBLISH DATE",
+        "COMPLETED DATE",
         "WRITER",
         "WRITER NAME",
+        "AUTHOR",
         "LINKER",
         "LINKER NAME",
         "REMARKS",
+        "REMARK",
         "NOTES",
         "NOTE",
+        "COMMENTS",
+        "LINKER REMARKS",
+        "GEO",
+        "GEOS",
+        "TARGET GEOS",
+        "COUNTRY",
+        "COUNTRIES",
+        "__SHEETNAME",
+        "__ROWID",
       ].includes(upper)
     ) {
       continue;
     }
 
     let geoCode: string | null = null;
-    if (/^[A-Z]{2}$/.test(upper) || upper === "GLOBAL" || upper === "WW") {
-      geoCode = upper === "WW" ? "GLOBAL" : upper;
+    if (/^[A-Z]{2}$/.test(upper) || upper === "GLOBAL" || upper === "WORLDWIDE" || upper === "WW") {
+      geoCode = upper === "WW" || upper === "WORLDWIDE" ? "GLOBAL" : upper;
     } else {
-      const m = cleaned.match(/^([A-Za-z]{2}|GLOBAL|WW)\s*[-_]?\s*(link|affiliate\s*link|url)?$/i);
-      if (m && m[1]) geoCode = m[1].toUpperCase() === "WW" ? "GLOBAL" : m[1].toUpperCase();
+      const m = cleaned.match(/^([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)\s*[-_]?\s*(link|affiliate\s*link|url)?$/i);
+      if (m && m[1]) {
+        const c = m[1].toUpperCase();
+        geoCode = c === "WW" || c === "WORLDWIDE" ? "GLOBAL" : c;
+      }
     }
 
     if (geoCode) {
@@ -188,17 +234,15 @@ function extractPreviewGeos(row: any): string[] {
   }
 
   const combined = String(
-    row["Geo Links"] ||
-      row["Country Links"] ||
-      row["Multiple Geos"] ||
-      ""
+    findRowVal(row, "Geo Links", "Country Links", "Multiple Geos", "Country Specific Links") || ""
   ).trim();
   if (combined) {
     const lines = combined.split(/[\r\n;,|]+/);
     for (const l of lines) {
-      const m = l.match(/^\s*([A-Za-z]{2}|GLOBAL|WW)\s*[:=\-–—\t]+\s*(.+)$/);
+      const m = l.match(/^\s*([A-Za-z]{2}|GLOBAL|WORLDWIDE|WW)\s*[:=\-–—\t]+\s*(.+)$/);
       if (m) {
-        const code = m[1].toUpperCase() === "WW" ? "GLOBAL" : m[1].toUpperCase();
+        const up = m[1].toUpperCase();
+        const code = up === "WW" || up === "WORLDWIDE" ? "GLOBAL" : up;
         if (cleanUrl(m[2]) && !geos.includes(code)) {
           geos.push(code);
         }
@@ -383,10 +427,12 @@ export default function MergedSheetImportSettings() {
 
     try {
       const [XLSX, buffer] = await Promise.all([import("xlsx"), file.arrayBuffer()]);
-      const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+      // Read with cellDates: false to prevent SheetJS timezone shifting on Excel native dates
+      const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
 
       const detectedSheets: string[] = [];
       const parsedRows: any[] = [];
+      const DATE_COL_KEYS = new Set(["addeddate", "publishdate", "completeddate", "date"]);
 
       for (const name of workbook.SheetNames) {
         const clean = name.trim().toLowerCase();
@@ -399,33 +445,51 @@ export default function MergedSheetImportSettings() {
         const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
         for (let idx = 0; idx < rows.length; idx++) {
-          const row = rows[idx];
-          const prodName = (
-            row["Product Name"] ||
-            row["product_name"] ||
-            row["ProductName"] ||
-            row["Title"] ||
-            row["name"] ||
-            ""
+          const rawRow = rows[idx];
+          const normalizedRow: Record<string, any> = {};
+
+          // Normalize Excel serial dates on date columns into exact YYYY-MM-DD strings
+          for (const k of Object.keys(rawRow)) {
+            const val = rawRow[k];
+            const normK = normalizeCellKey(k);
+            if (DATE_COL_KEYS.has(normK) && typeof val === "number" && Number.isFinite(val)) {
+              const dc = XLSX.SSF.parse_date_code(val);
+              if (dc && dc.y >= 1900) {
+                const mm = String(dc.m).padStart(2, "0");
+                const dd = String(dc.d).padStart(2, "0");
+                normalizedRow[k] = `${dc.y}-${mm}-${dd}`;
+                continue;
+              }
+            }
+            normalizedRow[k] = val;
+          }
+
+          const prodName = String(
+            findRowVal(normalizedRow, "Product Name", "Product", "Title", "Name") || ""
           ).trim();
 
           if (!prodName) continue;
 
           // If no site name in row, default to tab name
-          const site = (
-            row["Site Name"] ||
-            row["site_name"] ||
-            row["Site"] ||
-            row["Website"] ||
-            name
+          const site = String(
+            findRowVal(normalizedRow, "Site Name", "Site", "Website", "Sitename") || name
+          ).trim();
+
+          const linkerName = String(
+            findRowVal(normalizedRow, "Linker Name", "Linker", "Researched By", "Researcher") || ""
+          ).trim();
+          const writerName = String(
+            findRowVal(normalizedRow, "Writer Name", "Writer", "Author") || ""
           ).trim();
 
           parsedRows.push({
-            ...row,
+            ...normalizedRow,
             __sheetName: name,
             __rowId: `${name}_${idx}`,
             "Product Name": prodName,
             "Site Name": site,
+            ...(linkerName && !normalizedRow["Linker Name"] ? { "Linker Name": linkerName } : {}),
+            ...(writerName && !normalizedRow["Writer Name"] ? { "Writer Name": writerName } : {}),
           });
         }
       }
@@ -908,53 +972,43 @@ export default function MergedSheetImportSettings() {
                         </span>
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
-                        {row["Linker Name"] || "—"}
+                        {String(findRowVal(row, "Linker Name", "Linker", "Researched By", "Researcher") || "—")}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
-                        {row["Writer Name"] || "Unassigned"}
+                        {String(findRowVal(row, "Writer Name", "Writer", "Author") || "Unassigned")}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap text-slate-600 dark:text-slate-400">
-                        {row["Affiliate Network"] || "—"}
+                        {String(findRowVal(row, "Affiliate Network", "Network", "Affiliate") || "—")}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
-                          {row["Article Status"] || "PENDING"}
+                          {String(findRowVal(row, "Article Status", "Status") || "PENDING")}
                         </span>
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40">
-                          {row["Link Status"] || "REQUESTED"}
+                          {String(findRowVal(row, "Link Status") || "REQUESTED")}
                         </span>
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap text-slate-500 text-[11px]">
                         <div className="flex items-center gap-2">
-                          {row["Article Link"] && (
-                            <span title={`Article: ${row["Article Link"]}`} className="text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
+                          {findRowVal(row, "Article Link", "Article URL") && (
+                            <span title={`Article: ${findRowVal(row, "Article Link", "Article URL")}`} className="text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
                               <FileText className="w-3 h-3" />
                               <span>Article</span>
                             </span>
                           )}
-                          {(row["Buy Link"] ||
-                            row["Buy Now Link"] ||
-                            row["Bridge Page Link"] ||
-                            row["Bridgepage Link"] ||
-                            row["Bridge Link"]) && (
+                          {findRowVal(row, "Buy Link", "Buy Now Link", "Buy Now", "Direct Buy Link", "Landing Link", "Bridge Page Link", "Bridgepage Link", "Bridge Link", "Bridge URL", "Bridge") && (
                             <span
-                              title={`Buy Now: ${
-                                row["Buy Link"] ||
-                                row["Buy Now Link"] ||
-                                row["Bridge Page Link"] ||
-                                row["Bridgepage Link"] ||
-                                row["Bridge Link"]
-                              }`}
+                              title={`Buy Now: ${findRowVal(row, "Buy Link", "Buy Now Link", "Buy Now", "Direct Buy Link", "Landing Link", "Bridge Page Link", "Bridgepage Link", "Bridge Link", "Bridge URL", "Bridge")}`}
                               className="text-purple-600 dark:text-purple-400 flex items-center gap-0.5 font-bold"
                             >
                               <Link2 className="w-3 h-3" />
                               <span>Buy Now</span>
                             </span>
                           )}
-                          {row["Affiliate Link"] && (
-                            <span title={`Affiliate: ${row["Affiliate Link"]}`} className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                          {findRowVal(row, "Affiliate Link") && (
+                            <span title={`Affiliate: ${findRowVal(row, "Affiliate Link")}`} className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
                               <ExternalLink className="w-3 h-3" />
                               <span>Affiliate</span>
                             </span>
