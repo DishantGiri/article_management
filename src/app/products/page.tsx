@@ -1718,13 +1718,19 @@ function ProductsPageContent() {
                           )}
                         </td>
                         <td className="px-4 py-3.5 transition-opacity duration-200 group-hover:opacity-0">
-                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                            {formatTableDate(a.updatedAt || a.createdAt)}
+                          <span
+                            className="text-xs font-medium text-slate-500 dark:text-slate-400"
+                            title={a.startedAt ? "Article Write Date" : "Last Updated"}
+                          >
+                            {formatTableDate(a.startedAt || a.updatedAt)}
                           </span>
                         </td>
                         <td className="px-4 py-3.5 relative whitespace-nowrap">
-                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400 transition-opacity duration-200 group-hover:opacity-0">
-                            {formatTableDate(a.createdAt)}
+                          <span
+                            className="text-xs font-medium text-slate-500 dark:text-slate-400 transition-opacity duration-200 group-hover:opacity-0"
+                            title={a.completedAt || a.productCreatedAt ? "Publish Date" : "Product Added Date"}
+                          >
+                            {formatTableDate(a.completedAt || a.productCreatedAt || a.product?.addedAt)}
                           </span>
 
                           {/* Slider Action pill on hover */}
