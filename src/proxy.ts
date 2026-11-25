@@ -144,7 +144,13 @@ export default withAuth(
 
       if (!isRouteAllowed(pathname, token.role, effectiveRolesForRoute)) {
         console.log(`Access Denied: Roles ${JSON.stringify(effectiveRolesForRoute)} cannot access route ${pathname}`);
-        return NextResponse.redirect(new URL("/", req.url));
+        const fallbackUrl =
+          effectiveRolesForRoute.includes("GUEST") &&
+          !effectiveRolesForRoute.includes("SUPER_ADMIN") &&
+          !effectiveRolesForRoute.includes("ADMIN")
+            ? "/products"
+            : "/";
+        return NextResponse.redirect(new URL(fallbackUrl, req.url));
       }
     }
 

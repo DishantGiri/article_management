@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { validateUserName, sanitizeUserName } from "@/lib/user-validation";
 import { delByPattern } from "@/lib/redis";
 
+export const dynamic = "force-dynamic";
+
 type UserRole = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST";
 
 const VALID_ROLES = new Set<string>([
@@ -311,7 +313,7 @@ export async function PATCH(
     const normalizedRequestedRole = role ? String(role).toUpperCase() : undefined;
 
     const callerId = Number(session.user.id);
-    const callerRole = session.user.role || "";
+    const callerRole = (session.user.role || "").toUpperCase();
     const isSelf = callerId === targetId;
     const isAdmin = callerRole === "ADMIN" || callerRole === "SUPER_ADMIN";
 
@@ -327,6 +329,8 @@ export async function PATCH(
         name: true,
         email: true,
         role: true,
+        approved: true,
+        hasLeftCompany: true,
         siteAccess: {
           select: { siteId: true, role: true, roles: true },
         },
@@ -347,21 +351,24 @@ export async function PATCH(
       }
     }
 
-    // Validate and sanitize name if provided
+    // Validate and sanitize name only when changed from existing stored name
     let finalSanitizedName: string | undefined = undefined;
     if (name !== undefined) {
       if (typeof name !== "string") {
         return NextResponse.json({ error: "Full name must be a string." }, { status: 400 });
       }
-      // Strict check on raw input: rejects numbers, symbols, and special characters (e.g. test1, @, #, etc.)
-      const rawValidation = validateUserName(name);
-      if (!rawValidation.isValid) {
-        return NextResponse.json({ error: rawValidation.error }, { status: 400 });
-      }
-      finalSanitizedName = sanitizeUserName(name);
-      const sanitizedValidation = validateUserName(finalSanitizedName);
-      if (!sanitizedValidation.isValid) {
-        return NextResponse.json({ error: sanitizedValidation.error }, { status: 400 });
+      const trimmedIncomingName = name.trim();
+      const existingStoredName = (targetUser.name || "").trim();
+      if (trimmedIncomingName !== existingStoredName) {
+        const rawValidation = validateUserName(name);
+        if (!rawValidation.isValid) {
+          return NextResponse.json({ error: rawValidation.error }, { status: 400 });
+        }
+        finalSanitizedName = sanitizeUserName(name);
+        const sanitizedValidation = validateUserName(finalSanitizedName);
+        if (!sanitizedValidation.isValid) {
+          return NextResponse.json({ error: sanitizedValidation.error }, { status: 400 });
+        }
       }
     }
 
@@ -450,10 +457,30 @@ export async function PATCH(
     }
     const newRole = (resolvedRole || targetUser.role || "").toUpperCase() || null;
     const roleChanged = Boolean(resolvedRole && resolvedRole !== targetUser.role);
-    const isGlobalOrGuest = newRole === "ADMIN" || newRole === "SUPER_ADMIN" || newRole === "GUEST";
+
+    // If an unapproved GUEST (who hasn't left company) is promoted to a real team role, auto-approve their access
+    if (
+      targetUser.role === "GUEST" &&
+      roleChanged &&
+      newRole &&
+      newRole !== "GUEST" &&
+      !targetUser.hasLeftCompany &&
+      finalHasLeftCompany !== true &&
+      !targetUser.approved &&
+      finalApproved === undefined
+    ) {
+      finalApproved = true;
+    }
+
+    const shouldClearSiteAccess =
+      newRole === "GUEST" ||
+      (roleChanged &&
+        (newRole === "ADMIN" || newRole === "SUPER_ADMIN") &&
+        incomingSiteAccess === undefined &&
+        siteIds === undefined);
     let siteAccessUpdate = undefined;
 
-    if (isGlobalOrGuest) {
+    if (shouldClearSiteAccess) {
       if (targetUser.siteAccess.length > 0 || incomingSiteAccess !== undefined || siteIds !== undefined) {
         siteAccessUpdate = { deleteMany: {} };
       }

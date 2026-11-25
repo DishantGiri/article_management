@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { validateUserName } from "@/lib/user-validation";
 import { cached, delByPattern } from "@/lib/redis";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/users - list all users with their accesses
 export async function GET() {
   const session = await getServerSession(authOptions);

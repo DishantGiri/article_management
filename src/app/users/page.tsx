@@ -94,6 +94,23 @@ const ROLE_LABELS: Record<string, string> = {
   GUEST: "Guest / Pending",
 };
 
+function getSiteRoleBadgeMeta(role: string) {
+  switch (role) {
+    case "LINKER":
+      return { title: "Linker", shortLabel: "Linker", className: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300" };
+    case "WRITER":
+      return { title: "Writer", shortLabel: "Writer", className: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" };
+    case "PRODUCT_RESEARCHER":
+      return { title: "Product Researcher", shortLabel: "Researcher", className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300" };
+    case "SUPER_ADMIN":
+      return { title: "Super Admin", shortLabel: "SA", className: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300" };
+    case "ADMIN":
+      return { title: "Admin", shortLabel: "Admin", className: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" };
+    default:
+      return { title: "Team Lead", shortLabel: "TL", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" };
+  }
+}
+
 const ROLE_STYLES: Record<string, { badge: string; avatar: string; border: string }> = {
   SUPER_ADMIN: {
     badge: "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
@@ -256,8 +273,8 @@ export default function UsersPage() {
     try {
       if (showLoading && users.length === 0) setLoading(true);
       const [usersRes, sitesRes] = await Promise.all([
-        fetch("/api/users"),
-        fetch("/api/sites"),
+        fetch("/api/users", { cache: "no-store" }),
+        fetch("/api/sites", { cache: "no-store" }),
       ]);
       const usersData = usersRes.ok ? await usersRes.json() : [];
       const sitesData = sitesRes.ok ? await sitesRes.json() : [];
@@ -429,6 +446,7 @@ export default function UsersPage() {
         `Changed ${promoteRoleUser.name}'s role to ${ROLE_LABELS[selectedNewRole] || selectedNewRole}!`
       );
       setPromoteRoleUser(null);
+      fetchData(false);
     } catch (e: any) {
       toast.error(e.message || "Role change failed");
     } finally {
@@ -590,12 +608,18 @@ export default function UsersPage() {
     setFormSubmitted(true);
     const trimmedName = form.name.trim();
     const trimmedEmail = form.email.trim().toLowerCase();
+    const editingOrig = editingUserId ? users.find((u) => u.id === editingUserId) : null;
+    const isNameUnchangedOnEdit = Boolean(
+      editingUserId && editingOrig && trimmedName === (editingOrig.name || "").trim()
+    );
 
     const errors: { name?: string; email?: string } = {};
 
-    const nameValidation = validateUserName(trimmedName);
-    if (!nameValidation.isValid) {
-      errors.name = nameValidation.error;
+    if (!isNameUnchangedOnEdit) {
+      const nameValidation = validateUserName(trimmedName);
+      if (!nameValidation.isValid) {
+        errors.name = nameValidation.error;
+      }
     }
 
     if (!editingUserId) {
@@ -648,6 +672,12 @@ export default function UsersPage() {
       const method = editingUserId ? "PATCH" : "POST";
       const isGlobalOrGuestFormRole =
         form.role === "ADMIN" || form.role === "SUPER_ADMIN" || form.role === "GUEST";
+      const roleChangedFromOrig = Boolean(editingOrig && editingOrig.role !== form.role);
+      const shouldOmitSiteAccessOnAdminEdit =
+        Boolean(editingOrig) &&
+        !roleChangedFromOrig &&
+        (form.role === "ADMIN" || form.role === "SUPER_ADMIN");
+
       const siteAccess = isGlobalOrGuestFormRole
         ? []
         : form.siteIds.map((siteId) => ({
@@ -658,10 +688,20 @@ export default function UsersPage() {
       const payload: any = {
         ...form,
         ...(isGlobalOrGuestFormRole ? { siteIds: [], siteRolesMap: {}, teamLeadId: "" } : {}),
-        name: trimmedName,
         creatorId: currentUserId,
-        siteAccess,
+        ...(shouldOmitSiteAccessOnAdminEdit ? {} : { siteAccess }),
       };
+
+      if (shouldOmitSiteAccessOnAdminEdit) {
+        delete payload.siteIds;
+        delete payload.siteAccess;
+      }
+
+      if (isNameUnchangedOnEdit) {
+        delete payload.name;
+      } else {
+        payload.name = trimmedName;
+      }
 
       if (!editingUserId) {
         payload.email = trimmedEmail;
@@ -1116,6 +1156,7 @@ export default function UsersPage() {
               const isLead = u.role === "TEAM_LEAD";
               const isUserSuperAdmin = u.role === "SUPER_ADMIN";
               const isUserAdmin = u.role === "ADMIN";
+              const canManageUser = isSuperAdmin || (!isUserSuperAdmin && !isUserAdmin);
 
               return (
                 <div
@@ -1174,7 +1215,7 @@ export default function UsersPage() {
                           >
                             No Access
                           </span>
-                        ) : isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                        ) : isAdminOrSuperAdmin && canManageUser ? (
                           <button
                             onClick={() => handleQuickToggleApproval(u)}
                             className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer shrink-0 ${u.approved
@@ -1221,7 +1262,7 @@ export default function UsersPage() {
                           <Globe className="w-3 h-3 text-[#6D8196]" />
                           Working Sites ({u.siteAccess?.length || 0})
                         </span>
-                        {isAdminOrSuperAdmin && (
+                        {isAdminOrSuperAdmin && canManageUser && (
                           <button
                             onClick={() => handleOpenMigrateSites(u)}
                             className="text-[11px] font-bold text-[#6D8196] hover:text-[#5A6D81] transition cursor-pointer"
@@ -1242,37 +1283,18 @@ export default function UsersPage() {
                               >
                                 <span>{sa.site.name}</span>
                                 <span className="flex items-center gap-0.5 ml-0.5">
-                                  {roles.map((r) => (
-                                    <span
-                                      key={r}
-                                      title={
-                                        r === "LINKER"
-                                          ? "Linker"
-                                          : r === "WRITER"
-                                          ? "Writer"
-                                          : r === "PRODUCT_RESEARCHER"
-                                          ? "Product Researcher"
-                                          : "Team Lead"
-                                      }
-                                      className={`px-1 py-0.2 rounded text-[8px] font-extrabold ${
-                                        r === "LINKER"
-                                          ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                                          : r === "WRITER"
-                                          ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                                          : r === "PRODUCT_RESEARCHER"
-                                          ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
-                                          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                                      }`}
-                                    >
-                                      {r === "LINKER"
-                                        ? "Linker"
-                                        : r === "WRITER"
-                                        ? "Writer"
-                                        : r === "PRODUCT_RESEARCHER"
-                                        ? "Researcher"
-                                        : "TL"}
-                                    </span>
-                                  ))}
+                                  {roles.map((r) => {
+                                    const badge = getSiteRoleBadgeMeta(r);
+                                    return (
+                                      <span
+                                        key={r}
+                                        title={badge.title}
+                                        className={`px-1 py-0.2 rounded text-[8px] font-extrabold ${badge.className}`}
+                                      >
+                                        {badge.shortLabel}
+                                      </span>
+                                    );
+                                  })}
                                 </span>
                               </span>
                             );
@@ -1348,7 +1370,7 @@ export default function UsersPage() {
                   <div className="px-5 py-3.5 bg-[#FAF9F5] dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {/* Promote / Change Role Button */}
-                      {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) && (
+                      {isAdminOrSuperAdmin && canManageUser && (
                         <button
                           onClick={() => handleOpenPromoteRole(u)}
                           className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196] hover:text-[#6D8196] text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
@@ -1372,7 +1394,7 @@ export default function UsersPage() {
                       )}
 
                       {/* Migrate Sites Button */}
-                      {isAdminOrSuperAdmin && (
+                      {isAdminOrSuperAdmin && canManageUser && (
                         <button
                           onClick={() => handleOpenMigrateSites(u)}
                           className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-[#6D8196] hover:text-[#6D8196] text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
@@ -1384,7 +1406,7 @@ export default function UsersPage() {
                       )}
 
                       {/* Left Company Departure Toggle */}
-                      {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) && (
+                      {isAdminOrSuperAdmin && canManageUser && (
                         <button
                           onClick={() => handleQuickToggleLeftCompany(u)}
                           className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs ${u.hasLeftCompany
@@ -1413,7 +1435,7 @@ export default function UsersPage() {
                         <CalendarIcon className="w-3.5 h-3.5" />
                       </Link>
 
-                      {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) && (
+                      {isAdminOrSuperAdmin && canManageUser && (
                         <button
                           onClick={() => openEditModal(u)}
                           className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
@@ -1454,6 +1476,8 @@ export default function UsersPage() {
                   const roleMeta = ROLE_STYLES[roleKey] || ROLE_STYLES.WRITER;
                   const isWriter = u.role === "WRITER";
                   const isUserSuperAdmin = u.role === "SUPER_ADMIN";
+                  const isUserAdmin = u.role === "ADMIN";
+                  const canManageUser = isSuperAdmin || (!isUserSuperAdmin && !isUserAdmin);
 
                   return (
                     <tr
@@ -1499,37 +1523,18 @@ export default function UsersPage() {
                                 >
                                   <span>{sa.site.name}</span>
                                   <span className="flex items-center gap-0.5 ml-0.5">
-                                    {roles.map((r) => (
-                                      <span
-                                        key={r}
-                                        title={
-                                          r === "LINKER"
-                                            ? "Linker"
-                                            : r === "WRITER"
-                                            ? "Writer"
-                                            : r === "PRODUCT_RESEARCHER"
-                                            ? "Product Researcher"
-                                            : "Team Lead"
-                                        }
-                                        className={`px-1 py-0.2 rounded text-[8px] font-extrabold ${
-                                          r === "LINKER"
-                                            ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                                            : r === "WRITER"
-                                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                                            : r === "PRODUCT_RESEARCHER"
-                                            ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
-                                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                                        }`}
-                                      >
-                                        {r === "LINKER"
-                                          ? "Linker"
-                                          : r === "WRITER"
-                                          ? "Writer"
-                                          : r === "PRODUCT_RESEARCHER"
-                                          ? "Researcher"
-                                          : "TL"}
-                                      </span>
-                                    ))}
+                                    {roles.map((r) => {
+                                      const badge = getSiteRoleBadgeMeta(r);
+                                      return (
+                                        <span
+                                          key={r}
+                                          title={badge.title}
+                                          className={`px-1 py-0.2 rounded text-[8px] font-extrabold ${badge.className}`}
+                                        >
+                                          {badge.shortLabel}
+                                        </span>
+                                      );
+                                    })}
                                   </span>
                                 </span>
                               );
@@ -1537,7 +1542,7 @@ export default function UsersPage() {
                           ) : (
                             <span className="text-[11px] text-slate-400 italic">None</span>
                           )}
-                          {isAdminOrSuperAdmin && (
+                          {isAdminOrSuperAdmin && canManageUser && (
                             <button
                               onClick={() => handleOpenMigrateSites(u)}
                               className="text-[10px] font-bold text-[#6D8196] hover:underline cursor-pointer ml-1"
@@ -1592,7 +1597,7 @@ export default function UsersPage() {
                       {/* Approval Status */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                          {isAdminOrSuperAdmin && canManageUser ? (
                             <button
                               onClick={() => handleQuickToggleLeftCompany(u)}
                               className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer flex items-center gap-1 ${u.hasLeftCompany
@@ -1615,7 +1620,7 @@ export default function UsersPage() {
                             </span>
                           ) : null}
 
-                          {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                          {isAdminOrSuperAdmin && canManageUser ? (
                             <button
                               onClick={() => handleQuickTogglePartyFund(u)}
                               className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer flex items-center gap-1 ${u.commissionToPartyFund
@@ -1645,7 +1650,7 @@ export default function UsersPage() {
                             >
                               No Access
                             </span>
-                          ) : isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) ? (
+                          ) : isAdminOrSuperAdmin && canManageUser ? (
                             <button
                               onClick={() => handleQuickToggleApproval(u)}
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border transition cursor-pointer ${u.approved
@@ -1676,7 +1681,7 @@ export default function UsersPage() {
                       {/* Actions */}
                       <td className="px-4 py-3.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
-                          {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) && (
+                          {isAdminOrSuperAdmin && canManageUser && (
                             <button
                               onClick={() => handleOpenPromoteRole(u)}
                               className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-purple-600 text-[11px] font-bold transition cursor-pointer"
@@ -1692,7 +1697,7 @@ export default function UsersPage() {
                           >
                             <CalendarIcon className="w-4 h-4" />
                           </Link>
-                          {isAdminOrSuperAdmin && (!isUserSuperAdmin || isSuperAdmin) && (
+                          {isAdminOrSuperAdmin && canManageUser && (
                             <button
                               onClick={() => openEditModal(u)}
                               className="p-1 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition cursor-pointer"
