@@ -71,6 +71,9 @@ export interface AssignmentProduct {
     priority?: string;
     country?: string | null;
     articleLink?: string | null;
+    startedAt?: string | null;
+    completedAt?: string | null;
+    productCreatedAt?: string | null;
     writer?: { id?: number; name: string };
   };
   linkLogs?: Array<{
@@ -123,6 +126,9 @@ export interface SiteAvailabilityItem {
       writerName?: string;
       writerId?: number | null;
       articleLink?: string | null;
+      startedAt?: string | null;
+      completedAt?: string | null;
+      productCreatedAt?: string | null;
       isWritten?: boolean;
     } | null;
     linkCount?: number;
@@ -824,6 +830,56 @@ export default function AssignmentDetailsModal({
                             ({product.addedBy.role.replace(/_/g, " ")})
                           </span>
                         )}
+                      </span>
+                    </span>
+                  )}
+
+                  {product.addedAt && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700/60 shadow-2xs">
+                      <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                      <span>
+                        Added:{" "}
+                        <strong>
+                          {new Date(product.addedAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </strong>
+                      </span>
+                    </span>
+                  )}
+
+                  {product.article?.startedAt && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 text-xs font-semibold border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                      <span>
+                        Write Date:{" "}
+                        <strong>
+                          {new Date(product.article.startedAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </strong>
+                      </span>
+                    </span>
+                  )}
+
+                  {(product.article?.completedAt || product.article?.productCreatedAt) && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs">
+                      <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>
+                        Publish Date:{" "}
+                        <strong>
+                          {new Date(
+                            product.article.completedAt || product.article.productCreatedAt!
+                          ).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </strong>
                       </span>
                     </span>
                   )}

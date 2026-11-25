@@ -197,6 +197,9 @@ export async function GET(
                     writerName: match.article.writer?.name || "Unassigned",
                     writerId: match.article.writer?.id || null,
                     articleLink: match.article.articleLink || null,
+                    startedAt: match.article.startedAt || null,
+                    completedAt: match.article.completedAt || null,
+                    productCreatedAt: match.article.productCreatedAt || null,
                     isWritten: Boolean(
                       match.article.status === "COMPLETED" ||
                       match.article.status === "APPROVED" ||
