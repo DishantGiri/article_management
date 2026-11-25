@@ -793,6 +793,10 @@ function ProductsPageContent() {
         id: a.id,
         status: a.status,
         priority: a.priority,
+        articleLink: a.articleLink || baseProduct.article?.articleLink,
+        startedAt: a.startedAt || baseProduct.article?.startedAt,
+        completedAt: a.completedAt || baseProduct.article?.completedAt,
+        productCreatedAt: a.productCreatedAt || baseProduct.article?.productCreatedAt,
         writer: a.writer || baseProduct.article?.writer,
       },
     };
@@ -804,7 +808,7 @@ function ProductsPageContent() {
   const paginated = sortedFiltered;
   const paginatedMyArticles = sortedFilteredMyArticles;
 
-  const formatTableDate = (dateStr: string) => {
+  const formatTableDate = (dateStr?: string | null) => {
     if (!dateStr) return "-";
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return "-";
@@ -1625,8 +1629,8 @@ function ProductsPageContent() {
                     <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Type</th>
                     <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Status</th>
                     <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Article Link</th>
-                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Last Updated</th>
-                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Date</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Write Date</th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Publish / Added</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/70 dark:divide-slate-800/60">

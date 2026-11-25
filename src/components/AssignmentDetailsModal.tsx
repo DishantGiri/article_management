@@ -1216,6 +1216,44 @@ export default function AssignmentDetailsModal({
                               ) : (
                                 <span className="text-slate-400 font-medium">Ready for Writer</span>
                               )}
+                              {site.product?.addedAt && (
+                                <span className="text-slate-500 dark:text-slate-400" title="Product Added Date">
+                                  • Add:{" "}
+                                  <strong className="text-slate-700 dark:text-slate-200">
+                                    {new Date(site.product.addedAt).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })}
+                                  </strong>
+                                </span>
+                              )}
+                              {site.product?.article?.startedAt && (
+                                <span className="text-indigo-600 dark:text-indigo-400" title="Article Write Date">
+                                  • Write:{" "}
+                                  <strong>
+                                    {new Date(site.product.article.startedAt).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })}
+                                  </strong>
+                                </span>
+                              )}
+                              {(site.product?.article?.completedAt || site.product?.article?.productCreatedAt) && (
+                                <span className="text-emerald-600 dark:text-emerald-400" title="Publish Date">
+                                  • Pub:{" "}
+                                  <strong>
+                                    {new Date(
+                                      site.product.article.completedAt || site.product.article.productCreatedAt!
+                                    ).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })}
+                                  </strong>
+                                </span>
+                              )}
                               {site.product?.linkCount !== undefined && site.product.linkCount > 0 && (() => {
                                 const siteGeos = Array.from(
                                   new Set(
