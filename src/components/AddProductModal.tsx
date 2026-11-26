@@ -462,47 +462,10 @@ export default function AddProductModal({
     >
   >({});
 
-  // Inline creation states
-  const [showAddCat, setShowAddCat] = useState(false);
-  const [newCatName, setNewCatName] = useState("");
-  const [addingCat, setAddingCat] = useState(false);
-
   const [showAddSite, setShowAddSite] = useState(false);
   const [newSiteName, setNewSiteName] = useState("");
   const [newSiteUrl, setNewSiteUrl] = useState("");
   const [addingSite, setAddingSite] = useState(false);
-
-  const handleInlineAddCat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = newCatName.trim().replace(/\s+/g, " ");
-    if (!trimmed) return;
-
-    if (!/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
-      setError("Special characters are not allowed. Only letters, numbers, and spaces are permitted for product type names.");
-      toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "cat-char-error" });
-      return;
-    }
-
-    setAddingCat(true);
-    setError("");
-    try {
-      const res = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create category");
-      setCategories((prev) => [...prev, data]);
-      setForm((prev) => ({ ...prev, categoryIds: [...prev.categoryIds, data.id] }));
-      setNewCatName("");
-      setShowAddCat(false);
-    } catch (err: any) {
-      setError(err.message || "Failed to add category");
-    } finally {
-      setAddingCat(false);
-    }
-  };
 
   const handleInlineAddSite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -551,7 +514,6 @@ export default function AddProductModal({
       setSingleCheckStatus({ checking: false }); // ← clear stale check status
       setFieldErrors({});                   // ← clear stale field errors
       setCellErrors({});                    // ← clear stale cell errors
-      setShowAddCat(false);
       setShowAddSite(false);
       setShowCustomAffiliate(false);
       if (isProductResearcherRole) {
@@ -1412,45 +1374,10 @@ export default function AddProductModal({
                         Select Product Type <span className="text-rose-500">*</span>
                       </label>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Choose the product type for your products (e.g. Ecomm, Supplement)
+                        Choose the product type for your products (Ecom or Nutra)
                       </p>
                     </div>
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCat(!showAddCat)}
-                        className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        {showAddCat ? "Cancel" : "Add Product Type"}
-                      </button>
-                    )}
                   </div>
-
-                  {showAddCat && (
-                    <form onSubmit={handleInlineAddCat} className="p-3.5 bg-slate-50 dark:bg-[#131d31] rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
-                      <input
-                        type="text"
-                        value={newCatName}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (/[^a-zA-Z0-9 ]/.test(val)) {
-                            toast.error("Special characters are not allowed. Only letters, numbers, and spaces are permitted.", { id: "cat-char-error" });
-                          }
-                          setNewCatName(val.replace(/[^a-zA-Z0-9 ]/g, ""));
-                        }}
-                        placeholder="Product type name (e.g. Skin Care, Ecomm, Supplements)"
-                        className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
-                      />
-                      <button
-                        type="submit"
-                        disabled={addingCat || !newCatName.trim()}
-                        className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition cursor-pointer shadow-sm"
-                      >
-                        {addingCat ? "Saving..." : "Create & Select"}
-                      </button>
-                    </form>
-                  )}
 
                   {loading ? (
                     <div className="text-center py-12 text-xs text-slate-400 font-medium">Loading product types...</div>

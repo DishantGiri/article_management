@@ -7,6 +7,7 @@ import { X, Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, Info, Loader2 
 import { toast } from "react-hot-toast";
 import { cleanUrl, extractGeoLinksFromRow, isNullOrPlaceholder } from "@/lib/geo-link-parser";
 import { extractThreeDatesFromRow, formatNoonUtcYmd, isDateColumnKey } from "@/lib/sheet-dates";
+import { resolveImportedTypeAndCategory } from "@/lib/product-types";
 
 interface ImportProductModalProps {
   isOpen: boolean;
@@ -79,7 +80,9 @@ function normalizeParsedRowObject(rawEntries: Array<[string, any]>): Record<stri
       obj.slug = val;
     } else if (h === "country" || h === "geo") {
       obj.country = val;
-    } else if (h === "category" || h === "categoryname" || h === "producttype" || h === "type") {
+    } else if (h === "producttype" || h === "type") {
+      obj.productType = val;
+    } else if (h === "category" || h === "categoryname") {
       obj.categoryName = val;
     } else if (h === "productcategory" || h === "productcategoryname") {
       obj.productCategory = val;
@@ -309,7 +312,8 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
   const downloadTemplate = () => {
     const headers = [
       "Product Name",
-      "Type",
+      "Product Type",
+      "Category",
       "Source",
       "Trend",
       "Product Availability",
@@ -333,6 +337,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
     const sample = [
       [
         "Super Strength Protein",
+        "Nutra",
         "Supplements",
         "Affiliate",
         "HIGH",
@@ -356,6 +361,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
       ],
       [
         "Ultimate MultiVitamins",
+        "Nutra",
         "Supplements",
         "Competitor",
         "MODERATE",
@@ -458,7 +464,8 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
                       <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
                         <tr>
                           <th className="px-3 py-2 font-bold text-slate-500">Name</th>
-                          <th className="px-3 py-2 font-bold text-slate-500">Type</th>
+                          <th className="px-3 py-2 font-bold text-slate-500">Product Type</th>
+                          <th className="px-3 py-2 font-bold text-slate-500">Category</th>
                           <th className="px-3 py-2 font-bold text-slate-500">Source</th>
                           <th className="px-3 py-2 font-bold text-slate-500">Trend</th>
                           <th className="px-3 py-2 font-bold text-slate-500">Affiliate</th>
@@ -484,11 +491,27 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
                           const hasAff = Boolean(cleanUrl(row["Affiliate Link"] || row.affiliatelink || row["Affiliate URL"]));
                           const hasBuy = Boolean(cleanUrl(row["Buy Link"] || row["Buy Now Link"] || row.buylink || row.buynowlink));
                           const hasBridge = Boolean(cleanUrl(row["Bridge Page Link"] || row["Bridge Link"] || row.bridgepagelink));
+                          const resolvedTypeCat = resolveImportedTypeAndCategory({
+                            rawType: !isNullOrPlaceholder(row.productType || row["Product Type"] || row.type)
+                              ? (row.productType || row["Product Type"] || row.type)
+                              : null,
+                            rawCategoryCol: !isNullOrPlaceholder(row.categoryName || row["Category"])
+                              ? (row.categoryName || row["Category"])
+                              : null,
+                            rawProductCategoryCol: !isNullOrPlaceholder(row.productCategory || row["Product Category"])
+                              ? (row.productCategory || row["Product Category"])
+                              : null,
+                          });
 
                           return (
                             <tr key={idx} className="hover:bg-slate-50/50">
                               <td className="px-3 py-2 font-semibold text-slate-700">{row.name || "--"}</td>
-                              <td className="px-3 py-2 text-slate-500">{!isNullOrPlaceholder(row.categoryName) ? row.categoryName : (!isNullOrPlaceholder(row.type) ? row.type : "--")}</td>
+                              <td className="px-3 py-2">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
+                                  {resolvedTypeCat.productType}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-slate-500">{resolvedTypeCat.productCategory || "--"}</td>
                               <td className="px-3 py-2 text-slate-500">{!isNullOrPlaceholder(row.source) ? row.source : "--"}</td>
                               <td className="px-3 py-2 text-slate-500">{!isNullOrPlaceholder(row.trendLevel) ? row.trendLevel : "--"}</td>
                               <td className="px-3 py-2 text-slate-500">{affiliateDisplay}</td>

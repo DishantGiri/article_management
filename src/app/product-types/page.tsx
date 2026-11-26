@@ -30,12 +30,6 @@ export default function ProductTypesAndCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
 
-  // Product Type modal states
-  const [isAddTypeModalOpen, setIsAddTypeModalOpen] = useState(false);
-  const [isEditTypeModalOpen, setIsEditTypeModalOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<ProductType | null>(null);
-  const [typeName, setTypeName] = useState("");
-
   // Product Category modal states
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
   const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
@@ -127,105 +121,6 @@ export default function ProductTypesAndCategoriesPage() {
       fetch(`/api/notifications/${notif.id}/read`, { method: "PATCH" });
       setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)));
     }
-  };
-
-  // ─── PRODUCT TYPE HANDLERS ─────────────────────────────────
-  const handleAddType = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = typeName.trim().replace(/\s+/g, " ");
-    if (!trimmed) return;
-
-    if (!/^[a-zA-Z0-9 &'\-/]+$/.test(trimmed)) {
-      setError("Special characters are not allowed. Only letters, numbers, spaces, and (&, -, ', /) are permitted.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to add product type");
-
-      toast.success(`Product Type "${trimmed}" created successfully!`);
-      setIsAddTypeModalOpen(false);
-      setTypeName("");
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUpdateType = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedType) return;
-    const trimmed = typeName.trim().replace(/\s+/g, " ");
-    if (!trimmed) return;
-
-    if (!/^[a-zA-Z0-9 &'\-/]+$/.test(trimmed)) {
-      setError("Special characters are not allowed. Only letters, numbers, spaces, and (&, -, ', /) are permitted.");
-      return;
-    }
-
-    if (selectedType.name.trim() === trimmed) {
-      toast.error("No changes made.");
-      setIsEditTypeModalOpen(false);
-      setSelectedType(null);
-      setTypeName("");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/categories/${selectedType.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update product type");
-
-      toast.success(`Product Type updated to "${trimmed}"!`);
-      setIsEditTypeModalOpen(false);
-      setSelectedType(null);
-      setTypeName("");
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteType = (type: ProductType) => {
-    setConfirmMsg(`Are you sure you want to delete Product Type "${type.name}"?`);
-    setConfirmAction(() => async () => {
-      try {
-        const res = await fetch(`/api/categories/${type.id}`, { method: "DELETE" });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to delete product type");
-
-        toast.success(`Product Type "${type.name}" deleted!`);
-        fetchData();
-      } catch (err: any) {
-        toast.error(err.message || "Failed to delete");
-      }
-    });
-    setConfirmOpen(true);
-  };
-
-  const openEditType = (type: ProductType) => {
-    setSelectedType(type);
-    setTypeName(type.name);
-    setError(null);
-    setIsEditTypeModalOpen(true);
   };
 
   // ─── PRODUCT CATEGORY HANDLERS ─────────────────────────────
@@ -329,14 +224,14 @@ export default function ProductTypesAndCategoriesPage() {
 
   if (sessionStatus === "loading") {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] flex items-center justify-center">
+      <div className="p-4 sm:p-6 lg:p-8 w-full min-h-screen bg-[#FAF9F5] flex items-center justify-center">
         <LoadingScreen message="Loading types and categories..." size="md" />
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-100 space-y-6" suppressHydrationWarning>
+    <div className="p-4 sm:p-6 lg:p-8 w-full min-h-screen bg-[#FAF9F5] dark:bg-slate-950 text-[#4A4A4A] dark:text-slate-100 space-y-6" suppressHydrationWarning>
       {/* ─── MODERN DESIGN TOP HEADER ──────────────────────────── */}
       <TopHeader
         notifications={notifications}
@@ -364,31 +259,17 @@ export default function ProductTypesAndCategoriesPage() {
 
         <div className="flex items-center gap-3 pb-3 sm:pb-0">
           {canManage && (
-            <>
-              <button
-                onClick={() => {
-                  setTypeName("");
-                  setError(null);
-                  setIsAddTypeModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#00A389] hover:bg-[#008f78] text-white rounded-lg text-xs font-semibold shadow-xs transition active:scale-98 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Product Type</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setCatName("");
-                  setError(null);
-                  setIsAddCategoryModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#00A389] hover:bg-[#008f78] text-white rounded-lg text-xs font-semibold shadow-xs transition active:scale-98 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Product Categories</span>
-              </button>
-            </>
+            <button
+              onClick={() => {
+                setCatName("");
+                setError(null);
+                setIsAddCategoryModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#00A389] hover:bg-[#008f78] text-white rounded-lg text-xs font-semibold shadow-xs transition active:scale-98 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Product Categories</span>
+            </button>
           )}
         </div>
       </div>
@@ -401,9 +282,14 @@ export default function ProductTypesAndCategoriesPage() {
         <div className="space-y-8 pt-1">
           {/* ─── SECTION 1: PRODUCT TYPES ──────────────────────────── */}
           <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white">Product Types</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Product Types</h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                Fixed: Ecom &amp; Nutra
+              </span>
+            </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
-              Manage overarching product types (e.g. Ecom, Nutra) assigned across websites
+              Core product types (Ecom and Nutra) assigned across websites. Add niche classifications under Product Categories below.
             </p>
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden mt-3">
@@ -414,14 +300,13 @@ export default function ProductTypesAndCategoriesPage() {
                       <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Type</th>
                       <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-32">Sites</th>
                       <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-36">Products</th>
-                      <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-28">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
                     {productTypes.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-xs text-slate-400">
-                          No product types found. Click &quot;Add Product Type&quot; above to create one.
+                        <td colSpan={3} className="px-6 py-8 text-center text-xs text-slate-400">
+                          No product types found.
                         </td>
                       </tr>
                     ) : (
@@ -435,30 +320,6 @@ export default function ProductTypesAndCategoriesPage() {
                           </td>
                           <td className="px-6 py-4 w-36">
                             <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{type._count?.products || 0}</span>
-                          </td>
-                          <td className="px-6 py-4 w-28">
-                            <div className="flex items-center gap-3">
-                              {canManage && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => openEditType(type)}
-                                    className="text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition cursor-pointer p-0.5"
-                                    title="Edit Product Type"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteType(type)}
-                                    className="text-rose-400 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 transition cursor-pointer p-0.5"
-                                    title="Delete Product Type"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
                           </td>
                         </tr>
                       ))
@@ -476,9 +337,9 @@ export default function ProductTypesAndCategoriesPage() {
               Manage product niche categories (e.g. Skincare, Supplements, Fitness, Weight Loss) used across products
             </p>
 
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden mt-3 max-w-[480px]">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden mt-3 w-full">
               <div className="overflow-x-auto scroll-smooth">
-                <table className="w-full text-left border-collapse min-w-[550px]">
+                <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-800 bg-[#F8F9FA] dark:bg-slate-800/60">
                       <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Product Categories</th>
@@ -529,121 +390,6 @@ export default function ProductTypesAndCategoriesPage() {
                 </table>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── MODAL: ADD PRODUCT TYPE ───────────────────────────── */}
-      {isAddTypeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-scaleUp">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Add Product Type</h3>
-              <button
-                type="button"
-                onClick={() => setIsAddTypeModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleAddType} className="p-6 space-y-4">
-              {error && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                  <span>{error}</span>
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Product Type Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Ecom, Nutra, Supplement"
-                  value={typeName}
-                  onChange={(e) => {
-                    setTypeName(e.target.value);
-                    setError(null);
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00A389] focus:bg-white dark:focus:bg-slate-800"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddTypeModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !typeName.trim()}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#00A389] hover:bg-[#008f78] text-white disabled:opacity-50 transition cursor-pointer shadow-xs"
-                >
-                  {isSubmitting ? "Adding..." : "Add Product Type"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─── MODAL: EDIT PRODUCT TYPE ──────────────────────────── */}
-      {isEditTypeModalOpen && selectedType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-scaleUp">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Edit Product Type</h3>
-              <button
-                type="button"
-                onClick={() => setIsEditTypeModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleUpdateType} className="p-6 space-y-4">
-              {error && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                  <span>{error}</span>
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Product Type Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={typeName}
-                  onChange={(e) => {
-                    setTypeName(e.target.value);
-                    setError(null);
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00A389] focus:bg-white dark:focus:bg-slate-800"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditTypeModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !typeName.trim()}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#00A389] hover:bg-[#008f78] text-white disabled:opacity-50 transition cursor-pointer shadow-xs"
-                >
-                  {isSubmitting ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { delByPattern } from "@/lib/redis";
+import { isAllowedProductTypeName, normalizeProductTypeName } from "@/lib/product-types";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -42,6 +43,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       );
     }
 
+    const canonicalType = normalizeProductTypeName(cleanName);
+    if (!canonicalType) {
+      return NextResponse.json(
+        { error: "Only 'Ecom' and 'Nutra' are allowed as Product Types. Please add other classifications under Product Categories." },
+        { status: 400 }
+      );
+    }
+
     const currentCategory = await prisma.category.findUnique({
       where: { id },
     });
@@ -50,13 +59,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
 
-    if (currentCategory.name.trim() === cleanName) {
+    if (currentCategory.name.trim() === canonicalType) {
       return NextResponse.json({ error: "No changes made." }, { status: 400 });
     }
 
     const updatedCategory = await prisma.category.update({
       where: { id },
-      data: { name: cleanName },
+      data: { name: canonicalType },
     });
 
     await delByPattern("lookup:categories:*");
@@ -111,6 +120,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     if (!category) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+
+    if (isAllowedProductTypeName(category.name)) {
+      return NextResponse.json(
+        { error: `Core Product Type "${category.name}" cannot be deleted.` },
+        { status: 400 }
+      );
     }
 
     if (category._count.products > 0) {

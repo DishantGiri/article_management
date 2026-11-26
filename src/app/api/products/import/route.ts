@@ -14,6 +14,7 @@ import {
   isNullOrPlaceholder,
 } from "@/lib/geo-link-parser";
 import { extractThreeDatesFromRow, isDateColumnKey } from "@/lib/sheet-dates";
+import { resolveImportedTypeAndCategory } from "@/lib/product-types";
 import { delByPattern } from "@/lib/redis";
 
 // POST /api/products/import - Import products from parsed CSV
@@ -323,22 +324,22 @@ export async function POST(req: NextRequest) {
         ""
       ).trim();
 
-      // Category / Product Type
-      const rawCategoryName =
-        cleanOptionalText(
-          row.categoryName ||
-            row.category ||
-            row["Category Name"] ||
-            row.categoryname ||
-            row["Product Type"] ||
-            row.type ||
-            row["Type"]
-        ) || "Supplements";
-      const categoryName = rawCategoryName;
+      // Product Type (strictly Ecom or Nutra) & Product Category
+      const rawType = cleanOptionalText(
+        row.productType || row["Product Type"] || row.type || row["Type"]
+      );
+      const rawCatCol = cleanOptionalText(
+        row.categoryName || row.category || row["Category Name"] || row.categoryname
+      );
+      const rawProdCatCol = cleanOptionalText(
+        row.productCategory || row["Product Category"] || row["Product Category Name"]
+      );
 
-      const productCategory =
-        cleanOptionalText(row.productCategory || row["Product Category"] || row["Product Category Name"]) ||
-        categoryName;
+      const { productType: categoryName, productCategory } = resolveImportedTypeAndCategory({
+        rawType,
+        rawCategoryCol: rawCatCol,
+        rawProductCategoryCol: rawProdCatCol,
+      });
 
       const explicitSlug = cleanOptionalText(row.slug || row["Slug"]);
       const generatedSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -500,13 +501,15 @@ export async function POST(req: NextRequest) {
       const detectedSiteNames = targetSites.map((s) => s.name);
       const targetSitesStr = detectedSiteNames.length > 0 ? detectedSiteNames.join(", ") : null;
 
-      // Find or create Category
+      // Find or create core Product Type (Ecom or Nutra)
       let category = await prisma.category.findFirst({
         where: { name: { equals: categoryName } },
       });
       if (!category) {
-        category = await prisma.category.create({
-          data: { name: categoryName },
+        category = await prisma.category.upsert({
+          where: { name: categoryName },
+          update: {},
+          create: { name: categoryName },
         });
       }
 

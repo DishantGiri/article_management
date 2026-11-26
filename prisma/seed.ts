@@ -182,9 +182,9 @@ async function main() {
   }
   console.log(`Created ${createdSites.length} Sites.`);
 
-  // 5. Seed Product Types (Categories) connected to all sites
+  // 5. Seed Product Types (Categories) connected to all sites (only Ecom and Nutra)
   console.log("📂 Creating Product Types (Categories)...");
-  const productTypes = ["Nutra", "Ecom", "Multi-Lang"];
+  const productTypes = ["Nutra", "Ecom"];
   for (const typeName of productTypes) {
     await prisma.category.create({
       data: {

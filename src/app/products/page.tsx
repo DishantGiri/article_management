@@ -1084,9 +1084,9 @@ function ProductsPageContent() {
           </span>
         </div>
 
-        {/* Total Categories */}
+        {/* Total Product Types */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between h-28">
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Categories</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Product Types</span>
           <span className="text-3xl font-extrabold text-[#0284C7] dark:text-[#38BDF8]">
             {stats?.general?.totalCategories ?? stats?.superAdmin?.totalCategories ?? categories.length}
           </span>
@@ -1402,14 +1402,14 @@ function ProductsPageContent() {
                         {/* Category */}
                         <td className="px-4 py-3.5">
                           <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {p.productCategory || p.category?.name || "-"}
+                            {p.productCategory || "-"}
                           </span>
                         </td>
 
                         {/* Product Type */}
                         <td className="px-4 py-3.5">
                           <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {p.category?.name || "Ecom"}
+                            {p.category?.name || "Nutra"}
                           </span>
                         </td>
 
@@ -1687,12 +1687,12 @@ function ProductsPageContent() {
                         </td>
                         <td className="px-4 py-3.5">
                           <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {a.product?.productCategory || a.product?.category?.name || "-"}
+                            {a.product?.productCategory || "-"}
                           </span>
                         </td>
                         <td className="px-4 py-3.5">
                           <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {a.product?.category?.name || "Ecom"}
+                            {a.product?.category?.name || "Nutra"}
                           </span>
                         </td>
                         <td className="px-4 py-3.5">

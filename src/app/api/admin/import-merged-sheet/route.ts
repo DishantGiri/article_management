@@ -8,6 +8,7 @@ import { resolveSite } from "@/lib/site-resolver";
 import { resolveUsers, splitPersonNames, isPlaceholderName } from "@/lib/user-resolver";
 import { cleanOptionalText, cleanUrl, extractGeoLinksFromRow, isNullOrPlaceholder } from "@/lib/geo-link-parser";
 import { extractThreeDatesFromRow, parseSheetDate } from "@/lib/sheet-dates";
+import { resolveImportedTypeAndCategory } from "@/lib/product-types";
 import { delByPattern } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
@@ -277,7 +278,7 @@ export async function POST(req: NextRequest) {
         }
         uniqueSites.add(targetSite.name);
 
-        // 3. Extract Category / Product Type & Product Category
+        // 3. Extract Product Type (strictly Ecom or Nutra) & Product Category
         const hasTypeCol = hasColumn(lookup, "Product Type", "Type");
         const hasCategoryCol = hasColumn(lookup, "Category", "Category Name");
         const hasProductCategoryCol = hasColumn(lookup, "Product Category", "Product Category Name");
@@ -286,19 +287,15 @@ export async function POST(req: NextRequest) {
         const rawCatCol = getCellString(lookup, "Category", "Category Name");
         const rawProdCatCol = getCellString(lookup, "Product Category", "Product Category Name");
 
-        let rawCategory = rawType || rawCatCol || "Nutra";
-        if (isPlaceholderName(rawCategory)) {
-          rawCategory = "Nutra";
-        }
-
-        const rawProductCategory =
-          rawProdCatCol && !isPlaceholderName(rawProdCatCol)
-            ? rawProdCatCol
-            : rawType && rawCatCol && !isPlaceholderName(rawCatCol)
-            ? rawCatCol
-            : rawCatCol && !isPlaceholderName(rawCatCol) && !/^(nutra|ecom|multi-?lang)$/i.test(rawCatCol)
-            ? rawCatCol
-            : null;
+        const {
+          productType: resolvedProductType,
+          explicitProductType,
+          productCategory: rawProductCategory,
+        } = resolveImportedTypeAndCategory({
+          rawType: isPlaceholderName(rawType) ? null : rawType,
+          rawCategoryCol: isPlaceholderName(rawCatCol) ? null : rawCatCol,
+          rawProductCategoryCol: isPlaceholderName(rawProdCatCol) ? null : rawProdCatCol,
+        });
 
         if (rawProductCategory) {
           await prisma.productCategory.upsert({
@@ -309,12 +306,14 @@ export async function POST(req: NextRequest) {
         }
 
         let category = allDbCategories.find(
-          (c) => c.name.toLowerCase() === rawCategory.toLowerCase()
+          (c) => c.name.toLowerCase() === resolvedProductType.toLowerCase()
         );
         if (!category) {
           try {
-            category = await prisma.category.create({
-              data: { name: rawCategory },
+            category = await prisma.category.upsert({
+              where: { name: resolvedProductType },
+              update: {},
+              create: { name: resolvedProductType },
             });
             allDbCategories.push(category);
           } catch {
@@ -499,7 +498,7 @@ export async function POST(req: NextRequest) {
               ...(hasPreviewLinkCol && previewLinkVal ? { previewLink: previewLinkVal } : {}),
               ...((hasTrendLinkCol || (rawTrendCell && /^https?:\/\//i.test(rawTrendCell))) && trendLinkVal ? { trendLink: trendLinkVal } : {}),
               ...(hasTrendLevelCol && trendLevelVal ? { trendLevel: trendLevelVal } : {}),
-              ...((hasTypeCol || hasCategoryCol) && category?.id ? { categoryId: category.id } : {}),
+              ...((explicitProductType || !product.categoryId) && category?.id ? { categoryId: category.id } : {}),
               ...(hasProductCategoryCol || (hasTypeCol && hasCategoryCol)
                 ? { productCategory: rawProductCategory }
                 : rawProductCategory
@@ -529,7 +528,7 @@ export async function POST(req: NextRequest) {
               trendLink: trendLinkVal,
               trendLevel: trendLevelVal || "HIGH",
               siteId: targetSite.id,
-              categoryId: category?.id || 1,
+              categoryId: category?.id || allDbCategories[0]?.id,
               productCategory: rawProductCategory,
               affiliateName: cleanAffiliate || null,
               addedById: effectiveLinkerId,
