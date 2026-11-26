@@ -12,12 +12,12 @@ import { PRODUCT_SOURCE_OPTIONS } from "@/components/AddProductModal";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Site {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -92,7 +92,7 @@ export default function AddProductPage() {
   const [step, setStep] = useState(1);
   const [sites, setSites] = useState<Site[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [affiliates, setAffiliates] = useState<Array<{ id: number; name: string }>>([]);
+  const [affiliates, setAffiliates] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -186,7 +186,7 @@ export default function AddProductPage() {
           body: JSON.stringify({
             items: [{ name: trimmed, key: "single" }],
             siteId: form.siteId || undefined,
-            categoryIds: form.categoryId ? [parseInt(form.categoryId)] : undefined,
+            categoryIds: form.categoryId ? [form.categoryId] : undefined,
           }),
         });
 
@@ -295,7 +295,7 @@ export default function AddProductPage() {
         body: JSON.stringify({
           name: form.name.trim(),
           slug: form.slug?.trim() ? generateSlug(form.slug) : generateSlug(form.name),
-          categoryIds: [parseInt(form.categoryId)],
+          categoryIds: [form.categoryId],
           productCategory: form.category.trim() || null,
           source: form.source?.trim() || null,
           affiliateName: finalAffiliate || null,
@@ -303,7 +303,7 @@ export default function AddProductPage() {
           previewLink: form.previewLink.trim() || null,
           remarks: form.remarks || null,
           isNative: form.isNative,
-          addedById: session?.user?.id || 1,
+          addedById: session?.user?.id || undefined,
         }),
       });
 
@@ -336,7 +336,7 @@ export default function AddProductPage() {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Product Added!</h2>
           <p className="text-gray-500 mb-6">
-            <strong className="text-gray-700">{form.name}</strong> has been successfully added to the {getCategoryName()} category.
+            <strong className="text-gray-700">{form.name}</strong> has been successfully added to the {getCategoryName()} product type.
           </p>
           <div className="flex gap-3 justify-center">
             <button

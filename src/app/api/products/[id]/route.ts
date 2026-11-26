@@ -17,7 +17,7 @@ export async function GET(
 
     const { id } = await params;
     const product = await prisma.product.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: {
         site: { select: { id: true, name: true } },
         category: { select: { id: true, name: true } },
@@ -31,7 +31,7 @@ export async function GET(
     }
 
     // Role site-access check for WRITER and TEAM_LEAD
-    const userId = Number(session.user.id);
+    const userId = String(session.user.id);
     const userRole = session.user.role;
     const rawRoles: string[] = (session.user as any)?.roles || [];
     const candidateRoles: string[] = [...rawRoles, userRole || ""].filter(Boolean);
@@ -114,7 +114,7 @@ export async function PATCH(
     } = body;
 
     const existing = await prisma.product.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: { site: true },
     });
     if (!existing) {
@@ -133,7 +133,7 @@ export async function PATCH(
     const oldName = existing.name.trim();
     const targetName = name !== undefined ? name.trim() : oldName;
     const explicitIds = Array.isArray(allProductIds)
-      ? allProductIds.map(Number).filter((n) => !isNaN(n))
+      ? allProductIds.map((n: any) => String(n || "").trim()).filter(Boolean)
       : [];
 
     // Find all sibling product records representing this product across all sites
@@ -141,7 +141,7 @@ export async function PATCH(
       where: {
         OR: [
           ...(explicitIds.length > 0 ? [{ id: { in: explicitIds } }] : []),
-          { id: parseInt(id) },
+          { id },
           { name: oldName },
           { name: oldName.toLowerCase() },
           { name: oldName.toUpperCase() },
@@ -160,7 +160,7 @@ export async function PATCH(
 
     const isRenaming = targetName.toLowerCase() !== oldName.toLowerCase();
     const isSingleProduct = siblingIds.length <= 1;
-    const targetSiteId = siteId !== undefined ? Number(siteId) : existing.siteId;
+    const targetSiteId = siteId !== undefined ? String(siteId) : existing.siteId;
     const isSiteChanging = isSingleProduct && targetSiteId !== existing.siteId;
 
     if (isRenaming) {
@@ -249,12 +249,12 @@ export async function PATCH(
             .replace(/^-+|-+$/g, "")
         : undefined;
 
-    const activeUserId = session?.user?.id ? Number(session.user.id) : null;
+    const activeUserId = session?.user?.id ? String(session.user.id) : null;
 
     const updateData: any = {
       ...(name !== undefined ? { name: targetName } : {}),
       ...(sanitizedSlug !== undefined ? { slug: sanitizedSlug } : {}),
-      ...(categoryId !== undefined ? { categoryId: Number(categoryId) } : {}),
+      ...(categoryId !== undefined ? { categoryId: String(categoryId) } : {}),
       ...(productCategory !== undefined ? { productCategory: productCategory ? productCategory.trim() : null } : {}),
       ...(source !== undefined ? { source: source ? source.trim() : null } : {}),
       ...(isNative !== undefined ? { isNative: Boolean(isNative) } : {}),
@@ -291,7 +291,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.product.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: {
         site: { select: { name: true } },
         category: { select: { name: true } },
@@ -344,13 +344,13 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) {
+    const targetId = id?.trim() || "";
+    if (!targetId) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
     }
 
     const existing = await prisma.product.findUnique({
-      where: { id: numericId },
+      where: { id: targetId },
       include: {
         site: { select: { name: true } },
       },
@@ -361,7 +361,7 @@ export async function DELETE(
     }
 
     await prisma.product.delete({
-      where: { id: numericId },
+      where: { id: targetId },
     });
 
     await Promise.all([

@@ -41,7 +41,7 @@ interface HistoryRecord {
   | "LINK_FLAGGED"
   | "PRODUCT_ADDED_TO_SITE";
   actionLabel: string;
-  updatedById: number;
+  updatedById: string;
   productName: string;
   siteName: string;
   oldStatus: string | null;
@@ -52,19 +52,19 @@ interface HistoryRecord {
   suggestion?: string | null;
   updatedAt: string;
   updatedBy: {
-    id: number;
+    id: string;
     name: string;
     role: string;
     email: string;
   };
   writtenBy?: {
-    id: number;
+    id: string;
     name: string;
     role: string;
     email: string;
   } | null;
   approvedBy?: {
-    id: number;
+    id: string;
     name: string;
     role: string;
     email: string;

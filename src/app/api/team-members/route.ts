@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const callerId = Number(session.user.id);
+    const callerId = String(session.user.id);
     const callerRole = session.user.role;
 
     if (callerRole !== "TEAM_LEAD" && callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN") {
@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
     };
 
     if (isAdminOrSuperAdmin) {
-      if (requestedUserId && requestedUserId !== "all" && requestedUserId !== String(callerId)) {
-        whereClause.teamLeadId = parseInt(requestedUserId);
+      if (requestedUserId && requestedUserId !== "all" && requestedUserId !== callerId) {
+        whereClause.teamLeadId = requestedUserId;
       }
     } else {
       whereClause.teamLeadId = callerId;

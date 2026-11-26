@@ -7,9 +7,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const siteId = parseInt(id);
+  const siteId = id?.trim() || "";
 
-  if (isNaN(siteId)) {
+  if (!siteId) {
     return NextResponse.json({ error: "Invalid site ID" }, { status: 400 });
   }
 

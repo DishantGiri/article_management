@@ -19,15 +19,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "articleId is required" }, { status: 400 });
     }
 
-    const approvedById = Number(session.user.id);
+    const approvedById = String(session.user.id);
     const userRole = session.user.role;
 
     if (userRole !== "TEAM_LEAD" && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Only Team Leads or Admins can grant update approvals." }, { status: 403 });
     }
 
+    const targetArticleId = String(articleId);
+
     const article = await prisma.article.findUnique({
-      where: { id: parseInt(articleId) },
+      where: { id: targetArticleId },
       include: {
         product: { select: { name: true } },
         writer: { select: { id: true, name: true, teamLeadId: true } },
@@ -47,7 +49,7 @@ export async function POST(req: NextRequest) {
     // ─── ACTION: REJECT UPDATE REQUEST ─────────────────────────────
     if (action === "REJECT") {
       await prisma.article.update({
-        where: { id: parseInt(articleId) },
+        where: { id: targetArticleId },
         data: {
           specialApprovalRequested: false,
           specialApprovalRequestReason: null,
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
       // Audit log in ArticleHistory
       await prisma.articleHistory.create({
         data: {
-          articleId: parseInt(articleId),
+          articleId: targetArticleId,
           updatedById: approvedById,
           oldStatus: article.status,
           newStatus: article.status,
@@ -83,9 +85,9 @@ export async function POST(req: NextRequest) {
 
     // ─── ACTION: APPROVE UPDATE REQUEST (Reopen Article) ───────────
     const approval = await prisma.specialApproval.upsert({
-      where: { articleId: parseInt(articleId) },
+      where: { articleId: targetArticleId },
       create: {
-        articleId: parseInt(articleId),
+        articleId: targetArticleId,
         approvedById: approvedById,
         writerName: article.writer?.name || "Unknown",
         productName: article.product.name,
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
 
     // Reopen article to IN_PROGRESS so the writer can now edit and resubmit
     const updated = await prisma.article.update({
-      where: { id: parseInt(articleId) },
+      where: { id: targetArticleId },
       data: {
         status: "IN_PROGRESS",
         startedAt: new Date(),
@@ -118,7 +120,7 @@ export async function POST(req: NextRequest) {
     // Audit log in ArticleHistory
     await prisma.articleHistory.create({
       data: {
-        articleId: parseInt(articleId),
+        articleId: targetArticleId,
         updatedById: approvedById,
         oldStatus: article.status,
         newStatus: "IN_PROGRESS",
@@ -180,7 +182,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = Number(session.user.id);
+  const userId = String(session.user.id);
   const userRole = session.user.role;
   if (userRole !== "TEAM_LEAD" && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

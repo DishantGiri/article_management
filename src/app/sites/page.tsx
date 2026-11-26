@@ -28,12 +28,12 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { slugifySite } from "@/lib/siteUtils";
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface SiteData {
-  id: number;
+  id: string;
   name: string;
   slug?: string;
   url: string | null;
@@ -70,7 +70,7 @@ export default function SitesPage() {
   // Modal state
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editingSiteId, setEditingSiteId] = useState<number | null>(null);
+  const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -79,15 +79,15 @@ export default function SitesPage() {
     url: "",
     bridgeUrl: "",
     allowCountrySpecific: false,
-    categoryIds: [] as number[],
+    categoryIds: [] as string[],
   });
   const [urlError, setUrlError] = useState("");
   const [bridgeUrlError, setBridgeUrlError] = useState("");
 
-  const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
-  const [expandedSiteCategories, setExpandedSiteCategories] = useState<Record<number, boolean>>({});
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [expandedSiteCategories, setExpandedSiteCategories] = useState<Record<string, boolean>>({});
 
-  const toggleExpandCategories = (siteId: number, e: React.MouseEvent) => {
+  const toggleExpandCategories = (siteId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setExpandedSiteCategories((prev) => ({
@@ -180,7 +180,7 @@ export default function SitesPage() {
     setActiveDropdown(null);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     setActiveDropdown(null);
     openConfirm(
       "Are you sure you want to delete this site? All associated products and data will be lost.",
@@ -248,8 +248,8 @@ export default function SitesPage() {
         const urlSame = (form.url || "").trim() === (currentSite.url || "").trim();
         const bridgeUrlSame = (form.bridgeUrl || "").trim() === (currentSite.bridgeUrl || "").trim();
 
-        const currentCatIds = (currentSite.categories || []).map((c) => c.id).sort((a, b) => a - b);
-        const formCatIds = [...form.categoryIds].sort((a, b) => a - b);
+        const currentCatIds = (currentSite.categories || []).map((c) => c.id).sort();
+        const formCatIds = [...form.categoryIds].sort();
         const categoriesSame =
           currentCatIds.length === formCatIds.length &&
           currentCatIds.every((id, idx) => id === formCatIds[idx]);
@@ -295,7 +295,7 @@ export default function SitesPage() {
     }
   };
 
-  const toggleCategory = (catId: number) => {
+  const toggleCategory = (catId: string) => {
     setForm((prev) => ({
       ...prev,
       categoryIds: prev.categoryIds.includes(catId)
@@ -327,7 +327,7 @@ export default function SitesPage() {
           </div>
           <p className="text-[#737373] text-sm mt-0.5 font-medium">
             {isAdmin
-              ? "Manage websites, domains, product categories, and assignments"
+              ? "Manage websites, domains, product types, and assignments"
               : "Websites assigned to you - click any site to view all its articles and posting dates"}
           </p>
         </div>
@@ -347,7 +347,7 @@ export default function SitesPage() {
         <div className="py-16">
           <LoadingScreen
             message="Loading authorized sites..."
-            subtext="Fetching connected domains and category assignments"
+            subtext="Fetching connected domains and product type assignments"
             size="md"
           />
         </div>
@@ -470,8 +470,8 @@ export default function SitesPage() {
                       {/* Section Header with Total Count */}
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#737373] uppercase tracking-wider">
-                          <Tag className="w-3 h-3 text-[#6D8196]" />
-                          <span>Categories</span>
+                          <Layers className="w-3 h-3 text-[#6D8196]" />
+                          <span>Product Types</span>
                           <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/20">
                             {validCategories.length}
                           </span>
@@ -520,7 +520,7 @@ export default function SitesPage() {
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
                             N/A
                           </span>
-                          <span className="text-[11px] text-[#737373] italic">No categories assigned</span>
+                          <span className="text-[11px] text-[#737373] italic">No product types assigned</span>
                         </div>
                       )}
                     </div>
@@ -553,7 +553,7 @@ export default function SitesPage() {
                       </div>
                       <div className="text-center">
                         <p className="text-lg font-bold text-[#4A4A4A]">{validCategoriesCount}</p>
-                        <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Categories</p>
+                        <p className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Product Types</p>
                       </div>
                       <div className="text-center">
                         <p className="text-lg font-bold text-[#4A4A4A]">{site.linksCount ?? 0}</p>

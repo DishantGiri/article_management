@@ -29,9 +29,9 @@ import { getCountryFlag } from "@/lib/geo-constants";
 import CustomSelect from "@/components/CustomSelect";
 
 interface LinkLog {
-  id: number;
-  allLinkIds?: number[];
-  productId: number;
+  id: string;
+  allLinkIds?: string[];
+  productId: string;
   affiliateName: string;
   affiliateLink: string;
   bridgePageLink?: string;
@@ -39,13 +39,13 @@ interface LinkLog {
   linkerRemarks?: string | null;
   status: string;
   addedAt: string;
-  geos: { id?: number; geo: string; affiliateLink?: string | null; affiliateName?: string | null }[];
-  addedBy?: { id?: number; name?: string; role?: string | null; email?: string | null } | null;
-  updatedBy?: { id?: number; name?: string; role?: string | null; email?: string | null } | null;
+  geos: { id?: string; geo: string; affiliateLink?: string | null; affiliateName?: string | null }[];
+  addedBy?: { id?: string; name?: string; role?: string | null; email?: string | null } | null;
+  updatedBy?: { id?: string; name?: string; role?: string | null; email?: string | null } | null;
   product: {
     name: string;
     slug?: string | null;
-    site?: { id?: number; name: string };
+    site?: { id?: string; name: string };
     article?: { articleLink?: string | null };
   };
 }
@@ -96,7 +96,7 @@ export default function UserLinksView({
   const [sortBy, setSortBy] = useState<"most-links" | "recent" | "name">("most-links");
   const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [selectedGeosByLink, setSelectedGeosByLink] = useState<Record<number, string>>({});
+  const [selectedGeosByLink, setSelectedGeosByLink] = useState<Record<string, string>>({});
 
   const canEdit =
     currentUserRole === "SUPER_ADMIN" ||
@@ -136,7 +136,7 @@ export default function UserLinksView({
       string,
       {
         userName: string;
-        userId?: number;
+        userId?: string;
         userRole?: string | null;
         userEmail?: string | null;
         links: LinkLog[];

@@ -31,8 +31,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id);
-    if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    const id = resolvedParams.id?.trim() || "";
+    if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const { name } = await req.json();
     const cleanName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
@@ -100,8 +100,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
 
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id);
-    if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    const id = resolvedParams.id?.trim() || "";
+    if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     await prisma.productCategory.delete({
       where: { id },

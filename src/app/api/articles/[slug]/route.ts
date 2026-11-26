@@ -23,8 +23,8 @@ export async function GET(
       return NextResponse.json({ error: "Article ID is required" }, { status: 400 });
     }
 
-    const id = parseInt(rawSlug.split("-")[0], 10);
-    if (isNaN(id)) {
+    const id = rawSlug.split("-")[0];
+    if (!id) {
       return NextResponse.json({ error: "Invalid article ID specified" }, { status: 400 });
     }
 
@@ -62,7 +62,7 @@ export async function GET(
     }
 
     // Authorize check: WRITER is restricted by SiteAccess; TEAM_LEAD can only view team articles or pending pool
-    const userId = Number(session.user.id);
+    const userId = String(session.user.id);
     const userRole = session.user.role;
     const userRoles: string[] = (session.user as any)?.roles || [];
     const isSuperOrAdmin =
@@ -126,11 +126,11 @@ export async function PATCH(
     }
 
     const { slug: rawSlug } = await params;
-    const id = parseInt(rawSlug.split("-")[0]);
+    const id = rawSlug.split("-")[0];
     const body = await req.json();
     const { status, articleLink, writerId, priority, specialApprovalRequested, specialApprovalRequestReason, notes, redoStarted, suggestion, openToTeam, flagForUpdate, country } = body;
 
-    const activeUserId = Number(session.user.id);
+    const activeUserId = String(session.user.id);
     const activeUserRole = session.user.role || "";
 
     const existing = await prisma.article.findUnique({
@@ -239,7 +239,7 @@ export async function PATCH(
         );
       }
 
-      const activeWriterId = existing.writerId || (writerId ? parseInt(writerId) : activeUserId);
+      const activeWriterId = existing.writerId || (writerId ? String(writerId) : activeUserId);
       if (activeWriterId) {
         // Check if writer already has another revision in progress (startedAt is set and not completed)
         const activeRevision = await prisma.article.findFirst({
@@ -292,7 +292,7 @@ export async function PATCH(
     }
 
     // Cannot approve, redo, or complete an article without an assigned writer
-    const effectiveWriterId = writerId !== undefined ? (writerId ? parseInt(writerId) : null) : existing.writerId;
+    const effectiveWriterId = writerId !== undefined ? (writerId ? String(writerId) : null) : existing.writerId;
     if ((status === "APPROVED" || status === "REDO" || status === "COMPLETED") && !effectiveWriterId) {
       return NextResponse.json(
         { error: "Cannot review, approve, or complete an article without an assigned writer." },
@@ -317,7 +317,7 @@ export async function PATCH(
       }
 
       // If this specific article already has another writer assigned and is not PENDING:
-      if (existing.writerId && existing.writerId !== parseInt(writerId) && existing.status !== "PENDING") {
+      if (existing.writerId && existing.writerId !== String(writerId) && existing.status !== "PENDING") {
         const siteSuffix = existing.product?.site?.name ? ` on site ${existing.product.site.name}` : "";
         const activeWriterName = existing.writer?.name;
         const writerDesc = activeWriterName ? `writer ${activeWriterName}` : "another writer";
@@ -347,7 +347,7 @@ export async function PATCH(
 
       // Check writer doesn't already have an in-progress article
       const inProgress = await prisma.article.findFirst({
-        where: { writerId: parseInt(writerId), status: "IN_PROGRESS", id: { not: id } },
+        where: { writerId: String(writerId), status: "IN_PROGRESS", id: { not: id } },
       });
       if (inProgress) {
         return NextResponse.json(
@@ -359,7 +359,7 @@ export async function PATCH(
       // Check writer doesn't have an active revision in progress
       const activeRevision = await prisma.article.findFirst({
         where: {
-          writerId: parseInt(writerId),
+          writerId: String(writerId),
           status: "REDO",
           startedAt: { not: null },
           id: { not: id },
@@ -496,7 +496,7 @@ export async function PATCH(
       where: { id },
       data: {
         ...(status ? { status } : {}),
-        ...(writerId !== undefined ? { writerId: writerId ? parseInt(writerId) : null } : {}),
+        ...(writerId !== undefined ? { writerId: writerId ? String(writerId) : null } : {}),
         ...(country !== undefined ? { country: country && country.trim() ? country.trim().toUpperCase() : null } : {}),
         ...(articleLink !== undefined ? { articleLink } : {}),
         ...(priority !== undefined ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" } : {}),
@@ -974,7 +974,7 @@ export async function PATCH(
 
           if (
             recentHistory &&
-            recentHistory.updatedById === Number(activeUserId) &&
+            recentHistory.updatedById === String(activeUserId) &&
             recentHistory.updatedAt >= fiveMinutesAgo &&
             recentHistory.notes &&
             priorityRegex.test(recentHistory.notes)
@@ -1004,7 +1004,7 @@ export async function PATCH(
         await prisma.articleHistory.create({
           data: {
             articleId: updated.id,
-            updatedById: Number(activeUserId),
+            updatedById: String(activeUserId),
             oldStatus: existing.status,
             newStatus: updated.status,
             oldLink: existing.articleLink,

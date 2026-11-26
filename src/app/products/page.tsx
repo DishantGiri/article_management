@@ -24,24 +24,24 @@ import { getActiveWorkspace } from "@/lib/workspace";
 import { useImport } from "@/context/ImportContext";
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
   slug?: string | null;
   country?: string | null;
   isNative?: boolean;
-  siteId: number;
+  siteId: string;
   targetSites?: string | null;
   availableCount?: number;
   missingCount?: number;
   totalSitesCount?: number;
   isResearchSite?: boolean;
-  allProductIds?: number[];
-  categoryId: number;
+  allProductIds?: string[];
+  categoryId: string;
   productCategory?: string | null;
   source?: string | null;
   trendLink?: string;
@@ -50,12 +50,12 @@ interface Product {
   previewLink?: string;
   remarks?: string;
   addedAt: string;
-  site: { id?: number; name: string; url?: string; allowCountrySpecific?: boolean };
-  category: { id?: number; name: string };
-  addedBy: { id?: number; name: string; role?: string };
-  updatedBy?: { id?: number; name: string; role?: string } | null;
+  site: { id?: string; name: string; url?: string; allowCountrySpecific?: boolean };
+  category: { id?: string; name: string };
+  addedBy: { id?: string; name: string; role?: string };
+  updatedBy?: { id?: string; name: string; role?: string } | null;
   updatedAt?: string | null;
-  article?: { id: number; status: string; country?: string | null; writer?: { id?: number; name: string }; articleLink?: string | null };
+  article?: { id: string; status: string; country?: string | null; writer?: { id?: string; name: string }; articleLink?: string | null };
   linkLogs?: any[];
 }
 
@@ -1833,7 +1833,7 @@ function ProductsPageContent() {
         onSuccess={() => {
           refreshProductsData(false);
         }}
-        userId={session?.user?.id ? Number(session.user.id) : 1}
+        userId={session?.user?.id || ""}
       />
 
       {selectedProduct && (

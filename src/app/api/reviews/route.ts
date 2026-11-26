@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const reviewedById = Number(session.user.id);
+    const reviewedById = String(session.user.id);
     const reviewerRole = session.user.role;
 
     if (reviewerRole !== "TEAM_LEAD" && reviewerRole !== "ADMIN" && reviewerRole !== "SUPER_ADMIN") {
@@ -44,9 +44,11 @@ export async function POST(req: NextRequest) {
 
     const reviewerRoleTitle = reviewer.role === "SUPER_ADMIN" ? "Super Admin" : reviewer.role === "ADMIN" ? "Admin" : reviewer.role === "TEAM_LEAD" ? "Team Lead" : (reviewer.role || reviewerRole || "Team Lead").replace("_", " ");
 
+    const targetArticleId = String(articleId);
+
     // Validate article exists
     const article = await prisma.article.findUnique({
-      where: { id: Number(articleId) },
+      where: { id: targetArticleId },
       include: { product: true }
     });
 
@@ -105,8 +107,8 @@ export async function POST(req: NextRequest) {
     // 1. Create the ArticleReview entry
     const review = await prisma.articleReview.create({
       data: {
-        articleId: Number(articleId),
-        reviewedById: Number(reviewedById),
+        articleId: targetArticleId,
+        reviewedById,
         suggestion: suggestion || null,
         approved: Boolean(approved),
       },
@@ -118,7 +120,7 @@ export async function POST(req: NextRequest) {
     // 3. Update the Article status
     // On REDO: null out startedAt so timer does NOT auto-start - writer must click "Start Revision"
     const updatedArticle = await prisma.article.update({
-      where: { id: Number(articleId) },
+      where: { id: targetArticleId },
       data: {
         status: newStatus,
         ...(newStatus === "REDO" ? { startedAt: null, specialApprovalRequested: false, specialApprovalRequestReason: null } : {}),
@@ -149,8 +151,8 @@ export async function POST(req: NextRequest) {
       if (priorityChanged) {
         await prisma.articleHistory.create({
           data: {
-            articleId: Number(articleId),
-            updatedById: Number(reviewedById),
+            articleId: targetArticleId,
+            updatedById: reviewedById,
             oldStatus: article.status,
             newStatus: newStatus,
             notes: `Priority changed from ${article.priority} to ${priority}`,
@@ -160,8 +162,8 @@ export async function POST(req: NextRequest) {
 
       await prisma.articleHistory.create({
         data: {
-          articleId: Number(articleId),
-          updatedById: Number(reviewedById),
+          articleId: targetArticleId,
+          updatedById: reviewedById,
           oldStatus: article.status,
           newStatus: newStatus,
           notes: approved
@@ -183,7 +185,7 @@ export async function POST(req: NextRequest) {
         const notif = await prisma.notification.create({
           data: {
             recipientId: updatedArticle.writerId,
-            senderId: Number(reviewedById),
+            senderId: reviewedById,
             type: "ARTICLE_SUGGESTION",
             message: notifMessage,
           },

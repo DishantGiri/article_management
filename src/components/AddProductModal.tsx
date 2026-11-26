@@ -41,18 +41,18 @@ import EditProductModal from "@/components/EditProductModal";
 import { getCountryFlag, TIER1_CODES, LATAM_COUNTRIES, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 interface Site {
-  id: number;
+  id: string;
   name: string;
   allowCountrySpecific?: boolean;
 }
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface Affiliate {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -79,7 +79,7 @@ export interface SpreadsheetRow {
 }
 
 interface FormData {
-  categoryIds: number[];
+  categoryIds: string[];
   productType?: string;
   name: string;
   slug: string;
@@ -110,7 +110,7 @@ export interface InitialProductData {
   country?: string;
   isNative?: boolean;
   defaultEntryMode?: "single" | "bulk";
-  trendmapProductId?: number;
+  trendmapProductId?: string;
   researchedBy?: string;
 }
 
@@ -132,7 +132,7 @@ export default function AddProductModal({
   const [step, setStep] = useState(1);
   const [sites, setSites] = useState<Site[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [productCategories, setProductCategories] = useState<{ id: number; name: string }[]>([]);
+  const [productCategories, setProductCategories] = useState<{ id: string; name: string }[]>([]);
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -375,22 +375,22 @@ export default function AddProductModal({
     sessionRoles.includes("PRODUCT_RESEARCHER");
 
   const [distributeToAllSites, setDistributeToAllSites] = useState<boolean>(false);
-  const [selectedSingleSiteId, setSelectedSingleSiteId] = useState<number | null>(null);
+  const [selectedSingleSiteId, setSelectedSingleSiteId] = useState<string | null>(null);
 
   // Deselected/excluded sites state
-  const [excludedSiteIds, setExcludedSiteIds] = useState<number[]>([]);
+  const [excludedSiteIds, setExcludedSiteIds] = useState<string[]>([]);
 
   // Real-time Database Duplicate Check States
   const [singleCheckStatus, setSingleCheckStatus] = useState<{
     checking: boolean;
     exists?: boolean;
     isUncertain?: boolean;
-    productId?: number;
+    productId?: string;
     researchedBy?: string | null;
     message?: string;
     conflicts?: Array<{
-      productId?: number;
-      siteId?: number;
+      productId?: string;
+      siteId?: string;
       siteName: string;
       addedBy: string;
       researchedBy?: string | null;
@@ -405,12 +405,12 @@ export default function AddProductModal({
         checking?: boolean;
         exists?: boolean;
         isUncertain?: boolean;
-        productId?: number;
+        productId?: string;
         researchedBy?: string | null;
         message?: string;
         conflicts?: Array<{
-          productId?: number;
-          siteId?: number;
+          productId?: string;
+          siteId?: string;
           siteName: string;
           addedBy: string;
           researchedBy?: string | null;
@@ -426,7 +426,7 @@ export default function AddProductModal({
   // Duplicate Inspection Modal state
   const [previewDuplicate, setPreviewDuplicate] = useState<{
     isOpen: boolean;
-    productId?: number | null;
+    productId?: string | null;
     productName: string;
     rowIndex?: number;
     spreadsheetRowData?: any;
@@ -438,7 +438,7 @@ export default function AddProductModal({
   // Direct Edit Existing Product state
   const [directEditProduct, setDirectEditProduct] = useState<{
     isOpen: boolean;
-    productId?: number | null;
+    productId?: string | null;
     productName: string;
     spreadsheetRowData?: any;
   }>({
@@ -1220,7 +1220,7 @@ export default function AddProductModal({
       new Set(
         spreadsheetRows
           .map((r) => categories.find((c) => c.name === r.productType)?.id)
-          .filter(Boolean) as number[]
+          .filter(Boolean) as string[]
       )
     );
   }, [spreadsheetRows, categories]);
@@ -2500,7 +2500,7 @@ export default function AddProductModal({
                           </label>
                           <select
                             value={selectedSingleSiteId || previewSites[0]?.id || ""}
-                            onChange={(e) => setSelectedSingleSiteId(Number(e.target.value))}
+                            onChange={(e) => setSelectedSingleSiteId(e.target.value || null)}
                             className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                           >
                             {previewSites.map((site: any) => (
@@ -3241,8 +3241,8 @@ export default function AddProductModal({
               ? {
                   id: directEditProduct.productId,
                   name: directEditProduct.productName,
-                  siteId: 1,
-                  categoryId: 1,
+                  siteId: "",
+                  categoryId: "",
                 }
               : null
           }

@@ -19,8 +19,8 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const saleId = parseInt(id);
-    if (isNaN(saleId)) {
+    const saleId = id?.trim() || "";
+    if (!saleId) {
       return NextResponse.json({ error: "Invalid sale ID" }, { status: 400 });
     }
 
@@ -99,8 +99,8 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const saleId = parseInt(id);
-    if (isNaN(saleId)) {
+    const saleId = id?.trim() || "";
+    if (!saleId) {
       return NextResponse.json({ error: "Invalid sale ID" }, { status: 400 });
     }
 

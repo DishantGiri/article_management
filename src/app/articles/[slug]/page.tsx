@@ -39,7 +39,7 @@ import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemark
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 
 interface Article {
-  id: number;
+  id: string;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO";
   articleLink?: string;
   country?: string;
@@ -53,7 +53,7 @@ interface Article {
   specialApprovalRequested?: boolean;
   specialApprovalRequestReason?: string;
   product: {
-    id: number;
+    id: string;
     name: string;
     country?: string;
     trendLink?: string;
@@ -61,12 +61,12 @@ interface Article {
     remarks?: string;
     productCategory?: string;
     trendLevel?: string;
-    site: { id: number; name: string; allowCountrySpecific?: boolean };
-    category: { id: number; name: string };
+    site: { id: string; name: string; allowCountrySpecific?: boolean };
+    category: { id: string; name: string };
     addedBy: { name: string };
     addedAt: string;
     linkLogs: {
-      id: number;
+      id: string;
       affiliateName: string;
       affiliateLink: string;
       bridgePageLink?: string;
@@ -78,22 +78,22 @@ interface Article {
       addedAt: string;
     }[];
   };
-  writer?: { id: number; name: string; email?: string; image?: string };
+  writer?: { id: string; name: string; email?: string; image?: string };
   reviews: {
-    id: number;
+    id: string;
     suggestion?: string;
     approved: boolean;
-    reviewedBy: { id: number; name: string };
+    reviewedBy: { id: string; name: string };
     reviewedAt: string;
   }[];
   specialApproval?: { reason: string; approvedBy: { name: string }; approvedAt: string };
   history: {
-    id: number;
+    id: string;
     notes: string;
     oldStatus?: string;
     newStatus?: string;
     updatedAt: string;
-    updatedBy: { id: number; name: string };
+    updatedBy: { id: string; name: string };
   }[];
 }
 
@@ -138,15 +138,13 @@ export default function ArticleDetailPage({ params }: { params?: Promise<{ slug:
   }, [routeParams, params]);
 
   const id = useMemo(() => {
-    if (!rawSlug) return NaN;
-    const firstPart = String(rawSlug).split("-")[0];
-    const parsed = parseInt(firstPart, 10);
-    return isNaN(parsed) ? NaN : parsed;
+    if (!rawSlug) return "";
+    return String(rawSlug).split("-")[0].trim();
   }, [rawSlug]);
 
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -211,7 +209,7 @@ export default function ArticleDetailPage({ params }: { params?: Promise<{ slug:
       return;
     }
 
-    if (isNaN(id)) {
+    if (!id) {
       setError("Invalid article link or ID specified in URL");
       setArticle(null);
       setLoading(false);

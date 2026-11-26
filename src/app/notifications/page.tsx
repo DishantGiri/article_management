@@ -19,9 +19,9 @@ import Link from "next/link";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 
 interface Notification {
-  id: number;
-  recipientId: number;
-  senderId: number;
+  id: string;
+  recipientId: string;
+  senderId: string;
   type: string;
   message: string;
   isRead: boolean;
@@ -40,7 +40,7 @@ export default function NotificationsPage() {
   const [visibleCount, setVisibleCount] = useState(10);
   const [filterType, setFilterType] = useState<"ALL" | "UNREAD">("ALL");
 
-  const currentUserId = session?.user?.id ? Number(session.user.id) : null;
+  const currentUserId = session?.user?.id ? String(session.user.id) : null;
 
   const fetchNotifications = async () => {
     if (!currentUserId) return;

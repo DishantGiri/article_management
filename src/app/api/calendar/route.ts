@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const sessionUserId = Number(session.user.id);
+    const sessionUserId = String(session.user.id);
     const sessionUserRole = session.user.role;
 
     const { searchParams } = new URL(req.url);
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       : getCurrentBsMonthKey();
 
     // Default target user is session user
-    const targetUserId = queryUserId ? parseInt(queryUserId) : sessionUserId;
+    const targetUserId = queryUserId ? String(queryUserId) : sessionUserId;
 
     // Fetch target user info
     const targetUser = await prisma.user.findUnique({
@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
     const calendarCacheKey = `calendar:${sessionUserId}:${sessionUserRole || ""}:${targetUserId}:${calendarMode}:${calendarMode === "BS" ? resolvedBsMonthKey : (monthParam || "current")}`;
     const calendarPayload = await cached(calendarCacheKey, 45, async () => {
     // Fetch list of users that the current session user is permitted to select
-    let selectableUsers: Array<{ id: number; name: string; email: string; role: string | null }> = [];
+    let selectableUsers: Array<{ id: string; name: string; email: string; role: string | null }> = [];
     if (sessionUserRole === "SUPER_ADMIN") {
       selectableUsers = await prisma.user.findMany({
         where: { approved: true },

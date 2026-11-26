@@ -35,22 +35,22 @@ import { useSession } from "next-auth/react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface SiteInfo {
-  id: number;
+  id: string;
   name: string;
   url?: string | null;
   allowCountrySpecific?: boolean;
-  categories?: { id: number; name: string }[];
+  categories?: { id: string; name: string }[];
   _count?: { products: number };
 }
 
 interface SiteProductInfo {
-  id: number;
+  id: string;
   name: string;
   slug?: string | null;
   country?: string | null;
-  siteId: number;
+  siteId: string;
   siteName: string;
-  categoryId: number;
+  categoryId: string;
   categoryName?: string;
   productCategory?: string | null;
   affiliateName?: string | null;
@@ -79,12 +79,12 @@ interface ComparedProduct {
   trendLink?: string | null;
   previewLink?: string | null;
   remarks?: string | null;
-  categoryId?: number;
+  categoryId?: string;
   categoryName?: string;
-  sampleProductId: number;
-  sites: Record<number, SiteProductInfo | null>;
-  presentSiteIds: number[];
-  missingSiteIds: number[];
+  sampleProductId: string;
+  sites: Record<string, SiteProductInfo | null>;
+  presentSiteIds: string[];
+  missingSiteIds: string[];
   isSimilar: boolean;
   isDifferent: boolean;
 }
@@ -97,7 +97,7 @@ interface CompareData {
     totalProducts: number;
     similarCount: number;
     differentCount: number;
-    selectedSiteCounts: Record<number, { total: number; missing: number; siteName: string }>;
+    selectedSiteCounts: Record<string, { total: number; missing: number; siteName: string }>;
   };
 }
 
@@ -144,15 +144,15 @@ export default function SiteProductComparison({
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<CompareData | null>(null);
-  const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<"all" | "similar" | "different">("all");
-  const [missingInSiteFilter, setMissingInSiteFilter] = useState<number | null>(null);
+  const [missingInSiteFilter, setMissingInSiteFilter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"matrix" | "diff">("matrix");
 
   // State for single adding modal
   const [addingModalItem, setAddingModalItem] = useState<{
-    targetSiteId: number;
+    targetSiteId: string;
     targetSiteName: string;
     product: ComparedProduct;
   } | null>(null);
@@ -166,7 +166,7 @@ export default function SiteProductComparison({
     trendLink: "",
     previewLink: "",
     remarks: "",
-    categoryId: 0,
+    categoryId: "",
   });
   const [submittingAdd, setSubmittingAdd] = useState(false);
 
@@ -175,7 +175,7 @@ export default function SiteProductComparison({
 
   // Batch sync modal state
   const [batchModalOpen, setBatchModalOpen] = useState(false);
-  const [batchTargetSiteId, setBatchTargetSiteId] = useState<number | null>(null);
+  const [batchTargetSiteId, setBatchTargetSiteId] = useState<string | null>(null);
   const [batchSelectedProductKeys, setBatchSelectedProductKeys] = useState<string[]>([]);
   const [submittingBatch, setSubmittingBatch] = useState(false);
 
@@ -301,7 +301,7 @@ export default function SiteProductComparison({
 
   // Fetch comparison data
   const fetchCompareData = useCallback(
-    async (siteIdsOverride?: number[], showLoading = false) => {
+    async (siteIdsOverride?: string[], showLoading = false) => {
       if (showLoading) setLoading(true);
       try {
         const queryParams = new URLSearchParams();
@@ -339,7 +339,7 @@ export default function SiteProductComparison({
   }, []);
 
   // When search or selected sites change, refresh with brief debounce
-  const handleSiteSelectionChange = (newIds: number[]) => {
+  const handleSiteSelectionChange = (newIds: string[]) => {
     if (newIds.length === 0) {
       toast.error("Please keep at least 1 site selected.");
       return;
@@ -348,8 +348,8 @@ export default function SiteProductComparison({
     fetchCompareData(newIds, true);
   };
 
-  const toggleSite = (siteId: number) => {
-    let next: number[];
+  const toggleSite = (siteId: string) => {
+    let next: string[];
     if (selectedSiteIds.includes(siteId)) {
       if (selectedSiteIds.length <= 1) {
         toast.error("You must have at least one site selected for comparison.");
@@ -365,7 +365,7 @@ export default function SiteProductComparison({
   // Preset quick filters
   const handleSelectPreset = (preset: "all" | "ecom" | "nutra" | "first_two") => {
     if (!data?.allSites) return;
-    let nextIds: number[] = [];
+    let nextIds: string[] = [];
     if (preset === "all") {
       nextIds = data.allSites.map((s) => s.id);
     } else if (preset === "ecom") {
@@ -410,7 +410,7 @@ export default function SiteProductComparison({
   }, [data?.comparedProducts, search, filterMode, missingInSiteFilter]);
 
   // Quick Add function: adds missing product to site instantly
-  const handleQuickAdd = async (product: ComparedProduct, targetSiteId: number) => {
+  const handleQuickAdd = async (product: ComparedProduct, targetSiteId: string) => {
     const targetSite = data?.allSites.find((s) => s.id === targetSiteId);
     if (!targetSite) return;
 
@@ -453,13 +453,13 @@ export default function SiteProductComparison({
           const updatedSites = {
             ...p.sites,
             [targetSiteId]: {
-              id: createdProduct?.id || Date.now(),
+              id: createdProduct?.id || String(Date.now()),
               name: p.name,
               slug: p.slug,
               country: p.country,
               siteId: targetSiteId,
               siteName: targetSite.name,
-              categoryId: createdProduct?.categoryId || 0,
+              categoryId: createdProduct?.categoryId || "",
               categoryName: createdProduct?.category?.name || "Ecom",
               productCategory: p.productCategory,
               affiliateName: p.affiliateName,
@@ -523,12 +523,12 @@ export default function SiteProductComparison({
   };
 
   // Open Edit & Add Modal
-  const openEditAndAdd = (product: ComparedProduct, targetSiteId: number) => {
+  const openEditAndAdd = (product: ComparedProduct, targetSiteId: string) => {
     const targetSite = data?.allSites.find((s) => s.id === targetSiteId);
     if (!targetSite) return;
 
     // Pick first category of target site if available
-    const initialCatId = targetSite.categories?.[0]?.id || product.categoryId || 0;
+    const initialCatId = targetSite.categories?.[0]?.id || product.categoryId || "";
 
     setModalForm({
       name: product.name,
@@ -597,7 +597,7 @@ export default function SiteProductComparison({
   };
 
   // Open Batch Sync Modal
-  const openBatchSync = (targetSiteId?: number) => {
+  const openBatchSync = (targetSiteId?: string) => {
     const siteId = targetSiteId || (data?.selectedSites?.[0]?.id ?? null);
     if (!siteId) return;
 
@@ -1055,7 +1055,7 @@ export default function SiteProductComparison({
             <select
               value={missingInSiteFilter || ""}
               onChange={(e) => {
-                const val = e.target.value ? parseInt(e.target.value) : null;
+                const val = e.target.value || null;
                 setMissingInSiteFilter(val);
                 if (val) setFilterMode("different");
               }}
@@ -1565,10 +1565,10 @@ export default function SiteProductComparison({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Target Category *</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Target Product Type *</label>
                   <select
                     value={modalForm.categoryId}
-                    onChange={(e) => setModalForm((f) => ({ ...f, categoryId: parseInt(e.target.value) }))}
+                    onChange={(e) => setModalForm((f) => ({ ...f, categoryId: e.target.value }))}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-semibold"
                   >
                     {data?.allSites
@@ -1703,8 +1703,8 @@ export default function SiteProductComparison({
                 <select
                   value={batchTargetSiteId || ""}
                   onChange={(e) => {
-                    const sid = parseInt(e.target.value);
-                    setBatchTargetSiteId(sid);
+                    const sid = e.target.value;
+                    setBatchTargetSiteId(sid || null);
                     // auto select missing products on this site
                     const missingKeys = (data?.comparedProducts || [])
                       .filter((p) => p.missingSiteIds.includes(sid))

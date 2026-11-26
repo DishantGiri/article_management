@@ -95,7 +95,7 @@ interface DashboardData {
     unpaidAmount: number;
     pendingSalesCount: number;
     recentPendingSales?: {
-      saleId: number;
+      saleId: string;
       productName: string;
       siteName: string;
       saleType: string;
@@ -153,7 +153,7 @@ interface DashboardData {
     issueLinks: number;
     writerPerformance: { name: string; completed: number }[];
     reviewQueue: {
-      id: number;
+      id: string;
       product: string;
       writer: string;
       site: string;
@@ -161,7 +161,7 @@ interface DashboardData {
       remark?: string | null;
     }[];
     editRequests?: {
-      id: number;
+      id: string;
       product: string;
       writer: string;
       site: string;
@@ -213,7 +213,7 @@ function getGreeting(): string {
 const DASHBOARD_CACHE_TTL_MS = 45_000;
 const dashboardCache = new Map<string, { data: DashboardData; timestamp: number }>();
 const dashboardInFlight = new Map<string, Promise<DashboardData | null>>();
-const notificationsCache = new Map<number, { data: any[]; timestamp: number }>();
+const notificationsCache = new Map<string, { data: any[]; timestamp: number }>();
 
 function getInitialDashboardCache(session: any): { data: DashboardData | null; role: string; notifications: any[] } {
   const uId = session?.user?.id;
@@ -241,7 +241,7 @@ export default function DashboardPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string>(session?.user?.role || "");
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [activeRoleView, setActiveRoleView] = useState<string>(initialCache.role);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(session?.user?.id ?? null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(session?.user?.id ?? null);
   const [notifications, setNotifications] = useState<any[]>(initialCache.notifications);
   const [showBellDropdown, setShowBellDropdown] = useState(false);
   const [tlTab, setTlTab] = useState<"check" | "write">("check");
@@ -475,7 +475,7 @@ export default function DashboardPage() {
     };
   }, [session?.user?.id, status]);
 
-  const handleStartWriting = async (articleId: number) => {
+  const handleStartWriting = async (articleId: string) => {
     if (!currentUserId) return;
     try {
       const res = await fetch(`/api/articles/${articleId}`, {
@@ -1247,7 +1247,7 @@ function TeamLeadMissionControl({
   onRefresh,
 }: {
   data: DashboardData;
-  currentUserId: number | null;
+  currentUserId: string | null;
   onRefresh: () => void;
 }) {
   const tl = data.teamLead || {
@@ -1479,7 +1479,7 @@ function LinkerOperationsStudio({
   const [selectedSite, setSelectedSite] = useState("ALL");
   const [isAddLinkModalOpen, setIsAddLinkModalOpen] = useState(false);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
-  const [selectedProductIdForLink, setSelectedProductIdForLink] = useState<number | null>(null);
+  const [selectedProductIdForLink, setSelectedProductIdForLink] = useState<string | null>(null);
 
   // Fallback demo pending products matching the reference screenshot exactly
   const fallbackPendingProducts = [
@@ -1574,7 +1574,7 @@ function LinkerOperationsStudio({
     ...fallbackConfiguredLinks.filter((f) => !realLinks.some((r: any) => r.name === f.name)),
   ].slice(0, 5);
 
-  const handleOpenAddLink = (productId?: number) => {
+  const handleOpenAddLink = (productId?: string) => {
     if (productId) setSelectedProductIdForLink(productId);
     setIsAddLinkModalOpen(true);
   };
@@ -2719,14 +2719,14 @@ function WriterFocusStudio({
   onRefresh,
 }: {
   data: DashboardData;
-  currentUserId: number | null;
+  currentUserId: string | null;
   globalSearchQuery?: string;
   onGlobalSearchChange?: (q: string) => void;
-  onStartWriting: (articleId: number) => void;
+  onStartWriting: (articleId: string) => void;
   onRefresh: () => void;
 }) {
   const inProgressList = data.writerInProgressArticles || [];
-  const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null);
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
 
   // Read articleId from URL query parameters if present (e.g. redirected after Start Revision on /articles)
   useEffect(() => {
@@ -2734,10 +2734,7 @@ function WriterFocusStudio({
       const params = new URLSearchParams(window.location.search);
       const artIdParam = params.get("articleId");
       if (artIdParam) {
-        const parsed = parseInt(artIdParam, 10);
-        if (!isNaN(parsed)) {
-          setSelectedArticleId(parsed);
-        }
+        setSelectedArticleId(artIdParam);
       }
     }
   }, []);
@@ -2984,7 +2981,7 @@ function WriterActiveFocusWorkspace({
   article: any;
   inProgressList?: any[];
   completedArticles: any[];
-  currentUserId: number | null;
+  currentUserId: string | null;
   onSuccess: () => void;
 }) {
   const [articleLink, setArticleLink] = useState(article.articleLink || "");
@@ -3957,10 +3954,10 @@ function WriterAvailableAssignments({
 }: {
   pendingArticles: any[];
   completedArticles: any[];
-  currentUserId: number | null;
+  currentUserId: string | null;
   globalSearchQuery?: string;
   onGlobalSearchChange?: (q: string) => void;
-  onStartWriting: (articleId: number) => void;
+  onStartWriting: (articleId: string) => void;
   onRefresh: () => void;
 }) {
   const [selectedArticle, setSelectedArticle] = useState<any>(null);

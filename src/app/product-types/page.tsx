@@ -12,13 +12,13 @@ import { toast } from "react-hot-toast";
 import { getActiveWorkspace } from "@/lib/workspace";
 
 interface ProductType {
-  id: number;
+  id: string;
   name: string;
   _count?: { sites: number; products: number };
 }
 
 interface ProductCategory {
-  id: number;
+  id: string;
   name: string;
   createdAt: string;
 }

@@ -7,7 +7,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { COUNTRY_NAMES, LATAM_CODES } from "@/lib/geo-constants";
 
 interface GeoEntry {
-  id: number;
+  id: string;
   code: string;
   createdAt: string;
 }
@@ -22,12 +22,12 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
   const [loading, setLoading] = useState(false);
   const [newCode, setNewCode] = useState("");
   const [adding, setAdding] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingGeo, setPendingGeo] = useState<{ id: number; code: string } | null>(null);
+  const [pendingGeo, setPendingGeo] = useState<{ id: string; code: string } | null>(null);
 
   const fetchGeos = async () => {
     setLoading(true);
@@ -132,7 +132,7 @@ export default function GeoManageModal({ isOpen, onClose }: GeoManageModalProps)
     }
   };
 
-  const handleDelete = (id: number, code: string) => {
+  const handleDelete = (id: string, code: string) => {
     setPendingGeo({ id, code });
     setConfirmOpen(true);
   };

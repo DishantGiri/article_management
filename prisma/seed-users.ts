@@ -53,7 +53,7 @@ async function seedUsers() {
   });
   console.log(`👥 Loaded ${dbUsers.length} existing users from DB`);
 
-  const matchedDbUserIds = new Set<number>();
+  const matchedDbUserIds = new Set<string>();
   let updatedUsersCount = 0;
   let createdUsersCount = 0;
   let leftUsersCount = 0;
@@ -80,17 +80,17 @@ async function seedUsers() {
     let existingUser = dbUsers.find((u) => u.email.toLowerCase() === email);
 
     if (!existingUser) {
-      // Known specific alias mappings
+      // Known specific name fallback mappings
       if (email === "magarsabina@fishtailinfosolutions.com") {
-        existingUser = dbUsers.find((u) => u.id === 112);
+        existingUser = dbUsers.find((u) => u.name.toLowerCase().includes("sabina magar"));
       } else if (email === "sabinapahari@fishtailinfosolutions.com") {
-        existingUser = dbUsers.find((u) => u.id === 123);
+        existingUser = dbUsers.find((u) => u.name.toLowerCase().includes("sabina pahari"));
       } else if (email === "guptarahul@fishtailinfosolutions.com") {
-        existingUser = dbUsers.find((u) => u.id === 101);
+        existingUser = dbUsers.find((u) => u.name.toLowerCase().includes("rahul gupta"));
       } else if (email === "samikshyakhand@fishtailinfosolutions.com") {
-        existingUser = dbUsers.find((u) => u.id === 91 || u.id === 110);
+        existingUser = dbUsers.find((u) => u.name.toLowerCase().includes("samikshya"));
       } else if (email === "jayashadhikari@fishtailinfosolutions.com") {
-        existingUser = dbUsers.find((u) => u.id === 130);
+        existingUser = dbUsers.find((u) => u.name.toLowerCase().includes("jayash"));
       }
     }
 
@@ -133,7 +133,7 @@ async function seedUsers() {
     const approved = !isLeft;
     const commissionToPartyFund = isLeft;
 
-    let targetUserId: number;
+    let targetUserId: string;
 
     if (existingUser) {
       matchedDbUserIds.add(existingUser.id);
@@ -235,10 +235,12 @@ async function seedUsers() {
 }
 
 seedUsers()
-  .catch((err) => {
-    console.error("❌ Seed users failed:", err);
-    process.exit(1);
-  })
-  .finally(async () => {
+  .then(async () => {
     await prisma.$disconnect();
+    process.exit(0);
+  })
+  .catch(async (err) => {
+    console.error("❌ Seed users failed:", err);
+    await prisma.$disconnect().catch(() => {});
+    process.exit(1);
   });

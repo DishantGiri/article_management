@@ -1,7 +1,7 @@
 export type RoleType = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST";
 
 export interface UserSitePermission {
-  siteId: number;
+  siteId: string;
   siteName?: string;
   role?: string | null;
   roles?: string | null;

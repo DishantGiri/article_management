@@ -36,10 +36,10 @@ import CommissionPasswordGate from "@/components/CommissionPasswordGate";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 interface UserSaleItem {
-  saleId: number;
-  productId: number;
+  saleId: string;
+  productId: string;
   productName: string;
-  siteId: number;
+  siteId: string;
   siteName: string;
   saleType: "FIRST_SALE" | "RESALE" | "REDIRECT";
   saleDate: string;
@@ -50,7 +50,7 @@ interface UserSaleItem {
 }
 
 interface UserCommissionRow {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: string;
@@ -71,7 +71,7 @@ interface UserCommissionRow {
 }
 
 interface SiteOption {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -105,7 +105,7 @@ function UserCommissionsContent() {
 
   // Statement / Breakdown Modal
   const [statementUser, setStatementUser] = useState<UserCommissionRow | null>(null);
-  const [settlingUserId, setSettlingUserId] = useState<number | null>(null);
+  const [settlingUserId, setSettlingUserId] = useState<string | null>(null);
   const [payoutTargetUser, setPayoutTargetUser] = useState<UserCommissionRow | null>(null);
 
   // Bulk Payout Modal (By Time Period)
@@ -270,7 +270,7 @@ function UserCommissionsContent() {
   };
 
   // Toggle single sale status inside statement modal
-  const handleToggleSingleSale = async (saleId: number, currentStatus: string) => {
+  const handleToggleSingleSale = async (saleId: string, currentStatus: string) => {
     const nextStatus = currentStatus === "PAID" ? "PENDING" : "PAID";
     try {
       const res = await fetch(`/api/commissions/${saleId}`, {

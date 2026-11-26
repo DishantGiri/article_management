@@ -188,9 +188,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const knownAffiliateNames = new Set<string>(
-      allDbAffiliates.map((a) => a.name.toLowerCase().trim())
-    );
     const knownProductCategoryNames = new Set<string>(
       allDbProductCategories.map((c) => c.name.toLowerCase().trim())
     );
@@ -226,7 +223,7 @@ export async function POST(req: NextRequest) {
       productMap.set(`${p.siteId}_${p.name.toLowerCase().trim()}`, p);
     }
 
-    const currentUserId = Number(session.user.id) || allDbUsers[0]?.id || 1;
+    const currentUserId = String(session.user.id || "") || allDbUsers[0]?.id || "";
 
     let processedCount = 0;
     let createdProductsCount = 0;
@@ -235,8 +232,8 @@ export async function POST(req: NextRequest) {
     let assignedWritersCount = 0;
     let configuredLinksCount = 0;
     let configuredGeosCount = 0;
-    const touchedArticleIdsInBatch = new Set<number>();
-    const touchedLinkLogIdsInBatch = new Set<number>();
+    const touchedArticleIdsInBatch = new Set<string>();
+    const touchedLinkLogIdsInBatch = new Set<string>();
     const errors: string[] = [];
     const uniqueSites = new Set<string>();
 
@@ -352,24 +349,11 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // 4. Extract & Fuzzy-Resolve Affiliate Network (e.g. "Smart ADV" -> "SmartADV")
+        // 4. Extract & Fuzzy-Resolve Affiliate Network against seeded DB affiliates (never auto-create new affiliates)
         const hasAffiliateCol = hasColumn(lookup, "Affiliate Network", "Network", "Affiliate");
         const rawAffiliate = getCellString(lookup, "Affiliate Network", "Network", "Affiliate");
         const resolvedAffiliate = resolveAffiliateName(rawAffiliate, allDbAffiliates);
         const cleanAffiliate = resolvedAffiliate || "";
-
-        if (cleanAffiliate) {
-          const affKey = cleanAffiliate.toLowerCase().trim();
-          if (!knownAffiliateNames.has(affKey)) {
-            await prisma.affiliateName.upsert({
-              where: { name: cleanAffiliate },
-              update: {},
-              create: { name: cleanAffiliate },
-            }).catch(() => {});
-            knownAffiliateNames.add(affKey);
-            allDbAffiliates.push({ name: cleanAffiliate } as any);
-          }
-        }
 
         // 5. Extract Linker Name (disambiguated using site access + role preference)
         const rawLinker = getCellString(lookup, "Linker Name", "Linker", "Researched By", "Researcher");

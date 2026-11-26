@@ -19,7 +19,7 @@ interface ImportProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  userId: number;
+  userId: string;
 }
 
 function detectDelimiter(firstLine: string): string {

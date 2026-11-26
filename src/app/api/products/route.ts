@@ -49,14 +49,14 @@ export async function POST(req: NextRequest) {
       isNative,
       source,
     } = body;
-    const excludedSet = new Set(Array.isArray(excludedSiteIds) ? excludedSiteIds.map(Number) : []);
-    const explicitSiteId = singleSiteId || targetSiteId ? Number(singleSiteId || targetSiteId) : null;
+    const excludedSet = new Set<string>(Array.isArray(excludedSiteIds) ? excludedSiteIds.map(String) : []);
+    const explicitSiteId = singleSiteId || targetSiteId ? String(singleSiteId || targetSiteId) : null;
 
     interface IncomingProduct {
       name: string;
       slug?: string | null;
       country?: string | null;
-      categoryId?: number | null;
+      categoryId?: string | null;
       isNative?: boolean;
       productCategory?: string | null;
       source?: string | null;
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
           name: typeof p.name === "string" ? p.name.trim() : "",
           slug: typeof p.slug === "string" ? p.slug.trim() : (typeof body.slug === "string" ? body.slug.trim() : null),
           country: typeof p.country === "string" && p.country.trim() ? p.country.trim() : (typeof body.country === "string" && body.country.trim() ? body.country.trim() : null),
-          categoryId: Number.isInteger(Number(p.categoryId)) && Number(p.categoryId) > 0 ? Number(p.categoryId) : null,
+          categoryId: typeof p.categoryId === "string" && p.categoryId.trim() ? p.categoryId.trim() : null,
           isNative: typeof p.isNative === "boolean" ? p.isNative : (typeof isNative === "boolean" ? isNative : false),
           productCategory: p.productCategory?.trim() || productCategory?.trim() || null,
           source: p.source?.trim() || source?.trim() || null,
@@ -120,10 +120,10 @@ export async function POST(req: NextRequest) {
     });
 
     const trimmedNames = productItems.map((p) => p.name);
-    const itemCategoryIds = productItems.map((p) => p.categoryId).filter(Boolean) as number[];
+    const itemCategoryIds = productItems.map((p) => p.categoryId).filter(Boolean) as string[];
     const allCategoryIds = Array.from(
       new Set([
-        ...(Array.isArray(categoryIds) ? categoryIds.map(Number).filter((id) => !isNaN(id) && id > 0) : []),
+        ...(Array.isArray(categoryIds) ? categoryIds.map((id: any) => String(id || "").trim()).filter(Boolean) : []),
         ...itemCategoryIds,
       ])
     );
@@ -165,8 +165,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let activeUserId = Number(session.user.id);
-    let existingUser = Number.isInteger(activeUserId) && activeUserId > 0
+    let activeUserId = session.user.id ? String(session.user.id) : "";
+    let existingUser = activeUserId
       ? await prisma.user.findUnique({
           where: { id: activeUserId },
           select: { id: true, name: true, role: true },
@@ -237,14 +237,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No valid categories found" }, { status: 404 });
     }
 
-    const targetSiteIds = new Set<number>();
+    const targetSiteIds = new Set<string>();
 
     if (isProductResearcherUser) {
       // Product Researcher recording target websites
       if (Array.isArray(bodyTargetSiteIds) && bodyTargetSiteIds.length > 0) {
         bodyTargetSiteIds
-          .map(Number)
-          .filter((id) => !isNaN(id) && id > 0)
+          .map((id: any) => String(id || "").trim())
+          .filter(Boolean)
           .forEach((id) => targetSiteIds.add(id));
       } else {
         for (const cat of categoriesWithSites) {
@@ -439,7 +439,7 @@ export async function POST(req: NextRequest) {
           isNative: Boolean(item.isNative),
           siteId: researchSite.id, // In product research, do NOT directly add to live site!
           targetSites: targetSitesStr,
-          categoryId: item.categoryId || categoriesWithSites[0]?.id || 1,
+          categoryId: String(item.categoryId || categoriesWithSites[0]?.id || ""),
           productCategory: item.productCategory || null,
           source: item.source || null,
           trendLink: item.trendLink || null,
@@ -519,7 +519,7 @@ export async function POST(req: NextRequest) {
       );
 
       // Notify writers: collect ALL product names per writer, send one grouped notification
-      const writerProductMap = new Map<number, string[]>();
+      const writerProductMap = new Map<string, string[]>();
 
       for (const p of createdProducts) {
         const accesses = await prisma.siteAccess.findMany({
@@ -600,7 +600,7 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10", 10) || 10));
 
-  let allowedSiteIds: number[] | undefined = undefined;
+  let allowedSiteIds: string[] | undefined = undefined;
   let excludeCompletedForWriter = false;
 
   const userId = session.user.id;
@@ -645,7 +645,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const parsedSiteId = siteId ? parseInt(siteId) : undefined;
+  const parsedSiteId = siteId && siteId.trim() ? siteId.trim() : undefined;
   let siteFilterCondition: any = undefined;
 
   if (allowedSiteIds !== undefined) {
@@ -672,29 +672,23 @@ export async function GET(req: NextRequest) {
     }
     if (site && site.trim()) {
       const sTrim = site.trim();
-      if (!isNaN(Number(sTrim))) {
-        andConditions.push({ siteId: parseInt(sTrim, 10) });
-      } else {
-        andConditions.push({
-          OR: [
-            { site: { name: sTrim } },
-            { targetSites: { contains: sTrim } },
-          ],
-        });
-      }
+      andConditions.push({
+        OR: [
+          { siteId: sTrim },
+          { site: { name: sTrim } },
+          { targetSites: { contains: sTrim } },
+        ],
+      });
     }
     if (categoryId && categoryId.trim()) {
       const cTrim = categoryId.trim();
-      if (!isNaN(Number(cTrim))) {
-        andConditions.push({ categoryId: parseInt(cTrim, 10) });
-      } else {
-        andConditions.push({
-          OR: [
-            { category: { name: cTrim } },
-            { productCategory: cTrim },
-          ],
-        });
-      }
+      andConditions.push({
+        OR: [
+          { categoryId: cTrim },
+          { category: { name: cTrim } },
+          { productCategory: cTrim },
+        ],
+      });
     }
     if (unlinked) {
       andConditions.push({
@@ -971,7 +965,7 @@ export async function GET(req: NextRequest) {
       totalPublishingSites = pubSitesCount;
     }
 
-    let productSiteOccurrences: { name: string; siteId: number }[] = [];
+    let productSiteOccurrences: { name: string; siteId: string }[] = [];
     if (products.length > 0) {
       const siteFilterSql = allowedSiteIds !== undefined
         ? (allowedSiteIds.length > 0 ? Prisma.sql`AND p.siteId IN (${Prisma.join(allowedSiteIds)})` : Prisma.sql`AND 1=0`)
@@ -985,7 +979,7 @@ export async function GET(req: NextRequest) {
           ? Prisma.sql`AND p.name IN (${Prisma.join(pageProductNames)})`
           : Prisma.empty;
 
-      productSiteOccurrences = await prisma.$queryRaw<Array<{ name: string; siteId: number }>>`
+      productSiteOccurrences = await prisma.$queryRaw<Array<{ name: string; siteId: string }>>`
         SELECT LOWER(TRIM(p.name)) as name, p.siteId 
         FROM Product p
         JOIN Site s ON p.siteId = s.id
@@ -996,7 +990,7 @@ export async function GET(req: NextRequest) {
       `;
     }
 
-    const availabilityMap = new Map<string, Set<number>>();
+    const availabilityMap = new Map<string, Set<string>>();
     for (const item of productSiteOccurrences) {
       const key = item.name.trim().toLowerCase();
       if (!availabilityMap.has(key)) {
@@ -1007,7 +1001,7 @@ export async function GET(req: NextRequest) {
 
     const enrichedProducts = products.map((p) => {
       const key = p.name.trim().toLowerCase();
-      const liveSiteIds = availabilityMap.get(key) || new Set<number>();
+      const liveSiteIds = availabilityMap.get(key) || new Set<string>();
       const isResearchSite = p.site?.name === "Product Research";
       const availableCount = liveSiteIds.size;
       const missingCount = Math.max(0, totalPublishingSites - availableCount);

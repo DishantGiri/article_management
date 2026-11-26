@@ -24,7 +24,7 @@ function toValidRole(value: unknown, fallback: UserRole = "WRITER"): UserRole {
   return VALID_ROLES.has(upper) ? (upper as UserRole) : fallback;
 }
 
-function buildSiteAccessCreateRow(siteId: number, rolesArr: string[], primaryRole: string) {
+function buildSiteAccessCreateRow(siteId: string, rolesArr: string[], primaryRole: string) {
   const normalizedRoles = Array.from(
     new Set((rolesArr.length > 0 ? rolesArr : [primaryRole]).map((r) => r.toUpperCase()).filter(Boolean))
   );
@@ -56,7 +56,7 @@ async function invalidateUserRelatedCaches() {
 
 // Cascades display name updates across all notifications, link logs, history records, and products
 async function cascadeUserNameUpdate(
-  userId: number,
+  userId: string,
   oldName: string,
   newName: string,
   email: string
@@ -236,7 +236,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const targetId = parseInt(id);
+    const targetId = id?.trim() || "";
     const isSelf = session.user.id === targetId;
     const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
 
@@ -300,8 +300,8 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const targetId = parseInt(id, 10);
-    if (!Number.isInteger(targetId) || targetId <= 0) {
+    const targetId = id?.trim() || "";
+    if (!targetId) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
     const body = await req.json();
@@ -312,7 +312,7 @@ export async function PATCH(
     }
     const normalizedRequestedRole = role ? String(role).toUpperCase() : undefined;
 
-    const callerId = Number(session.user.id);
+    const callerId = String(session.user.id);
     const callerRole = (session.user.role || "").toUpperCase();
     const isSelf = callerId === targetId;
     const isAdmin = callerRole === "ADMIN" || callerRole === "SUPER_ADMIN";
@@ -486,7 +486,7 @@ export async function PATCH(
       }
     } else if (incomingSiteAccess !== undefined && Array.isArray(incomingSiteAccess)) {
       const cleanRows = incomingSiteAccess.filter(
-        (sa: any) => Number.isInteger(Number(sa.siteId)) && Number(sa.siteId) > 0
+        (sa: any) => typeof sa.siteId === "string" ? sa.siteId.trim().length > 0 : Boolean(sa.siteId)
       );
       siteAccessUpdate = {
         deleteMany: {},
@@ -497,17 +497,17 @@ export async function PATCH(
             ? sa.roles.split(",").map((s: string) => s.trim()).filter(Boolean)
             : [];
           const primaryRole = (sa.role || rolesArr[0] || newRole || "WRITER").toUpperCase();
-          return buildSiteAccessCreateRow(Number(sa.siteId), rolesArr, primaryRole);
+          return buildSiteAccessCreateRow(String(sa.siteId).trim(), rolesArr, primaryRole);
         }),
       };
     } else if (siteIds !== undefined && Array.isArray(siteIds)) {
       const cleanSiteIds = siteIds
-        .map((s: any) => Number(s))
-        .filter((n: number) => Number.isInteger(n) && n > 0);
+        .map((s: any) => String(s || "").trim())
+        .filter(Boolean);
       const effRole = newRole || "WRITER";
       siteAccessUpdate = {
         deleteMany: {},
-        create: cleanSiteIds.map((siteId: number) => buildSiteAccessCreateRow(siteId, [effRole], effRole)),
+        create: cleanSiteIds.map((siteId: string) => buildSiteAccessCreateRow(siteId, [effRole], effRole)),
       };
     } else if (roleChanged && resolvedRole && targetUser.siteAccess.length > 0) {
       const oldRoleUpper = targetUser.role ? targetUser.role.toUpperCase() : null;
@@ -532,13 +532,13 @@ export async function PATCH(
     }
 
     // Resolve teamLeadId updates cleanly (supports migrating, unassigning, and role transitions)
-    let resolvedTeamLeadId: number | null | undefined = undefined;
+    let resolvedTeamLeadId: string | null | undefined = undefined;
     if (newRole !== "WRITER") {
       resolvedTeamLeadId = null;
     } else if (teamLeadId !== undefined) {
-      const parsedTl = teamLeadId && teamLeadId !== "none" && teamLeadId !== "" ? Number(teamLeadId) : null;
+      const parsedTl = teamLeadId && teamLeadId !== "none" && teamLeadId !== "" ? String(teamLeadId).trim() : null;
       if (parsedTl !== null) {
-        if (!Number.isInteger(parsedTl) || parsedTl <= 0) {
+        if (!parsedTl) {
           return NextResponse.json({ error: "Invalid Team Lead selected." }, { status: 400 });
         }
         if (parsedTl === targetId) {
@@ -649,7 +649,7 @@ export async function DELETE(
     const { id } = await params;
 
     const targetUser = await prisma.user.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       select: { role: true },
     });
 
@@ -662,7 +662,7 @@ export async function DELETE(
       if (callerRole !== "SUPER_ADMIN") {
         return NextResponse.json({ error: "Forbidden: Only Super Admins can delete Super Admin users." }, { status: 403 });
       }
-      if (session.user.id === parseInt(id)) {
+      if (session.user.id === id) {
         return NextResponse.json({ error: "You cannot delete your own Super Admin account." }, { status: 400 });
       }
       const superAdminCount = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
@@ -676,11 +676,11 @@ export async function DELETE(
 
     // Delete site access first due to foreign key
     await prisma.siteAccess.deleteMany({
-      where: { userId: parseInt(id) }
+      where: { userId: id }
     });
 
     await prisma.user.delete({
-      where: { id: parseInt(id) }
+      where: { id }
     });
 
     await invalidateUserRelatedCaches();

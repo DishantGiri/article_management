@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
 
     const whereClause: any = {};
     if (siteIdParam && siteIdParam !== "ALL") {
-      whereClause.siteId = parseInt(siteIdParam);
+      whereClause.siteId = siteIdParam.trim();
     }
 
     const products = shouldLoadProducts
@@ -184,7 +184,7 @@ export async function GET(req: NextRequest) {
     // 4. Query all commission sales matching siteId (or all) and date range for the flat Commission List
     const saleWhere: any = {};
     if (siteIdParam && siteIdParam !== "ALL") {
-      saleWhere.siteId = parseInt(siteIdParam);
+      saleWhere.siteId = siteIdParam.trim();
     }
     if (Object.keys(saleDateFilter).length > 0) {
       saleWhere.saleDate = saleDateFilter;
@@ -504,7 +504,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Fetch product with site, category, writer, linker
     const product = await prisma.product.findUnique({
-      where: { id: parseInt(productId) },
+      where: { id: String(productId) },
       include: {
         site: true,
         category: true,
@@ -662,7 +662,7 @@ export async function POST(req: NextRequest) {
       linkerAmount = 0;
     }
 
-    let teamLeadId: number | null = null;
+    let teamLeadId: string | null = null;
     let teamLeadName: string | null = null;
     let tlTransferred = 0;
     let tlAmount = baseTlAmount;
@@ -727,7 +727,7 @@ export async function POST(req: NextRequest) {
         writerLeftCompany: isWriterLeft,
         writerTransferredToParty,
         notes: notes?.trim() || (isRedirectSale ? "Redirect sale (Linker +50% bonus, normal other commissions)" : null),
-        createdById: session.user.id ? Number(session.user.id) : null,
+        createdById: session.user.id ? String(session.user.id) : null,
       },
     });
 

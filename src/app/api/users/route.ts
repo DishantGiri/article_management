@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
           const primaryRole = sa.role || rolesArr[0] || (role as any) || "WRITER";
           const rolesStr = rolesArr.length > 0 ? rolesArr.join(",") : (sa.role || primaryRole);
           return {
-            siteId: Number(sa.siteId),
+            siteId: String(sa.siteId),
             role: primaryRole,
             roles: rolesStr,
             canAddProduct: Boolean(sa.canAddProduct || rolesArr.includes("LINKER") || rolesArr.includes("PRODUCT_RESEARCHER") || primaryRole === "LINKER" || primaryRole === "PRODUCT_RESEARCHER"),
@@ -124,8 +124,8 @@ export async function POST(req: NextRequest) {
       };
     } else if (siteIds && Array.isArray(siteIds) && siteIds.length > 0) {
       siteAccessCreate = {
-        create: siteIds.map((siteId: number) => ({
-          siteId: Number(siteId),
+        create: siteIds.map((siteId: string) => ({
+          siteId: String(siteId),
           role: (role as any) || "WRITER",
           roles: (role as any) || "WRITER",
           canAddProduct: role === "LINKER" || role === "PRODUCT_RESEARCHER",
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
         role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST",
         allowLinkLogAccess: role === "WRITER" ? !!allowLinkLogAccess : false,
         ...(role === "WRITER" && teamLeadId
-          ? { teamLead: { connect: { id: Number(teamLeadId) } } }
+          ? { teamLead: { connect: { id: String(teamLeadId) } } }
           : {}),
         approved: finalApproved,
         hasLeftCompany: finalHasLeft,

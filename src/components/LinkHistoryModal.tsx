@@ -7,14 +7,14 @@ interface LinkHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   linkLog: {
-    id: number;
+    id: string;
     affiliateName: string;
     product: { name: string };
   } | null;
 }
 
 interface HistoryItem {
-  id: number;
+  id: string;
   updatedAt: string;
   updatedBy: { name: string; role: string };
   oldBridgeLink?: string | null;

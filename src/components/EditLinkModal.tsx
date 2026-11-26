@@ -41,8 +41,8 @@ interface EditLinkModalProps {
   onClose: () => void;
   onSuccess?: () => void;
   link: {
-    id: number;
-    productId: number;
+    id: string;
+    productId: string;
     affiliateName: string;
     affiliateLink: string;
     bridgePageLink?: string | null;
@@ -50,9 +50,9 @@ interface EditLinkModalProps {
     status: string;
     linkerRemarks?: string | null;
     addedAt?: string;
-    geos?: Array<{ id?: number; geo: string; affiliateLink?: string | null; affiliateName?: string | null }>;
+    geos?: Array<{ id?: string; geo: string; affiliateLink?: string | null; affiliateName?: string | null }>;
     product?: {
-      id?: number;
+      id?: string;
       name: string;
       slug?: string | null;
       trendLink?: string | null;
@@ -96,7 +96,7 @@ const isValidUrl = (url: string) => {
 
 export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: EditLinkModalProps) {
   const { data: session } = useSession();
-  const [dbAffiliates, setDbAffiliates] = useState<{ id: number; name: string }[]>([]);
+  const [dbAffiliates, setDbAffiliates] = useState<{ id: string; name: string }[]>([]);
   const [dbGeos, setDbGeos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -130,10 +130,10 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   const selectedProduct = useMemo(() => {
     if (!link?.product) return null;
     return {
-      id: link.productId || link.product.id || 0,
+      id: link.productId || link.product.id || "",
       name: link.product.name,
       slug: link.product.slug,
-      site: (link.product.site as { id?: number; name?: string; url?: string | null; bridgeUrl?: string | null } | null) || { id: 0, name: "Unassigned" },
+      site: (link.product.site as { id?: string; name?: string; url?: string | null; bridgeUrl?: string | null } | null) || { id: "", name: "Unassigned" },
       trendLink: link.product.trendLink,
       previewLink: link.product.previewLink,
       article: link.product.article,
@@ -143,7 +143,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
   const siblingSites = useMemo(() => {
     if (!selectedProduct?.name || !allProducts.length) return [];
     const pName = selectedProduct.name.trim().toLowerCase();
-    const siteMap = new Map<number, any>();
+    const siteMap = new Map<string, any>();
     for (const p of allProducts) {
       if (!p.site || !p.site.id || isResearchSite(p.site.name)) continue;
       if (p.name?.trim().toLowerCase() === pName) {
@@ -567,7 +567,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
       newRemarks !== originalRemarks &&
       newRemarks !== cleanRemarks;
 
-    const productChanged = Number(productId) !== Number(link.productId);
+    const productChanged = String(productId) !== String(link.productId);
     const statusChanged = newStatus !== originalStatus;
     const bridgeChanged = newBridge !== originalBridge;
     const buyChanged = newBuy !== originalBuy;
@@ -725,7 +725,7 @@ export default function EditLinkModal({ isOpen, onClose, onSuccess, link }: Edit
         : affiliateEntries[0]?.affiliateLink.trim();
 
       const payload = {
-        productId: parseInt(productId),
+        productId,
         updatedById: mockUserId,
         affiliateName: displayAffiliateName,
         affiliateLink: primaryAffLink,

@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
     // Fetch all sites user has access to
     const userRole = session.user.role;
-    const userId = Number(session.user.id);
+    const userId = String(session.user.id);
 
     const rawRoles: string[] = (session.user as any)?.roles || [];
     const candidateRoles: string[] = [...rawRoles, userRole || ""].filter(Boolean);
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       ? requestedRole.toUpperCase()
       : (userRole || "");
 
-    let allowedSiteIds: number[] | undefined = undefined;
+    let allowedSiteIds: string[] | undefined = undefined;
     if (effectiveRole === "WRITER" || effectiveRole === "TEAM_LEAD") {
       const accesses = await prisma.siteAccess.findMany({
         where: { userId },
@@ -65,12 +65,12 @@ export async function GET(req: NextRequest) {
     }
 
     // Determine selected site IDs
-    let selectedSiteIds: number[] = [];
+    let selectedSiteIds: string[] = [];
     if (siteIdsParam) {
       selectedSiteIds = siteIdsParam
         .split(",")
-        .map((s) => parseInt(s.trim()))
-        .filter((n) => !isNaN(n) && allSites.some((site) => site.id === n));
+        .map((s) => s.trim())
+        .filter((n) => Boolean(n) && allSites.some((site) => site.id === n));
     }
 
     // If none specified or less than 2, default to the first 2 sites (or all if < 2)
@@ -115,13 +115,13 @@ export async function GET(req: NextRequest) {
     // Group products by normalized name (and country if applicable)
     // Key format: name.trim().toLowerCase():::country
     interface SiteProductInfo {
-      id: number;
+      id: string;
       name: string;
       slug?: string | null;
       country?: string | null;
-      siteId: number;
+      siteId: string;
       siteName: string;
-      categoryId: number;
+      categoryId: string;
       categoryName?: string;
       productCategory?: string | null;
       affiliateName?: string | null;
@@ -150,12 +150,12 @@ export async function GET(req: NextRequest) {
       trendLink?: string | null;
       previewLink?: string | null;
       remarks?: string | null;
-      categoryId?: number;
+      categoryId?: string;
       categoryName?: string;
-      sampleProductId: number;
-      sites: Record<number, SiteProductInfo | null>;
-      presentSiteIds: number[];
-      missingSiteIds: number[];
+      sampleProductId: string;
+      sites: Record<string, SiteProductInfo | null>;
+      presentSiteIds: string[];
+      missingSiteIds: string[];
       isSimilar: boolean;
       isDifferent: boolean;
     }
@@ -169,7 +169,7 @@ export async function GET(req: NextRequest) {
       const groupKey = normCountry ? `${normName}:::${normCountry}` : normName;
 
       if (!groupMap.has(groupKey)) {
-        const initialSites: Record<number, SiteProductInfo | null> = {};
+        const initialSites: Record<string, SiteProductInfo | null> = {};
         for (const sId of selectedSiteIds) {
           initialSites[sId] = null;
         }
@@ -265,7 +265,7 @@ export async function GET(req: NextRequest) {
         continue;
       }
       if (missingInSiteParam) {
-        const missingInId = parseInt(missingInSiteParam);
+        const missingInId = missingInSiteParam.trim();
         if (!group.missingSiteIds.includes(missingInId)) {
           continue;
         }
@@ -275,7 +275,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Count per selected site
-    const selectedSiteCounts: Record<number, { total: number; missing: number; siteName: string }> = {};
+    const selectedSiteCounts: Record<string, { total: number; missing: number; siteName: string }> = {};
     for (const site of selectedSites) {
       let total = 0;
       let missing = 0;

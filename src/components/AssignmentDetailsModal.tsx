@@ -44,14 +44,14 @@ import { consolidateLinkLogs } from "@/lib/utils";
 import { isResearchSite } from "@/lib/researchSiteUtils";
 
 export interface AssignmentProduct {
-  id: number;
+  id: string;
   name: string;
   slug?: string | null;
   country?: string | null;
   isNative?: boolean;
-  siteId?: number | null;
+  siteId?: string | null;
   targetSites?: string | null;
-  categoryId: number;
+  categoryId: string;
   productCategory?: string | null;
   trendLink?: string;
   trendLevel?: string;
@@ -59,14 +59,14 @@ export interface AssignmentProduct {
   previewLink?: string;
   remarks?: string;
   addedAt: string;
-  site?: { id?: number; name: string; url?: string; allowCountrySpecific?: boolean } | null;
-  category: { id?: number; name: string };
-  addedBy: { id?: number; name: string; role?: string };
+  site?: { id?: string; name: string; url?: string; allowCountrySpecific?: boolean } | null;
+  category: { id?: string; name: string };
+  addedBy: { id?: string; name: string; role?: string };
   researchedBy?: string | null;
-  updatedBy?: { id?: number; name: string; role?: string } | null;
+  updatedBy?: { id?: string; name: string; role?: string } | null;
   updatedAt?: string | null;
   article?: {
-    id: number;
+    id: string;
     status: string;
     priority?: string;
     country?: string | null;
@@ -74,11 +74,11 @@ export interface AssignmentProduct {
     startedAt?: string | null;
     completedAt?: string | null;
     productCreatedAt?: string | null;
-    writer?: { id?: number; name: string };
+    writer?: { id?: string; name: string };
   };
   linkLogs?: Array<{
-    id: number;
-    productId?: number;
+    id: string;
+    productId?: string;
     siteName?: string | null;
     affiliateName: string;
     affiliateLink: string;
@@ -97,17 +97,17 @@ export interface AssignmentProduct {
 }
 
 export interface SiteAvailabilityItem {
-  siteId: number;
+  siteId: string;
   siteName: string;
   siteUrl?: string | null;
   isAvailable: boolean;
   isResearchedTarget?: boolean;
   product?: {
-    id: number;
+    id: string;
     name: string;
     slug?: string | null;
     country?: string | null;
-    categoryId?: number;
+    categoryId?: string;
     categoryName?: string;
     productCategory?: string | null;
     previewLink?: string | null;
@@ -121,10 +121,10 @@ export interface SiteAvailabilityItem {
     addedToSiteByRole?: string | null;
     updatedAt?: string | null;
     article?: {
-      id: number;
+      id: string;
       status: string;
       writerName?: string;
-      writerId?: number | null;
+      writerId?: string | null;
       articleLink?: string | null;
       startedAt?: string | null;
       completedAt?: string | null;
@@ -229,8 +229,8 @@ export default function AssignmentDetailsModal({
   // Site Network Availability & Publishing states
   const [siteAvailability, setSiteAvailability] = useState<SiteAvailabilityItem[]>([]);
   const [loadingSites, setLoadingSites] = useState<boolean>(false);
-  const [addingSiteId, setAddingSiteId] = useState<number | null>(null);
-  const [removingSiteId, setRemovingSiteId] = useState<number | null>(null);
+  const [addingSiteId, setAddingSiteId] = useState<string | null>(null);
+  const [removingSiteId, setRemovingSiteId] = useState<string | null>(null);
   const [siteToRemove, setSiteToRemove] = useState<SiteAvailabilityItem | null>(null);
   const [batchAdding, setBatchAdding] = useState<boolean>(false);
   const [siteFilterTab, setSiteFilterTab] = useState<"all" | "available" | "missing">("all");
@@ -275,7 +275,7 @@ export default function AssignmentDetailsModal({
     fetchSiteAvailability();
   }, [fetchSiteAvailability]);
 
-  const handleAddToSite = async (targetSiteId: number, targetSiteName: string) => {
+  const handleAddToSite = async (targetSiteId: string, targetSiteName: string) => {
     setAddingSiteId(targetSiteId);
     try {
       const res = await fetch(`/api/products/${product.id}/site-availability`, {
@@ -452,14 +452,14 @@ export default function AssignmentDetailsModal({
   }, [siteAvailability, siteFilterTab, siteSearchQuery]);
 
   const linkLogs = useMemo(() => {
-    const prodIdToSiteName = new Map<number, string>();
+    const prodIdToSiteName = new Map<string, string>();
     for (const s of siteAvailability) {
       if (s.isAvailable && s.product?.id) {
         prodIdToSiteName.set(s.product.id, s.siteName);
       }
     }
 
-    const byId = new Map<number, NonNullable<AssignmentProduct["linkLogs"]>[0]>();
+    const byId = new Map<string, NonNullable<AssignmentProduct["linkLogs"]>[0]>();
     for (const l of product.linkLogs || []) {
       const sanitizedGeos = getValidLogGeos(l);
       const siteLabel =
@@ -599,13 +599,13 @@ export default function AssignmentDetailsModal({
     setTimeout(() => setCopiedKey(null), 1800);
   };
 
-  const [startingWritingArticleId, setStartingWritingArticleId] = useState<number | null>(null);
+  const [startingWritingArticleId, setStartingWritingArticleId] = useState<string | null>(null);
 
-  const handleStartWritingForArticle = async (articleId: number, targetSiteName: string) => {
+  const handleStartWritingForArticle = async (articleId: string, targetSiteName: string) => {
     if (!articleId) return;
     setStartingWritingArticleId(articleId);
     try {
-      const uId = currentUserId || 1;
+      const uId = currentUserId || "";
       const res = await fetch(`/api/articles/${articleId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

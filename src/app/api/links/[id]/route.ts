@@ -18,7 +18,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const activeUserId = Number(session.user.id);
+    const activeUserId = String(session.user.id);
     const activeUserRole = session.user.role;
 
     const { id } = await params;
@@ -86,7 +86,7 @@ export async function PATCH(
     }
 
     const existing = await prisma.linkLog.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: {
         geos: true,
         product: {
@@ -182,7 +182,7 @@ export async function PATCH(
     const isResolvingIssue = existing.status === "ISSUE" && targetStatus !== undefined && targetStatus !== "ISSUE";
 
     const caller = await prisma.user.findUnique({
-      where: { id: Number(activeUserId) },
+      where: { id: activeUserId },
       select: { name: true, role: true },
     });
     const callerLabel = caller
@@ -206,7 +206,7 @@ export async function PATCH(
       (affiliateLink !== undefined && (affiliateLink || "").trim() !== (existing.affiliateLink || "").trim()) ||
       (targetStatus !== undefined && targetStatus !== existing.status) ||
       (formattedRemarks !== undefined && (formattedRemarks || "").trim() !== (existing.linkerRemarks || "").trim()) ||
-      (productId !== undefined && Number(productId) !== existing.productId) ||
+      (productId !== undefined && String(productId) !== existing.productId) ||
       geosChanged ||
       isRaisingIssue;
 
@@ -214,7 +214,7 @@ export async function PATCH(
       // Prune duplicate sibling records for the same product and affiliate network
       await prisma.linkLog.deleteMany({
         where: {
-          id: { not: parseInt(id) },
+          id: { not: id },
           productId: existing.productId,
           affiliateName: existing.affiliateName,
         },
@@ -229,19 +229,19 @@ export async function PATCH(
 
     if (geosToSet !== null && geosChanged) {
       await prisma.linkGeo.deleteMany({
-        where: { linkLogId: parseInt(id) },
+        where: { linkLogId: id },
       });
     }
 
     const updated = await prisma.linkLog.update({
-      where: { id: parseInt(id) },
+      where: { id },
       data: {
-        ...(activeUserId && !isReportingIssue ? { updatedById: Number(activeUserId) } : {}),
+        ...(activeUserId && !isReportingIssue ? { updatedById: activeUserId } : {}),
         ...(targetStatus !== undefined ? { status: targetStatus as any } : isRaisingIssue ? { status: "ISSUE" } : {}),
         ...(bridgePageLink !== undefined ? { bridgePageLink: updatedBridge } : {}),
         ...(buyLink !== undefined ? { buyLink: updatedBuy } : {}),
         ...(formattedRemarks !== undefined ? { linkerRemarks: formattedRemarks } : {}),
-        ...(productId !== undefined ? { productId: Number(productId) } : {}),
+        ...(productId !== undefined ? { productId: String(productId) } : {}),
         ...(targetAffiliateName !== undefined ? { affiliateName: targetAffiliateName } : {}),
         ...(affiliateLink !== undefined ? { affiliateLink } : {}),
         ...(geosToSet !== null && geosChanged
@@ -271,7 +271,7 @@ export async function PATCH(
     // Prune duplicate sibling records for the same product and affiliate network
     await prisma.linkLog.deleteMany({
       where: {
-        id: { not: parseInt(id) },
+        id: { not: id },
         productId: updated.productId,
         affiliateName: updated.affiliateName,
       },
@@ -282,7 +282,7 @@ export async function PATCH(
       await prisma.linkHistory.create({
         data: {
           linkLogId: updated.id,
-          updatedById: Number(activeUserId),
+          updatedById: activeUserId,
           oldBridgeLink: existing.bridgePageLink,
           newBridgeLink: updated.bridgePageLink,
           oldBuyLink: existing.buyLink,
@@ -450,7 +450,7 @@ export async function PATCH(
             const notif = await prisma.notification.create({
               data: {
                 recipientId: u.id,
-                senderId: Number(activeUserId),
+                senderId: activeUserId,
                 type: "LINK_ISSUE",
                 message: notifMessage,
               },
@@ -462,7 +462,7 @@ export async function PATCH(
         }
 
         await broadcastRealtimeNotification({
-          senderId: Number(activeUserId),
+          senderId: activeUserId,
           message: notifMessage,
           type: "LINK_ISSUE",
           data: { linkLogId: existing.id, productId: existing.productId },
@@ -487,7 +487,7 @@ export async function PATCH(
             const notif = await prisma.notification.create({
               data: {
                 recipientId: u.id,
-                senderId: Number(activeUserId),
+                senderId: activeUserId,
                 type: "LINK_ISSUE",
                 message: notifMessage,
               },
@@ -499,7 +499,7 @@ export async function PATCH(
         }
 
         await broadcastRealtimeNotification({
-          senderId: Number(activeUserId),
+          senderId: activeUserId,
           message: notifMessage,
           type: "LINK_ISSUE",
           data: {
@@ -551,11 +551,11 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const existing = await prisma.linkLog.findUnique({ where: { id: parseInt(id) } });
+    const existing = await prisma.linkLog.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Link not found" }, { status: 404 });
 
     await prisma.linkLog.delete({
-      where: { id: parseInt(id) },
+      where: { id },
     });
 
     await Promise.all([
@@ -586,7 +586,7 @@ export async function GET(
 
   if (session.user.role === "WRITER") {
     const user = await prisma.user.findUnique({
-      where: { id: Number(session.user.id) },
+      where: { id: String(session.user.id) },
       select: { allowLinkLogAccess: true },
     });
     if (!user?.allowLinkLogAccess) {
@@ -595,7 +595,7 @@ export async function GET(
   }
 
   const link = await prisma.linkLog.findUnique({
-    where: { id: parseInt(id) },
+    where: { id },
     include: {
       geos: true,
       addedBy: { select: { name: true } },

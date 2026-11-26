@@ -23,17 +23,17 @@ import { generateSlug } from "@/lib/utils";
 import { PRODUCT_SOURCE_OPTIONS } from "@/components/AddProductModal";
 
 interface Site {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface Affiliate {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -42,7 +42,7 @@ interface EditProductModalProps {
   onClose: () => void;
   onSuccess?: () => void;
   product: {
-    id: number;
+    id: string;
     name: string;
     slug?: string | null;
     isNative?: boolean;
@@ -53,13 +53,13 @@ interface EditProductModalProps {
     affiliateName?: string | null;
     previewLink?: string | null;
     remarks?: string | null;
-    siteId: number;
-    categoryId: number;
+    siteId: string;
+    categoryId: string;
     availableCount?: number;
     missingCount?: number;
     totalSitesCount?: number;
-    site?: { id?: number; name?: string };
-    allProductIds?: number[];
+    site?: { id?: string; name?: string };
+    allProductIds?: string[];
   } | null;
   spreadsheetRowData?: {
     name?: string;
@@ -97,8 +97,8 @@ export default function EditProductModal({
 }: EditProductModalProps) {
   const { data: session } = useSession();
   const [sites, setSites] = useState<Site[]>([]);
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
-  const [productCategories, setProductCategories] = useState<{ id: number; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [productCategories, setProductCategories] = useState<{ id: string; name: string }[]>([]);
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -284,15 +284,15 @@ export default function EditProductModal({
     setError("");
 
     try {
-      const mockUserId = session?.user?.id || 1;
+      const mockUserId = session?.user?.id || "";
       const res = await fetch(`/api/products/${product.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           slug: slug.trim() ? generateSlug(slug) : generateSlug(name),
-          siteId: siteId ? parseInt(siteId) : product.siteId,
-          categoryId: parseInt(categoryId),
+          siteId: siteId || product.siteId,
+          categoryId: categoryId || product.categoryId,
           productCategory: category.trim() || null,
           source: source.trim() || null,
           isNative: Boolean(isNative),

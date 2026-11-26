@@ -32,13 +32,13 @@ import CustomMonthPicker from "@/components/CustomMonthPicker";
 type TimePeriod = "all" | "today" | "yesterday" | "this_week" | "this_month" | "last_month" | "custom";
 
 export interface AffiliateItem {
-  id: number;
+  id: string;
   name: string;
   createdAt: string;
 }
 
 interface LinkerContribution {
-  userId: number;
+  userId: string;
   userName: string;
   userEmail?: string;
   userRole: string;
@@ -46,16 +46,16 @@ interface LinkerContribution {
 }
 
 interface ProductItem {
-  id: number;
+  id: string;
   name: string;
   slug: string | null;
   siteName: string;
   addedByName: string;
-  addedById: number;
+  addedById: string;
   addedByRole: string;
   addedAt: string;
   updatedByName?: string | null;
-  updatedById?: number | null;
+  updatedById?: string | null;
   updatedByRole?: string | null;
   updatedAt?: string | null;
   previewLink: string | null;
@@ -63,7 +63,7 @@ interface ProductItem {
 }
 
 interface AffiliateData {
-  id: number;
+  id: string;
   name: string;
   productCount: number;
   percentage: number;
@@ -72,7 +72,7 @@ interface AffiliateData {
 }
 
 interface LinkerSummary {
-  userId: number;
+  userId: string;
   userName: string;
   userEmail?: string;
   userRole: string;
@@ -106,14 +106,14 @@ export default function AffiliateSettingsTab() {
   const [submitting, setSubmitting] = useState(false);
 
   // Edit Inline State
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Product Inspection Modal
   const [inspectModal, setInspectModal] = useState<{
@@ -335,7 +335,7 @@ export default function AffiliateSettingsTab() {
     setEditName(item.name);
   };
 
-  const handleUpdate = async (id: number) => {
+  const handleUpdate = async (id: string) => {
     const trimmed = editName.trim().replace(/\s+/g, " ");
     if (!trimmed) {
       toast.error("Affiliate Name is required.");
@@ -390,7 +390,7 @@ export default function AffiliateSettingsTab() {
     }
   };
 
-  const handleDelete = (id: number, name: string) => {
+  const handleDelete = (id: string, name: string) => {
     setPendingDelete({ id, name });
     setConfirmOpen(true);
   };
@@ -400,7 +400,7 @@ export default function AffiliateSettingsTab() {
     const { id, name } = pendingDelete;
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/affiliates/${id}?callerId=${session?.user?.id || 1}`, {
+      const res = await fetch(`/api/affiliates/${id}?callerId=${session?.user?.id || ""}`, {
         method: "DELETE",
       });
       if (!res.ok) {

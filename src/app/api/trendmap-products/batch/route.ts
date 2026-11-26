@@ -27,13 +27,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No product IDs provided" }, { status: 400 });
     }
 
-    const numericIds = ids.map((id) => Number(id)).filter((id) => !isNaN(id));
+    const stringIds = ids.map((id) => String(id || "").trim()).filter(Boolean);
 
     if (action === "delete") {
       // Remove selected items from Trendmap.
       // ONLY removes from TrendmapProduct; NEVER removes or affects the catalog Product table!
       const res = await prisma.trendmapProduct.deleteMany({
-        where: { id: { in: numericIds } },
+        where: { id: { in: stringIds } },
       });
       return NextResponse.json({
         success: true,
@@ -44,14 +44,14 @@ export async function POST(req: NextRequest) {
 
     if (action === "mark-added") {
       const selected = await prisma.trendmapProduct.findMany({
-        where: { id: { in: numericIds } },
+        where: { id: { in: stringIds } },
         select: { name: true },
       });
       const names = Array.from(new Set(selected.map((s) => s.name.trim()).filter(Boolean)));
       const res = await prisma.trendmapProduct.updateMany({
         where: {
           OR: [
-            { id: { in: numericIds } },
+            { id: { in: stringIds } },
             ...(names.length > 0 ? [{ name: { in: names } }] : []),
           ],
         },
@@ -62,14 +62,14 @@ export async function POST(req: NextRequest) {
 
     if (action === "mark-pending") {
       const selected = await prisma.trendmapProduct.findMany({
-        where: { id: { in: numericIds } },
+        where: { id: { in: stringIds } },
         select: { name: true },
       });
       const names = Array.from(new Set(selected.map((s) => s.name.trim()).filter(Boolean)));
       const res = await prisma.trendmapProduct.updateMany({
         where: {
           OR: [
-            { id: { in: numericIds } },
+            { id: { in: stringIds } },
             ...(names.length > 0 ? [{ name: { in: names } }] : []),
           ],
         },

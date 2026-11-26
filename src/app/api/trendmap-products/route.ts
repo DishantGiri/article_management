@@ -294,7 +294,7 @@ export async function POST(req: NextRequest) {
       (session?.user?.name ? session.user.name : null);
     const notes = body.notes || body.remarks || null;
 
-    const addedById = session?.user?.id ? Number(session.user.id) : null;
+    const addedById = session?.user?.id ? String(session.user.id) : null;
 
     // Deduplication check: check if product with same name and competitor/url exists
     const existing = await prisma.trendmapProduct.findFirst({

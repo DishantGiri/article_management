@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
 
-    const numericId = Number(userId);
+    const targetId = String(userId).trim();
     const upperRole = role ? String(role).trim().toUpperCase() : null;
     if (upperRole && !VALID_ROLES.has(upperRole)) {
       return NextResponse.json({ error: `Invalid role: ${role}` }, { status: 400 });
@@ -40,12 +40,12 @@ export async function POST(req: NextRequest) {
     const nextRole = upperRole as UserRole | null;
 
     // Check if user exists. If not, auto-create a mock user with that ID so the developer switch doesn't fail after a seed/reset.
-    const existingUser = await prisma.user.findUnique({ where: { id: numericId } });
+    const existingUser = await prisma.user.findUnique({ where: { id: targetId } });
     let updatedUser;
     if (!existingUser) {
       updatedUser = await prisma.user.create({
         data: {
-          id: numericId,
+          id: targetId,
           name: `Dev User ${userId}`,
           email: `devuser${userId}@example.com`,
           role: nextRole,
@@ -54,17 +54,17 @@ export async function POST(req: NextRequest) {
       });
     } else {
       updatedUser = await prisma.user.update({
-        where: { id: numericId },
+        where: { id: targetId },
         data: {
           role: nextRole,
         },
       });
 
       if (!nextRole || nextRole === "ADMIN" || nextRole === "SUPER_ADMIN" || nextRole === "GUEST") {
-        await prisma.siteAccess.deleteMany({ where: { userId: numericId } });
+        await prisma.siteAccess.deleteMany({ where: { userId: targetId } });
       } else {
         await prisma.siteAccess.updateMany({
-          where: { userId: numericId },
+          where: { userId: targetId },
           data: {
             role: nextRole,
             roles: nextRole,

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const name = url.searchParams.get("name")?.trim();
     const excludeId = url.searchParams.get("excludeId")
-      ? parseInt(url.searchParams.get("excludeId")!, 10)
+      ? url.searchParams.get("excludeId")!.trim()
       : null;
 
     if (!name || name.length < 2) {

@@ -19,7 +19,7 @@ export async function POST() {
       );
     }
 
-    const userId = Number(session.user.id);
+    const userId = String(session.user.id);
     const resetResults = [];
 
     for (const tier of DEFAULT_COMMISSION_TIERS) {

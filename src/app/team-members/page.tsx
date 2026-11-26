@@ -27,16 +27,16 @@ import LoadingScreen from "@/components/LoadingScreen";
 import CustomSelect from "@/components/CustomSelect";
 
 interface TeamMember {
-  id: number;
+  id: string;
   name: string;
   email: string;
   createdAt: string;
   teamLead?: {
-    id: number;
+    id: string;
     name: string;
   } | null;
   activeArticle?: {
-    id: number;
+    id: string;
     productName: string;
     status: string;
     startedAt: string | null;
@@ -48,7 +48,7 @@ interface TeamMember {
     avgArticlesPerWeek: number;
   };
   recentArticles: Array<{
-    id: number;
+    id: string;
     productName: string;
     completedAt: string;
     writingTimeMin: number | null;
@@ -65,7 +65,7 @@ export default function TeamMembersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<string>("articles_desc");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [teamLeads, setTeamLeads] = useState<Array<{ id: number; name: string }>>([]);
+  const [teamLeads, setTeamLeads] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedTlId, setSelectedTlId] = useState<string>("all");
 
   const isAdminOrSuperAdmin =
@@ -132,7 +132,7 @@ export default function TeamMembersPage() {
 
   // List of all discoverable team leads
   const availableTeamLeads = useMemo(() => {
-    const map = new Map<number, string>();
+    const map = new Map<string, string>();
     teamLeads.forEach((tl) => map.set(tl.id, tl.name));
     members.forEach((m) => {
       if (m.teamLead) {

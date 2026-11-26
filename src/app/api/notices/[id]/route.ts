@@ -16,8 +16,8 @@ export async function GET(
     }
 
     const { id: idStr } = await params;
-    const id = parseInt(idStr);
-    if (isNaN(id)) {
+    const id = idStr?.trim() || "";
+    if (!id) {
       return NextResponse.json({ error: "Invalid notice ID" }, { status: 400 });
     }
 
@@ -44,7 +44,7 @@ export async function GET(
       return NextResponse.json({ error: "Notice not found" }, { status: 404 });
     }
 
-    const isRead = notice.acknowledgments.some((a) => a.userId === Number(session.user.id));
+    const isRead = notice.acknowledgments.some((a) => a.userId === String(session.user.id));
 
     return NextResponse.json({
       ...notice,
@@ -79,8 +79,8 @@ export async function PUT(
     }
 
     const { id: idStr } = await params;
-    const id = parseInt(idStr);
-    if (isNaN(id)) {
+    const id = idStr?.trim() || "";
+    if (!id) {
       return NextResponse.json({ error: "Invalid notice ID" }, { status: 400 });
     }
 
@@ -145,8 +145,8 @@ export async function DELETE(
     }
 
     const { id: idStr } = await params;
-    const id = parseInt(idStr);
-    if (isNaN(id)) {
+    const id = idStr?.trim() || "";
+    if (!id) {
       return NextResponse.json({ error: "Invalid notice ID" }, { status: 400 });
     }
 

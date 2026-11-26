@@ -37,7 +37,7 @@ import CustomDatePicker from "@/components/CustomDatePicker";
 import CustomMonthPicker from "@/components/CustomMonthPicker";
 
 interface LinkerContribution {
-  userId: number;
+  userId: string;
   userName: string;
   userEmail?: string;
   userRole: string;
@@ -45,16 +45,16 @@ interface LinkerContribution {
 }
 
 interface ProductItem {
-  id: number;
+  id: string;
   name: string;
   slug: string | null;
   siteName: string;
   addedByName: string;
-  addedById: number;
+  addedById: string;
   addedByRole: string;
   addedAt: string;
   updatedByName?: string | null;
-  updatedById?: number | null;
+  updatedById?: string | null;
   updatedByRole?: string | null;
   updatedAt?: string | null;
   previewLink: string | null;
@@ -62,7 +62,7 @@ interface ProductItem {
 }
 
 interface AffiliateData {
-  id: number;
+  id: string;
   name: string;
   productCount: number;
   percentage: number;
@@ -71,7 +71,7 @@ interface AffiliateData {
 }
 
 interface LinkerSummary {
-  userId: number;
+  userId: string;
   userName: string;
   userEmail?: string;
   userRole: string;
@@ -81,7 +81,7 @@ interface LinkerSummary {
 }
 
 interface SiteItem {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -153,13 +153,13 @@ export default function AffiliatesPage() {
   const [addingSubmitting, setAddingSubmitting] = useState(false);
 
   // Edit Inline State
-  const [editingAffiliate, setEditingAffiliate] = useState<{ id: number; name: string } | null>(null);
+  const [editingAffiliate, setEditingAffiliate] = useState<{ id: string; name: string } | null>(null);
   const [editName, setEditName] = useState("");
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Delete Confirm State
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   const formatYMD = (d: Date) => {
     const y = d.getFullYear();
@@ -387,7 +387,7 @@ export default function AffiliatesPage() {
   };
 
   // Handle Update Affiliate Name
-  const handleUpdateAffiliate = async (id: number) => {
+  const handleUpdateAffiliate = async (id: string) => {
     const trimmed = editName.trim().replace(/\s+/g, " ");
     if (!trimmed) {
       toast.error("Affiliate Name is required.");
@@ -415,7 +415,7 @@ export default function AffiliatesPage() {
   };
 
   // Handle Delete Affiliate
-  const handleDeleteAffiliate = (id: number, name: string) => {
+  const handleDeleteAffiliate = (id: string, name: string) => {
     setPendingDelete({ id, name });
     setConfirmOpen(true);
   };
@@ -1053,7 +1053,7 @@ export default function AffiliatesPage() {
                     {/* Card Footer: View Products & Quick Manage */}
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-1">
-                        {aff.id > 0 && !isEditing && (
+                        {aff.id && !aff.id.startsWith("unregistered:") && !isEditing && (
                           <>
                             <button
                               type="button"

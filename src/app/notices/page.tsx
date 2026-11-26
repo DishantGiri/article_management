@@ -32,14 +32,14 @@ type NoticeCategoryType = "IMPORTANT" | "GENERAL" | "SUGGESTION" | "URGENT" | "A
 type TargetRoleType = "ALL" | "WRITER" | "LINKER" | "TEAM_LEAD" | "ADMIN";
 
 interface Notice {
-  id: number;
+  id: string;
   title: string;
   content: string;
   category: NoticeCategoryType;
   targetRoles?: string | null;
   createdAt: string;
   updatedAt: string;
-  createdBy: { id: number; name: string; role: string; image?: string };
+  createdBy: { id: string; name: string; role: string; image?: string };
   isRead: boolean;
   readAt: string | null;
   totalAcknowledgments: number;
@@ -47,9 +47,9 @@ interface Notice {
 
 interface NoticeDetail extends Notice {
   acknowledgments?: {
-    id: number;
+    id: string;
     readAt: string;
-    user: { id: number; name: string; role: string; email: string };
+    user: { id: string; name: string; role: string; email: string };
   }[];
 }
 
@@ -149,14 +149,14 @@ function NoticeBoardContent() {
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
   const [viewingAcksNotice, setViewingAcksNotice] = useState<NoticeDetail | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [ackLoadingId, setAckLoadingId] = useState<number | null>(null);
+  const [ackLoadingId, setAckLoadingId] = useState<string | null>(null);
 
   // Form State
   const [formTitle, setFormTitle] = useState("");
   const [formContent, setFormContent] = useState("");
   const [formCategory, setFormCategory] = useState<NoticeCategoryType>("GENERAL");
   const [formSelectedRoles, setFormSelectedRoles] = useState<string[]>(["ALL"]);
-  const [deleteNoticeId, setDeleteNoticeId] = useState<number | null>(null);
+  const [deleteNoticeId, setDeleteNoticeId] = useState<string | null>(null);
 
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
 
@@ -284,7 +284,7 @@ function NoticeBoardContent() {
   };
 
   // Handle Delete Notice
-  const handleDeleteNotice = (id: number) => {
+  const handleDeleteNotice = (id: string) => {
     setDeleteNoticeId(id);
   };
 
@@ -307,7 +307,7 @@ function NoticeBoardContent() {
   };
 
   // Handle Single Acknowledgment
-  const handleAcknowledge = async (id: number) => {
+  const handleAcknowledge = async (id: string) => {
     setAckLoadingId(id);
     try {
       const res = await fetch(`/api/notices/${id}/ack`, { method: "POST" });

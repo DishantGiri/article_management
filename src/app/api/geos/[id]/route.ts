@@ -20,8 +20,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     const { id: idStr } = await params;
-    const id = parseInt(idStr);
-    if (isNaN(id)) {
+    const id = idStr?.trim() || "";
+    if (!id) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
     await prisma.geo.delete({ where: { id } });

@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     // CASE 1: PRODUCT-BASED PAYOUT
     // ─────────────────────────────────────────────────────────────────────────
     if (productId) {
-      const pId = parseInt(productId);
+      const pId = String(productId).trim();
       const sales = await prisma.commissionSale.findMany({
         where: {
           productId: pId,
@@ -256,7 +256,7 @@ export async function POST(req: NextRequest) {
     // CASE 3: INDEPENDENT USER-BASED PAYOUT
     // ─────────────────────────────────────────────────────────────────────────
     if (userId) {
-      const targetUserId = parseInt(userId);
+      const targetUserId = String(userId).trim();
 
       const sales = await prisma.commissionSale.findMany({
         where: {

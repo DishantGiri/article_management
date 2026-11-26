@@ -1,6 +1,6 @@
 export async function sendRealtimeNotification(
-  recipientId: number,
-  notification: { id: number; message: string; type: string; createdAt: Date; senderId?: number | null }
+  recipientId: string,
+  notification: { id: string; message: string; type: string; createdAt: Date; senderId?: string | null }
 ) {
   // Always call /notify on localhost directly - never through the public domain/Nginx.
   // Fire-and-forget with a short timeout so API responses are never blocked.
@@ -35,7 +35,7 @@ export async function sendRealtimeNotification(
 }
 
 export async function broadcastRealtimeNotification(
-  notification: { id?: number; message: string; type: string; createdAt?: Date; senderId?: number | null; data?: any }
+  notification: { id?: string; message: string; type: string; createdAt?: Date; senderId?: string | null; data?: any }
 ) {
   // Always call /notify on localhost directly - never through the public domain/Nginx.
   // Fire-and-forget with a short timeout so API responses are never blocked.

@@ -6,12 +6,12 @@ import { ArchedNotificationCard } from "./ArchedNotificationCard";
 import { isUserTargeted } from "@/lib/noticeUtils";
 
 interface PendingNotice {
-  id: number;
+  id: string;
   title: string;
   content: string;
   category: string;
   createdAt: string;
-  createdBy: { id: number; name: string; role: string };
+  createdBy: { id: string; name: string; role: string };
 }
 
 export default function NoticePopupModal() {

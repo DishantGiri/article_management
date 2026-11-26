@@ -27,17 +27,17 @@ import EditProductModal from "@/components/EditProductModal";
 import { cleanUrl, getValidLogGeos, isValidLinkLog } from "@/lib/geo-link-parser";
 
 export interface SiteAvailabilityItem {
-  siteId: number;
+  siteId: string;
   siteName: string;
   siteUrl?: string | null;
   isAvailable: boolean;
   isResearchedTarget: boolean;
   product?: {
-    id: number;
+    id: string;
     name: string;
     slug?: string | null;
     country?: string | null;
-    categoryId?: number | null;
+    categoryId?: string | null;
     categoryName?: string | null;
     productCategory?: string | null;
     previewLink?: string | null;
@@ -49,13 +49,13 @@ export interface SiteAvailabilityItem {
     addedToSiteBy?: string | null;
     addedToSiteByRole?: string | null;
     article?: {
-      id: number;
+      id: string;
       status: string;
       writerName?: string | null;
     } | null;
     linkCount?: number;
     linkLogs?: Array<{
-      id: number;
+      id: string;
       affiliateName: string;
       affiliateLink: string;
       bridgePageLink?: string | null;
@@ -68,7 +68,7 @@ export interface SiteAvailabilityItem {
 
 export interface DuplicatePreviewData {
   productName: string;
-  baseProductId?: number;
+  baseProductId?: string;
   researchedBy?: string | null;
   researchedByRole?: string | null;
   addedBy?: string | null;
@@ -85,9 +85,9 @@ export interface DuplicatePreviewData {
 interface DuplicateProductPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  productId?: number | null;
+  productId?: string | null;
   productName: string;
-  onProductAddedToSite?: (siteId: number, siteName: string) => void;
+  onProductAddedToSite?: (siteId: string, siteName: string) => void;
   onProductUpdated?: () => void;
   spreadsheetRowData?: any;
 }
@@ -104,7 +104,7 @@ export default function DuplicateProductPreviewModal({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<DuplicatePreviewData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [addingSiteId, setAddingSiteId] = useState<number | null>(null);
+  const [addingSiteId, setAddingSiteId] = useState<string | null>(null);
   const [batchAdding, setBatchAdding] = useState(false);
   const [filterMode, setFilterMode] = useState<"all" | "missing" | "available">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -159,7 +159,7 @@ export default function DuplicateProductPreviewModal({
     }
   }, [isOpen, fetchAvailability]);
 
-  const handleAddToSite = async (siteId: number, siteName: string) => {
+  const handleAddToSite = async (siteId: string, siteName: string) => {
     setAddingSiteId(siteId);
     try {
       const effectiveId = productId || data?.baseProductId || "by-name";

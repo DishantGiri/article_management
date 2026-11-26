@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const activeUserId = Number(session.user.id);
+    const activeUserId = String(session.user.id);
     const activeUserRole = session.user.role;
     const activeUserRoles: string[] = (session.user as any)?.roles || (activeUserRole ? [activeUserRole] : []);
 
@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
 
     // Check if it's a batch add or single add
     interface AddItem {
-      targetSiteId: number;
-      sourceProductId?: number;
+      targetSiteId: string;
+      sourceProductId?: string;
       name?: string;
       slug?: string | null;
       country?: string | null;
@@ -43,15 +43,15 @@ export async function POST(req: NextRequest) {
       trendLink?: string | null;
       previewLink?: string | null;
       remarks?: string | null;
-      categoryId?: number;
+      categoryId?: string;
     }
 
     const items: AddItem[] = Array.isArray(body.items)
       ? body.items
       : [
           {
-            targetSiteId: Number(body.targetSiteId),
-            sourceProductId: body.sourceProductId ? Number(body.sourceProductId) : undefined,
+            targetSiteId: String(body.targetSiteId || ""),
+            sourceProductId: body.sourceProductId ? String(body.sourceProductId) : undefined,
             name: body.name,
             slug: body.slug,
             country: body.country,
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
             trendLink: body.trendLink,
             previewLink: body.previewLink,
             remarks: body.remarks,
-            categoryId: body.categoryId ? Number(body.categoryId) : undefined,
+            categoryId: body.categoryId ? String(body.categoryId) : undefined,
           },
         ];
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (authorizedSites !== null) {
-      const unauthorized = items.some((it) => !authorizedSites.includes(Number(it.targetSiteId)));
+      const unauthorized = items.some((it) => !authorizedSites.includes(String(it.targetSiteId)));
       if (unauthorized) {
         return NextResponse.json(
           { error: "Access Denied: You do not have Linker permissions to add products to one or more selected sites." },
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     const skippedResults: { name: string; reason: string }[] = [];
 
     // Pre-fetch source products if sourceProductIds provided
-    const sourceIds = items.map((i) => i.sourceProductId).filter(Boolean) as number[];
+    const sourceIds = items.map((i) => i.sourceProductId).filter(Boolean) as string[];
     const sourceProducts =
       sourceIds.length > 0
         ? await prisma.product.findMany({
@@ -99,8 +99,8 @@ export async function POST(req: NextRequest) {
     const sourceMap = new Map(sourceProducts.map((p) => [p.id, p]));
 
     for (const item of items) {
-      const source = item.sourceProductId ? sourceMap.get(item.sourceProductId) : undefined;
-      const targetSiteId = Number(item.targetSiteId);
+      const source = item.sourceProductId ? sourceMap.get(String(item.sourceProductId)) : undefined;
+      const targetSiteId = String(item.targetSiteId);
 
       // Verify target site exists
       const targetSite = await prisma.site.findUnique({

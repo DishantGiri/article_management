@@ -34,18 +34,18 @@ export async function POST(req: NextRequest) {
     const uniqueNames = Array.from(new Set(validItems.map((i) => i.name.toLowerCase())));
 
     // Determine target sites
-    const targetSiteIds = new Set<number>();
+    const targetSiteIds = new Set<string>();
     if (siteId) {
-      targetSiteIds.add(parseInt(siteId));
+      targetSiteIds.add(String(siteId).trim());
     } else if (Array.isArray(categoryIds) && categoryIds.length > 0) {
-      const parsedCatIds = categoryIds.map((id: any) => parseInt(id)).filter((id: number) => !isNaN(id));
+      const parsedCatIds = categoryIds.map((id: any) => String(id || "").trim()).filter(Boolean);
       if (parsedCatIds.length > 0) {
         const catsWithSites = await prisma.category.findMany({
           where: { id: { in: parsedCatIds } },
           include: { sites: { select: { id: true } } },
         });
         const excludedSet = new Set(
-          (Array.isArray(excludedSiteIds) ? excludedSiteIds : []).map((id: any) => parseInt(id))
+          (Array.isArray(excludedSiteIds) ? excludedSiteIds : []).map((id: any) => String(id || "").trim()).filter(Boolean)
         );
         for (const cat of catsWithSites) {
           for (const s of cat.sites) {
@@ -105,12 +105,12 @@ export async function POST(req: NextRequest) {
         exists: boolean;
         isUncertain: boolean;
         message: string;
-        productId?: number;
+        productId?: string;
         productName: string;
         researchedBy?: string | null;
         conflicts: Array<{
-          productId: number;
-          siteId: number;
+          productId: string;
+          siteId: string;
           siteName: string;
           addedBy: string;
           researchedBy?: string | null;
@@ -124,16 +124,16 @@ export async function POST(req: NextRequest) {
       const itemCountry = (item.country || "").toUpperCase();
 
       const exactConflicts: Array<{
-        productId: number;
-        siteId: number;
+        productId: string;
+        siteId: string;
         siteName: string;
         addedBy: string;
         researchedBy?: string | null;
         country?: string | null;
       }> = [];
       const uncertainConflicts: Array<{
-        productId: number;
-        siteId: number;
+        productId: string;
+        siteId: string;
         siteName: string;
         addedBy: string;
         researchedBy?: string | null;

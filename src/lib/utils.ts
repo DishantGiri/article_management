@@ -16,7 +16,7 @@ export function generateSlug(text: string): string {
     .replace(/^-+|-+$/g, ""); // trim leading and trailing dashes
 }
 
-export function consolidateLinkLogs<T extends { id?: number; productId?: number; siteName?: string | null; affiliateName?: string | null; bridgePageLink?: string | null; buyLink?: string | null; affiliateLink?: string | null; status?: string; linkerRemarks?: string | null; geos?: any[] }>(logs: T[] | null | undefined): T[] {
+export function consolidateLinkLogs<T extends { id?: string; productId?: string; siteName?: string | null; affiliateName?: string | null; bridgePageLink?: string | null; buyLink?: string | null; affiliateLink?: string | null; status?: string; linkerRemarks?: string | null; geos?: any[] }>(logs: T[] | null | undefined): T[] {
   if (!logs || !Array.isArray(logs) || logs.length === 0) return [];
   const map = new Map<string, T>();
   for (const log of logs) {

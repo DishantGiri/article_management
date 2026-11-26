@@ -73,9 +73,9 @@ function getRowFieldValue(row: Record<string, any>, ...aliases: string[]): any {
 
 
 async function attachOrMergeImportedLink(params: {
-  productId: number;
+  productId: string;
   existingLinkLog?: any | null;
-  addedById: number;
+  addedById: string;
   bridgePageLink: string | null;
   buyLink: string | null;
   affiliateLink: string;
@@ -198,8 +198,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    let addedById = Number(body.addedById || session.user.id);
-    let existingUser = Number.isInteger(addedById) && addedById > 0
+    let addedById = String(body.addedById || session.user.id || "").trim();
+    let existingUser = addedById
       ? await prisma.user.findUnique({
           where: { id: addedById },
           select: { id: true, name: true, role: true },
@@ -274,9 +274,6 @@ export async function POST(req: NextRequest) {
       prisma.productCategory.findMany(),
     ]);
 
-    const knownAffiliateNames = new Set<string>(
-      allDbAffiliates.map((a) => a.name.toLowerCase().trim())
-    );
     const knownProductCategoryNames = new Set<string>(
       allDbProductCategories.map((c) => c.name.toLowerCase().trim())
     );
@@ -485,7 +482,7 @@ export async function POST(req: NextRequest) {
       // D. Fallback if no specific site was checked:
       if (targetSites.length === 0) {
         if (defaultSiteId) {
-          const s = allDbSites.find((d) => d.id === Number(defaultSiteId));
+          const s = allDbSites.find((d) => d.id === String(defaultSiteId));
           if (s) targetSites.push(s);
         }
         if (targetSites.length === 0) {
@@ -501,7 +498,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Match Added By / Researched By user using site-aware smart resolver
-      let rowAddedById = Number(addedById);
+      let rowAddedById = String(addedById);
       if (rawAddedBy && !isPlaceholderName(rawAddedBy)) {
         const matchedUsers = resolveUsers(rawAddedBy, allDbUsers, {
           rolePreference: isProductResearcherUser ? "PRODUCT_RESEARCHER" : "LINKER",
@@ -546,19 +543,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Ensure AffiliateName exists (never create an entry for "No Affiliate")
-      if (resolvedAffiliate) {
-        const affKey = resolvedAffiliate.toLowerCase().trim();
-        if (!knownAffiliateNames.has(affKey)) {
-          await prisma.affiliateName.upsert({
-            where: { name: resolvedAffiliate },
-            update: {},
-            create: { name: resolvedAffiliate },
-          }).catch(() => {});
-          knownAffiliateNames.add(affKey);
-          allDbAffiliates.push({ name: resolvedAffiliate } as any);
-        }
-      }
+      // Affiliates are pre-seeded; never create AffiliateName records during import (fuzzy-matched against existing only)
 
       // ─── IF PRODUCT RESEARCHER: DO NOT ADD DIRECTLY TO ANY SITE ───
       // Simply list in the research pool with detected target sites. Linkers will publish to sites later.
@@ -572,7 +557,7 @@ export async function POST(req: NextRequest) {
             const mergeRes = await attachOrMergeImportedLink({
               productId: batchCreatedProd.id,
               existingLinkLog: batchCreatedProd._importedLinkLog || null,
-              addedById: Number(rowAddedById),
+              addedById: String(rowAddedById),
               bridgePageLink: rawBridgeLink,
               buyLink: rawBuyLink,
               affiliateLink: effectiveAffiliateLink,
@@ -646,7 +631,7 @@ export async function POST(req: NextRequest) {
               productCategory,
               previewLink,
               remarks: remarks || null,
-              addedById: Number(rowAddedById),
+              addedById: String(rowAddedById),
               addedAt,
             },
             include: {
@@ -659,7 +644,7 @@ export async function POST(req: NextRequest) {
           const linkRes = await attachOrMergeImportedLink({
             productId: newProduct.id,
             existingLinkLog: null,
-            addedById: Number(rowAddedById),
+            addedById: String(rowAddedById),
             bridgePageLink: rawBridgeLink,
             buyLink: rawBuyLink,
             affiliateLink: effectiveAffiliateLink,
@@ -694,7 +679,7 @@ export async function POST(req: NextRequest) {
             const mergeRes = await attachOrMergeImportedLink({
               productId: batchCreatedOnSite.id,
               existingLinkLog: batchCreatedOnSite._importedLinkLog || null,
-              addedById: Number(rowAddedById),
+              addedById: String(rowAddedById),
               bridgePageLink: rawBridgeLink,
               buyLink: rawBuyLink,
               affiliateLink: effectiveAffiliateLink,
@@ -772,7 +757,7 @@ export async function POST(req: NextRequest) {
               productCategory,
               previewLink,
               remarks: remarks || null,
-              addedById: Number(rowAddedById),
+              addedById: String(rowAddedById),
               addedAt,
             },
             include: {
@@ -786,7 +771,7 @@ export async function POST(req: NextRequest) {
           const linkRes = await attachOrMergeImportedLink({
             productId: newProduct.id,
             existingLinkLog: null,
-            addedById: Number(rowAddedById),
+            addedById: String(rowAddedById),
             bridgePageLink: rawBridgeLink,
             buyLink: rawBuyLink,
             affiliateLink: effectiveAffiliateLink,
@@ -805,7 +790,7 @@ export async function POST(req: NextRequest) {
           });
 
           // Resolve optional Writer for this site's article
-          let resolvedWriterId: number | null = null;
+          let resolvedWriterId: string | null = null;
           if (rawWriterName && !isPlaceholderName(rawWriterName)) {
             const matchedWriters = resolveUsers(rawWriterName, allDbUsers, {
               rolePreference: "WRITER",
@@ -837,11 +822,11 @@ export async function POST(req: NextRequest) {
           });
 
           for (const access of accesses) {
-            if (access.userId === Number(rowAddedById)) continue;
+            if (access.userId === String(rowAddedById)) continue;
             const notif = await prisma.notification.create({
               data: {
                 recipientId: access.userId,
-                senderId: Number(rowAddedById),
+                senderId: String(rowAddedById),
                 type: "PRODUCT_ADDED",
                 message: `New product "${newProduct.name}" has been added to site "${site.name}".`,
               },

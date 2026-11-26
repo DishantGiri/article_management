@@ -44,7 +44,7 @@ import AddProductModal, { InitialProductData } from "@/components/AddProductModa
 import { getActiveWorkspace } from "@/lib/workspace";
 
 interface TrendmapProductItem {
-  id: number;
+  id: string;
   name: string;
   productUrl: string | null;
   competitor: string | null;
@@ -59,8 +59,8 @@ interface TrendmapProductItem {
   notes: string | null;
   status: string;
   addedToCatalog: boolean;
-  catalogProductId: number | null;
-  addedBy?: { id: number; name: string; email: string } | null;
+  catalogProductId: string | null;
+  addedBy?: { id: string; name: string; email: string } | null;
   createdAt: string;
   updatedAt: string;
   // Duplicate opportunity & catalog match information
@@ -70,7 +70,7 @@ interface TrendmapProductItem {
   duplicateResearchers?: string[];
   inCatalog?: boolean;
   catalogDetails?: {
-    id: number;
+    id: string;
     siteName: string;
     addedBy: string;
     addedAt: string;
@@ -118,7 +118,7 @@ export default function TrendmapProductsPage() {
   const [limit] = useState(25);
 
   // Selection
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Deletion modals
   const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
@@ -212,7 +212,7 @@ export default function TrendmapProductsPage() {
   const [manualDuplicateCheck, setManualDuplicateCheck] = useState<{
     checking: boolean;
     hasTrendmapDuplicates?: boolean;
-    trendmapDuplicates?: Array<{ id: number; competitor: string | null; researchedBy: string | null }>;
+    trendmapDuplicates?: Array<{ id: string; competitor: string | null; researchedBy: string | null }>;
     existsInCatalog?: boolean;
     catalogMatches?: Array<{ siteName: string; addedBy: string }>;
     sourcesList?: string[];
@@ -426,7 +426,7 @@ export default function TrendmapProductsPage() {
     }
   };
 
-  const handleToggleSelect = (id: number) => {
+  const handleToggleSelect = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );

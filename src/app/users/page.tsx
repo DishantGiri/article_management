@@ -47,12 +47,12 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 interface Site {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST" | null;
@@ -61,8 +61,8 @@ interface User {
   hasLeftCompany?: boolean;
   commissionToPartyFund?: boolean;
   siteAccess: {
-    id?: number;
-    siteId?: number;
+    id?: string;
+    siteId?: string;
     role?: string | null;
     roles?: string | null;
     canAddProduct?: boolean;
@@ -70,16 +70,16 @@ interface User {
     canWrite?: boolean;
     canReview?: boolean;
     site: {
-      id: number;
+      id: string;
       name: string;
     };
   }[];
   teamLead?: {
-    id: number;
+    id: string;
     name: string;
   } | null;
   teamMembers?: {
-    id: number;
+    id: string;
     name: string;
   }[];
   createdAt?: string;
@@ -173,7 +173,7 @@ export default function UsersPage() {
   const { data: session, status, update: updateSession } = useSession();
 
   const syncOwnSessionIfSelf = async (updatedUser: User) => {
-    if (!updatedUser || updatedUser.id !== Number(currentUserId)) return;
+    if (!updatedUser || String(updatedUser.id) !== String(currentUserId)) return;
     const roleSet = new Set<string>();
     if (updatedUser.role) roleSet.add(updatedUser.role.toUpperCase());
     (updatedUser.siteAccess || []).forEach((sa) => {
@@ -185,7 +185,7 @@ export default function UsersPage() {
     await updateSession();
   };
   const [currentUserRole, setCurrentUserRole] = useState("");
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const isSuperAdmin = currentUserRole === "SUPER_ADMIN";
   const isAdminOrSuperAdmin = currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN";
@@ -198,8 +198,8 @@ export default function UsersPage() {
 
   // 2. Migrate / Manage Sites Modal
   const [migrateSitesUser, setMigrateSitesUser] = useState<User | null>(null);
-  const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
-  const [selectedSiteRolesMap, setSelectedSiteRolesMap] = useState<Record<number, string[]>>({});
+  const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
+  const [selectedSiteRolesMap, setSelectedSiteRolesMap] = useState<Record<string, string[]>>({});
   const [migratingSites, setMigratingSites] = useState(false);
 
   // 3. Promote / Change Role Modal
@@ -209,7 +209,7 @@ export default function UsersPage() {
 
   // 4. Full Add / Edit Modal
   const [showModal, setShowModal] = useState(false);
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string }>({});
@@ -217,8 +217,8 @@ export default function UsersPage() {
     name: "",
     email: "",
     role: "WRITER",
-    siteIds: [] as number[],
-    siteRolesMap: {} as Record<number, string[]>,
+    siteIds: [] as string[],
+    siteRolesMap: {} as Record<string, string[]>,
     teamLeadId: "",
     allowLinkLogAccess: false,
     approved: true,
@@ -339,7 +339,7 @@ export default function UsersPage() {
     setMigrateSitesUser(u);
     const initialSiteIds = u.siteAccess ? u.siteAccess.map((sa) => sa.site.id) : [];
     setSelectedSiteIds(initialSiteIds);
-    const rolesMap: Record<number, string[]> = {};
+    const rolesMap: Record<string, string[]> = {};
     (u.siteAccess || []).forEach((sa) => {
       const roles = parseSiteRoles(sa.roles, sa.role);
       rolesMap[sa.site.id] = roles.length > 0 ? roles : [u.role || "WRITER"];
@@ -347,7 +347,7 @@ export default function UsersPage() {
     setSelectedSiteRolesMap(rolesMap);
   };
 
-  const handleToggleSiteSelection = (siteId: number) => {
+  const handleToggleSiteSelection = (siteId: string) => {
     setSelectedSiteIds((prev) => {
       if (prev.includes(siteId)) {
         return prev.filter((id) => id !== siteId);
@@ -363,7 +363,7 @@ export default function UsersPage() {
     });
   };
 
-  const handleToggleMigrateSiteRole = (siteId: number, roleToToggle: string) => {
+  const handleToggleMigrateSiteRole = (siteId: string, roleToToggle: string) => {
     setSelectedSiteRolesMap((prev) => {
       const currentRoles = prev[siteId] || [migrateSitesUser?.role || "WRITER"];
       let updatedRoles: string[];
@@ -582,7 +582,7 @@ export default function UsersPage() {
   const openEditModal = (u: User) => {
     setEditingUserId(u.id);
     const hasLeft = Boolean(u.hasLeftCompany);
-    const sRolesMap: Record<number, string[]> = {};
+    const sRolesMap: Record<string, string[]> = {};
     (u.siteAccess || []).forEach((sa) => {
       const roles = parseSiteRoles(sa.roles, sa.role);
       sRolesMap[sa.site.id] = roles.length > 0 ? roles : [u.role || "WRITER"];
@@ -2322,7 +2322,7 @@ export default function UsersPage() {
                             siteRolesMap: {},
                           };
                         }
-                        const nextMap: Record<number, string[]> = {};
+                        const nextMap: Record<string, string[]> = {};
                         for (const sId of prev.siteIds) {
                           const existing = prev.siteRolesMap[sId] || [];
                           const updated = existing
@@ -2395,7 +2395,7 @@ export default function UsersPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const nextRolesMap: Record<number, string[]> = {};
+                          const nextRolesMap: Record<string, string[]> = {};
                           sites.forEach((s) => {
                             nextRolesMap[s.id] = form.siteRolesMap[s.id] || [form.role || "WRITER"];
                           });
@@ -2424,7 +2424,7 @@ export default function UsersPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const nextMap: Record<number, string[]> = {};
+                            const nextMap: Record<string, string[]> = {};
                             form.siteIds.forEach((id) => (nextMap[id] = ["LINKER"]));
                             setForm({ ...form, siteRolesMap: nextMap });
                             toast.success("Set all selected sites to Linker");
@@ -2436,7 +2436,7 @@ export default function UsersPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const nextMap: Record<number, string[]> = {};
+                            const nextMap: Record<string, string[]> = {};
                             form.siteIds.forEach((id) => (nextMap[id] = ["WRITER"]));
                             setForm({ ...form, siteRolesMap: nextMap });
                             toast.success("Set all selected sites to Writer");
@@ -2448,7 +2448,7 @@ export default function UsersPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const nextMap: Record<number, string[]> = {};
+                            const nextMap: Record<string, string[]> = {};
                             form.siteIds.forEach((id) => (nextMap[id] = ["TEAM_LEAD"]));
                             setForm({ ...form, siteRolesMap: nextMap });
                             toast.success("Set all selected sites to Team Lead");

@@ -8,7 +8,7 @@ export async function GET(
   try {
     const { id } = await params;
     const history = await prisma.linkHistory.findMany({
-      where: { linkLogId: parseInt(id) },
+      where: { linkLogId: id.trim() },
       include: {
         updatedBy: { select: { name: true, role: true } },
       },

@@ -277,7 +277,7 @@ export default function Sidebar() {
         ws.onmessage = (event) => {
           try {
             const notif = JSON.parse(event.data);
-            const isSelf = Boolean(notif.senderId && userId && Number(notif.senderId) === Number(userId));
+            const isSelf = Boolean(notif.senderId && userId && String(notif.senderId) === String(userId));
 
             // If notice published, check if targeted to this user's role
             if (notif.type === "NOTICE_PUBLISHED") {

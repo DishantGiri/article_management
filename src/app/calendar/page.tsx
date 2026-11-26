@@ -72,7 +72,7 @@ interface CalendarDay {
 
 interface CalendarResponse {
   targetUser: {
-    id: number;
+    id: string;
     name: string;
     email: string;
     role: string | null;
@@ -83,7 +83,7 @@ interface CalendarResponse {
   monthLabel: string;
   secondaryMonthLabel?: string;
   selectableUsers: Array<{
-    id: number;
+    id: string;
     name: string;
     email: string;
     role: string | null;
@@ -134,8 +134,8 @@ function CalendarContent() {
   const [selectedAdMonth, setSelectedAdMonth] = useState(
     initialAdMonth || getCurrentNptAdMonthKey()
   );
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(
-    searchParams.get("userId") ? parseInt(searchParams.get("userId")!) : null
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(
+    searchParams.get("userId") || null
   );
 
   const [inspectingDay, setInspectingDay] = useState<CalendarDay | null>(null);
@@ -291,10 +291,10 @@ function CalendarContent() {
               <CustomSelect
                 value={String(selectedUserId || data.targetUser.id)}
                 onChange={(val) => {
-                  const idNum = parseInt(val);
-                  setSelectedUserId(idNum);
+                  const nextUserId = String(val).trim();
+                  setSelectedUserId(nextUserId || null);
                   const mq = calendarMode === "BS" ? `bsMonth=${selectedBsMonth}` : `month=${selectedAdMonth}`;
-                  router.push(`/calendar?userId=${idNum}&${mq}`);
+                  router.push(`/calendar?userId=${encodeURIComponent(nextUserId)}&${mq}`);
                 }}
                 options={userOptions}
                 placeholder="Select User"

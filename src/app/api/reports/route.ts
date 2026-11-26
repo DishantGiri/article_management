@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const callerId = Number(session.user.id);
+    const callerId = String(session.user.id);
     const callerRole = session.user.role || "WRITER";
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const requestedUserId = req.nextUrl.searchParams.get("userId");
 
     if ((callerRole === "SUPER_ADMIN" || callerRole === "ADMIN") && requestedUserId) {
-      targetUserId = Number(requestedUserId);
+      targetUserId = String(requestedUserId);
     }
 
     const targetUser = await prisma.user.findUnique({
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
 
     // Categorize Writer Work:
     // 1. Fixes (Redo resolutions)
-    const fixedArticleIds = new Set<number>();
+    const fixedArticleIds = new Set<string>();
     const fixesList: any[] = [];
 
     userArticleHistories.forEach((h) => {
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
     });
 
     // 2. Updates (Article content / link updates)
-    const updatedArticleIds = new Set<number>();
+    const updatedArticleIds = new Set<string>();
     const updatesList: any[] = [];
 
     userArticleHistories.forEach((h) => {

@@ -18,7 +18,7 @@ export async function GET(
 
     const { id: identifier } = await params;
     const userRole = session.user.role;
-    const userId = Number(session.user.id);
+    const userId = String(session.user.id);
 
     const rawRoles: string[] = (session.user as any)?.roles || [];
     const candidateRoles: string[] = [...rawRoles, userRole || ""].filter(Boolean);
@@ -28,17 +28,13 @@ export async function GET(
       ? requestedRole.toUpperCase()
       : (userRole || "");
 
-    // 1. Locate the site either by numeric ID or by slug/name
-    let site = null;
-    const numId = parseInt(identifier);
-    if (!isNaN(numId)) {
-      site = await prisma.site.findUnique({
-        where: { id: numId },
-        include: {
-          categories: { select: { id: true, name: true } },
-        },
-      });
-    }
+    // 1. Locate the site either by ID or by slug/name
+    let site = await prisma.site.findUnique({
+      where: { id: identifier.trim() },
+      include: {
+        categories: { select: { id: true, name: true } },
+      },
+    });
 
     if (!site) {
       // Find all sites and match by slugified name or raw lowercase name
@@ -52,7 +48,7 @@ export async function GET(
         (s) =>
           slugifySite(s.name) === targetSlug ||
           s.name.trim().toLowerCase() === targetSlug
-      );
+      ) ?? null;
     }
 
     if (!site) {
@@ -193,8 +189,8 @@ export async function PATCH(
     }
 
     const { id: idStr } = await params;
-    const siteId = parseInt(idStr);
-    if (isNaN(siteId)) {
+    const siteId = idStr?.trim() || "";
+    if (!siteId) {
       return NextResponse.json({ error: "Invalid site ID" }, { status: 400 });
     }
 
@@ -226,9 +222,9 @@ export async function PATCH(
     const trimmedName = name !== undefined ? (typeof name === "string" ? name.trim().replace(/\s+/g, " ") : currentSite.name) : currentSite.name;
     const trimmedUrl = url !== undefined ? (url ? url.trim() : null) : currentSite.url;
     const trimmedBridgeUrl = bridgeUrl !== undefined ? (typeof bridgeUrl === "string" && bridgeUrl.trim() ? bridgeUrl.trim() : null) : currentSite.bridgeUrl;
-    const currentCatIds = currentSite.categories.map((c) => c.id).sort((a, b) => a - b);
+    const currentCatIds = currentSite.categories.map((c) => c.id).sort();
     const newCatIds = Array.isArray(categoryIds)
-      ? [...categoryIds].sort((a: number, b: number) => a - b)
+      ? [...categoryIds].map(String).sort()
       : currentCatIds;
 
     const nameSame = trimmedName === currentSite.name;
@@ -253,7 +249,7 @@ export async function PATCH(
         ...(bridgeUrl !== undefined ? { bridgeUrl: trimmedBridgeUrl } : {}),
         ...(allowCountrySpecific !== undefined ? { allowCountrySpecific: Boolean(allowCountrySpecific) } : {}),
         ...(Array.isArray(categoryIds)
-          ? { categories: { set: categoryIds.map((cid: number) => ({ id: cid })) } }
+          ? { categories: { set: categoryIds.map((cid: string) => ({ id: String(cid) })) } }
           : {}),
       },
     });
@@ -287,7 +283,7 @@ export async function DELETE(
     const { id } = await params;
 
     await prisma.site.delete({
-      where: { id: parseInt(id) },
+      where: { id: id.trim() },
     });
 
     await delByPattern("sites:*");

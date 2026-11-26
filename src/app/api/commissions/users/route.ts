@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     // 3. Build sale date filter if provided
     const saleWhere: any = {};
     if (siteIdParam && siteIdParam !== "ALL") {
-      saleWhere.siteId = parseInt(siteIdParam);
+      saleWhere.siteId = siteIdParam.trim();
     }
     if (startDateParam || endDateParam) {
       saleWhere.saleDate = {};
@@ -81,10 +81,10 @@ export async function GET(req: NextRequest) {
     let userCommissions = users.map((user) => {
       // Find all sales credited to this user based on their roles
       const userSales: Array<{
-        saleId: number;
-        productId: number;
+        saleId: string;
+        productId: string;
         productName: string;
-        siteId: number;
+        siteId: string;
         siteName: string;
         saleType: "FIRST_SALE" | "RESALE" | "REDIRECT";
         saleDate: string;

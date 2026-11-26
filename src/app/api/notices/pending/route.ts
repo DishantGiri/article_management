@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const currentUserId = Number(session.user.id);
+    const currentUserId = String(session.user.id);
 
     // Fetch user from DB to ensure most up-to-date role and join date
     const dbUser = await prisma.user.findUnique({

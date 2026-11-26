@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
         : `dashboard:user:${userId}:${role}`;
 
     const dashboardPayload = await cached(cacheKey, 45, async () => {
-      let allowedSiteIds: number[] = [];
+      let allowedSiteIds: string[] = [];
 
       // Fetch site access
       if (role === "WRITER" || role === "TEAM_LEAD" || role === "LINKER" || role === "PRODUCT_RESEARCHER") {
@@ -244,8 +244,8 @@ export async function GET(req: NextRequest) {
 
       const teamLeadMemberFilter = {
         OR: [
-          { writerId: Number(userId) },
-          { writer: { teamLeadId: Number(userId) } },
+          { writerId: String(userId) },
+          { writer: { teamLeadId: String(userId) } },
         ],
       };
 
@@ -285,7 +285,7 @@ export async function GET(req: NextRequest) {
 
         // Writer performance: ONLY writers assigned under this team lead
         prisma.user.findMany({
-          where: { role: "WRITER", teamLeadId: Number(userId) },
+          where: { role: "WRITER", teamLeadId: String(userId) },
           include: {
             _count: {
               select: {
@@ -516,9 +516,9 @@ export async function GET(req: NextRequest) {
 
     // ─── Individual Unpaid Commission for WRITER, LINKER, TEAM_LEAD ───
     let individualCommission = null;
-    const targetUserId = parseInt(String(userId || session.user.id || "0"), 10);
+    const targetUserId = String(userId || session.user.id || "");
 
-    if (targetUserId > 0 && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+    if (targetUserId && role !== "ADMIN" && role !== "SUPER_ADMIN") {
       try {
         const userPendingSales = await prisma.commissionSale.findMany({
           where: {
@@ -586,7 +586,7 @@ export async function GET(req: NextRequest) {
 
     // ─── WRITER PERFORMANCE METRICS & VELOCITY ───
     let writerStats = null;
-    if (targetUserId > 0 && (role === "WRITER" || role === "TEAM_LEAD")) {
+    if (targetUserId && (role === "WRITER" || role === "TEAM_LEAD")) {
       try {
         const [
           writerApprovedCount,
@@ -638,7 +638,7 @@ export async function GET(req: NextRequest) {
     let productResearcherData = null;
     if (role === "PRODUCT_RESEARCHER" || normalizedUserRoles.includes("PRODUCT_RESEARCHER")) {
     try {
-      const targetResearcherId = Number(userId);
+      const targetResearcherId = String(userId);
       const [
         myProductsCount,
         todaysMyProductsCount,
@@ -703,7 +703,7 @@ export async function GET(req: NextRequest) {
       ]);
 
       const siteCountMap = new Map<string, number>();
-      const siteIdToNameMap = new Map<number, string>();
+      const siteIdToNameMap = new Map<string, string>();
       for (const s of allPublishingSites) {
         siteCountMap.set(s.name.toLowerCase(), 0);
         siteIdToNameMap.set(s.id, s.name);
@@ -787,9 +787,9 @@ export async function GET(req: NextRequest) {
       )
     );
 
-    let productSiteOccurrences: { name: string; siteId: number }[] = [];
+    let productSiteOccurrences: { name: string; siteId: string }[] = [];
     if (uniqueProductNames.length > 0) {
-      productSiteOccurrences = await prisma.$queryRaw<Array<{ name: string; siteId: number }>>`
+      productSiteOccurrences = await prisma.$queryRaw<Array<{ name: string; siteId: string }>>`
         SELECT LOWER(TRIM(p.name)) as name, p.siteId 
         FROM Product p
         JOIN Site s ON p.siteId = s.id
@@ -799,7 +799,7 @@ export async function GET(req: NextRequest) {
       `;
     }
 
-    const availabilityMap = new Map<string, Set<number>>();
+    const availabilityMap = new Map<string, Set<string>>();
     for (const item of productSiteOccurrences) {
       const key = item.name.trim().toLowerCase();
       if (!availabilityMap.has(key)) {
@@ -811,7 +811,7 @@ export async function GET(req: NextRequest) {
     const enrichDashboardProduct = (p: any) => {
       if (!p || !p.name) return p;
       const key = p.name.trim().toLowerCase();
-      const liveSiteIds = availabilityMap.get(key) || new Set<number>();
+      const liveSiteIds = availabilityMap.get(key) || new Set<string>();
       const isResearchSite = p.site?.name === "Product Research";
       const availableCount = liveSiteIds.size;
       const missingCount = Math.max(0, totalPublishingSites - availableCount);

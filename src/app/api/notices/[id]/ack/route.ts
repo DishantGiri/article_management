@@ -15,12 +15,12 @@ export async function POST(
     }
 
     const { id: idStr } = await params;
-    const noticeId = parseInt(idStr);
-    if (isNaN(noticeId)) {
+    const noticeId = idStr?.trim() || "";
+    if (!noticeId) {
       return NextResponse.json({ error: "Invalid notice ID" }, { status: 400 });
     }
 
-    const userId = Number(session.user.id);
+    const userId = String(session.user.id);
 
     // Verify notice exists
     const notice = await prisma.notice.findUnique({

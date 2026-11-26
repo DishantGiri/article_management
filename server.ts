@@ -51,7 +51,7 @@ const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
   const wss = new WebSocketServer({ noServer: true });
-  const clients = new Map<number, Set<WebSocket>>();
+  const clients = new Map<string, Set<WebSocket>>();
 
   const server = createServer((req, res) => {
     const parsedUrl = parseUrl(req.url || "");
@@ -88,7 +88,7 @@ app.prepare().then(() => {
             });
             console.log(`Broadcasted real-time notification: "${message || type}" to ${broadcastCount} connected client sockets`);
           } else {
-            const sockets = clients.get(Number(recipientId));
+            const sockets = clients.get(String(recipientId));
             if (sockets && sockets.size > 0) {
               let sentCount = 0;
               sockets.forEach((client) => {
@@ -134,8 +134,8 @@ app.prepare().then(() => {
   });
 
   wss.on("connection", async (ws: WebSocket, request: IncomingMessage) => {
-    let registeredUserId: number | null = null;
-    let authenticatedUserId: number | null = null;
+    let registeredUserId: string | null = null;
+    let authenticatedUserId: string | null = null;
 
     try {
       // Parse cookies from raw header so NextAuth getToken can inspect them
@@ -173,7 +173,7 @@ app.prepare().then(() => {
       }
 
       if (token && token.id) {
-        authenticatedUserId = Number(token.id);
+        authenticatedUserId = String(token.id);
       }
     } catch (e) {
       console.error("Failed to decode token on WebSocket connection:", e);
@@ -188,7 +188,7 @@ app.prepare().then(() => {
             registeredUserId = authenticatedUserId;
           } else if (data.userId) {
             // Fallback to client-provided userId
-            registeredUserId = Number(data.userId);
+            registeredUserId = String(data.userId);
           } else {
             console.warn("Rejected unauthenticated WebSocket registration attempt");
             ws.close(1008, "Authentication required");

@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const authenticatedUserId = Number(session.user.id);
+  const authenticatedUserId = String(session.user.id);
   const { searchParams } = new URL(req.url);
   const limitParam = searchParams.get("limit");
   const take = limitParam ? parseInt(limitParam) : undefined;
@@ -130,14 +130,14 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const authenticatedUserId = Number(session.user.id);
+  const authenticatedUserId = String(session.user.id);
   const body = await req.json();
   const { notificationId } = body;
 
   if (notificationId) {
     await prisma.notification.updateMany({
       where: {
-        id: parseInt(notificationId),
+        id: String(notificationId),
         recipientId: authenticatedUserId, // Enforce ownership
       },
       data: { isRead: true },

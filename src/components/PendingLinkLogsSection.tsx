@@ -19,10 +19,10 @@ import { fuzzyMatchAny } from "@/lib/fuzzy";
 import { isResearchSite } from "@/lib/researchSiteUtils";
 
 interface PendingProduct {
-  id: number;
+  id: string;
   name: string;
   site?: {
-    id?: number;
+    id?: string;
     name: string;
   };
   createdAt?: string;
@@ -35,7 +35,7 @@ interface GroupedPendingProduct {
 
 interface PendingLinkLogsSectionProps {
   products: PendingProduct[];
-  onAddLink?: (productId: number) => void;
+  onAddLink?: (productId: string) => void;
   title?: string;
   subtitle?: string;
 }
@@ -48,9 +48,9 @@ function GroupedProductCard({
   onAddLink,
 }: {
   group: GroupedPendingProduct;
-  onAddLink?: (productId: number) => void;
+  onAddLink?: (productId: string) => void;
 }) {
-  const [selectedProductId, setSelectedProductId] = useState<number>(group.items[0]?.id);
+  const [selectedProductId, setSelectedProductId] = useState<string>(group.items[0]?.id || "");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isExpandedList, setIsExpandedList] = useState(false);
 
@@ -324,9 +324,9 @@ function GroupedProductRow({
   onAddLink,
 }: {
   group: GroupedPendingProduct;
-  onAddLink?: (productId: number) => void;
+  onAddLink?: (productId: string) => void;
 }) {
-  const [selectedProductId, setSelectedProductId] = useState<number>(group.items[0]?.id);
+  const [selectedProductId, setSelectedProductId] = useState<string>(group.items[0]?.id || "");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const selectedItem = group.items.find((i) => i.id === selectedProductId) || group.items[0];
   const hasMultipleSites = group.items.length > 1;

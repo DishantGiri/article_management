@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const currentUserId = Number(session.user.id);
+    const currentUserId = String(session.user.id);
 
     const dbUser = await prisma.user.findUnique({
       where: { id: currentUserId },
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
         content: content.trim(),
         category: targetCategory,
         targetRoles: normalizedRoles,
-        createdById: Number(session.user.id),
+        createdById: String(session.user.id),
       },
       include: {
         createdBy: {
@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
     await broadcastRealtimeNotification({
       type: "NOTICE_PUBLISHED",
       message: `New Notice: ${created.title}`,
-      senderId: Number(session.user.id),
+      senderId: String(session.user.id),
       data: {
         id: created.id,
         title: created.title,

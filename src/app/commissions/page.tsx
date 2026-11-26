@@ -49,10 +49,10 @@ import { fuzzyMatchAny } from "@/lib/fuzzy";
 
 // Flat Commission Sale for the Commission List view
 export interface CommissionSaleItem {
-  id: number;
-  productId: number;
+  id: string;
+  productId: string;
   productName: string;
-  siteId: number;
+  siteId: string;
   siteName: string;
   siteUrl: string | null;
   categoryName: string;
@@ -61,13 +61,13 @@ export interface CommissionSaleItem {
   articleStatus: string;
   saleType: "FIRST_SALE" | "RESALE" | "REDIRECT";
   saleDate: string;
-  writerId: number | null;
+  writerId: string | null;
   writerName: string;
   writerAmount: number;
-  linkerId: number | null;
+  linkerId: string | null;
   linkerName: string;
   linkerAmount: number;
-  teamLeadId: number | null;
+  teamLeadId: string | null;
   teamLeadName: string | null;
   tlAmount: number;
   seoAmount: number;
@@ -84,16 +84,16 @@ export interface CommissionSaleItem {
 
 // Grouped Product Row for "By Products" view
 export interface ProductCommissionRow {
-  id: number;
+  id: string;
   name: string;
-  siteId: number;
+  siteId: string;
   siteName: string;
   siteUrl: string | null;
   categoryName: string;
   categoryKey: "NUTRA" | "ECOM";
-  linkerId: number | null;
+  linkerId: string | null;
   linkerName: string;
-  writerId: number | null;
+  writerId: string | null;
   writerName: string;
   isUnassigned?: boolean;
   writerHasLeft?: boolean;
@@ -121,7 +121,7 @@ export interface ProductCommissionRow {
 }
 
 export interface SiteTab {
-  id: number;
+  id: string;
   name: string;
   url: string | null;
   _count: {
@@ -207,7 +207,7 @@ export default function CommissionsPage() {
 
   // Modal: Product History Modal (for "By Products" view)
   const [historyProduct, setHistoryProduct] = useState<ProductCommissionRow | null>(null);
-  const [updatingSaleId, setUpdatingSaleId] = useState<number | null>(null);
+  const [updatingSaleId, setUpdatingSaleId] = useState<string | null>(null);
 
   // Product-Based Payout Modal
   const [payoutProduct, setPayoutProduct] = useState<ProductCommissionRow | null>(null);
@@ -421,7 +421,7 @@ export default function CommissionsPage() {
   // Submit Sale Recording
   const handleSubmitSale = async (e: React.FormEvent) => {
     e.preventDefault();
-    const prodId = selectedProductForSale?.id || parseInt(modalProductId);
+    const prodId = selectedProductForSale?.id || modalProductId;
     if (!prodId) {
       toast.error("Please select a product");
       return;
@@ -498,7 +498,7 @@ export default function CommissionsPage() {
   };
 
   // Toggle Single Sale Payment Status
-  const handleTogglePaymentStatus = async (saleId: number, currentStatus: string) => {
+  const handleTogglePaymentStatus = async (saleId: string, currentStatus: string) => {
     setUpdatingSaleId(saleId);
     const nextStatus: "PENDING" | "PAID" = currentStatus === "PAID" ? "PENDING" : "PAID";
 
@@ -2066,7 +2066,7 @@ export default function CommissionsPage() {
                   value={modalProductId}
                   onChange={(val) => {
                     setModalProductId(val);
-                    const found = products.find((p) => p.id === parseInt(val));
+                    const found = products.find((p) => String(p.id) === String(val));
                     setSelectedProductForSale(found || null);
                     setModalWriterLeftCompany(Boolean(found?.writerHasLeft));
                     if (modalSaleType !== "REDIRECT" && (found?.firstSalesCount || 0) >= 1) {

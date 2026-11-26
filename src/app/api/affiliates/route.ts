@@ -3,24 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sortAffiliatesWithTopPriority } from "@/lib/utils";
+import { CANONICAL_AFFILIATES } from "@/lib/canonical-affiliates";
 
-const DEFAULT_AFFILIATES = [
-  "Admitad",
-  "Amazon Associates",
-  "BuyGoods",
-  "CJ Affiliate",
-  "Clickadv",
-  "ClickBank",
-  "Clickhunts",
-  "Lead Bit",
-  "MaxWeb",
-  "Mediascalers",
-  "SellHealth",
-  "Smartadv",
-  "Smashloud",
-  "TerraLeads",
-  "Traffic Light",
-];
+const DEFAULT_AFFILIATES = [...CANONICAL_AFFILIATES];
 
 // GET /api/affiliates - retrieve all affiliates (and seed defaults if missing)
 export async function GET() {

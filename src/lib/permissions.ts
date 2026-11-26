@@ -6,9 +6,9 @@ import { isAdmin, parseSiteRoles } from "./permissions-utils";
  * Check if a user can add products on a specific site
  */
 export async function canUserAddProductOnSite(
-  userId: number,
+  userId: string,
   userGlobalRole: string | null | undefined,
-  siteId: number,
+  siteId: string,
   userRoles?: string[]
 ): Promise<boolean> {
   if (isAdmin(userGlobalRole)) return true;
@@ -44,9 +44,9 @@ export async function canUserAddProductOnSite(
  * Check if a user can add or edit links for a specific site
  */
 export async function canUserAddLinkOnSite(
-  userId: number,
+  userId: string,
   userGlobalRole: string | null | undefined,
-  siteId: number
+  siteId: string
 ): Promise<boolean> {
   if (isAdmin(userGlobalRole)) return true;
 
@@ -72,9 +72,9 @@ export async function canUserAddLinkOnSite(
  * Check if a user can write articles for a specific site
  */
 export async function canUserWriteOnSite(
-  userId: number,
+  userId: string,
   userGlobalRole: string | null | undefined,
-  siteId: number
+  siteId: string
 ): Promise<boolean> {
   if (isAdmin(userGlobalRole)) return true;
 
@@ -100,9 +100,9 @@ export async function canUserWriteOnSite(
  * Check if a user has Team Lead / Review authority on a specific site
  */
 export async function canUserReviewOnSite(
-  userId: number,
+  userId: string,
   userGlobalRole: string | null | undefined,
-  siteId: number
+  siteId: string
 ): Promise<boolean> {
   if (isAdmin(userGlobalRole)) return true;
 
@@ -123,11 +123,11 @@ export async function canUserReviewOnSite(
  * Get all site IDs where user has a specific permission / role
  */
 export async function getUserAuthorizedSiteIds(
-  userId: number,
+  userId: string,
   userGlobalRole: string | null | undefined,
   action: "ADD_PRODUCT" | "ADD_LINK" | "WRITE" | "REVIEW",
   userRoles?: string[]
-): Promise<number[] | null> {
+): Promise<string[] | null> {
   // Returns null if user has unrestricted global access to all sites
   if (isAdmin(userGlobalRole)) return null;
   if (userRoles && (userRoles.includes("SUPER_ADMIN") || userRoles.includes("ADMIN"))) return null;
@@ -160,7 +160,7 @@ export async function getUserAuthorizedSiteIds(
     return [];
   }
 
-  const authorizedSiteIds: number[] = [];
+  const authorizedSiteIds: string[] = [];
 
   for (const acc of accesses) {
     const siteRoles = parseSiteRoles(acc.roles, acc.role);

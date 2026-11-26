@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10", 10) || 10));
 
-  const userId = Number(session.user.id);
+  const userId = String(session.user.id);
   const userRole = session.user.role;
 
   const rawRoles: string[] = (session.user as any)?.roles || [];
@@ -72,29 +72,31 @@ export async function GET(req: NextRequest) {
   }
 
   if (writerId) {
-    whereConditions.push({ writerId: parseInt(writerId, 10) });
+    whereConditions.push({ writerId: writerId.trim() });
   } else if (writer && writer.trim()) {
     const trimmedWriter = writer.trim();
-    if (!isNaN(Number(trimmedWriter))) {
-      whereConditions.push({ writerId: parseInt(trimmedWriter, 10) });
-    } else {
-      whereConditions.push({ writer: { name: trimmedWriter } });
-    }
+    whereConditions.push({
+      OR: [
+        { writerId: trimmedWriter },
+        { writer: { name: trimmedWriter } },
+      ],
+    });
   }
 
   if (siteId) {
-    whereConditions.push({ product: { siteId: parseInt(siteId, 10) } });
+    whereConditions.push({ product: { siteId: siteId.trim() } });
   } else if (site && site.trim()) {
     const trimmedSite = site.trim();
-    if (!isNaN(Number(trimmedSite))) {
-      whereConditions.push({ product: { siteId: parseInt(trimmedSite, 10) } });
-    } else {
-      whereConditions.push({ product: { site: { name: trimmedSite } } });
-    }
+    whereConditions.push({
+      OR: [
+        { product: { siteId: trimmedSite } },
+        { product: { site: { name: trimmedSite } } },
+      ],
+    });
   }
 
   if (productId) {
-    whereConditions.push({ productId: parseInt(productId, 10) });
+    whereConditions.push({ productId: productId.trim() });
   }
 
   if (status && status.trim()) {
@@ -132,15 +134,13 @@ export async function GET(req: NextRequest) {
       });
     } else {
       const searchConditions: any[] = [
+        { id: q },
+        { productId: q },
         { product: { name: { contains: q } } },
         { product: { slug: { contains: q } } },
         { writer: { name: { contains: q } } },
         { product: { site: { name: { contains: q } } } },
       ];
-      if (!isNaN(Number(q))) {
-        searchConditions.push({ id: parseInt(q, 10) });
-        searchConditions.push({ productId: parseInt(q, 10) });
-      }
       whereConditions.push({ OR: searchConditions });
     }
   }

@@ -32,12 +32,12 @@ import CustomSelect from "@/components/CustomSelect";
 import { useSession } from "next-auth/react";
 
 interface SiteCategory {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface SiteInfo {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   url: string | null;
@@ -55,12 +55,12 @@ interface SiteStats {
 }
 
 interface SiteArticle {
-  id: number;
+  id: string;
   articleName: string;
   articleLink: string | null;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO";
   writer: {
-    id: number;
+    id: string;
     name: string;
     email: string;
     role: string;
@@ -72,7 +72,7 @@ interface SiteArticle {
   updatedAt: string;
   addedAt: string;
   productCategory: string;
-  productId: number;
+  productId: string;
 }
 
 const STATUS_CONFIG: Record<
@@ -485,7 +485,7 @@ export default function SiteDetailPage() {
                 </div>
               )}
 
-              {/* Category Section */}
+              {/* Product Types Section */}
               {(() => {
                 const validCategories = (site.categories || []).filter(
                   (c) => c && c.name && !/^(n\/?a|none|null|na)$/i.test(c.name.trim())
@@ -498,8 +498,8 @@ export default function SiteDetailPage() {
                   <div className="mt-3">
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className="text-[11px] font-bold text-[#737373] dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                        <Tag className="w-3 h-3 text-[#6D8196]" />
-                        Categories
+                        <Layers className="w-3 h-3 text-[#6D8196]" />
+                        Product Types
                         <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-[#6D8196]/10 text-[#3D4F61] dark:text-slate-200">
                           {validCategories.length}
                         </span>
@@ -542,7 +542,7 @@ export default function SiteDetailPage() {
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
                             N/A
                           </span>
-                          <span className="text-[11px] text-[#737373] dark:text-slate-500 italic">No categories assigned</span>
+                          <span className="text-[11px] text-[#737373] dark:text-slate-500 italic">No product types assigned</span>
                         </div>
                       )}
                     </div>

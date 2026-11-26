@@ -1,5 +1,6 @@
 import { fuzzyScore, levenshteinDistance } from "@/lib/fuzzy";
 import { isPlaceholderName } from "@/lib/user-resolver";
+import { CANONICAL_AFFILIATES } from "@/lib/canonical-affiliates";
 
 /**
  * Compute normalized Levenshtein similarity in [0, 1] between two pre-normalized strings.
@@ -67,41 +68,80 @@ function toSmartTitleCase(raw: string): string {
 // ============================================================================
 
 const AFFILIATE_ALIASES: Record<string, string> = {
-  smartadv: "SmartADV",
+  buygoods: "Buy Goods",
+  buygood: "Buy Goods",
+  smashloud: "Smash Loud",
+  smashload: "Smash Loud",
+  gurumedia: "Guru Media",
+  mediascalers: "Media Scalers",
+  mediascaler: "Media Scalers",
+  smartadv: "Smart Adv",
   smartadvrajan: "smart adv rajan",
-  buygoods: "BuyGoods",
-  buygood: "BuyGoods",
-  clickshunt: "ClicksHunt",
-  clickhunt: "ClicksHunt",
-  mediascalers: "MediaScalers",
-  mediascaler: "MediaScalers",
-  smashloud: "SmashLoud",
-  smashload: "SmashLoud",
-  clickbank: "ClickBank",
-  amazon: "Amazon Associates",
-  amazonassociates: "Amazon Associates",
-  amazonassociate: "Amazon Associates",
-  amzn: "Amazon Associates",
-  spyrevenue: "SpyRevenue",
-  clicksadv: "ClicksADV",
-  clickadv: "ClicksADV",
-  dynuinmedia: "DynuinMedia",
-  dynuin: "DynuinMedia",
+  maxweb: "Maxweb",
+  clickhunts: "Click Hunts",
+  clickhunt: "Click Hunts",
+  clickshunt: "Click Hunts",
+  clickshunts: "Click Hunts",
+  sellhealth: "Sell Health",
+  clickadv: "ClickADV",
+  clicksadv: "ClickADV",
   terraleads: "Terraleads",
   terralead: "Terraleads",
-  trafficlight: "TrafficLight",
-  adcombo: "Adcombo",
-  giddyup: "Giddy Up",
-  inb: "inb",
-  kissmyads: "kissmyads",
+  clickbank: "Clickbank",
   leadbit: "Leadbit",
-  maxweb: "Maxweb",
+  dynu: "Dynu",
+  dynuinmedia: "Dynu",
+  dynuin: "Dynu",
+  impact: "Impact",
+  impactradius: "Impact",
+  trafficlight: "Traffic Light",
+  kissmyads: "kissmyads",
+  kissmyad: "kissmyads",
   mylead: "mylead",
   myleads: "mylead",
-  sellhealth: "Sell Health",
-  blitzads: "BlitzAds",
-  blitzad: "BlitzAds",
-  metacpa: "Meta Cpa",
+  inb: "inb",
+  inbbio: "inb",
+  adcombo: "Adcombo",
+  spyrevenue: "Spyrevenue",
+  drcash: "Dr Cash",
+  doctorcash: "Dr Cash",
+  admedius: "Admedius",
+  syncmedia: "SyncMedia",
+  maxbounty: "Max Bounty",
+  pointclicktrack: "Point Click Track",
+  pointclick: "Point Click Track",
+  pct: "Point Click Track",
+  amazon: "Amazon",
+  amazonassociates: "Amazon",
+  amazonassociate: "Amazon",
+  amzn: "Amazon",
+  awin: "Awin",
+  giddyup: "Giddy Up",
+  digistore: "Digistore",
+  digistore24: "Digistore",
+  goodaff: "GoodAff",
+  goodaffs: "GoodAff",
+  metacpa: "meta cpa",
+  metaads: "meta cpa",
+  cloudtraffic: "Cloud Traffic",
+  verdeads: "VerdeAds",
+  verdead: "VerdeAds",
+  apex: "Apex",
+  apexads: "Apex",
+  apexnetwork: "Apex",
+  blitzads: "Blitz Ads",
+  blitzad: "Blitz Ads",
+  somicreative: "somi creative",
+  somi: "somi creative",
+  clickdealer: "clickdealer",
+  clicksdealer: "clickdealer",
+  affena: "Affena",
+  shakespro: "Shakespro",
+  shakes: "Shakespro",
+  competitor: "competitor",
+  competitors: "competitor",
+  competitorproduct: "competitor",
+  competitorsproduct: "competitor",
 };
 
 const NO_AFFILIATE_VALUES = new Set([
@@ -127,18 +167,14 @@ function pickCanonicalAffiliate(
     );
     if (exactPref) return exactPref.name;
   }
-  return [...matches].sort((a, b) => {
-    const aCompact = !/\s/.test(a.name.trim()) ? 0 : 1;
-    const bCompact = !/\s/.test(b.name.trim()) ? 0 : 1;
-    if (aCompact !== bCompact) return aCompact - bCompact;
-    return a.name.length - b.name.length;
-  })[0].name;
+  return [...matches].sort((a, b) => a.name.length - b.name.length)[0].name;
 }
 
 /**
- * Resolve raw affiliate network name (e.g. "Smart ADV", "Buy Goods", "Clicks Hunt",
- * "MediaScaler", "SmashLoad") to its canonical AffiliateName in DB/aliases.
- * Returns null for placeholders or explicit "No Affiliate" values.
+ * Resolve raw affiliate network name (e.g. "Smart ADV", "BuyGoods", "Clicks Hunt",
+ * "MediaScaler", "Dynu in Media", "Digistore24") to an existing/seeded AffiliateName
+ * using exact, alias, and fuzzy matching.
+ * Never invents unseeded affiliates: returns null if no seeded affiliate matches.
  */
 export function resolveAffiliateName(
   raw: string | null | undefined,
@@ -154,72 +190,113 @@ export function resolveAffiliateName(
     return null;
   }
 
+  const pool: Array<{ name: string }> =
+    existingAffiliates.length > 0
+      ? existingAffiliates
+      : CANONICAL_AFFILIATES.map((name) => ({ name }));
+
+  const hasRajan = lower.includes("rajan");
   const singularStripped = stripSingularAlnumLower(cleaned);
   const aliasTarget = AFFILIATE_ALIASES[stripped] ?? AFFILIATE_ALIASES[singularStripped] ?? null;
 
-  // 1. Exact stripped key match against DB (and prefer aliasTarget when DB has duplicates)
-  const strippedMatches = existingAffiliates.filter(
+  // 1. Exact stripped key match against DB/canonical pool
+  const strippedMatches = pool.filter(
     (a) => stripAlnumLower(a.name) === stripped
   );
   if (strippedMatches.length > 0) {
     return pickCanonicalAffiliate(strippedMatches, aliasTarget);
   }
 
-  // 2. Alias match -> resolve to matching DB record or canonical alias string
+  // 2. Alias match -> resolve strictly to matching record in pool
   if (aliasTarget) {
     const aliasKey = stripAlnumLower(aliasTarget);
-    const dbMatch = existingAffiliates.filter(
-      (a) => stripAlnumLower(a.name) === aliasKey || stripSingularAlnumLower(a.name) === stripSingularAlnumLower(aliasTarget)
+    const aliasSingular = stripSingularAlnumLower(aliasTarget);
+    const dbMatch = pool.filter(
+      (a) => stripAlnumLower(a.name) === aliasKey || stripSingularAlnumLower(a.name) === aliasSingular
     );
     if (dbMatch.length > 0) {
       return pickCanonicalAffiliate(dbMatch, aliasTarget);
     }
-    return aliasTarget;
   }
 
-  // 3. Singularized stripped match against DB (e.g. MediaScaler -> MediaScalers)
-  const singularMatches = existingAffiliates.filter(
+  // 3. Singularized stripped match against pool (e.g. MediaScaler -> Media Scalers)
+  const singularMatches = pool.filter(
     (a) => stripSingularAlnumLower(a.name) === singularStripped
   );
   if (singularMatches.length > 0) {
     return pickCanonicalAffiliate(singularMatches);
   }
 
-  // 4. High-precision fuzzy match against DB affiliates (e.g. small typo like "SmarADV")
+  // 4. Token-prefix match for extended variants (e.g. "Dynu In Media" -> "Dynu", "Digistore24" -> "Digistore", "Amazon Associates" -> "Amazon")
+  const rawTokens = lower.replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (rawTokens.length > 0) {
+    // Sort longest candidate first so multi-word names win before shorter prefixes
+    const sortedCandidates = [...pool].sort(
+      (a, b) => stripAlnumLower(b.name).length - stripAlnumLower(a.name).length
+    );
+    for (const candidate of sortedCandidates) {
+      const candLower = candidate.name.toLowerCase();
+      const candHasRajan = candLower.includes("rajan");
+      if (hasRajan !== candHasRajan) continue;
+
+      const candStrip = stripAlnumLower(candidate.name);
+      if (candStrip.length >= 4 && stripped.startsWith(candStrip)) {
+        const lenDiff = stripped.length - candStrip.length;
+        // Exact trailing numeric/suffix ("Digistore24") or exact first word ("Dynu In Media", "Amazon Associates")
+        if (rawTokens[0] === candStrip || (lenDiff <= 3 && /^\d+$/.test(stripped.slice(candStrip.length)))) {
+          return candidate.name;
+        }
+      }
+    }
+  }
+
+  // 5. High-precision fuzzy match against pool affiliates (e.g. typos like "SmarADV", "Adcomobo", "GiddyUp")
   if (stripped.length >= 5) {
     let bestName: string | null = null;
     let bestScore = 0;
 
-    for (const candidate of existingAffiliates) {
+    for (const candidate of pool) {
+      const candHasRajan = candidate.name.toLowerCase().includes("rajan");
+      if (hasRajan !== candHasRajan) continue;
+
       const candStrip = stripAlnumLower(candidate.name);
-      if (candStrip.length < 5) continue;
-      // Prevent short base names from collapsing onto distinct multi-word variants like "smart adv rajan"
+      if (candStrip.length < 4) continue;
       if (Math.abs(candStrip.length - stripped.length) > 3) continue;
 
       const dist = levenshteinDistance(stripped, candStrip);
       const sim = normalizedLevenshteinSimilarity(stripped, candStrip);
-      if (dist <= 2 && sim >= 0.8 && sim > bestScore) {
+      if (dist <= 2 && sim >= 0.78 && sim > bestScore) {
         bestScore = sim;
         bestName = candidate.name;
       }
     }
     if (bestName) return bestName;
 
-    // Also check fuzzy typos against known aliases
+    // Also check fuzzy typos against known aliases, resolving back into pool
+    let bestAliasCanonical: string | null = null;
+    let bestAliasScore = 0;
     for (const [key, canonical] of Object.entries(AFFILIATE_ALIASES)) {
+      const candHasRajan = canonical.toLowerCase().includes("rajan");
+      if (hasRajan !== candHasRajan) continue;
       if (key.length < 5 || Math.abs(key.length - stripped.length) > 2) continue;
+
       const dist = levenshteinDistance(stripped, key);
       const sim = normalizedLevenshteinSimilarity(stripped, key);
-      if (dist <= 2 && sim >= 0.8) {
-        const dbMatch = existingAffiliates.find(
-          (a) => stripAlnumLower(a.name) === stripAlnumLower(canonical)
-        );
-        return dbMatch ? dbMatch.name : canonical;
+      if (dist <= 2 && sim >= 0.78 && sim > bestAliasScore) {
+        bestAliasScore = sim;
+        bestAliasCanonical = canonical;
       }
+    }
+    if (bestAliasCanonical) {
+      const dbMatch = pool.find(
+        (a) => stripAlnumLower(a.name) === stripAlnumLower(bestAliasCanonical!)
+      );
+      if (dbMatch) return dbMatch.name;
     }
   }
 
-  return cleaned;
+  // 6. Do not invent or return unseeded affiliate names
+  return null;
 }
 
 // ============================================================================

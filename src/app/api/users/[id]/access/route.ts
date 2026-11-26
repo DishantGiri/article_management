@@ -48,14 +48,14 @@ export async function POST(
     const access = await prisma.siteAccess.upsert({
       where: {
         userId_siteId: {
-          userId: parseInt(id),
-          siteId: parseInt(siteId),
+          userId: id.trim(),
+          siteId: String(siteId).trim(),
         },
       },
       update: accessData,
       create: {
-        userId: parseInt(id),
-        siteId: parseInt(siteId),
+        userId: id.trim(),
+        siteId: String(siteId).trim(),
         ...accessData,
       },
       include: { site: true },
@@ -97,8 +97,8 @@ export async function DELETE(
     await prisma.siteAccess.delete({
       where: {
         userId_siteId: {
-          userId: parseInt(id),
-          siteId: parseInt(siteId),
+          userId: id.trim(),
+          siteId: siteId.trim(),
         },
       },
     });

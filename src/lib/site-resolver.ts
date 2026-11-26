@@ -107,7 +107,7 @@ export function normalizeSiteKey(str: string): string {
  * 7. Token subset / inclusion match
  * 8. Levenshtein / Fuzzy score match (best score >= 70)
  */
-export function resolveSite<T extends { id: number; name: string; url?: string | null; bridgeUrl?: string | null }>(
+export function resolveSite<T extends { id: string; name: string; url?: string | null; bridgeUrl?: string | null }>(
   key: string,
   sites: T[]
 ): T | null {

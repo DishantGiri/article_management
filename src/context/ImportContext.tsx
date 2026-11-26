@@ -99,7 +99,7 @@ interface ImportContextValue {
   startProductImport: (params: {
     fileName: string;
     products: any[];
-    userId: number;
+    userId: string;
   }) => Promise<ProductImportResult | null>;
   dismissProductJob: () => void;
   isProductModalOpen: boolean;
@@ -416,7 +416,7 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
     }: {
       fileName: string;
       products: any[];
-      userId: number;
+      userId: string;
     }): Promise<ProductImportResult | null> => {
       if (productRunningRef.current) {
         toast("A product import is already running in the background.");

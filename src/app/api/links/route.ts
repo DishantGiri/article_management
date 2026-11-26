@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     : `links:user:${userId}:${userRole}:${productId || "all"}`;
 
   const links = await cached(cacheKey, 45, async () => {
-    let allowedSiteIds: number[] | undefined = undefined;
+    let allowedSiteIds: string[] | undefined = undefined;
 
     // Restrict to authorized sites if user has site-specific roles or team lead restrictions
     if (!isAdmin(userRole)) {
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
     return prisma.linkLog.findMany({
       where: {
-        ...(productId ? { productId: parseInt(productId) } : {}),
+        ...(productId ? { productId: productId.trim() } : {}),
         ...(allowedSiteIds !== undefined ? { product: { siteId: { in: allowedSiteIds } } } : {}),
       },
       include: {
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
 
     const product = await prisma.product.findUnique({
-      where: { id: parseInt(productId) },
+      where: { id: String(productId) },
       select: {
         id: true,
         name: true,
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const canAddLink = await canUserAddLinkOnSite(Number(session.user.id), session.user.role, product.siteId);
+    const canAddLink = await canUserAddLinkOnSite(String(session.user.id), session.user.role, product.siteId);
     if (!canAddLink) {
       return NextResponse.json(
         { error: "Access Denied: You do not have Linker permissions to add links for this site." },
@@ -273,11 +273,11 @@ export async function POST(req: NextRequest) {
 
     // Determine target products: either just this product or all sibling site products if applyToAllSites
     const targetProducts: Array<{
-      id: number;
+      id: string;
       name: string;
       slug: string | null;
-      siteId: number | null;
-      site: { id: number; name: string; url: string | null; bridgeUrl: string | null } | null;
+      siteId: string | null;
+      site: { id: string; name: string; url: string | null; bridgeUrl: string | null } | null;
     }> = [product];
 
     if (applyToAllSites && product.name) {
@@ -298,7 +298,7 @@ export async function POST(req: NextRequest) {
 
       for (const sib of siblings) {
         if (sib.siteId) {
-          const canAdd = await canUserAddLinkOnSite(Number(session.user.id), session.user.role, sib.siteId);
+          const canAdd = await canUserAddLinkOnSite(String(session.user.id), session.user.role, sib.siteId);
           if (canAdd) {
             targetProducts.push(sib);
           }

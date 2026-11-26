@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     const userRole = session?.user?.role;
-    const userId = Number(session?.user?.id);
+    const userId = session?.user?.id ? String(session.user.id) : "";
 
     const { searchParams } = new URL(req.url);
     const rawRoles: string[] = (session?.user as any)?.roles || [];
@@ -22,10 +22,10 @@ export async function GET(req: NextRequest) {
       : (userRole || "");
 
     const categoryId = searchParams.get("categoryId");
-    const cacheKey = `sites:${effectiveRole}:${userId || 0}:${categoryId || "all"}`;
+    const cacheKey = `sites:${effectiveRole}:${userId || "anon"}:${categoryId || "all"}`;
 
     const formatted = await cached(cacheKey, 300, async () => {
-      let allowedSiteIds: number[] | undefined = undefined;
+      let allowedSiteIds: string[] | undefined = undefined;
       // WRITER and TEAM_LEAD can only view their assigned sites
       if (effectiveRole === "WRITER" || effectiveRole === "TEAM_LEAD") {
         const accesses = await prisma.siteAccess.findMany({
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       const [sites, linkCountsRaw] = await Promise.all([
         prisma.site.findMany({
           where: {
-            ...(categoryId ? { categories: { some: { id: parseInt(categoryId) } } } : {}),
+            ...(categoryId ? { categories: { some: { id: categoryId.trim() } } } : {}),
             ...(allowedSiteIds !== undefined ? { id: { in: allowedSiteIds } } : {}),
             name: { notIn: ["Product Research", "Product Research Hub"] },
           },
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
           },
           orderBy: { name: "asc" },
         }),
-        prisma.$queryRaw<Array<{ siteId: number; linkCount: bigint }>>`
+        prisma.$queryRaw<Array<{ siteId: string; linkCount: bigint }>>`
           SELECT p.siteId, COUNT(l.id) AS linkCount
           FROM LinkLog l
           INNER JOIN Product p ON l.productId = p.id
@@ -68,9 +68,9 @@ export async function GET(req: NextRequest) {
         `,
       ]);
 
-      const linkCountBySite = new Map<number, number>();
+      const linkCountBySite = new Map<string, number>();
       for (const row of linkCountsRaw) {
-        linkCountBySite.set(Number(row.siteId), Number(row.linkCount));
+        linkCountBySite.set(String(row.siteId), Number(row.linkCount));
       }
 
       return sites.map(site => {
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
         bridgeUrl: trimmedBridgeUrl || null,
         allowCountrySpecific: Boolean(allowCountrySpecific),
         categories: {
-          connect: Array.isArray(categoryIds) ? categoryIds.map((id: number) => ({ id })) : []
+          connect: Array.isArray(categoryIds) ? categoryIds.map((id: string) => ({ id: String(id) })) : []
         }
       },
     });

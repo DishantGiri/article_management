@@ -34,9 +34,9 @@ const ensureExternalUrl = (url: string | null | undefined) => {
 };
 
 interface LinkLog {
-  id: number;
-  allLinkIds?: number[];
-  productId: number;
+  id: string;
+  allLinkIds?: string[];
+  productId: string;
   affiliateName: string;
   affiliateLink: string;
   bridgePageLink?: string;
@@ -44,7 +44,7 @@ interface LinkLog {
   linkerRemarks?: string | null;
   status: string;
   addedAt: string;
-  geos: { id?: number; geo: string; affiliateLink?: string | null; affiliateName?: string | null }[];
+  geos: { id?: string; geo: string; affiliateLink?: string | null; affiliateName?: string | null }[];
   addedBy: { name: string };
   updatedBy?: { name: string } | null;
   product: { name: string; slug?: string | null; site?: { name: string }; article?: { articleLink?: string | null } };
@@ -99,13 +99,13 @@ function LinksPageContent() {
   const [historyLinkLog, setHistoryLinkLog] = useState<any>(null);
   const [viewingRemarks, setViewingRemarks] = useState<{ remarks: string; date?: string; productName?: string } | null>(null);
   const [unlinkedProducts, setUnlinkedProducts] = useState<any[]>([]);
-  const [preselectedProductId, setPreselectedProductId] = useState<number | null>(urlProductId ? parseInt(urlProductId) : null);
+  const [preselectedProductId, setPreselectedProductId] = useState<string | null>(urlProductId || null);
   const [currentUserRole, setCurrentUserRole] = useState("");
   const itemsPerPage = 10;
 
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [expandedGeos, setExpandedGeos] = useState<Record<number, boolean>>({});
-  const [selectedRowGeos, setSelectedRowGeos] = useState<Record<number, string>>({});
+  const [expandedGeos, setExpandedGeos] = useState<Record<string, boolean>>({});
+  const [selectedRowGeos, setSelectedRowGeos] = useState<Record<string, string>>({});
 
   const handleCopy = (text: string, key: string, label: string) => {
     if (!text) return;
@@ -115,7 +115,7 @@ function LinksPageContent() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const toggleExpandGeos = (linkId: number) => {
+  const toggleExpandGeos = (linkId: string) => {
     setExpandedGeos((prev) => ({ ...prev, [linkId]: !prev[linkId] }));
   };
 
@@ -132,7 +132,7 @@ function LinksPageContent() {
 
   useEffect(() => {
     if (urlProductId) {
-      setPreselectedProductId(parseInt(urlProductId));
+      setPreselectedProductId(urlProductId);
       setIsAddLinkOpen(true);
     }
   }, [urlProductId]);
@@ -200,11 +200,11 @@ function LinksPageContent() {
     toast.success("CSV exported successfully!");
   };
 
-  const handleDeleteLink = async (linkId: number, allIds?: number[]) => {
+  const handleDeleteLink = async (linkId: string, allIds?: string[]) => {
     openConfirm(
       "Are you sure you want to delete this link log? This action cannot be undone.",
       async () => {
-        const uId = session?.user?.id || 2;
+        const uId = session?.user?.id || "";
         try {
           const idsToDelete = allIds && allIds.length > 0 ? allIds : [linkId];
           await Promise.all(
@@ -308,7 +308,7 @@ function LinksPageContent() {
 
       const editIdParam = searchParams.get("editLinkId");
       if (editIdParam) {
-        const matched = arr.find((l: any) => l.id === parseInt(editIdParam));
+        const matched = arr.find((l: any) => String(l.id) === editIdParam);
         if (matched) {
           setEditingLink(matched);
         }

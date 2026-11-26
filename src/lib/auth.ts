@@ -155,7 +155,7 @@ export const authOptions: NextAuthOptions = {
             where: {
               OR: [
                 { email: token.email },
-                { id: token.id ? Number(token.id) : undefined },
+                ...(token.id ? [{ id: String(token.id) }] : []),
               ],
             },
             select: {

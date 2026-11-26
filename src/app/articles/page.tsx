@@ -17,7 +17,7 @@ import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 import { getActiveWorkspace } from "@/lib/workspace";
 
 interface Article {
-  id: number;
+  id: string;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "APPROVED" | "REDO";
   priority: "LOW" | "MEDIUM" | "HIGH";
   country?: string | null;
@@ -27,7 +27,7 @@ interface Article {
   specialApprovalRequested?: boolean;
   specialApprovalRequestReason?: string | null;
   product: {
-    id: number;
+    id: string;
     name: string;
     slug?: string | null;
     country?: string | null;
@@ -36,7 +36,7 @@ interface Article {
     category: { name: string };
     linkLogs?: { linkerRemarks?: string | null; addedAt: string; affiliateLink?: string | null; geos?: any[] }[];
   };
-  writer?: { id: number; name: string };
+  writer?: { id: string; name: string };
   history?: { notes?: string | null; updatedAt?: string; createdAt?: string }[];
 }
 
@@ -92,7 +92,7 @@ function ArticlesContent() {
 
   const [currentUserRole, setCurrentUserRole] = useState("");
   const [stats, setStats] = useState<any>(null);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [updatingArticle, setUpdatingArticle] = useState<Article | null>(null);
   const [updateLink, setUpdateLink] = useState("");
   const [updateReason, setUpdateReason] = useState("");
@@ -103,12 +103,12 @@ function ArticlesContent() {
   const [flaggingArticle, setFlaggingArticle] = useState<Article | null>(null);
   const [selectedAssignee, setSelectedAssignee] = useState<string>("");
   const [flagInstructions, setFlagInstructions] = useState<string>("");
-  const [teamMembers, setTeamMembers] = useState<{ id: number; name: string; email: string }[]>([]);
+  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; email: string }[]>([]);
   const [submittingFlag, setSubmittingFlag] = useState(false);
   const [selectedRemarks, setSelectedRemarks] = useState<{ writer: string; writerDate?: string; linker: string; linkerDate?: string; productName: string } | null>(null);
-  const [selectedArticleIds, setSelectedArticleIds] = useState<number[]>([]);
+  const [selectedArticleIds, setSelectedArticleIds] = useState<string[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
-  const [startingRevisionId, setStartingRevisionId] = useState<number | null>(null);
+  const [startingRevisionId, setStartingRevisionId] = useState<string | null>(null);
   const { data: session, status: sessionStatus } = useSession();
   const [mounted, setMounted] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
@@ -228,14 +228,14 @@ function ArticlesContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           flagForUpdate: true,
-          writerId: Number(selectedAssignee),
+          writerId: selectedAssignee,
           status: "IN_PROGRESS",
           suggestion: flagInstructions.trim(),
           callerId: currentUserId,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      const assignedUser = teamMembers.find((m) => m.id === Number(selectedAssignee));
+      const assignedUser = teamMembers.find((m) => String(m.id) === String(selectedAssignee));
       toast.success(`Flag raised! Article unlocked and assigned to ${assignedUser?.name || "writer"} for update.`);
       setFlaggingArticle(null);
       setFlagInstructions("");
@@ -351,7 +351,7 @@ function ArticlesContent() {
     }
   };
 
-  const handleStartRevision = async (articleId: number) => {
+  const handleStartRevision = async (articleId: string) => {
     if (startingRevisionId) return;
     const callerId = session?.user?.id || currentUserId;
     if (!callerId) return;
@@ -370,7 +370,7 @@ function ArticlesContent() {
       const res = await fetch(`/api/articles/${articleId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ redoStarted: true, callerId: Number(callerId) }),
+        body: JSON.stringify({ redoStarted: true, callerId: String(callerId) }),
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -390,7 +390,7 @@ function ArticlesContent() {
     const stored = session.user.id;
     const uRole = getActiveWorkspace(session.user.role, (session.user as any)?.roles);
     setCurrentUserRole(uRole);
-    setCurrentUserId(Number(stored));
+    setCurrentUserId(String(stored));
 
     if (uRole === "TEAM_LEAD") {
       fetch(`/api/team-members?userId=${stored}`)
@@ -713,7 +713,7 @@ function ArticlesContent() {
 
   const isMyArticle = (art: Article | any) => {
     if (!art.writer) return false;
-    if (currentUserId && Number(art.writer.id) === Number(currentUserId)) return true;
+    if (currentUserId && String(art.writer.id) === String(currentUserId)) return true;
     if (session?.user?.name && art.writer.name === session.user.name) return true;
     return false;
   };

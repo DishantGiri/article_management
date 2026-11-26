@@ -5,6 +5,7 @@ import fs from "fs";
 import * as xlsx from "xlsx";
 import { prisma } from "../src/lib/prisma";
 import { delByPattern } from "../src/lib/redis";
+import { CANONICAL_AFFILIATES } from "../src/lib/canonical-affiliates";
 
 function normalizeKey(str: string): string {
   return (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -110,31 +111,7 @@ async function main() {
 
   // 3. Seed Affiliates
   console.log("🤝 Creating Affiliates...");
-  const affiliateNames = [
-    "BuyGoods",
-    "SmashLoud",
-    "SmartADV",
-    "ClicksHunt",
-    "MediaScalers",
-    "Amazon Associates",
-    "SpyRevenue",
-    "ClickBank",
-    "ClicksADV",
-    "DynuinMedia",
-    "Terraleads",
-    "TrafficLight",
-    "Adcombo",
-    "Giddy Up",
-    "inb",
-    "kissmyads",
-    "Leadbit",
-    "Maxweb",
-    "mylead",
-    "Sell Health",
-    "smart adv rajan",
-    "BlitzAds",
-    "Meta Cpa",
-  ];
+  const affiliateNames = Array.from(new Set(CANONICAL_AFFILIATES));
   for (const name of affiliateNames) {
     await prisma.affiliateName.create({ data: { name: name.trim() } });
   }
@@ -451,8 +428,12 @@ async function main() {
 }
 
 main()
-  .catch((err) => {
-    console.error("❌ Full seed failed:", err);
-    process.exit(1);
+  .then(async () => {
+    await prisma.$disconnect();
+    process.exit(0);
   })
-  .finally(() => prisma.$disconnect());
+  .catch(async (err) => {
+    console.error("❌ Full seed failed:", err);
+    await prisma.$disconnect().catch(() => {});
+    process.exit(1);
+  });

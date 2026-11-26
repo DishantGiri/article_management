@@ -63,7 +63,7 @@ export const DEFAULT_COMMISSION_TIERS = [
 ];
 
 // Helper: Ensure 4 default settings exist
-async function ensureDefaultTiers(userId?: number | null) {
+async function ensureDefaultTiers(userId?: string | null) {
   for (const tier of DEFAULT_COMMISSION_TIERS) {
     const existing = await prisma.commissionSetting.findUnique({
       where: {
@@ -78,7 +78,7 @@ async function ensureDefaultTiers(userId?: number | null) {
       await prisma.commissionSetting.create({
         data: {
           ...tier,
-          updatedById: userId && !isNaN(userId) ? userId : null,
+          updatedById: userId || null,
         },
       });
     }
@@ -101,7 +101,7 @@ export async function GET() {
     }
 
     const rawId = (session.user as any)?.id;
-    const userId = rawId && !isNaN(Number(rawId)) ? Number(rawId) : null;
+    const userId = rawId ? String(rawId) : null;
 
     // Seed defaults if empty and migrate any legacy USD records
     await ensureDefaultTiers(userId);
@@ -138,7 +138,7 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const items = Array.isArray(body) ? body : [body];
     const rawId = (session.user as any)?.id;
-    const userId = rawId && !isNaN(Number(rawId)) ? Number(rawId) : null;
+    const userId = rawId ? String(rawId) : null;
 
     const updatedResults = [];
 

@@ -20,19 +20,19 @@ export async function GET(
     }
 
     const { id } = await params;
-    const productId = parseInt(id, 10);
+    const productId = id?.trim() || "";
     const searchName = req.nextUrl.searchParams.get("name")?.trim();
 
     type BaseProductWithIncludes = {
-      id: number;
+      id: string;
       name: string;
       slug: string | null;
       country: string | null;
       isNative: boolean;
       source: string | null;
-      siteId: number;
+      siteId: string;
       targetSites: string | null;
-      categoryId: number;
+      categoryId: string;
       productCategory: string | null;
       trendLink?: string | null;
       trendLevel?: string | null;
@@ -41,14 +41,14 @@ export async function GET(
       remarks: string | null;
       addedAt: Date;
       updatedAt: Date | null;
-      site?: { id: number; name: string; url: string | null } | null;
-      category?: { id: number; name: string } | null;
-      addedBy?: { id: number; name: string; role: string | null } | null;
-      updatedBy?: { id: number; name: string; role: string | null } | null;
+      site?: { id: string; name: string; url: string | null } | null;
+      category?: { id: string; name: string } | null;
+      addedBy?: { id: string; name: string; role: string | null } | null;
+      updatedBy?: { id: string; name: string; role: string | null } | null;
     };
 
     let baseProduct: BaseProductWithIncludes | null = null;
-    if (!isNaN(productId)) {
+    if (productId) {
       baseProduct = await prisma.product.findUnique({
         where: { id: productId },
         include: {
@@ -135,7 +135,7 @@ export async function GET(
     });
 
     // Group by siteId
-    const siteProductMap = new Map<number, typeof existingProducts[0]>();
+    const siteProductMap = new Map<string, typeof existingProducts[0]>();
     for (const ep of existingProducts) {
       if (ep.siteId && !siteProductMap.has(ep.siteId)) {
         siteProductMap.set(ep.siteId, ep);
@@ -321,16 +321,16 @@ export async function POST(
     }
 
     const { id } = await params;
-    const productId = parseInt(id, 10);
+    const productId = id?.trim() || "";
 
     const body = await req.json();
     const { targetSiteId, targetSiteIds, productName } = body;
 
     // Handle single or multiple site IDs
-    const siteIdsToAdd: number[] = Array.isArray(targetSiteIds) && targetSiteIds.length > 0
-      ? targetSiteIds.map(Number)
+    const siteIdsToAdd: string[] = Array.isArray(targetSiteIds) && targetSiteIds.length > 0
+      ? targetSiteIds.map(String)
       : targetSiteId
-      ? [Number(targetSiteId)]
+      ? [String(targetSiteId)]
       : [];
 
     if (siteIdsToAdd.length === 0) {
@@ -341,31 +341,31 @@ export async function POST(
     }
 
     type SourceProductWithIncludes = {
-      id: number;
+      id: string;
       name: string;
       slug: string | null;
       country: string | null;
       isNative: boolean;
       source: string | null;
-      siteId: number;
+      siteId: string;
       targetSites: string | null;
-      categoryId: number;
+      categoryId: string;
       productCategory: string | null;
       trendLink: string | null;
       trendLevel: string | null;
       affiliateName: string | null;
       previewLink: string | null;
       remarks: string | null;
-      addedById: number;
+      addedById: string;
       addedAt: Date;
       updatedAt: Date | null;
-      category?: { id: number; name: string } | null;
-      site?: { id: number; name: string } | null;
-      addedBy?: { id: number; name: string; role: string | null } | null;
+      category?: { id: string; name: string } | null;
+      site?: { id: string; name: string } | null;
+      addedBy?: { id: string; name: string; role: string | null } | null;
     };
 
     let sourceProduct: SourceProductWithIncludes | null = null;
-    if (!isNaN(productId)) {
+    if (productId) {
       sourceProduct = await prisma.product.findUnique({
         where: { id: productId },
         include: {
@@ -402,8 +402,8 @@ export async function POST(
     const createdList: any[] = [];
     const errors: string[] = [];
 
-    let activeUserId: number = Number(session.user.id);
-    if (!activeUserId || isNaN(activeUserId)) {
+    let activeUserId: string = session.user.id ? String(session.user.id) : "";
+    if (!activeUserId) {
       activeUserId = sourceProduct.addedById;
     }
     const existingUser = await prisma.user.findUnique({
@@ -627,14 +627,14 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const baseProductId = parseInt(id, 10);
+    const baseProductId = id?.trim() || "";
     const body = await req.json();
     const { targetSiteId, targetProductId, force } = body;
 
     let prodToDelete: any = null;
     if (targetProductId) {
       prodToDelete = await prisma.product.findUnique({
-        where: { id: Number(targetProductId) },
+        where: { id: String(targetProductId) },
         include: {
           site: { select: { id: true, name: true } },
           article: {
@@ -660,7 +660,7 @@ export async function DELETE(
         const trimmed = baseProduct.name.trim();
         prodToDelete = await prisma.product.findFirst({
           where: {
-            siteId: Number(targetSiteId),
+            siteId: String(targetSiteId),
             OR: [
               { name: trimmed },
               { name: trimmed.toLowerCase() },

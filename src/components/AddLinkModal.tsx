@@ -11,14 +11,14 @@ import { LATAM_CODES, COUNTRY_NAMES, getGeoDisplayName, getCountryFlag } from "@
 import { isResearchSite } from "@/lib/researchSiteUtils";
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
   slug?: string | null;
   trendLink?: string | null;
   previewLink?: string | null;
   linkLogs?: any[];
   site: {
-    id: number;
+    id: string;
     name: string;
     url?: string | null;
     bridgeUrl?: string | null;
@@ -29,7 +29,7 @@ interface Product {
 }
 
 interface DbAffiliate {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -44,7 +44,7 @@ interface AddLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-  preselectedProductId?: number | null;
+  preselectedProductId?: string | null;
 }
 
 const LINK_STATUSES = [
@@ -81,7 +81,7 @@ export default function AddLinkModal({
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isChangingProduct, setIsChangingProduct] = useState(false);
   const [isSitesExpanded, setIsSitesExpanded] = useState(false);
   const [bridgePageLink, setBridgePageLink] = useState("");
@@ -102,7 +102,7 @@ export default function AddLinkModal({
 
   const [saveSuccessNotification, setSaveSuccessNotification] = useState<{
     siteName: string;
-    nextSite: { productId: number; siteName: string } | null;
+    nextSite: { productId: string; siteName: string } | null;
   } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -129,7 +129,7 @@ export default function AddLinkModal({
     useCountrySpecificLinks: boolean;
   }
 
-  const userModifiedDraftsRef = useRef<Map<number, SiteDraft>>(new Map());
+  const userModifiedDraftsRef = useRef<Map<string, SiteDraft>>(new Map());
   const hasUserModifiedCurrentSiteRef = useRef<boolean>(false);
 
   // Horizontal scroll navigation for site switcher bar
@@ -166,7 +166,7 @@ export default function AddLinkModal({
   const availableSitesForProduct = useMemo(() => {
     if (!matchingProductsForName.length) return [];
 
-    const siteMap = new Map<number, typeof matchingProductsForName[0]>();
+    const siteMap = new Map<string, typeof matchingProductsForName[0]>();
     for (const p of matchingProductsForName) {
       if (!p.site || !p.site.id || isResearchSite(p.site.name)) continue;
       const existing = siteMap.get(p.site.id);
@@ -443,7 +443,7 @@ export default function AddLinkModal({
     }
   };
 
-  const handleSwitchSite = (targetProductId: number) => {
+  const handleSwitchSite = (targetProductId: string) => {
     if (targetProductId === selectedProductId) return;
 
     const currentProd = selectedProduct;
@@ -1170,12 +1170,9 @@ export default function AddLinkModal({
                       const target = sameSite || firstUnlinked || matchOpt.group[0];
                       handleSwitchSite(target.id);
                       setIsChangingProduct(false);
-                    } else {
-                      const directNum = Number(val);
-                      if (!isNaN(directNum)) {
-                        handleSwitchSite(directNum);
-                        setIsChangingProduct(false);
-                      }
+                    } else if (val) {
+                      handleSwitchSite(val);
+                      setIsChangingProduct(false);
                     }
                   }}
                   placeholder="Select Product from Dropdown..."

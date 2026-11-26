@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const siteIdParam = searchParams.get("siteId");
-    const siteId = siteIdParam ? parseInt(siteIdParam) : undefined;
+    const siteId = siteIdParam && siteIdParam.trim() ? siteIdParam.trim() : undefined;
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
 
@@ -79,27 +79,27 @@ export async function GET(req: NextRequest) {
     ]);
 
     const affiliateMap = new Map<string, {
-      id: number;
+      id: string;
       name: string;
       productCount: number;
-      linkersMap: Map<number, {
-        userId: number;
+      linkersMap: Map<string, {
+        userId: string;
         userName: string;
         userEmail?: string;
         userRole: string;
         count: number;
       }>;
       products: Array<{
-        id: number;
+        id: string;
         name: string;
         slug: string | null;
         siteName: string;
         addedByName: string;
-        addedById: number;
+        addedById: string;
         addedByRole: string;
         addedAt: Date;
         updatedByName?: string | null;
-        updatedById?: number | null;
+        updatedById?: string | null;
         updatedByRole?: string | null;
         updatedAt?: Date | null;
         previewLink: string | null;
@@ -120,8 +120,8 @@ export async function GET(req: NextRequest) {
 
     let totalAffiliateProducts = 0;
     let unassignedProductsCount = 0;
-    const linkerMap = new Map<number, {
-      userId: number;
+    const linkerMap = new Map<string, {
+      userId: string;
       userName: string;
       userEmail?: string;
       userRole: string;
@@ -142,14 +142,36 @@ export async function GET(req: NextRequest) {
         const lowerAff = rawAff.toLowerCase();
         let affData = affiliateMap.get(lowerAff);
         if (!affData) {
-          affData = {
-            id: 0,
+          const newAffData = {
+            id: `unregistered:${lowerAff}`,
             name: rawAff,
             productCount: 0,
-            linkersMap: new Map(),
-            products: [],
+            linkersMap: new Map<string, {
+              userId: string;
+              userName: string;
+              userEmail?: string;
+              userRole: string;
+              count: number;
+            }>(),
+            products: [] as Array<{
+              id: string;
+              name: string;
+              slug: string | null;
+              siteName: string;
+              addedByName: string;
+              addedById: string;
+              addedByRole: string;
+              addedAt: Date;
+              updatedByName?: string | null;
+              updatedById?: string | null;
+              updatedByRole?: string | null;
+              updatedAt?: Date | null;
+              previewLink: string | null;
+              trendLink: string | null;
+            }>,
           };
-          affiliateMap.set(lowerAff, affData);
+          affiliateMap.set(lowerAff, newAffData);
+          affData = newAffData;
         }
 
         affData.productCount++;

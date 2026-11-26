@@ -51,8 +51,8 @@ const USER_NAME_ALIASES: Record<string, string> = {
 
 export interface ResolveUsersOptions {
   rolePreference?: string;
-  targetSiteId?: number | null;
-  siteAccessList?: Array<{ userId: number; siteId: number; role?: string | null }>;
+  targetSiteId?: string | null;
+  siteAccessList?: Array<{ userId: string; siteId: string; role?: string | null }>;
 }
 
 /**
@@ -60,7 +60,7 @@ export interface ResolveUsersOptions {
  * Disambiguates duplicate first names (e.g. Prity Sewa vs Prity Thapa, Aakriti Nepali vs Aakriti Rauniyar,
  * Sabina Magar vs Sabina Pahari, Bibek Karki vs Bibek Poudel) using targetSiteId access and role context.
  */
-export function resolveUsers<T extends { id: number; name: string; email: string; role?: string | null; hasLeftCompany?: boolean }>(
+export function resolveUsers<T extends { id: string; name: string; email: string; role?: string | null; hasLeftCompany?: boolean }>(
   raw: string,
   allDbUsers: T[],
   options: ResolveUsersOptions = {}
@@ -72,7 +72,7 @@ export function resolveUsers<T extends { id: number; name: string; email: string
 
   const { rolePreference, targetSiteId, siteAccessList = [] } = options;
 
-  const userSiteIdsMap = new Map<number, Set<number>>();
+  const userSiteIdsMap = new Map<string, Set<string>>();
   for (const sa of siteAccessList) {
     if (!userSiteIdsMap.has(sa.userId)) {
       userSiteIdsMap.set(sa.userId, new Set());
@@ -97,7 +97,7 @@ export function resolveUsers<T extends { id: number; name: string; email: string
   const candidates = [...validUsers].sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
 
   const matched: T[] = [];
-  const matchedIds = new Set<number>();
+  const matchedIds = new Set<string>();
 
   for (const part of parts) {
     const clean = part.trim().toLowerCase().replace(/\s+/g, " ");

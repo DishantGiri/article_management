@@ -15,8 +15,8 @@ export async function POST(
     }
 
     const { id } = await params;
-    const productId = parseInt(id);
-    if (isNaN(productId)) {
+    const productId = id?.trim() || "";
+    if (!productId) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
     }
 
@@ -26,7 +26,7 @@ export async function POST(
       return NextResponse.json({ error: "Issue message is required" }, { status: 400 });
     }
 
-    const activeUserId = Number(session.user.id);
+    const activeUserId = String(session.user.id);
     const caller = await prisma.user.findUnique({
       where: { id: activeUserId },
       select: { name: true, role: true },
