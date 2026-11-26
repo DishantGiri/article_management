@@ -19,7 +19,6 @@ import {
   Check,
   Globe,
   MessageSquare,
-  Sparkles,
   Calendar,
 } from "lucide-react";
 import { useSession } from "next-auth/react";

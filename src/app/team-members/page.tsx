@@ -17,7 +17,6 @@ import {
   Zap,
   TrendingUp,
   ExternalLink,
-  Sparkles,
   ArrowRight,
   ShieldCheck,
   CheckCircle2,

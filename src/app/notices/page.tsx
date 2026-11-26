@@ -13,7 +13,6 @@ import {
   Edit3,
   Users,
   AlertTriangle,
-  Sparkles,
   Info,
   Bell,
   X,
@@ -96,7 +95,7 @@ const CATEGORY_CONFIG: Record<
     darkBg: "dark:bg-purple-950/40",
     darkText: "dark:text-purple-300",
     darkBorder: "dark:border-purple-800/50",
-    icon: Sparkles,
+    icon: Megaphone,
   },
   GENERAL: {
     label: "General",

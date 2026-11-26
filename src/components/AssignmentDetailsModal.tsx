@@ -24,7 +24,7 @@ import {
   User,
   UserCheck,
   Clock,
-  Sparkles,
+  Send,
   Share2,
   Calendar,
   RotateCcw,
@@ -782,7 +782,7 @@ export default function AssignmentDetailsModal({
 
                   {product.trendLevel && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs font-bold border border-amber-200 dark:border-amber-800/60 shadow-2xs">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
                       <span>{product.trendLevel} Trend</span>
                     </span>
                   )}
@@ -1065,7 +1065,7 @@ export default function AssignmentDetailsModal({
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <Send className="w-3.5 h-3.5" />
                       <span>Publish to All Missing ({missingCount})</span>
                     </>
                   )}

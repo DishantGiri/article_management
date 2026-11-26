@@ -14,7 +14,7 @@ import {
   Package,
   User,
   Search,
-  Sparkles,
+  PlusCircle,
   ShieldCheck,
   FileText,
   RefreshCw,
@@ -531,7 +531,7 @@ export default function DuplicateProductPreviewModal({
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4 text-amber-300" />
+                          <PlusCircle className="w-4 h-4 text-amber-300" />
                           <span>Add to All Missing Sites ({data.missingCount})</span>
                         </>
                       )}

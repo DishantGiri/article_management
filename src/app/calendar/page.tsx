@@ -47,7 +47,6 @@ import {
   User as UserIcon,
   Activity,
   Layers,
-  Sparkles,
   ArrowRight,
   Search,
 } from "lucide-react";

@@ -29,7 +29,6 @@ import {
   MoreHorizontal,
   Copy,
   Bell,
-  Sparkles,
   TrendingUp,
   ArrowUpRight,
   Filter,
@@ -2217,7 +2216,7 @@ function ProductResearcherHubStudio({
               </p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center shrink-0 backdrop-blur-xs">
-              <Sparkles className="w-5 h-5" />
+              <Package className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 pt-2.5 border-t border-white/20 flex items-center justify-between text-[11px]">
@@ -2331,7 +2330,7 @@ function ProductResearcherHubStudio({
         </div>
 
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <Sparkles className="w-3.5 h-3.5 text-[#00A389]" />
+          <Activity className="w-3.5 h-3.5 text-[#00A389]" />
           <span>Research hub active &amp; synced</span>
         </div>
       </div>
@@ -4067,7 +4066,7 @@ function WriterAvailableAssignments({
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-inner">
-                  <Sparkles className="w-4 h-4" />
+                  <Package className="w-4 h-4" />
                 </div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
                   Available Products
@@ -4899,7 +4898,7 @@ function PublicLandingShowcase() {
       {/* Hero Header */}
       <div className="text-center space-y-4 max-w-2xl">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/30 text-xs font-bold">
-          <Sparkles className="w-4 h-4 text-[#6D8196]" />
+          <Zap className="w-4 h-4 text-[#6D8196]" />
           Next-Gen Content & Affiliate Command Engine
         </div>
         <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">

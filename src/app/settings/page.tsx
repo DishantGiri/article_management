@@ -12,7 +12,8 @@ import {
   Volume1,
   Shield,
   Sliders,
-  Sparkles,
+  Palette,
+  Megaphone,
   CheckCircle2,
   Save,
   RefreshCw,
@@ -608,7 +609,7 @@ export default function SettingsPage() {
           >
             {[
               { id: "profile", label: "Profile & Identity", icon: User },
-              { id: "appearance", label: "Appearance & Theme", icon: Sparkles, badge: resolvedTheme === "dark" ? "Dark" : "Light" },
+              { id: "appearance", label: "Appearance & Theme", icon: Palette, badge: resolvedTheme === "dark" ? "Dark" : "Light" },
               { id: "notifications", label: "Notification Alerts", icon: Bell, badge: soundEnabled ? "Active" : "Muted" },
               { id: "workspace", label: "Workspace & Display", icon: Sliders },
               { id: "security", label: "Security & Session", icon: Shield },
@@ -849,7 +850,7 @@ export default function SettingsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-[#CBCBCB]/40">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-[#6D8196]" />
+                  <Palette className="w-5 h-5 text-[#6D8196]" />
                   <h2 className="text-base font-bold text-[#4A4A4A]">Interface Appearance</h2>
                 </div>
                 <p className="text-xs text-[#737373] font-medium">
@@ -1276,7 +1277,7 @@ export default function SettingsPage() {
                   id: "broadcasts",
                   title: "Announcements & Broadcasts",
                   desc: "Real-time administrative notices and team updates",
-                  icon: Sparkles,
+                  icon: Megaphone,
                   checked: notifAnnouncements,
                   setter: setNotifAnnouncements,
                 },

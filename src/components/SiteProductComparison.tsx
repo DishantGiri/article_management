@@ -16,7 +16,6 @@ import {
   Filter,
   Check,
   X,
-  Sparkles,
   ChevronDown,
   Globe,
   SlidersHorizontal,
@@ -757,7 +756,7 @@ export default function SiteProductComparison({
               disabled={!data || data.stats.differentCount === 0}
               className="px-3.5 py-2 bg-[#6D8196] hover:bg-[#5A6D81] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer disabled:opacity-40"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5" />
               Batch Sync Missing
             </button>
           )}
@@ -1678,7 +1677,7 @@ export default function SiteProductComparison({
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 text-indigo-600 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4" />
+                  <Layers className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-800 dark:text-white">
@@ -1807,7 +1806,7 @@ export default function SiteProductComparison({
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <RefreshCw className="w-3.5 h-3.5" />
                       Sync {batchSelectedProductKeys.length} Products
                     </>
                   )}

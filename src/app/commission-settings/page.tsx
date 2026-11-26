@@ -12,7 +12,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   CheckCircle2,
-  Sparkles,
   Link2,
   PenTool,
   Award,

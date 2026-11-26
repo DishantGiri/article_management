@@ -16,7 +16,6 @@ import {
   AlertCircle,
   ExternalLink,
   Layers,
-  Sparkles,
   ArrowUpRight,
   ShieldCheck,
 } from "lucide-react";

@@ -26,7 +26,6 @@ import {
   Eye,
   SlidersHorizontal,
   Package,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -730,7 +729,7 @@ function UserCommissionsContent() {
                               </span>
                               {user.commissionToPartyFund && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs" title="Commissions routed directly to Party Fund">
-                                  <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+                                  <Coins className="w-2.5 h-2.5 text-purple-600" />
                                   Party Fund
                                 </span>
                               )}

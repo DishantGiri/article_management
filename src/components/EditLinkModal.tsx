@@ -18,7 +18,6 @@ import {
   ShieldCheck,
   Plus,
   Lock,
-  Sparkles,
 } from "lucide-react";
 import {
   LATAM_CODES,

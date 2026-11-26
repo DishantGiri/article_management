@@ -19,7 +19,6 @@ import {
   FileText,
   Tag,
   ChevronRight,
-  Sparkles,
   Layers,
   ArrowUpRight,
   Filter,

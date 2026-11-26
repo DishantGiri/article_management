@@ -9,7 +9,7 @@ import {
   Package,
   Clock,
   Link as LinkIcon,
-  Sparkles,
+  Zap,
   Lock,
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -56,7 +56,7 @@ function SignInContent() {
 
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#6D8196]/10 text-[#3D4F61] border border-[#6D8196]/25 text-[11px] font-bold">
-              <Sparkles className="w-3.5 h-3.5 text-[#6D8196]" />
+              <Zap className="w-3.5 h-3.5 text-[#6D8196]" />
               Workflow Orchestration Platform
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">

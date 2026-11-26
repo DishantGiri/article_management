@@ -33,7 +33,7 @@ import {
   TrendingUp,
   Gift,
   PartyPopper,
-  Sparkles,
+  Info,
   Eye,
   ArrowUpDown,
   Filter,
@@ -1196,7 +1196,7 @@ export default function CommissionsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <Coins className="w-3.5 h-3.5 text-amber-500" />
               <span>Fund Pools:</span>
             </span>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/40 text-[11px] font-bold text-amber-800 dark:text-amber-300">
@@ -2170,7 +2170,7 @@ export default function CommissionsPage() {
 
                 {modalSaleType === "REDIRECT" ? (
                   <div className="p-3 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 mt-2 flex items-start gap-2.5">
-                    <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div className="text-[11px] leading-relaxed">
                       <p className="font-extrabold text-amber-900 dark:text-amber-200">
                         ⚡ Redirect Sale: Linker receives +50% Bonus, other roles receive normal commission

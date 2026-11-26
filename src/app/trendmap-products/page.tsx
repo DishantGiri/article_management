@@ -21,7 +21,6 @@ import {
   Edit2,
   Check,
   Send,
-  Sparkles,
   BarChart2,
   Globe,
   SlidersHorizontal,

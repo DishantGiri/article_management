@@ -2,7 +2,7 @@
 "use client";
 
 import CustomSelect from "@/components/CustomSelect";
-import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Copy, CheckCircle2, ArrowRight, Sparkles } from "lucide-react";
+import { Link2, AlertCircle, Tag, X, Plus, Building2, Globe, Check, ShieldCheck, Lock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Copy, CheckCircle2, ArrowRight } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";

@@ -12,7 +12,7 @@ import {
   X,
   Search,
   Lock,
-  Sparkles,
+  PlusCircle,
   BarChart3,
   Package,
   Users,
@@ -519,7 +519,7 @@ export default function AffiliateSettingsTab() {
             className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3 animate-fadeIn"
           >
             <div className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-blue-500" /> New Affiliate Network
+              <PlusCircle className="w-4 h-4 text-blue-500" /> New Affiliate Network
             </div>
             <div className="flex items-center gap-2">
               <input

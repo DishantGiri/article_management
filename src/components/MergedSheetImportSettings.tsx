@@ -15,7 +15,6 @@ import {
   Users,
   PenTool,
   Link2,
-  Sparkles,
   ExternalLink,
   ChevronRight,
   Filter,
@@ -516,7 +515,7 @@ export default function MergedSheetImportSettings() {
               </p>
             </div>
             <div className="flex items-center gap-2 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-3.5 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-800 shadow-2xs mt-2">
-              <Sparkles className="w-3.5 h-3.5" />
+              <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>Multi-Tab & Merged Sheet Detection Supported</span>
             </div>
           </div>

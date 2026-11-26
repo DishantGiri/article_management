@@ -303,14 +303,18 @@ export function CategoryHornIcon({
               strokeWidth="1"
             />
 
-            {/* Sparkle Icons */}
+            {/* Sound Waves */}
             <path
-              d="M87 34L88.5 30L90 34L94 35.5L90 37L88.5 41L87 37L83 35.5L87 34Z"
-              fill="#F0ABFC"
+              d="M86 40C89 43 89 53 86 56"
+              stroke="#E9D5FF"
+              strokeWidth="2.5"
+              strokeLinecap="round"
             />
             <path
-              d="M91 55L92 52L93 55L96 56L93 57L92 60L91 57L88 56L91 55Z"
-              fill="#E879F9"
+              d="M91 34C96 40 96 56 91 62"
+              stroke="#C084FC"
+              strokeWidth="2.5"
+              strokeLinecap="round"
             />
           </svg>
 

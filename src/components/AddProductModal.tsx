@@ -18,7 +18,7 @@ import {
   Layers,
   Plus,
   AlertCircle,
-  Sparkles,
+  CheckCircle2,
   Check,
   ChevronDown,
   ChevronUp,
@@ -1301,7 +1301,7 @@ export default function AddProductModal({
           {successState ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-200 dark:border-emerald-800">
-                <Sparkles className="w-8 h-8" />
+                <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
                 {entryMode === "bulk" ? "Products Added Successfully!" : "Product Added Successfully!"}

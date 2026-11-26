@@ -22,7 +22,6 @@ import {
   Check,
   Activity,
   Calendar,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -557,7 +556,7 @@ export default function GoogleDriveBackupSettings() {
           <div className="p-4 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/50 dark:border-purple-900/40 mb-4">
             <div className="flex items-center justify-between text-xs text-purple-900 dark:text-purple-300 font-semibold mb-1">
               <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                <Sparkles className="w-3.5 h-3.5 text-purple-500 animate-spin" style={{ animationDuration: "6s" }} />
+                <Clock className="w-3.5 h-3.5 text-purple-500" />
                 Next Backup In
               </span>
               <span className="text-purple-600 dark:text-purple-400 font-normal">

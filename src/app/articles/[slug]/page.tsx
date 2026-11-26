@@ -28,7 +28,7 @@ import {
   History as HistoryIcon,
   PenTool,
   RotateCcw,
-  Sparkles,
+  ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -848,7 +848,7 @@ export default function ArticleDetailPage({ params }: { params?: Promise<{ slug:
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
+                    <ClipboardCheck className="w-4 h-4 text-[#6D8196] dark:text-sky-400" />
                     Editorial Review & Quality Check
                   </h2>
                   <p className="text-xs text-slate-400 dark:text-slate-400 font-medium mt-0.5">
