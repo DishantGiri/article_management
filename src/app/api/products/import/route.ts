@@ -15,6 +15,11 @@ import {
 } from "@/lib/geo-link-parser";
 import { extractThreeDatesFromRow, isDateColumnKey } from "@/lib/sheet-dates";
 import { resolveImportedTypeAndCategory } from "@/lib/product-types";
+import {
+  resolveAffiliateName,
+  resolveProductCategoryName,
+  resolveProductSource,
+} from "@/lib/import-resolvers";
 import { delByPattern } from "@/lib/redis";
 
 // POST /api/products/import - Import products from parsed CSV
@@ -258,14 +263,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const [allDbUsers, allDbSiteAccess] = await Promise.all([
+    const [allDbUsers, allDbSiteAccess, allDbAffiliates, allDbProductCategories] = await Promise.all([
       prisma.user.findMany({
         select: { id: true, name: true, email: true, role: true, hasLeftCompany: true },
       }),
       prisma.siteAccess.findMany({
         select: { userId: true, siteId: true, role: true },
       }),
+      prisma.affiliateName.findMany(),
+      prisma.productCategory.findMany(),
     ]);
+
+    const knownAffiliateNames = new Set<string>(
+      allDbAffiliates.map((a) => a.name.toLowerCase().trim())
+    );
+    const knownProductCategoryNames = new Set<string>(
+      allDbProductCategories.map((c) => c.name.toLowerCase().trim())
+    );
 
     const importedProducts: any[] = [];
     const skippedDuplicates: string[] = [];
@@ -335,11 +349,12 @@ export async function POST(req: NextRequest) {
         row.productCategory || row["Product Category"] || row["Product Category Name"]
       );
 
-      const { productType: categoryName, productCategory } = resolveImportedTypeAndCategory({
+      const { productType: categoryName, productCategory: rawProductCategory } = resolveImportedTypeAndCategory({
         rawType,
         rawCategoryCol: rawCatCol,
         rawProductCategoryCol: rawProdCatCol,
       });
+      const productCategory = resolveProductCategoryName(rawProductCategory, allDbProductCategories);
 
       const explicitSlug = cleanOptionalText(row.slug || row["Slug"]);
       const generatedSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -347,8 +362,10 @@ export async function POST(req: NextRequest) {
 
       const country = cleanOptionalText(row.country || row["Country"] || row["GEO"]);
 
-      // Source
-      const source = cleanOptionalText(row.source || row["Source"]);
+      // Source (fuzzy-normalized e.g. "competitors product" -> "Competitor")
+      const source = resolveProductSource(
+        cleanOptionalText(row.source || row["Source"] || row["Product Source"])
+      );
 
       // Trend Level & Link
       let trendLevel = "HIGH";
@@ -364,7 +381,7 @@ export async function POST(req: NextRequest) {
         trendLink = cleanUrl(row.trend);
       }
 
-      // Affiliate Network
+      // Affiliate Network (fuzzy-resolved e.g. "Smart ADV" -> "SmartADV")
       const rawAffiliate = String(
         row.affiliateName ||
         row["Affiliate Network"] ||
@@ -376,11 +393,9 @@ export async function POST(req: NextRequest) {
         ""
       ).trim();
 
-      const isNoAffiliate =
-        !rawAffiliate ||
-        isNullOrPlaceholder(rawAffiliate) ||
-        rawAffiliate.toLowerCase() === "general";
-      const affiliateName = isNoAffiliate ? "No Affiliate" : rawAffiliate;
+      const resolvedAffiliate = resolveAffiliateName(rawAffiliate, allDbAffiliates);
+      const isNoAffiliate = !resolvedAffiliate;
+      const affiliateName = resolvedAffiliate || "No Affiliate";
 
       // Preview Link
       const previewLink = cleanUrl(row.previewLink || row["Preview Link"] || row["Preview URL"] || row["Preview"]);
@@ -398,7 +413,11 @@ export async function POST(req: NextRequest) {
 
       // Link & Multi-GEO extraction (only non-null valid URLs and non-null geo links are imported)
       const defaultLinkAffName = isNoAffiliate ? "Standard" : affiliateName;
-      const { geoLinks: validGeoLinks } = extractGeoLinksFromRow(row, defaultLinkAffName);
+      const { geoLinks: rawGeoLinks } = extractGeoLinksFromRow(row, defaultLinkAffName);
+      const validGeoLinks = rawGeoLinks.map((g) => ({
+        ...g,
+        affiliateName: resolveAffiliateName(g.affiliateName, allDbAffiliates) || defaultLinkAffName,
+      }));
       const rawBuyLink = cleanUrl(
         getRowFieldValue(row, "Buy Link", "Buy Now Link", "Buy Now", "Direct Buy Link", "Landing Link", "Landing Page Link")
       );
@@ -515,20 +534,30 @@ export async function POST(req: NextRequest) {
 
       // Ensure ProductCategory exists
       if (productCategory) {
-        await prisma.productCategory.upsert({
-          where: { name: productCategory },
-          update: {},
-          create: { name: productCategory },
-        }).catch(() => {});
+        const prodCatKey = productCategory.toLowerCase().trim();
+        if (!knownProductCategoryNames.has(prodCatKey)) {
+          await prisma.productCategory.upsert({
+            where: { name: productCategory },
+            update: {},
+            create: { name: productCategory },
+          }).catch(() => {});
+          knownProductCategoryNames.add(prodCatKey);
+          allDbProductCategories.push({ name: productCategory } as any);
+        }
       }
 
-      // Ensure AffiliateName exists
-      if (affiliateName) {
-        await prisma.affiliateName.upsert({
-          where: { name: affiliateName },
-          update: {},
-          create: { name: affiliateName },
-        }).catch(() => {});
+      // Ensure AffiliateName exists (never create an entry for "No Affiliate")
+      if (resolvedAffiliate) {
+        const affKey = resolvedAffiliate.toLowerCase().trim();
+        if (!knownAffiliateNames.has(affKey)) {
+          await prisma.affiliateName.upsert({
+            where: { name: resolvedAffiliate },
+            update: {},
+            create: { name: resolvedAffiliate },
+          }).catch(() => {});
+          knownAffiliateNames.add(affKey);
+          allDbAffiliates.push({ name: resolvedAffiliate } as any);
+        }
       }
 
       // ─── IF PRODUCT RESEARCHER: DO NOT ADD DIRECTLY TO ANY SITE ───

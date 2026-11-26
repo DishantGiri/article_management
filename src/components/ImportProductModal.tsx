@@ -8,6 +8,12 @@ import { toast } from "react-hot-toast";
 import { cleanUrl, extractGeoLinksFromRow, isNullOrPlaceholder } from "@/lib/geo-link-parser";
 import { extractThreeDatesFromRow, formatNoonUtcYmd, isDateColumnKey } from "@/lib/sheet-dates";
 import { resolveImportedTypeAndCategory } from "@/lib/product-types";
+import {
+  resolveAffiliateName,
+  resolveProductCategoryName,
+  resolveProductSource,
+} from "@/lib/import-resolvers";
+import { useImport } from "@/context/ImportContext";
 
 interface ImportProductModalProps {
   isOpen: boolean;
@@ -156,24 +162,31 @@ function parseCSV(text: string): Record<string, any>[] {
 }
 
 export default function ImportProductModal({ isOpen, onClose, onSuccess, userId }: ImportProductModalProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [parsedData, setParsedData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<{
-    success: boolean;
-    importedCount: number;
-    importedLinksCount?: number;
-    importedGeosCount?: number;
-    skippedCount?: number;
-    skipped?: string[];
-    errors: string[];
-  } | null>(null);
+  const {
+    productDraft,
+    setProductDraft,
+    resetProductDraft,
+    productJob,
+    startProductImport,
+    setIsProductModalOpen,
+    setPopupVisible,
+    setPopupMinimized,
+  } = useImport();
+
+  const fileName = productDraft.fileName;
+  const parsedData = productDraft.parsedData;
+  const loading = productJob.status === "running";
+  const results = productJob.result;
 
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setIsProductModalOpen(isOpen);
+  }, [isOpen, setIsProductModalOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -184,6 +197,14 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
       };
     }
   }, [isOpen]);
+
+  const handleMinimizeOrClose = () => {
+    if (loading) {
+      setPopupVisible(true);
+      setPopupMinimized(false);
+    }
+    onClose();
+  };
 
   if (!isOpen || !mounted) return null;
 
@@ -200,8 +221,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
       return;
     }
 
-    setFile(selectedFile);
-    setResults(null);
+    setProductDraft({ fileName: selectedFile.name, parsedData: [] });
 
     if (isExcel) {
       try {
@@ -243,7 +263,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
             rows.push(normalized);
           }
         }
-        setParsedData(rows);
+        setProductDraft({ fileName: selectedFile.name, parsedData: rows });
       } catch (err: any) {
         toast.error(err?.message || "Failed to read Excel file.");
       }
@@ -254,13 +274,13 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
     reader.onload = (event) => {
       const text = event.target?.result as string;
       const data = parseCSV(text);
-      setParsedData(data);
+      setProductDraft({ fileName: selectedFile.name, parsedData: data });
     };
     reader.readAsText(selectedFile);
   };
 
   const handleImport = async () => {
-    if (parsedData.length === 0) {
+    if (parsedData.length === 0 || !fileName) {
       toast.error("No valid products found in the file.");
       return;
     }
@@ -271,41 +291,13 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
       return;
     }
 
-    setLoading(true);
-    try {
-      const res = await fetch("/api/products/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          products: parsedData,
-          addedById: userId,
-        }),
-      });
-
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || "Failed to import products");
-
-      setResults({
-        success: resData.success,
-        importedCount: resData.importedCount,
-        importedLinksCount: resData.importedLinksCount || 0,
-        importedGeosCount: resData.importedGeosCount || 0,
-        skippedCount: resData.skippedCount || 0,
-        skipped: resData.skipped || [],
-        errors: resData.errors || [],
-      });
-
-      if (resData.importedCount > 0) {
-        toast.success(`Imported ${resData.importedCount} new products successfully!${resData.skippedCount ? ` (${resData.skippedCount} duplicates skipped)` : ""}`);
-        onSuccess?.();
-      } else if (resData.skippedCount > 0) {
-        toast.success(`Done: ${resData.skippedCount} products already exist in catalog (duplicates skipped).`);
-        onSuccess?.();
-      }
-    } catch (e: any) {
-      toast.error(e.message || "Failed to import file");
-    } finally {
-      setLoading(false);
+    const resData = await startProductImport({
+      fileName,
+      products: parsedData,
+      userId,
+    });
+    if (resData && (resData.importedCount > 0 || (resData.skippedCount || 0) > 0)) {
+      onSuccess?.();
     }
   };
 
@@ -409,14 +401,18 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
             <FileSpreadsheet className="w-5 h-5 text-indigo-500" />
             Import Products from CSV / Excel
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button
+            onClick={handleMinimizeOrClose}
+            title={loading ? "Continue in background popup" : "Close"}
+            className="text-slate-400 hover:text-slate-600"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
-          {!file && (
+          {!fileName && (
             <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-10 bg-slate-50/50 hover:bg-slate-50 transition-colors group relative">
               <Upload className="w-12 h-12 text-slate-400 group-hover:text-indigo-500 transition-colors mb-4" />
               <p className="text-sm font-semibold text-slate-700">Drag & drop your Excel or CSV file here, or click to upload</p>
@@ -438,19 +434,20 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
             </div>
           )}
 
-          {file && !results && (
+          {fileName && !results && (
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl">
                 <div className="flex items-center gap-2">
                   <FileSpreadsheet className="w-5 h-5 text-indigo-500" />
                   <div>
-                    <p className="text-xs font-bold text-slate-800">{file.name}</p>
-                    <p className="text-[10px] text-slate-400 font-semibold">{(file.size / 1024).toFixed(1)} KB</p>
+                    <p className="text-xs font-bold text-slate-800">{fileName}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold">{parsedData.length} rows parsed</p>
                   </div>
                 </div>
                 <button
-                  onClick={() => { setFile(null); setParsedData([]); }}
-                  className="text-xs text-rose-500 hover:text-rose-600 font-bold hover:underline"
+                  disabled={loading}
+                  onClick={() => resetProductDraft()}
+                  className="text-xs text-rose-500 hover:text-rose-600 font-bold hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Change File
                 </button>
@@ -481,10 +478,8 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
                             ? row.selectedSites.join(", ")
                             : (row.siteName && !isNullOrPlaceholder(row.siteName) ? row.siteName : "All Sites");
 
-                          const affiliateDisplay =
-                            row.affiliateName && !isNullOrPlaceholder(row.affiliateName) && row.affiliateName.toLowerCase().trim() !== "general"
-                              ? row.affiliateName
-                              : "No Affiliate";
+                          const affiliateDisplay = resolveAffiliateName(row.affiliateName) || "No Affiliate";
+                          const sourceDisplay = resolveProductSource(row.source);
 
                           const addedByDisplay = row.researchedBy || row["Researched By"] || row["Added By"] || row.addedBy || "(Current User)";
                           const { geoLinks } = extractGeoLinksFromRow(row, affiliateDisplay);
@@ -502,6 +497,7 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
                               ? (row.productCategory || row["Product Category"])
                               : null,
                           });
+                          const categoryDisplay = resolveProductCategoryName(resolvedTypeCat.productCategory);
 
                           return (
                             <tr key={idx} className="hover:bg-slate-50/50">
@@ -511,8 +507,8 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
                                   {resolvedTypeCat.productType}
                                 </span>
                               </td>
-                              <td className="px-3 py-2 text-slate-500">{resolvedTypeCat.productCategory || "--"}</td>
-                              <td className="px-3 py-2 text-slate-500">{!isNullOrPlaceholder(row.source) ? row.source : "--"}</td>
+                              <td className="px-3 py-2 text-slate-500">{categoryDisplay || "--"}</td>
+                              <td className="px-3 py-2 text-slate-500">{sourceDisplay || "--"}</td>
                               <td className="px-3 py-2 text-slate-500">{!isNullOrPlaceholder(row.trendLevel) ? row.trendLevel : "--"}</td>
                               <td className="px-3 py-2 text-slate-500">{affiliateDisplay}</td>
                               <td className="px-3 py-2 text-slate-600 font-medium">{addedByDisplay}</td>
@@ -667,18 +663,14 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
           {results ? (
             <>
               <button
-                onClick={() => {
-                  setFile(null);
-                  setParsedData([]);
-                  setResults(null);
-                }}
+                onClick={() => resetProductDraft()}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-sm"
               >
                 <Upload className="w-4 h-4" />
                 Upload Another
               </button>
               <button
-                onClick={onClose}
+                onClick={handleMinimizeOrClose}
                 className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition"
               >
                 Close
@@ -687,12 +679,12 @@ export default function ImportProductModal({ isOpen, onClose, onSuccess, userId 
           ) : (
             <>
               <button
-                onClick={onClose}
+                onClick={handleMinimizeOrClose}
                 className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition"
               >
-                Cancel
+                {loading ? "Run in Popup" : "Cancel"}
               </button>
-              {file && (
+              {fileName && (
                 <button
                   onClick={handleImport}
                   disabled={loading || parsedData.length === 0}

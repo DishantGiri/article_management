@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, Suspense } from "react";
+import { useEffect, useRef, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { Search, Plus, Upload, Download, SlidersHorizontal, ExternalLink, FileText, LayoutGrid, Globe, PlayCircle, X, Copy, Clock, Calendar, Package, Edit, Flame, TrendingUp, ChevronDown, Tag, AlertTriangle, Lock, CheckCircle2, MessageSquare, Info, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -21,6 +21,7 @@ import TopHeader from "@/components/TopHeader";
 import { getCountryFlag, COUNTRY_NAMES } from "@/lib/geo-constants";
 import { cleanOptionalText, getValidLogGeos, isValidLinkLog } from "@/lib/geo-link-parser";
 import { getActiveWorkspace } from "@/lib/workspace";
+import { useImport } from "@/context/ImportContext";
 
 interface Category {
   id: number;
@@ -90,7 +91,7 @@ function ProductsPageContent() {
   const [nativeFilter, setNativeFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const { isProductModalOpen: isImportModalOpen, setIsProductModalOpen: setIsImportModalOpen } = useImport();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const userRole = (session?.user?.role || "").toUpperCase();
   const sessionRoles = useMemo(() => {
@@ -360,6 +361,11 @@ function ProductsPageContent() {
     setMounted(true);
   }, []);
 
+  const refreshProductsRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    refreshProductsRef.current = () => refreshProductsData(false);
+  });
+
   useEffect(() => {
     const handleWorkspaceChanged = (e: any) => {
       if (e.detail?.role) {
@@ -367,8 +373,16 @@ function ProductsPageContent() {
         setCurrentPage(1);
       }
     };
+    const handleDataImported = () => {
+      refreshProductsRef.current();
+    };
     window.addEventListener("workspace-changed", handleWorkspaceChanged);
-    return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+    window.addEventListener("app:data-imported", handleDataImported);
+    return () => {
+      window.removeEventListener("workspace-changed", handleWorkspaceChanged);
+      window.removeEventListener("app:data-imported", handleDataImported);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

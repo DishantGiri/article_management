@@ -24,6 +24,8 @@ import {
 import { toast } from "react-hot-toast";
 import { cleanUrl, extractGeoLinksFromRow, isNullOrPlaceholder } from "@/lib/geo-link-parser";
 import { extractThreeDatesFromRow, formatNoonUtcYmd, isDateColumnKey } from "@/lib/sheet-dates";
+import { resolveAffiliateName } from "@/lib/import-resolvers";
+import { useImport } from "@/context/ImportContext";
 
 const EXPECTED_HEADERS = [
   "Product Name",
@@ -120,26 +122,38 @@ function extractPreviewGeos(row: any): Array<{ geo: string; affiliateLink: strin
 
 export default function MergedSheetImportSettings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cancelImportRef = useRef(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [sheetNames, setSheetNames] = useState<string[]>([]);
-  const [activeSheetTab, setActiveSheetTab] = useState<string>("ALL");
-  const [importScope, setImportScope] = useState<"ALL" | "ACTIVE">("ALL");
-  const [allParsedRows, setAllParsedRows] = useState<any[]>([]);
+  const {
+    mergedDraft,
+    setMergedDraft,
+    resetMergedDraft,
+    mergedJob,
+    startMergedImport,
+    stopMergedImport,
+    setPopupVisible,
+    setPopupMinimized,
+  } = useImport();
   const [isParsing, setIsParsing] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState<{
-    currentChunk: number;
-    totalChunks: number;
-    processedRows: number;
-    totalRows: number;
-    percent: number;
-  } | null>(null);
-  const [updateExisting, setUpdateExisting] = useState(true);
-  const [importResult, setImportResult] = useState<any | null>(null);
 
-  // Search/Filter in Preview
-  const [searchQuery, setSearchQuery] = useState("");
+  const selectedFileName = mergedDraft.fileName;
+  const sheetNames = mergedDraft.sheetNames;
+  const activeSheetTab = mergedDraft.activeSheetTab;
+  const importScope = mergedDraft.importScope;
+  const allParsedRows = mergedDraft.allParsedRows;
+  const updateExisting = mergedDraft.updateExisting;
+  const searchQuery = mergedDraft.searchQuery;
+
+  const isImporting = mergedJob.status === "running";
+  const importProgress = mergedJob.progress;
+  const importResult = mergedJob.result;
+
+  const setActiveSheetTab = (tab: string) =>
+    setMergedDraft((prev) => ({ ...prev, activeSheetTab: tab }));
+  const setImportScope = (scope: "ALL" | "ACTIVE") =>
+    setMergedDraft((prev) => ({ ...prev, importScope: scope }));
+  const setUpdateExisting = (val: boolean) =>
+    setMergedDraft((prev) => ({ ...prev, updateExisting: val }));
+  const setSearchQuery = (q: string) =>
+    setMergedDraft((prev) => ({ ...prev, searchQuery: q }));
 
   // Generate and Download Sample Excel Template
   const handleDownloadTemplate = async () => {
@@ -296,9 +310,11 @@ export default function MergedSheetImportSettings() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setSelectedFile(file);
     setIsParsing(true);
-    setImportResult(null);
+    setMergedDraft((prev) => ({
+      ...prev,
+      fileName: file.name,
+    }));
 
     try {
       const [XLSX, buffer] = await Promise.all([import("xlsx"), file.arrayBuffer()]);
@@ -367,9 +383,13 @@ export default function MergedSheetImportSettings() {
         }
       }
 
-      setSheetNames(detectedSheets);
-      setAllParsedRows(parsedRows);
-      setActiveSheetTab("ALL");
+      setMergedDraft((prev) => ({
+        ...prev,
+        fileName: file.name,
+        sheetNames: detectedSheets,
+        allParsedRows: parsedRows,
+        activeSheetTab: "ALL",
+      }));
 
       if (parsedRows.length === 0) {
         toast.error("No valid product rows found in this sheet.");
@@ -409,15 +429,12 @@ export default function MergedSheetImportSettings() {
     allParsedRows.flatMap((r) => splitPersonNames(r["Writer Name"] || ""))
   ).size;
 
-  // Execute Chunked Batch Import to prevent 504 Gateway Timeouts
-  const CHUNK_SIZE = 120;
-
   const handleCancelImport = () => {
-    cancelImportRef.current = true;
+    stopMergedImport();
   };
 
   const handleExecuteImport = async () => {
-    if (!selectedFile || allParsedRows.length === 0) {
+    if (!selectedFileName || allParsedRows.length === 0) {
       toast.error("Please choose a valid spreadsheet first.");
       return;
     }
@@ -434,129 +451,17 @@ export default function MergedSheetImportSettings() {
       return;
     }
 
-    setIsImporting(true);
-    setImportResult(null);
-    cancelImportRef.current = false;
-
-    const totalRows = rowsToImport.length;
-    const totalChunks = Math.ceil(totalRows / CHUNK_SIZE);
-
-    setImportProgress({
-      currentChunk: 0,
-      totalChunks,
-      processedRows: 0,
-      totalRows,
-      percent: 0,
+    setPopupVisible(true);
+    setPopupMinimized(false);
+    await startMergedImport({
+      fileName: selectedFileName,
+      rowsToImport,
+      updateExisting,
     });
-
-    const aggregatedStats = {
-      totalRows,
-      processed: 0,
-      createdProducts: 0,
-      updatedProducts: 0,
-      createdSites: 0,
-      assignedWriters: 0,
-      configuredLinks: 0,
-      configuredGeos: 0,
-      uniqueSites: new Set<string>(),
-      errors: [] as string[],
-    };
-
-    try {
-      for (let i = 0; i < totalChunks; i++) {
-        if (cancelImportRef.current) {
-          toast("Import stopped by user.", { icon: "⏸️" });
-          break;
-        }
-
-        const chunk = rowsToImport.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-
-        setImportProgress({
-          currentChunk: i + 1,
-          totalChunks,
-          processedRows: i * CHUNK_SIZE,
-          totalRows,
-          percent: Math.round((i / totalChunks) * 100),
-        });
-
-        const res = await fetch("/api/admin/import-merged-sheet", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            rows: chunk,
-            updateExisting,
-          }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || `Batch ${i + 1} failed (HTTP ${res.status})`);
-        }
-
-        if (data.stats) {
-          aggregatedStats.processed += data.stats.processed || 0;
-          aggregatedStats.createdProducts += data.stats.createdProducts || 0;
-          aggregatedStats.updatedProducts += data.stats.updatedProducts || 0;
-          aggregatedStats.createdSites += data.stats.createdSites || 0;
-          aggregatedStats.assignedWriters += data.stats.assignedWriters || 0;
-          aggregatedStats.configuredLinks += data.stats.configuredLinks || 0;
-          aggregatedStats.configuredGeos += data.stats.configuredGeos || 0;
-          if (Array.isArray(data.stats.uniqueSites)) {
-            data.stats.uniqueSites.forEach((s: string) => aggregatedStats.uniqueSites.add(s));
-          }
-          if (Array.isArray(data.stats.errors)) {
-            aggregatedStats.errors.push(...data.stats.errors);
-          }
-        }
-
-        setImportProgress({
-          currentChunk: i + 1,
-          totalChunks,
-          processedRows: Math.min((i + 1) * CHUNK_SIZE, totalRows),
-          totalRows,
-          percent: Math.round(((i + 1) / totalChunks) * 100),
-        });
-      }
-
-      setImportResult({
-        success: true,
-        message: `Successfully processed ${aggregatedStats.processed} rows across ${aggregatedStats.uniqueSites.size} site(s)!`,
-        stats: {
-          ...aggregatedStats,
-          uniqueSites: Array.from(aggregatedStats.uniqueSites),
-          errors: aggregatedStats.errors.slice(0, 50),
-        },
-      });
-      toast.success(`Import complete! ${aggregatedStats.processed} rows processed.`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to process import");
-      if (aggregatedStats.processed > 0) {
-        setImportResult({
-          success: false,
-          message: `Partially imported ${aggregatedStats.processed} of ${totalRows} rows before error.`,
-          stats: {
-            ...aggregatedStats,
-            uniqueSites: Array.from(aggregatedStats.uniqueSites),
-            errors: [...aggregatedStats.errors, err.message].slice(0, 50),
-          },
-        });
-      }
-    } finally {
-      setIsImporting(false);
-      setImportProgress(null);
-    }
   };
 
   const handleReset = () => {
-    setSelectedFile(null);
-    setSheetNames([]);
-    setAllParsedRows([]);
-    setImportResult(null);
-    setImportProgress(null);
-    cancelImportRef.current = false;
-    setSearchQuery("");
+    resetMergedDraft();
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -593,7 +498,7 @@ export default function MergedSheetImportSettings() {
       </div>
 
       {/* Upload Zone & Instructions */}
-      {!selectedFile && (
+      {!selectedFileName && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
           <div
             onClick={() => fileInputRef.current?.click()}
@@ -658,7 +563,7 @@ export default function MergedSheetImportSettings() {
       )}
 
       {/* Parsed Preview & Import Options */}
-      {selectedFile && !isParsing && (
+      {selectedFileName && !isParsing && (
         <div className="space-y-6">
           {/* File Card & KPI Summary */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xs">
@@ -669,10 +574,10 @@ export default function MergedSheetImportSettings() {
                 </div>
                 <div className="min-w-0">
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                    {selectedFile.name}
+                    {selectedFileName}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {(selectedFile.size / 1024).toFixed(1)} KB • {allParsedRows.length} valid rows found across {sheetNames.length} sheet tab(s)
+                    {allParsedRows.length} valid rows found across {sheetNames.length} sheet tab(s)
                   </p>
                 </div>
               </div>
@@ -680,8 +585,9 @@ export default function MergedSheetImportSettings() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  disabled={isImporting}
                   onClick={handleReset}
-                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
                 >
                   Change File
                 </button>
@@ -852,7 +758,9 @@ export default function MergedSheetImportSettings() {
                         {String(findRowVal(row, "Writer Name", "Writer", "Author") || "Unassigned")}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap text-slate-600 dark:text-slate-400">
-                        {String(findRowVal(row, "Affiliate Network", "Network", "Affiliate") || "—")}
+                        {resolveAffiliateName(
+                          String(findRowVal(row, "Affiliate Network", "Network", "Affiliate") || "")
+                        ) || "—"}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">

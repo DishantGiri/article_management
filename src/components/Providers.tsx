@@ -5,7 +5,9 @@ import type { Session } from "next-auth";
 import { Toaster } from "react-hot-toast";
 import { useEffect } from "react";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { ImportProvider } from "@/context/ImportContext";
 import NoticePopupModal from "@/components/NoticePopupModal";
+import GlobalImportPopup from "@/components/GlobalImportPopup";
 import { installClientFetchCache } from "@/lib/clientFetchCache";
 
 // Install immediately on client module evaluation so child pages' initial fetches use the cache
@@ -67,10 +69,12 @@ export default function Providers({
   return (
     <SessionProvider session={session} refetchOnWindowFocus={false}>
       <ThemeProvider>
-        {children}
-        <NoticePopupModal />
-        <Toaster
-          position="bottom-right"
+        <ImportProvider>
+          {children}
+          <NoticePopupModal />
+          <GlobalImportPopup />
+          <Toaster
+            position="top-right"
           toastOptions={{
             duration: 4000,
             style: {
@@ -94,8 +98,9 @@ export default function Providers({
                 secondary: '#ffffff',
               },
             },
-          }}
-        />
+            }}
+          />
+        </ImportProvider>
       </ThemeProvider>
     </SessionProvider>
   );

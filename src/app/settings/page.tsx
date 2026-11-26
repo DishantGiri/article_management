@@ -83,6 +83,15 @@ export default function SettingsPage() {
       } else if (p.get("tab") === "import-sheet") {
         setActiveTab("import-sheet");
       }
+
+      const handleSwitchTab = (e: Event) => {
+        const nextTab = (e as CustomEvent).detail;
+        if (nextTab === "import-sheet") {
+          setActiveTab("import-sheet");
+        }
+      };
+      window.addEventListener("settings:switch-tab", handleSwitchTab);
+      return () => window.removeEventListener("settings:switch-tab", handleSwitchTab);
     }
   }, []);
 

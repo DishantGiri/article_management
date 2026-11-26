@@ -1,14 +1,20 @@
-import { fuzzyScore } from "./fuzzy";
+import { fuzzyScore, levenshteinDistance } from "./fuzzy";
+import { normalizedLevenshteinSimilarity } from "./import-resolvers";
 
 // Known abbreviations and common aliases
 export const SITE_ALIASES: Record<string, string> = {
   dhs: "Daily Health Supplement",
   dailyhealthsupplement: "Daily Health Supplement",
+  dailyhealthsupplements: "Daily Health Supplement",
   smg: "Supplement Mag",
   mag: "Supplement Mag",
   supplementmag: "Supplement Mag",
+  supplementmags: "Supplement Mag",
   tbr: "The Buyers Reviews",
   thebuyersreviews: "The Buyers Reviews",
+  thebuyersreview: "The Buyers Reviews",
+  buyersreviews: "The Buyers Reviews",
+  buyersreview: "The Buyers Reviews",
   grc: "Guru Review Club",
   gurureviewclub: "Guru Review Club",
   gurureviewsclub: "Guru Review Club",
@@ -16,8 +22,10 @@ export const SITE_ALIASES: Record<string, string> = {
   "guru reviews club": "Guru Review Club",
   sc: "Supplement Coach",
   supplementcoach: "Supplement Coach",
+  supplementcoaches: "Supplement Coach",
   sv: "Supplement Vibes",
   supplementvibes: "Supplement Vibes",
+  supplementvibe: "Supplement Vibes",
   sd: "Supplement Dolphin",
   supplementdolphin: "Supplement Dolphin",
   st: "Supplement Tiger",
@@ -25,22 +33,30 @@ export const SITE_ALIASES: Record<string, string> = {
   sp: "Supplements and Powders",
   supplementandpowders: "Supplements and Powders",
   supplementsandpowders: "Supplements and Powders",
+  supplementspowders: "Supplements and Powders",
   "supplement and powders": "Supplements and Powders",
   "supplements and powders": "Supplements and Powders",
   jir: "Justin Reviews",
   jr: "Justin Reviews",
   justinreviews: "Justin Reviews",
+  justinreview: "Justin Reviews",
   rbr: "Ryans Best Reviews",
   ryansbestreviews: "Ryans Best Reviews",
+  ryansbestreview: "Ryans Best Reviews",
+  ryanbestreviews: "Ryans Best Reviews",
   hsb: "Health Supplement Bucket",
   healthsupplementbucket: "Health Supplement Bucket",
+  healthsupplementsbucket: "Health Supplement Bucket",
   hse: "Health Supplements Expert",
   healthsupplementsexpert: "Health Supplements Expert",
+  healthsupplementexpert: "Health Supplements Expert",
   bhfr: "BeautyHealthFitnessRemedies",
   beautyhealthfitnessremedies: "BeautyHealthFitnessRemedies",
+  beautyhealthfitnessremedy: "BeautyHealthFitnessRemedies",
   hsb_blog: "HealthSolutions Blog",
   hsblog: "HealthSolutions Blog",
   healthsolutionsblog: "HealthSolutions Blog",
+  healthsolutionblog: "HealthSolutions Blog",
   hpr: "HonestProductReview",
   honestproductreview: "HonestProductReview",
   honestproductreviews: "HonestProductReview",
@@ -67,6 +83,15 @@ export function normalizeSiteKey(str: string): string {
     .replace(/buyers\b/g, "buyer")
     .replace(/remedies\b/g, "remedy")
     .replace(/solutions\b/g, "solution")
+    .replace(/experts\b/g, "expert")
+    .replace(/buckets\b/g, "bucket")
+    .replace(/vibes\b/g, "vibe")
+    .replace(/dolphins\b/g, "dolphin")
+    .replace(/tigers\b/g, "tiger")
+    .replace(/coaches\b/g, "coach")
+    .replace(/clubs\b/g, "club")
+    .replace(/blogs\b/g, "blog")
+    .replace(/products\b/g, "product")
     .replace(/[^a-z0-9]/g, "");
 }
 
@@ -153,14 +178,24 @@ export function resolveSite<T extends { id: number; name: string; url?: string |
     if (found) return found;
   }
 
-  // 8. High-precision Fuzzy Score Match (fuzzyScore >= 70)
+  // 8. High-precision Fuzzy Score & Levenshtein Match
   let bestSite: T | null = null;
   let bestScore = 0;
 
   for (const s of sites) {
+    const sNorm = normalizeSiteKey(s.name);
     const nameScore = fuzzyScore(s.name, cleanKey);
-    const normScore = fuzzyScore(normalizeSiteKey(s.name), normKey);
-    const score = Math.max(nameScore, normScore);
+    const normScore = fuzzyScore(sNorm, normKey);
+    let levScore = 0;
+    if (normKey.length >= 6 && sNorm.length >= 6) {
+      const dist = levenshteinDistance(sNorm, normKey);
+      const sim = normalizedLevenshteinSimilarity(sNorm, normKey);
+      const maxDist = Math.max(2, Math.floor(Math.max(sNorm.length, normKey.length) * 0.18));
+      if (dist <= maxDist && sim >= 0.82) {
+        levScore = sim * 100;
+      }
+    }
+    const score = Math.max(nameScore, normScore, levScore);
 
     if (score > bestScore) {
       bestScore = score;

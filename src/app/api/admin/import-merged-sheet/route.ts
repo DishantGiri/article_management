@@ -9,6 +9,11 @@ import { resolveUsers, splitPersonNames, isPlaceholderName } from "@/lib/user-re
 import { cleanOptionalText, cleanUrl, extractGeoLinksFromRow, isNullOrPlaceholder } from "@/lib/geo-link-parser";
 import { extractThreeDatesFromRow, parseSheetDate } from "@/lib/sheet-dates";
 import { resolveImportedTypeAndCategory } from "@/lib/product-types";
+import {
+  resolveAffiliateName,
+  resolveProductCategoryName,
+  resolveProductSource,
+} from "@/lib/import-resolvers";
 import { delByPattern } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
@@ -169,6 +174,7 @@ export async function POST(req: NextRequest) {
     });
     const allDbUsers = await prisma.user.findMany();
     const allDbCategories = await prisma.category.findMany();
+    const allDbProductCategories = await prisma.productCategory.findMany();
     const allDbAffiliates = await prisma.affiliateName.findMany();
     const allDbSiteAccess = await prisma.siteAccess.findMany();
 
@@ -184,6 +190,9 @@ export async function POST(req: NextRequest) {
 
     const knownAffiliateNames = new Set<string>(
       allDbAffiliates.map((a) => a.name.toLowerCase().trim())
+    );
+    const knownProductCategoryNames = new Set<string>(
+      allDbProductCategories.map((c) => c.name.toLowerCase().trim())
     );
 
     const knownSiteAccessSet = new Set<string>(
@@ -290,19 +299,29 @@ export async function POST(req: NextRequest) {
         const {
           productType: resolvedProductType,
           explicitProductType,
-          productCategory: rawProductCategory,
+          productCategory: extractedProductCategory,
         } = resolveImportedTypeAndCategory({
           rawType: isPlaceholderName(rawType) ? null : rawType,
           rawCategoryCol: isPlaceholderName(rawCatCol) ? null : rawCatCol,
           rawProductCategoryCol: isPlaceholderName(rawProdCatCol) ? null : rawProdCatCol,
         });
 
+        const rawProductCategory = resolveProductCategoryName(
+          extractedProductCategory,
+          allDbProductCategories
+        );
+
         if (rawProductCategory) {
-          await prisma.productCategory.upsert({
-            where: { name: rawProductCategory },
-            update: {},
-            create: { name: rawProductCategory },
-          }).catch(() => {});
+          const prodCatKey = rawProductCategory.toLowerCase().trim();
+          if (!knownProductCategoryNames.has(prodCatKey)) {
+            await prisma.productCategory.upsert({
+              where: { name: rawProductCategory },
+              update: {},
+              create: { name: rawProductCategory },
+            }).catch(() => {});
+            knownProductCategoryNames.add(prodCatKey);
+            allDbProductCategories.push({ name: rawProductCategory } as any);
+          }
         }
 
         let category = allDbCategories.find(
@@ -333,16 +352,14 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // 4. Extract Affiliate Network
+        // 4. Extract & Fuzzy-Resolve Affiliate Network (e.g. "Smart ADV" -> "SmartADV")
         const hasAffiliateCol = hasColumn(lookup, "Affiliate Network", "Network", "Affiliate");
         const rawAffiliate = getCellString(lookup, "Affiliate Network", "Network", "Affiliate");
-        const cleanAffiliate =
-          !rawAffiliate || isPlaceholderName(rawAffiliate) || rawAffiliate.toLowerCase() === "no affiliate"
-            ? ""
-            : rawAffiliate;
+        const resolvedAffiliate = resolveAffiliateName(rawAffiliate, allDbAffiliates);
+        const cleanAffiliate = resolvedAffiliate || "";
 
         if (cleanAffiliate) {
-          const affKey = cleanAffiliate.toLowerCase();
+          const affKey = cleanAffiliate.toLowerCase().trim();
           if (!knownAffiliateNames.has(affKey)) {
             await prisma.affiliateName.upsert({
               where: { name: cleanAffiliate },
@@ -350,6 +367,7 @@ export async function POST(req: NextRequest) {
               create: { name: cleanAffiliate },
             }).catch(() => {});
             knownAffiliateNames.add(affKey);
+            allDbAffiliates.push({ name: cleanAffiliate } as any);
           }
         }
 
@@ -426,7 +444,9 @@ export async function POST(req: NextRequest) {
         const countryVal = cleanOptionalText(getCellString(lookup, "Country", "Countries", "GEO", "Geos", "Target GEOs"));
 
         const hasSourceCol = hasColumn(lookup, "Source", "Product Source");
-        const sourceVal = cleanOptionalText(getCellString(lookup, "Source", "Product Source"));
+        const sourceVal = resolveProductSource(
+          cleanOptionalText(getCellString(lookup, "Source", "Product Source"))
+        );
 
         const hasPreviewLinkCol = hasColumn(lookup, "Preview Link", "Preview URL", "Preview");
         const previewLinkVal = cleanUrl(getCell(lookup, "Preview Link", "Preview URL", "Preview"));
@@ -661,10 +681,15 @@ export async function POST(req: NextRequest) {
           effectiveBridgeLink = null;
         }
 
-        const { geoLinks: validGeoLinks, hasGeoColumns } = parseGeoLinksFromRow(
+        const { geoLinks: rawGeoLinks, hasGeoColumns } = parseGeoLinksFromRow(
           r,
           cleanAffiliate || "Standard"
         );
+        const validGeoLinks = rawGeoLinks.map((g) => ({
+          ...g,
+          affiliateName:
+            resolveAffiliateName(g.affiliateName, allDbAffiliates) || cleanAffiliate || "Standard",
+        }));
 
         const hasAffLinkCol = hasColumn(lookup, "Affiliate Link", "Affiliate URL", "Offer Link");
         const directAffLink = cleanUrl(getCell(lookup, "Affiliate Link", "Affiliate URL", "Offer Link"));
