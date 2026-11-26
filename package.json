@@ -29,6 +29,7 @@
     "ioredis": "^6.0.0",
     "lucide-react": "^1.23.0",
     "moment": "^2.31.0",
+    "nepali-date-converter": "^3.4.2",
     "next": "16.4.6",
     "next-auth": "^4.24.15",
     "prisma": "^7.10.1",

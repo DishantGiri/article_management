@@ -4,6 +4,13 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { cached } from "@/lib/redis";
 import moment from "moment";
+import {
+  adYmdToDual,
+  formatBsSpanLabel,
+  getBsMonthDetails,
+  getCurrentBsMonthKey,
+  isValidBsMonthKey,
+} from "@/lib/bs-date";
 
 const NPT_OFFSET = "+05:45";
 
@@ -37,7 +44,14 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const queryUserId = searchParams.get("userId");
-    const monthParam = searchParams.get("month"); // e.g. "2026-09" or "2026-08"
+    const monthParam = searchParams.get("month"); // AD e.g. "2026-11"
+    const bsMonthParam = searchParams.get("bsMonth"); // BS e.g. "2083-08"
+
+    const calendarMode: "BS" | "AD" =
+      monthParam && !bsMonthParam ? "AD" : "BS";
+    const resolvedBsMonthKey = isValidBsMonthKey(bsMonthParam)
+      ? bsMonthParam
+      : getCurrentBsMonthKey();
 
     // Default target user is session user
     const targetUserId = queryUserId ? parseInt(queryUserId) : sessionUserId;
@@ -91,7 +105,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const calendarCacheKey = `calendar:${sessionUserId}:${sessionUserRole || ""}:${targetUserId}:${monthParam || "current"}`;
+    const calendarCacheKey = `calendar:${sessionUserId}:${sessionUserRole || ""}:${targetUserId}:${calendarMode}:${calendarMode === "BS" ? resolvedBsMonthKey : (monthParam || "current")}`;
     const calendarPayload = await cached(calendarCacheKey, 45, async () => {
     // Fetch list of users that the current session user is permitted to select
     let selectableUsers: Array<{ id: number; name: string; email: string; role: string | null }> = [];
@@ -135,10 +149,15 @@ export async function GET(req: NextRequest) {
 
     // Determine target month boundaries in NPT (Nepal Time, UTC+5:45)
     const nowNpt = toNpt();
+    const bsDetails = calendarMode === "BS" ? getBsMonthDetails(resolvedBsMonthKey) : null;
     const currentMoment = parseNptMonth(monthParam);
 
-    const startOfMonth = currentMoment.clone().startOf("month").toDate();
-    const endOfMonth = currentMoment.clone().endOf("month").toDate();
+    const startOfMonth = bsDetails
+      ? moment(`${bsDetails.startAdYmd} 00:00:00`, "YYYY-MM-DD HH:mm:ss").utcOffset(NPT_OFFSET, true).toDate()
+      : currentMoment.clone().startOf("month").toDate();
+    const endOfMonth = bsDetails
+      ? moment(`${bsDetails.endAdYmd} 23:59:59.999`, "YYYY-MM-DD HH:mm:ss.SSS").utcOffset(NPT_OFFSET, true).toDate()
+      : currentMoment.clone().endOf("month").toDate();
 
     // Query all relevant work activities for targetUserId within the month
     const [
@@ -485,7 +504,6 @@ export async function GET(req: NextRequest) {
     });
 
     // Construct response calendar days
-    const totalDaysInMonth = currentMoment.daysInMonth();
     const todayStr = nowNpt.format("YYYY-MM-DD");
 
     let totalWorkingDays = 0;
@@ -494,13 +512,18 @@ export async function GET(req: NextRequest) {
     const totalMonthLinks = linksAdded.length + validLinkHistories.length;
     const totalMonthWritingTime = articlesCompleted.reduce((acc, a) => acc + (a.writingTimeMin || 0), 0);
 
+    const adYmdList: string[] = bsDetails
+      ? bsDetails.days.map((d) => d.adYmd)
+      : Array.from({ length: currentMoment.daysInMonth() }, (_, idx) =>
+          currentMoment.clone().date(idx + 1).format("YYYY-MM-DD")
+        );
+
     const days = [];
-    for (let dayNum = 1; dayNum <= totalDaysInMonth; dayNum++) {
-      const dayMoment = currentMoment.clone().date(dayNum);
-      const dateKey = dayMoment.format("YYYY-MM-DD");
+    for (const dateKey of adYmdList) {
+      const dayMoment = moment(`${dateKey} 12:00:00`, "YYYY-MM-DD HH:mm:ss").utcOffset(NPT_OFFSET, true);
+      const dual = adYmdToDual(dateKey);
       const isPastOrToday = dayMoment.isSameOrBefore(nowNpt, "day");
       const isToday = dateKey === todayStr;
-      const dayOfWeek = dayMoment.day(); // 0 = Sunday, 6 = Saturday
 
       const items = dailyActivities[dateKey] || [];
       // Sort items within each day chronologically descending (newest activity at the top)
@@ -515,15 +538,22 @@ export async function GET(req: NextRequest) {
       if (isPastOrToday) {
         if (hasWork) {
           totalWorkingDays++;
-        } else {
+        } else if (dual.dayOfWeek !== 6) {
+          // Saturdays are weekly holiday; only count non-Saturday days with 0 activities as inactive
           totalNonWorkingDays++;
         }
       }
 
       days.push({
         date: dateKey,
-        dayNumber: dayNum,
-        dayOfWeek,
+        dayNumber: dual.adDay,
+        adShortLabel: dual.adShortLabel,
+        bsDate: dual.bsDateStr,
+        bsDay: dual.bsDay,
+        bsMonth: dual.bsMonth,
+        bsMonthName: dual.bsMonthName,
+        bsYear: dual.bsYear,
+        dayOfWeek: dual.dayOfWeek,
         isToday,
         isPast: dayMoment.isBefore(nowNpt, "day"),
         isFuture: dayMoment.isAfter(nowNpt, "day"),
@@ -533,6 +563,15 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const firstDual = adYmdToDual(adYmdList[0]);
+    const lastDual = adYmdToDual(adYmdList[adYmdList.length - 1]);
+    const primaryMonthLabel = bsDetails
+      ? bsDetails.bsLabel
+      : formatBsSpanLabel(firstDual, lastDual);
+    const secondaryMonthLabel = bsDetails
+      ? bsDetails.adRangeLabel
+      : currentMoment.format("MMMM YYYY");
+
     return {
       targetUser: {
         id: targetUser.id,
@@ -541,8 +580,10 @@ export async function GET(req: NextRequest) {
         role: targetUser.role,
         image: targetUser.image,
       },
-      currentMonth: currentMoment.format("YYYY-MM"),
-      monthLabel: currentMoment.format("MMMM YYYY"),
+      calendarMode,
+      currentMonth: bsDetails ? bsDetails.bsMonthKey : currentMoment.format("YYYY-MM"),
+      monthLabel: primaryMonthLabel,
+      secondaryMonthLabel,
       selectableUsers,
       summary: {
         totalWorkingDays,

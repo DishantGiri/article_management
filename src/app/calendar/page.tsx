@@ -4,33 +4,17 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-
-function getCurrentNptMonth(): string {
-  // Nepal Time is UTC+05:45 (+345 minutes)
-  const npt = new Date(Date.now() + 345 * 60 * 1000);
-  const y = npt.getUTCFullYear();
-  const m = String(npt.getUTCMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
+import {
+  formatDualLongDate,
+  getCurrentBsMonthKey,
+  getCurrentNptAdMonthKey,
+  shiftBsMonthKey,
+} from "@/lib/bs-date";
 
 function shiftYearMonth(ym: string, deltaMonths: number): string {
   const [yStr, mStr] = ym.split("-");
   const d = new Date(Date.UTC(Number(yStr), Number(mStr) - 1 + deltaMonths, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function formatLongDate(dateStr: string): string {
-  const parts = dateStr.split("-");
-  const d =
-    parts.length === 3
-      ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
-      : new Date(dateStr);
-  return d.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 import {
   Calendar as CalendarIcon,
@@ -47,9 +31,10 @@ import {
   User as UserIcon,
   Activity,
   Layers,
-  ArrowRight,
   Search,
 } from "lucide-react";
+import { Calendar as BentoCalendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
 import CustomSelect from "@/components/CustomSelect";
 import LoadingScreen from "@/components/LoadingScreen";
 
@@ -70,6 +55,12 @@ interface ActivityItem {
 interface CalendarDay {
   date: string;
   dayNumber: number;
+  adShortLabel?: string;
+  bsDate?: string;
+  bsDay?: number;
+  bsMonth?: number;
+  bsMonthName?: string;
+  bsYear?: number;
   dayOfWeek: number;
   isToday: boolean;
   isPast: boolean;
@@ -87,8 +78,10 @@ interface CalendarResponse {
     role: string | null;
     image?: string | null;
   };
+  calendarMode?: "BS" | "AD";
   currentMonth: string;
   monthLabel: string;
+  secondaryMonthLabel?: string;
   selectableUsers: Array<{
     id: number;
     name: string;
@@ -129,8 +122,17 @@ function CalendarContent() {
   const [data, setData] = useState<CalendarResponse | null>(null);
   const [error, setError] = useState("");
 
-  const [selectedMonth, setSelectedMonth] = useState(
-    searchParams.get("month") || getCurrentNptMonth()
+  const initialAdMonth = searchParams.get("month");
+  const initialBsMonth = searchParams.get("bsMonth");
+
+  const [calendarMode, setCalendarMode] = useState<"BS" | "AD">(
+    initialAdMonth && !initialBsMonth ? "AD" : "BS"
+  );
+  const [selectedBsMonth, setSelectedBsMonth] = useState(
+    initialBsMonth || getCurrentBsMonthKey()
+  );
+  const [selectedAdMonth, setSelectedAdMonth] = useState(
+    initialAdMonth || getCurrentNptAdMonthKey()
   );
   const [selectedUserId, setSelectedUserId] = useState<number | null>(
     searchParams.get("userId") ? parseInt(searchParams.get("userId")!) : null
@@ -170,7 +172,11 @@ function CalendarContent() {
     setLoading(true);
     setError("");
 
-    const url = `/api/calendar?userId=${uId}&month=${selectedMonth}`;
+    const monthQuery =
+      calendarMode === "BS"
+        ? `bsMonth=${selectedBsMonth}`
+        : `month=${selectedAdMonth}`;
+    const url = `/api/calendar?userId=${uId}&${monthQuery}`;
     fetch(url)
       .then((r) => r.json())
       .then((res) => {
@@ -186,18 +192,32 @@ function CalendarContent() {
       })
       .catch(() => setError("Failed to fetch calendar activity data"))
       .finally(() => setLoading(false));
-  }, [session?.user?.id, selectedMonth, selectedUserId]);
+  }, [session?.user?.id, calendarMode, selectedBsMonth, selectedAdMonth, selectedUserId]);
+
+  const activeMonthKey = calendarMode === "BS" ? selectedBsMonth : selectedAdMonth;
 
   const handlePrevMonth = () => {
-    setSelectedMonth(shiftYearMonth(selectedMonth, -1));
+    if (calendarMode === "BS") {
+      setSelectedBsMonth(shiftBsMonthKey(selectedBsMonth, -1));
+    } else {
+      setSelectedAdMonth(shiftYearMonth(selectedAdMonth, -1));
+    }
   };
 
   const handleNextMonth = () => {
-    setSelectedMonth(shiftYearMonth(selectedMonth, 1));
+    if (calendarMode === "BS") {
+      setSelectedBsMonth(shiftBsMonthKey(selectedBsMonth, 1));
+    } else {
+      setSelectedAdMonth(shiftYearMonth(selectedAdMonth, 1));
+    }
   };
 
   const handleTodayMonth = () => {
-    setSelectedMonth(getCurrentNptMonth());
+    if (calendarMode === "BS") {
+      setSelectedBsMonth(getCurrentBsMonthKey());
+    } else {
+      setSelectedAdMonth(getCurrentNptAdMonthKey());
+    }
   };
 
   const formatWritingTime = (mins: number) => {
@@ -223,13 +243,6 @@ function CalendarContent() {
     }
     return text;
   };
-
-  // Calendar grid padding days (first day of month offset)
-  const paddingDays = useMemo(() => {
-    if (!data || data.days.length === 0) return [];
-    const firstDayOfWeek = data.days[0].dayOfWeek; // 0 is Sunday
-    return Array.from({ length: firstDayOfWeek });
-  }, [data]);
 
   const userOptions = useMemo(() => {
     if (!data?.selectableUsers) return [];
@@ -280,7 +293,8 @@ function CalendarContent() {
                 onChange={(val) => {
                   const idNum = parseInt(val);
                   setSelectedUserId(idNum);
-                  router.push(`/calendar?userId=${idNum}&month=${selectedMonth}`);
+                  const mq = calendarMode === "BS" ? `bsMonth=${selectedBsMonth}` : `month=${selectedAdMonth}`;
+                  router.push(`/calendar?userId=${idNum}&${mq}`);
                 }}
                 options={userOptions}
                 placeholder="Select User"
@@ -326,12 +340,12 @@ function CalendarContent() {
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-sm transition space-y-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span>Inactive Days</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-xs ring-4 ring-rose-100 dark:ring-rose-950/60" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-xs ring-4 ring-amber-100 dark:ring-amber-950/60" />
             </div>
-            <p className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 tracking-tight">
+            <p className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
               {data.summary.totalNonWorkingDays}
             </p>
-            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Past days with 0 activities</p>
+            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Excluding Saturday holiday</p>
           </div>
 
           {/* Card 3: Articles Completed */}
@@ -374,174 +388,126 @@ function CalendarContent() {
         </div>
       )}
 
-      {/* ── Main Calendar Container ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
-        {/* Calendar Controls Toolbar */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">{data?.monthLabel}</h2>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 font-bold text-[10px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Worked Day
-              </span>
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60 font-bold text-[10px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Non-Working Day
-              </span>
+      {/* ── Main Bento Calendar Container ── */}
+      <BentoCalendar
+        days={data?.days || []}
+        monthLabel={data?.monthLabel}
+        secondaryMonthLabel={data?.secondaryMonthLabel}
+        onSelectDay={(day) => setInspectingDay(day)}
+        headerRight={
+          <div className="flex flex-wrap items-center gap-2">
+            {/* BS / AD Month Boundary Toggle */}
+            <div className="inline-flex items-center rounded-xl border border-slate-200 dark:border-zinc-700 bg-[#FAF9F5] dark:bg-zinc-900 p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setCalendarMode("BS")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  calendarMode === "BS"
+                    ? "bg-[#6D8196] text-white shadow-2xs"
+                    : "text-slate-500 dark:text-zinc-400 hover:text-[#4A4A4A] dark:hover:text-zinc-200"
+                }`}
+                title="Browse by Bikram Sambat (BS) months"
+              >
+                BS
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalendarMode("AD")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  calendarMode === "AD"
+                    ? "bg-[#6D8196] text-white shadow-2xs"
+                    : "text-slate-500 dark:text-zinc-400 hover:text-[#4A4A4A] dark:hover:text-zinc-200"
+                }`}
+                title="Browse by Gregorian (AD) months"
+              >
+                AD
+              </button>
             </div>
-          </div>
 
-          {/* Month Steppers */}
-          <div className="flex items-center gap-2">
-            <button
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={handleTodayMonth}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="rounded-xl border-slate-200 dark:border-zinc-700 text-xs font-bold text-[#4A4A4A] dark:text-zinc-200 hover:border-[#6D8196] hover:text-[#6D8196] cursor-pointer"
             >
               Current Month
-            </button>
-            <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-2xs">
+            </Button>
+            <div className="flex items-center rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs">
               <button
+                type="button"
                 onClick={handlePrevMonth}
-                className="p-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                className="p-2 hover:bg-[#FAF9F5] dark:hover:bg-zinc-800 text-[#6D8196] dark:text-zinc-300 transition cursor-pointer"
                 title="Previous Month"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-2 text-xs font-mono font-bold text-slate-700 dark:text-slate-200">{selectedMonth}</span>
+              <span className="px-2.5 text-xs font-mono font-bold text-[#4A4A4A] dark:text-zinc-200">
+                {activeMonthKey}
+              </span>
               <button
+                type="button"
                 onClick={handleNextMonth}
-                className="p-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                className="p-2 hover:bg-[#FAF9F5] dark:hover:bg-zinc-800 text-[#6D8196] dark:text-zinc-300 transition cursor-pointer"
                 title="Next Month"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
-        </div>
-
-        {/* ── Weekday Labels Header ── */}
-        <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-800 text-center text-xs font-bold text-slate-400 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-850/60 py-2.5">
-          <div>SUN</div>
-          <div>MON</div>
-          <div>TUE</div>
-          <div>WED</div>
-          <div>THU</div>
-          <div>FRI</div>
-          <div>SAT</div>
-        </div>
-
-        {/* ── Calendar Days Grid ── */}
-        <div className="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-100 dark:divide-slate-800">
-          {/* Padding empty cells for previous month remainder */}
-          {paddingDays.map((_, i) => (
-            <div key={`pad-${i}`} className="min-h-[105px] sm:min-h-[120px] bg-slate-50/40 dark:bg-slate-900/40 opacity-40 p-2 select-none" />
-          ))}
-
-          {/* Actual days of month */}
-          {data?.days.map((day) => {
-            const hasActivities = day.activities.length > 0;
-            const isWork = day.isWorkingDay;
-            const isPast = day.isPast || day.isToday;
-
-            return (
-              <div
-                key={day.date}
-                onClick={() => setInspectingDay(day)}
-                className={`min-h-[105px] sm:min-h-[120px] p-2 sm:p-2.5 transition-all duration-150 relative flex flex-col justify-between cursor-pointer group ${day.isToday ? "bg-indigo-50/30 dark:bg-indigo-950/20" : "bg-white hover:bg-slate-50/80 dark:bg-slate-900 dark:hover:bg-slate-850"
-                  }`}
-              >
-                {/* Day Header Row */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`text-xs font-bold rounded-lg px-2 py-0.5 transition ${day.isToday
-                        ? "bg-[#6D8196] text-white shadow-xs"
-                        : "text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white"
-                      }`}
-                  >
-                    {day.dayNumber}
-                  </span>
-
-                  {/* Status Indicator */}
-                  <div className="flex items-center gap-1">
-                    {isPast ? (
-                      isWork ? (
-                        <div
-                          className="flex items-center gap-1"
-                          title={`${day.activityCount} work activities recorded`}
-                        >
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900 animate-pulse" />
-                        </div>
-                      ) : (
-                        <div className="flex items-center" title="No work activity recorded">
-                          <span className="w-2 h-2 rounded-full bg-rose-500/80 ring-2 ring-rose-100 dark:ring-rose-950" />
-                        </div>
-                      )
-                    ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700" title="Future date" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Day Activity Preview Badges */}
-                <div className="my-1.5 space-y-1 overflow-hidden">
-                  {hasActivities ? (
-                    <>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 truncate inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
-                          {day.activityCount} action{day.activityCount > 1 ? "s" : ""}
-                        </span>
-                      </div>
-                      {/* Short list of first 1-2 items */}
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                        {day.activities[0].title}
-                      </p>
-                      {day.activities.length > 1 && (
-                        <p className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold truncate">
-                          +{day.activities.length - 1} more
-                        </p>
-                      )}
-                    </>
-                  ) : isPast ? (
-                    <p className="text-[10px] text-rose-400 font-medium italic opacity-75">No activity</p>
-                  ) : null}
-                </div>
-
-                {/* Bottom Card Footer */}
-                <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold opacity-0 group-hover:opacity-100 transition flex items-center justify-end">
-                  <span className="text-[#6D8196] dark:text-sky-400 font-bold flex items-center gap-0.5">
-                    Inspect <ArrowRight className="w-2.5 h-2.5" />
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+        }
+      />
 
       {/* ── Day Detail Work History Modal ── */}
-      {inspectingDay && (
+      {inspectingDay && (() => {
+        const dualDate = formatDualLongDate(inspectingDay.date);
+        const isSaturday = inspectingDay.dayOfWeek === 6;
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col border border-slate-100 dark:border-slate-800 overflow-hidden animate-scaleIn">
             {/* Modal Header */}
             <div className="px-6 py-4 bg-[#FAF9F5] dark:bg-slate-850 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[#6D8196] dark:text-sky-400 shadow-2xs font-bold font-mono">
-                  {inspectingDay.dayNumber}
+                <div
+                  className={`w-12 h-12 rounded-xl border flex flex-col items-center justify-center shadow-2xs ${
+                    isSaturday
+                      ? "bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400"
+                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-[#6D8196] dark:text-sky-400"
+                  }`}
+                >
+                  <span className="text-lg font-extrabold leading-none">{dualDate.dual.bsDay}</span>
+                  <span
+                    className={`text-[9px] font-semibold mt-0.5 leading-none ${
+                      isSaturday
+                        ? "text-red-500/80 dark:text-red-400/80"
+                        : "text-slate-400 dark:text-zinc-400"
+                    }`}
+                  >
+                    {dualDate.dual.adShortLabel}
+                  </span>
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    {formatLongDate(inspectingDay.date)}
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white leading-tight">
+                    {dualDate.bsLong}
                   </h3>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                    {dualDate.adLong}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {isSaturday && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Saturday • Holiday
+                      </span>
+                    )}
                     {inspectingDay.isWorkingDay ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active Working Day ({sanitizedActivities.length} {sanitizedActivities.length === 1 ? "Activity" : "Activities"})
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Inactive / No Work Recorded
+                    ) : !isSaturday ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Inactive / No Work Recorded
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -558,12 +524,28 @@ function CalendarContent() {
             <div className="p-6 overflow-y-auto space-y-4">
               {sanitizedActivities.length === 0 ? (
                 <div className="py-12 text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                      isSaturday
+                        ? "bg-red-50 dark:bg-red-950/50 text-red-500"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                    }`}
+                  >
                     <CalendarIcon className="w-6 h-6" />
                   </div>
-                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">No Activity Logged</h4>
+                  <h4
+                    className={`text-sm font-bold ${
+                      isSaturday
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-slate-700 dark:text-slate-200"
+                    }`}
+                  >
+                    {isSaturday ? "Saturday — Holiday" : "No Activity Logged"}
+                  </h4>
                   <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                    There are no articles written, links added, or updates recorded for {data?.targetUser.name} on this date.
+                    {isSaturday
+                      ? `Saturday is a scheduled holiday. No work activities recorded for ${data?.targetUser.name}.`
+                      : `There are no articles written, links added, or updates recorded for ${data?.targetUser.name} on this date.`}
                   </p>
                 </div>
               ) : (
@@ -633,7 +615,7 @@ function CalendarContent() {
                                 </span>
                               )}
                               {item.status && (
-                                <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                                <span className="font-bold text-[#6D8196] dark:text-slate-300">
                                   Status: {item.status}
                                 </span>
                               )}
@@ -667,9 +649,11 @@ function CalendarContent() {
                 Close
               </button>
             </div>
+      {/* ── Modal closing wrapper ── */}
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
