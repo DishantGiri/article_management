@@ -89,34 +89,37 @@ export const authOptions: NextAuthOptions = {
       // Enforce email domain restriction
       if (!email.endsWith("@fishtailinfosolutions.com")) {
         console.log(`SignIn Rejected: Email domain not allowed: ${email}`);
-        return false;
+        return "/auth/signin?error=AccessDenied";
       }
 
       try {
         const prefix = email.split("@")[0];
-        // Find existing user by email or prefix
-        let dbUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { email: user.email },
-              { email: { startsWith: prefix + "@" } },
-            ],
-          },
-        });
+        // Find exact user email first, then fall back to prefix match
+        let dbUser =
+          (await prisma.user.findUnique({ where: { email } })) ||
+          (await prisma.user.findFirst({
+            where: {
+              email: { startsWith: prefix + "@" },
+            },
+          }));
 
         // Strictly reject login if user has left company
         if (dbUser?.hasLeftCompany) {
           console.log(`SignIn Rejected: User has left company: ${email}`);
-          return false;
+          return "/auth/signin?error=AccountDeactivated";
         }
 
         if (dbUser) {
-          // Update profile image if it has changed or is newly available
-          if (user.image && dbUser.image !== user.image) {
-            dbUser = await prisma.user.update({
-              where: { id: dbUser.id },
-              data: { image: user.image },
-            });
+          // Update profile image if it has changed or is newly available (best-effort)
+          if (user.image && dbUser.image !== user.image && user.image.length <= 191) {
+            try {
+              dbUser = await prisma.user.update({
+                where: { id: dbUser.id },
+                data: { image: user.image },
+              });
+            } catch (imgErr) {
+              console.warn("Non-fatal: failed updating user avatar:", imgErr);
+            }
           }
         } else {
           // Auto-create unrecognized Google logins with GUEST role and pending approval (approved: false)
@@ -124,18 +127,18 @@ export const authOptions: NextAuthOptions = {
           dbUser = await prisma.user.create({
             data: {
               name: initialName,
-              email: user.email,
+              email,
               role: "GUEST", // Auto-assigned GUEST role upon registration
               approved: false, // Wait for admin approval
-              image: user.image || null,
+              image: user.image && user.image.length <= 191 ? user.image : null,
             },
           });
-          console.log(`Auto-created user for Google sign-in: ${user.email} with GUEST role (pending approval)`);
+          console.log(`Auto-created user for Google sign-in: ${email} with GUEST role (pending approval)`);
         }
         return true;
       } catch (err) {
         console.error("Error in signIn callback:", err);
-        return false;
+        return "/auth/signin?error=DatabaseError";
       }
     },
     async jwt({ token, trigger, session }) {
@@ -235,6 +238,7 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: "/auth/signin",
+    error: "/auth/signin",
   },
 };
 

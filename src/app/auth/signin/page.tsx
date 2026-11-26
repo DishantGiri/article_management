@@ -135,7 +135,11 @@ function SignInContent() {
               </div>
               <p className="text-[11px] text-rose-600 font-medium leading-relaxed">
                 {error === "AccessDenied"
-                  ? "Only authorized @fishtailinfosolutions.com Google accounts are permitted."
+                  ? "Only authorized @fishtailinfosolutions.com Google accounts are permitted (or Google OAuth access was declined)."
+                  : error === "AccountDeactivated"
+                  ? "This account has been deactivated because the user has left the company."
+                  : error === "DatabaseError"
+                  ? "A database error occurred while verifying your account. Please contact an administrator."
                   : "Authentication failed. Please verify your corporate account and try again."}
               </p>
             </div>
