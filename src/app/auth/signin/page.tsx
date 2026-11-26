@@ -45,12 +45,12 @@ function SignInContent() {
       <div className="lg:col-span-7 bg-[#FAF9F5] p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-[#CBCBCB]/60 flex flex-col justify-between space-y-8">
         <div className="space-y-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#6D8196] text-white flex items-center justify-center font-extrabold text-lg shadow-xs">
-              A
-            </div>
-            <div>
-              <span className="font-extrabold text-base text-slate-900 tracking-tight block">ArticleFlow</span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Enterprise Workspace</span>
+            <div className="h-14 px-4 rounded-2xl bg-[#111111] border border-slate-800/80 flex items-center justify-center shadow-xs">
+              <img
+                src="/logo.svg"
+                alt="Article Flow"
+                className="h-12 w-auto object-contain"
+              />
             </div>
           </div>
 

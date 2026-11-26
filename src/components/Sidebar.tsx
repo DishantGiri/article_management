@@ -3,7 +3,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { LayoutGrid, Package, FileText, Link as LinkIcon, Users, Globe, BarChart2, Bell, Settings, Clock, Menu, X, Calendar as CalendarIcon, Sun, Moon, Monitor, Megaphone, Coins, ReceiptText, PenLine, Link2, Tag, Compass } from "lucide-react";
@@ -560,20 +559,14 @@ export default function Sidebar() {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700/60 shadow-2xs">
-              <Image
-                src="/logo.png"
-                alt="Articleflow"
-                width={28}
-                height={28}
-                className="w-full h-full object-cover"
-                priority
+          <Link href="/" className="flex items-center">
+            <div className="h-9 px-2.5 rounded-lg bg-[#111111] border border-slate-800/80 flex items-center justify-center shrink-0 shadow-2xs">
+              <img
+                src="/logo.svg"
+                alt="Article Flow"
+                className="h-8 w-auto object-contain"
               />
             </div>
-            <span className="text-slate-900 dark:text-white font-bold text-base tracking-tight">
-              Articleflow<span className="text-teal-600">.</span>
-            </span>
           </Link>
         </div>
 
@@ -617,21 +610,15 @@ export default function Sidebar() {
         suppressHydrationWarning
       >
         {/* Logo Header */}
-        <div className="px-6 py-6 border-b border-[#CBCBCB]/40 dark:border-slate-800 flex items-center justify-between" suppressHydrationWarning>
-          <Link href="/" className="flex items-center gap-2.5 group cursor-pointer" suppressHydrationWarning>
-            <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-slate-700/60 shadow-2xs" suppressHydrationWarning>
-              <Image
-                src="/logo.png"
-                alt="Articleflow"
-                width={32}
-                height={32}
-                className="w-full h-full object-cover"
-                priority
+        <div className="px-5 py-4 border-b border-[#CBCBCB]/40 dark:border-slate-800 flex items-center justify-between gap-2" suppressHydrationWarning>
+          <Link href="/" className="flex items-center flex-1 min-w-0 group cursor-pointer" suppressHydrationWarning>
+            <div className="w-full h-12 px-2 rounded-xl bg-[#111111] border border-slate-800/80 flex items-center justify-center shrink-0 group-hover:scale-[1.02] transition-transform shadow-2xs" suppressHydrationWarning>
+              <img
+                src="/logo.svg"
+                alt="Article Flow"
+                className="h-11 w-auto object-contain"
               />
             </div>
-            <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-              Articleflow<span className="text-teal-600">.</span>
-            </span>
           </Link>
           {/* Mobile close button */}
           <button

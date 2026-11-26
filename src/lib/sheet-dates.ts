@@ -2,8 +2,11 @@
 import { isNullOrPlaceholder } from "./geo-link-parser";
 
 export const ADDED_DATE_ALIASES = [
-  "Product Added Date",
   "Added Date",
+  "Link Added Date",
+  "Link Added",
+  "Added",
+  "Product Added Date",
   "Date Added",
   "Product Date",
   "Added At",
@@ -29,12 +32,15 @@ export const WRITE_DATE_ALIASES = [
 
 export const PUBLISH_DATE_ALIASES = [
   "Publish Date",
+  "Article Publish Date",
   "Published Date",
+  "Article Published Date",
+  "Publish",
+  "Publishes",
+  "Publices",
   "Publices Date",
   "Publishes Date",
   "Publice Date",
-  "Article Publish Date",
-  "Article Published Date",
   "Posting Date",
   "Post Date",
   "Date of Posting",

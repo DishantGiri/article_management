@@ -436,12 +436,12 @@ export async function POST(req: NextRequest) {
         const previewLinkVal = cleanUrl(getCell(lookup, "Preview Link", "Preview URL", "Preview"));
 
         const hasTrendLinkCol = hasColumn(lookup, "Trend Link", "Trend URL");
-        const rawTrendCell = getCellString(lookup, "Trend", "Trend Level");
+        const rawTrendCell = getCellString(lookup, "Trends", "Trend", "Trend Level");
         let trendLinkVal = cleanUrl(getCell(lookup, "Trend Link", "Trend URL"));
-        if (!trendLinkVal && rawTrendCell && /^https?:\/\//i.test(rawTrendCell)) {
+        if (!trendLinkVal && rawTrendCell && !isNullOrPlaceholder(rawTrendCell) && /^https?:\/\//i.test(rawTrendCell)) {
           trendLinkVal = cleanUrl(rawTrendCell);
         }
-        const hasTrendLevelCol = hasColumn(lookup, "Trend Level", "Trend");
+        const hasTrendLevelCol = hasColumn(lookup, "Trends", "Trend Level", "Trend");
         let trendLevelVal: string | null = null;
         if (rawTrendCell && !/^https?:\/\//i.test(rawTrendCell) && !isNullOrPlaceholder(rawTrendCell)) {
           const upperT = rawTrendCell.toUpperCase();
@@ -450,18 +450,34 @@ export async function POST(req: NextRequest) {
           else if (upperT.includes("HIGH")) trendLevelVal = "HIGH";
         }
 
+        // Localized Article Links (EN, DE, FR, ES, IT, NL, SV, FI)
+        const localizedArticleHeaderPairs: Array<[string, string]> = [
+          ["EN", "Article Link EN"],
+          ["DE", "Article Link DE"],
+          ["FR", "Article Link FR"],
+          ["ES", "Article Link ES"],
+          ["IT", "Article Link IT"],
+          ["NL", "Article Link NL"],
+          ["SV", "Article Link SV"],
+          ["FI", "Article Link FI"],
+        ];
+        const localizedArticleEntries: Array<{ lang: string; url: string }> = [];
+        for (const [lang, headerName] of localizedArticleHeaderPairs) {
+          const locUrl = cleanUrl(getCell(lookup, headerName));
+          if (locUrl) {
+            localizedArticleEntries.push({ lang, url: locUrl });
+          }
+        }
+
         const hasRemarksCol = hasColumn(lookup, "Remarks", "Remark", "Notes", "Note", "Comments");
         const sheetRemarksRaw = getCellString(lookup, "Remarks", "Remark", "Notes", "Note", "Comments");
         const sheetRemarks = isPlaceholderName(sheetRemarksRaw) ? "" : sheetRemarksRaw;
-        const effectiveProductRemarks = [sheetRemarks, multiLinkerNote].filter(Boolean).join(" | ") || null;
 
-        const hasLinkerRemarksCol = hasColumn(lookup, "Linker Remarks", "Link Remarks");
-        const sheetLinkerRemarksRaw = getCellString(lookup, "Linker Remarks", "Link Remarks");
+        const hasLinkerRemarksCol = hasColumn(lookup, "Linker Notes", "Linker Note", "Linker Remarks", "Link Remarks");
+        const sheetLinkerRemarksRaw = getCellString(lookup, "Linker Notes", "Linker Note", "Linker Remarks", "Link Remarks");
         const sheetLinkerRemarks = isPlaceholderName(sheetLinkerRemarksRaw) ? "" : sheetLinkerRemarksRaw;
-        const effectiveLinkerRemarks =
-          [sheetLinkerRemarks || sheetRemarks, multiLinkerNote].filter(Boolean).join(" | ") || null;
 
-        // 8. Dates (preserved from sheet exact calendar date)
+        // 8. Dates ("Added Date" = link added date; "Publish Date" = article publish date, leave empty if NA)
         const {
           addedDate: explicitAddedDate,
           hasWriteDateCol,
@@ -469,11 +485,27 @@ export async function POST(req: NextRequest) {
           hasPublishDateCol,
           publishDate: explicitPublishDate,
         } = extractThreeDatesFromRow(r);
-        const addedDate = explicitAddedDate || explicitWriteDate || explicitPublishDate || new Date();
+        // Never fabricate link added date from Publish Date; use explicit Added Date or current timestamp only when creating required rows
+        const addedDate = explicitAddedDate || new Date();
 
         // 9. Article Link & Status
-        const hasArticleLinkCol = hasColumn(lookup, "Article Link", "Article URL");
-        const articleLink = cleanUrl(getCell(lookup, "Article Link", "Article URL"));
+        const hasArticleLinkCol =
+          hasColumn(lookup, "Article Link", "Article URL") ||
+          localizedArticleEntries.length > 0;
+        const primaryArticleLink = cleanUrl(getCell(lookup, "Article Link", "Article URL"));
+        const articleLink =
+          primaryArticleLink ||
+          (localizedArticleEntries.length > 0 ? localizedArticleEntries[0].url : null);
+
+        // Preserve any additional localized article links in Remarks (avoiding duplicating primary)
+        const extraLocalizedNotes = localizedArticleEntries
+          .filter((entry) => entry.url !== articleLink)
+          .map((entry) => `Article Link ${entry.lang}: ${entry.url}`);
+        const effectiveProductRemarks =
+          Array.from(
+            new Set([sheetRemarks, multiLinkerNote, ...extraLocalizedNotes].filter(Boolean))
+          ).join(" | ") || null;
+
         const hasArticleStatusCol = hasColumn(lookup, "Article Status", "Status");
         const rawArticleStatus = getCellString(lookup, "Article Status", "Status");
         const mappedArticleStatus = mapArticleStatus(rawArticleStatus);
@@ -511,10 +543,8 @@ export async function POST(req: NextRequest) {
               ...(hasAffiliateCol && cleanAffiliate ? { affiliateName: cleanAffiliate } : {}),
               ...(linkerUser ? { addedById: linkerUser.id } : {}),
               ...(explicitAddedDate ? { addedAt: explicitAddedDate } : {}),
-              ...(hasRemarksCol && effectiveProductRemarks
+              ...(hasRemarksCol || extraLocalizedNotes.length > 0 || multiLinkerNote
                 ? { remarks: effectiveProductRemarks }
-                : multiLinkerNote
-                ? { remarks: multiLinkerNote }
                 : {}),
             },
             include: { article: true, linkLogs: { include: { geos: true } } },
@@ -545,9 +575,7 @@ export async function POST(req: NextRequest) {
           createdProductsCount++;
         }
 
-        // 11. Update or create Article (exact sheet values + write/publish dates)
-        const isCompletedOrApproved = mappedArticleStatus === "APPROVED" || mappedArticleStatus === "COMPLETED";
-
+        // 11. Update or create Article ("Publish Date" empty/NA -> leave completedAt & productCreatedAt empty)
         if (product.article) {
           const isArticleRepeatedInBatch = touchedArticleIdsInBatch.has(product.article.id);
           const nextWriterId = writerUser
@@ -556,9 +584,7 @@ export async function POST(req: NextRequest) {
             ? null
             : product.article.writerId;
 
-          const effectiveCompletedAt =
-            explicitPublishDate ||
-            (isCompletedOrApproved ? product.article.completedAt || explicitAddedDate || addedDate : null);
+          const effectiveCompletedAt = explicitPublishDate || null;
 
           const articleUpdateData: Record<string, any> = {
             writerId: nextWriterId,
@@ -579,7 +605,7 @@ export async function POST(req: NextRequest) {
               articleUpdateData.completedAt = explicitPublishDate;
               articleUpdateData.productCreatedAt = explicitPublishDate;
             }
-          } else if (hasPublishDateCol || hasArticleStatusCol) {
+          } else if (hasPublishDateCol) {
             articleUpdateData.completedAt = effectiveCompletedAt;
             articleUpdateData.productCreatedAt = effectiveCompletedAt;
           }
@@ -593,7 +619,7 @@ export async function POST(req: NextRequest) {
           productMap.set(pKey, product);
           if (writerUser) assignedWritersCount++;
         } else {
-          const effectiveCompletedAt = explicitPublishDate || (isCompletedOrApproved ? addedDate : null);
+          const effectiveCompletedAt = explicitPublishDate || null;
           const createdArticle = await prisma.article.create({
             data: {
               productId: product.id,
@@ -675,10 +701,51 @@ export async function POST(req: NextRequest) {
             resolveAffiliateName(g.affiliateName, allDbAffiliates) || cleanAffiliate || "Standard",
         }));
 
-        const hasAffLinkCol = hasColumn(lookup, "Affiliate Link", "Affiliate URL", "Offer Link");
+        const hasAffLinkCol = hasColumn(
+          lookup,
+          "Affiliate Link",
+          "Affiliate URL",
+          "Offer Link",
+          "Affiliate Link 2",
+          "Affiliate Link 3",
+          "Link 3",
+          "Link 4"
+        );
         const directAffLink = cleanUrl(getCell(lookup, "Affiliate Link", "Affiliate URL", "Offer Link"));
+        const secondaryAffiliateHeaderPairs: Array<[string, string]> = [
+          ["Affiliate Link 2", "Affiliate Link 2"],
+          ["Affiliate Link 3", "Affiliate Link 3"],
+          ["Link 3", "Link 3"],
+          ["Link 4", "Link 4"],
+        ];
+        const secondaryAffLinks: Array<{ label: string; url: string }> = [];
+        for (const [label, col] of secondaryAffiliateHeaderPairs) {
+          const url = cleanUrl(getCell(lookup, col));
+          if (url) {
+            secondaryAffLinks.push({ label, url });
+          }
+        }
+
         const effectiveAffiliateLink =
-          directAffLink || (validGeoLinks.length > 0 ? validGeoLinks[0].affiliateLink : "");
+          directAffLink ||
+          (validGeoLinks.length > 0 ? validGeoLinks[0].affiliateLink : "") ||
+          (secondaryAffLinks.length > 0 ? secondaryAffLinks[0].url : "");
+
+        const extraAffiliateNotes = secondaryAffLinks
+          .filter(
+            (s) =>
+              s.url !== effectiveAffiliateLink &&
+              s.url !== effectiveBuyLink &&
+              s.url !== effectiveBridgeLink
+          )
+          .map((s) => `${s.label}: ${s.url}`);
+
+        const effectiveLinkerRemarks =
+          Array.from(
+            new Set(
+              [sheetLinkerRemarks || sheetRemarks, multiLinkerNote, ...extraAffiliateNotes].filter(Boolean)
+            )
+          ).join(" | ") || null;
 
         const hasAnyRealLink = Boolean(
           effectiveBuyLink ||
@@ -733,12 +800,8 @@ export async function POST(req: NextRequest) {
                       }),
                   ...(explicitAddedDate && !isRepeatedInBatch ? { addedAt: explicitAddedDate } : {}),
                   updatedById: effectiveLinkerId,
-                  ...(hasLinkerRemarksCol || hasRemarksCol
-                    ? effectiveLinkerRemarks
-                      ? { linkerRemarks: effectiveLinkerRemarks }
-                      : {}
-                    : multiLinkerNote
-                    ? { linkerRemarks: multiLinkerNote }
+                  ...(hasLinkerRemarksCol || hasRemarksCol || extraAffiliateNotes.length > 0 || multiLinkerNote
+                    ? { linkerRemarks: effectiveLinkerRemarks }
                     : {}),
                 },
                 include: { geos: true },

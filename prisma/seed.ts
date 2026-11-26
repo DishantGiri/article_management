@@ -298,7 +298,7 @@ async function main() {
     // Role assignment: Abishek Khadka is SUPER_ADMIN
     let role: "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST" = "GUEST";
 
-    if (email === "abishekkhadka@fishtailinfosolutions.com" || email === "abishekkhadka@articlemgmt.com") {
+    if (email === "abishekkhadka@fishtailinfosolutions.com") {
       role = "SUPER_ADMIN";
     } else if (dept === "Management") {
       role = "ADMIN";
