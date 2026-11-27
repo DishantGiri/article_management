@@ -183,18 +183,18 @@ model Category {
 model Product {
   id              String    @id @default(cuid())
   name            String
-  slug            String?
-  country         String?
+  slug            String?   @db.Text
+  country         String?   @db.Text
   isNative        Boolean   @default(false)
   source          String? // Affiliate, Competitor, Social Media/Native, Source
 
   siteId          String
   targetSites     String?   @db.Text
   categoryId      String
-  productCategory String? // Defined category for the product (e.g. Skincare, Supplements)
+  productCategory String?   @db.Text // Defined category for the product (e.g. Skincare, Supplements)
   trendLink       String?   @db.Text
   trendLevel      String?   @default("HIGH") // HIGH, MODERATE, LOW
-  affiliateName   String? // Selected from Affiliate dropdown
+  affiliateName   String?   @db.Text // Selected from Affiliate dropdown
   previewLink     String?   @db.Text
   remarks         String?   @db.Text
   addedById       String
@@ -225,7 +225,7 @@ model Article {
   id                           String        @id @default(cuid())
   productId                    String        @unique
   writerId                     String?
-  country                      String?
+  country                      String?       @db.Text
   status                       ArticleStatus @default(PENDING)
   articleLink                  String?       @db.Text
   startedAt                    DateTime? // Set when status → IN_PROGRESS
@@ -294,7 +294,7 @@ model LinkLog {
   updatedById    String?
   bridgePageLink String?    @db.Text
   buyLink        String?    @db.Text
-  affiliateName  String
+  affiliateName  String     @db.Text
   affiliateLink  String     @db.Text
   geos           LinkGeo[]
   status         LinkStatus @default(REQUESTED)

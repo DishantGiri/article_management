@@ -121,6 +121,7 @@ export async function POST(req: NextRequest) {
 
     let rows: any[] = [];
     let updateExisting = true;
+    let skipCacheInvalidation = false;
 
     const contentType = req.headers.get("content-type") || "";
 
@@ -157,8 +158,60 @@ export async function POST(req: NextRequest) {
       }
     } else {
       const body = await req.json();
+
+      // Fast pre-check action to identify rows whose (Site Name, Product Name) already exist in DB
+      if (body.action === "check-existing") {
+        const items: Array<{ siteName?: string; productName?: string }> = Array.isArray(body.items)
+          ? body.items
+          : [];
+        if (items.length === 0) {
+          return NextResponse.json({ existingKeys: [] });
+        }
+
+        const allSites = await prisma.site.findMany({ select: { id: true, name: true } });
+        const uniqueNames = Array.from(
+          new Set(
+            items
+              .map((it) => String(it.productName || "").trim())
+              .filter((n) => n.length >= 1 && !isNullOrPlaceholder(n))
+          )
+        );
+
+        const existingProds =
+          uniqueNames.length > 0
+            ? await prisma.product.findMany({
+                where: { name: { in: uniqueNames } },
+                select: { name: true, siteId: true },
+              })
+            : [];
+
+        const dbKeySet = new Set<string>(
+          existingProds.map((p) => `${p.siteId}_${p.name.toLowerCase().trim()}`)
+        );
+
+        const matchedKeys: string[] = [];
+        const seenMatched = new Set<string>();
+        for (const item of items) {
+          const sName = String(item.siteName || "").trim();
+          const pName = String(item.productName || "").trim();
+          if (!sName || !pName) continue;
+          const resolved = resolveSite(sName, allSites as any);
+          if (!resolved) continue;
+          if (dbKeySet.has(`${resolved.id}_${pName.toLowerCase().trim()}`)) {
+            const clientKey = `${sName.toLowerCase()}::${pName.toLowerCase()}`;
+            if (!seenMatched.has(clientKey)) {
+              seenMatched.add(clientKey);
+              matchedKeys.push(clientKey);
+            }
+          }
+        }
+
+        return NextResponse.json({ existingKeys: matchedKeys });
+      }
+
       rows = body.rows || [];
       if (typeof body.updateExisting === "boolean") updateExisting = body.updateExisting;
+      if (typeof body.skipCacheInvalidation === "boolean") skipCacheInvalidation = body.skipCacheInvalidation;
     }
 
     if (!Array.isArray(rows) || rows.length === 0) {
@@ -228,6 +281,7 @@ export async function POST(req: NextRequest) {
     let processedCount = 0;
     let createdProductsCount = 0;
     let updatedProductsCount = 0;
+    let skippedProductsCount = 0;
     let createdSitesCount = 0;
     let assignedWritersCount = 0;
     let configuredLinksCount = 0;
@@ -521,6 +575,7 @@ export async function POST(req: NextRequest) {
 
         if (product) {
           if (!updateExisting) {
+            skippedProductsCount++;
             continue;
           }
 
@@ -908,14 +963,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Invalidate Redis caches so dashboard, products, articles & lookups reflect new imports immediately
-    await Promise.all([
-      delByPattern("dashboard:*"),
-      delByPattern("products:*"),
-      delByPattern("articles:*"),
-      delByPattern("sites:*"),
-      delByPattern("lookup:*"),
-    ]);
+    // Invalidate Redis caches on final batch so dashboard, products, articles & lookups reflect new imports immediately
+    if (!skipCacheInvalidation) {
+      await Promise.all([
+        delByPattern("dashboard:*"),
+        delByPattern("products:*"),
+        delByPattern("articles:*"),
+        delByPattern("sites:*"),
+        delByPattern("lookup:*"),
+      ]);
+    }
 
     return NextResponse.json({
       success: true,
@@ -925,6 +982,7 @@ export async function POST(req: NextRequest) {
         processed: processedCount,
         createdProducts: createdProductsCount,
         updatedProducts: updatedProductsCount,
+        skippedProducts: skippedProductsCount,
         createdSites: createdSitesCount,
         assignedWriters: assignedWritersCount,
         configuredLinks: configuredLinksCount,

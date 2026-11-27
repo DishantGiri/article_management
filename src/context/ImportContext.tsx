@@ -17,6 +17,7 @@ export interface MergedImportStats {
   processed: number;
   createdProducts: number;
   updatedProducts: number;
+  skippedProducts: number;
   createdSites: number;
   assignedWriters: number;
   configuredLinks: number;
@@ -38,6 +39,9 @@ export interface MergedSheetDraft {
   importScope: "ALL" | "ACTIVE";
   allParsedRows: any[];
   updateExisting: boolean;
+  skipAlreadyImported: boolean;
+  existingKeys: string[];
+  rowFilter: "ALL" | "REMAINING" | "IMPORTED";
   searchQuery: string;
 }
 
@@ -87,6 +91,7 @@ interface ImportContextValue {
     fileName: string;
     rowsToImport: any[];
     updateExisting: boolean;
+    skipAlreadyImported?: boolean;
   }) => Promise<void>;
   stopMergedImport: () => void;
   dismissMergedJob: () => void;
@@ -121,6 +126,9 @@ const INITIAL_MERGED_DRAFT: MergedSheetDraft = {
   importScope: "ALL",
   allParsedRows: [],
   updateExisting: true,
+  skipAlreadyImported: true,
+  existingKeys: [],
+  rowFilter: "ALL",
   searchQuery: "",
 };
 
@@ -152,7 +160,30 @@ const INITIAL_PRODUCT_JOB: ProductImportJobState = {
 
 const ImportContext = createContext<ImportContextValue | null>(null);
 
-const MERGED_CHUNK_SIZE = 120;
+const MERGED_CHUNK_SIZE = 30;
+
+async function parseJsonResponseSafe(res: Response, fallbackLabel: string): Promise<any> {
+  const rawText = await res.text();
+  const trimmed = rawText.trim();
+  if (!trimmed) {
+    if (!res.ok) {
+      throw new Error(`${fallbackLabel} (HTTP ${res.status}): Empty response from server`);
+    }
+    return {};
+  }
+  if (trimmed.startsWith("<")) {
+    const titleMatch = trimmed.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const detail = titleMatch ? titleMatch[1].trim() : "HTML error page returned";
+    throw new Error(
+      `${fallbackLabel} (HTTP ${res.status}): ${detail}. If this was a gateway timeout, retrying smaller batches...`
+    );
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    throw new Error(`${fallbackLabel} (HTTP ${res.status}): Invalid server response`);
+  }
+}
 
 export function ImportProvider({ children }: { children: React.ReactNode }) {
   const [mergedDraft, setMergedDraft] = useState<MergedSheetDraft>(INITIAL_MERGED_DRAFT);
@@ -204,10 +235,12 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
       fileName,
       rowsToImport,
       updateExisting,
+      skipAlreadyImported = false,
     }: {
       fileName: string;
       rowsToImport: any[];
       updateExisting: boolean;
+      skipAlreadyImported?: boolean;
     }) => {
       if (mergedRunningRef.current) {
         toast("A merged sheet import is already running in the background.");
@@ -224,14 +257,93 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
       mergedRunningRef.current = true;
       cancelMergedRef.current = false;
 
-      const totalRows = rowsToImport.length;
+      // When Skip Already Imported is enabled, query DB once up front so already-imported rows
+      // are skipped without re-sending them, while new multi-row products in the remaining set still merge across chunks.
+      let effectiveRows = rowsToImport;
+      let skippedCount = 0;
+
+      if (skipAlreadyImported) {
+        try {
+          const checkItems = rowsToImport.map((r) => ({
+            siteName: String(r["Site Name"] || "").trim(),
+            productName: String(r["Product Name"] || "").trim(),
+          }));
+          const existingSet = new Set<string>();
+          const CHECK_BATCH = 500;
+          for (let c = 0; c < checkItems.length; c += CHECK_BATCH) {
+            const checkRes = await fetch("/api/admin/import-merged-sheet", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "check-existing",
+                items: checkItems.slice(c, c + CHECK_BATCH),
+              }),
+            });
+            const checkData = await parseJsonResponseSafe(checkRes, "Pre-check failed");
+            if (checkRes.ok && Array.isArray(checkData.existingKeys)) {
+              for (const k of checkData.existingKeys) {
+                existingSet.add(k);
+              }
+            }
+          }
+
+          if (existingSet.size > 0) {
+            const remaining: any[] = [];
+            for (const r of rowsToImport) {
+              const key = `${String(r["Site Name"] || "").trim().toLowerCase()}::${String(r["Product Name"] || "").trim().toLowerCase()}`;
+              if (existingSet.has(key)) {
+                skippedCount++;
+              } else {
+                remaining.push(r);
+              }
+            }
+            effectiveRows = remaining;
+          }
+        } catch (preErr) {
+          console.warn("Pre-check existing failed, continuing with server-side handling:", preErr);
+        }
+      }
+
+      if (skipAlreadyImported && effectiveRows.length === 0) {
+        const allSkippedStats: MergedImportStats = {
+          totalRows: rowsToImport.length,
+          processed: 0,
+          createdProducts: 0,
+          updatedProducts: 0,
+          skippedProducts: skippedCount,
+          createdSites: 0,
+          assignedWriters: 0,
+          configuredLinks: 0,
+          configuredGeos: 0,
+          uniqueSites: [],
+          errors: [],
+        };
+        const msg = `All ${skippedCount} selected row(s) are already imported. 0 remaining rows to import.`;
+        toast.success(msg);
+        setMergedJob({
+          status: "completed",
+          fileName,
+          progress: null,
+          liveStats: allSkippedStats,
+          result: { success: true, message: msg, stats: allSkippedStats },
+          errorMessage: null,
+          startedAt: Date.now(),
+          finishedAt: Date.now(),
+        });
+        setPopupVisible(true);
+        mergedRunningRef.current = false;
+        return;
+      }
+
+      const totalRows = effectiveRows.length;
       const totalChunks = Math.ceil(totalRows / MERGED_CHUNK_SIZE);
 
       const initialStats: MergedImportStats = {
-        totalRows,
+        totalRows: rowsToImport.length,
         processed: 0,
         createdProducts: 0,
         updatedProducts: 0,
+        skippedProducts: skippedCount,
         createdSites: 0,
         assignedWriters: 0,
         configuredLinks: 0,
@@ -271,7 +383,7 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
             break;
           }
 
-          const chunk = rowsToImport.slice(i * MERGED_CHUNK_SIZE, (i + 1) * MERGED_CHUNK_SIZE);
+          const chunk = effectiveRows.slice(i * MERGED_CHUNK_SIZE, (i + 1) * MERGED_CHUNK_SIZE);
 
           setMergedJob((prev) => ({
             ...prev,
@@ -284,24 +396,56 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
             },
           }));
 
-          const res = await fetch("/api/admin/import-merged-sheet", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              rows: chunk,
-              updateExisting,
-            }),
-          });
+          const effectiveChunkUpdateExisting = skipAlreadyImported ? true : updateExisting;
 
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error || `Batch ${i + 1} failed (HTTP ${res.status})`);
-          }
+          const postChunk = async (subChunk: any[]): Promise<any> => {
+            const res = await fetch("/api/admin/import-merged-sheet", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                rows: subChunk,
+                updateExisting: effectiveChunkUpdateExisting,
+                skipCacheInvalidation: i < totalChunks - 1,
+              }),
+            });
+
+            // On gateway timeout / bad gateway HTML response, automatically split chunk once into smaller sub-batches
+            if (!res.ok && (res.status === 502 || res.status === 504 || res.status === 524) && subChunk.length > 8) {
+              const mid = Math.ceil(subChunk.length / 2);
+              const first = await postChunk(subChunk.slice(0, mid));
+              const second = await postChunk(subChunk.slice(mid));
+              const mergedStats = {
+                totalRows: (first?.stats?.totalRows || 0) + (second?.stats?.totalRows || 0),
+                processed: (first?.stats?.processed || 0) + (second?.stats?.processed || 0),
+                createdProducts: (first?.stats?.createdProducts || 0) + (second?.stats?.createdProducts || 0),
+                updatedProducts: (first?.stats?.updatedProducts || 0) + (second?.stats?.updatedProducts || 0),
+                skippedProducts: (first?.stats?.skippedProducts || 0) + (second?.stats?.skippedProducts || 0),
+                createdSites: (first?.stats?.createdSites || 0) + (second?.stats?.createdSites || 0),
+                assignedWriters: (first?.stats?.assignedWriters || 0) + (second?.stats?.assignedWriters || 0),
+                configuredLinks: (first?.stats?.configuredLinks || 0) + (second?.stats?.configuredLinks || 0),
+                configuredGeos: (first?.stats?.configuredGeos || 0) + (second?.stats?.configuredGeos || 0),
+                uniqueSites: Array.from(
+                  new Set([...(first?.stats?.uniqueSites || []), ...(second?.stats?.uniqueSites || [])])
+                ),
+                errors: [...(first?.stats?.errors || []), ...(second?.stats?.errors || [])],
+              };
+              return { success: true, stats: mergedStats };
+            }
+
+            const parsed = await parseJsonResponseSafe(res, `Batch ${i + 1} failed`);
+            if (!res.ok) {
+              throw new Error(parsed.error || `Batch ${i + 1} failed (HTTP ${res.status})`);
+            }
+            return parsed;
+          };
+
+          const data = await postChunk(chunk);
 
           if (data.stats) {
             aggregated.processed += data.stats.processed || 0;
             aggregated.createdProducts += data.stats.createdProducts || 0;
             aggregated.updatedProducts += data.stats.updatedProducts || 0;
+            aggregated.skippedProducts += data.stats.skippedProducts || 0;
             aggregated.createdSites += data.stats.createdSites || 0;
             aggregated.assignedWriters += data.stats.assignedWriters || 0;
             aggregated.configuredLinks += data.stats.configuredLinks || 0;
@@ -342,7 +486,9 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
         const finalResult: MergedImportResult = {
           success: !wasStopped,
           message: wasStopped
-            ? `Stopped after processing ${finalStats.processed} of ${totalRows} rows across ${finalStats.uniqueSites.length} site(s).`
+            ? `Stopped after processing ${finalStats.processed} of ${totalRows} remaining rows across ${finalStats.uniqueSites.length} site(s).`
+            : finalStats.skippedProducts > 0
+            ? `Imported ${finalStats.processed} remaining rows across ${finalStats.uniqueSites.length} site(s) (skipped ${finalStats.skippedProducts} already-imported).`
             : `Successfully processed ${finalStats.processed} rows across ${finalStats.uniqueSites.length} site(s)!`,
           stats: finalStats,
         };
@@ -448,7 +594,7 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
           }),
         });
 
-        const resData = await res.json();
+        const resData = await parseJsonResponseSafe(res, "Product import failed");
         if (!res.ok) throw new Error(resData.error || "Failed to import products");
 
         const result: ProductImportResult = {

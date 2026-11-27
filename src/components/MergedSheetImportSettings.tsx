@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import {
   FileSpreadsheet,
   Upload,
@@ -144,6 +144,7 @@ export default function MergedSheetImportSettings() {
     setPopupMinimized,
   } = useImport();
   const [isParsing, setIsParsing] = useState(false);
+  const [isCheckingDb, setIsCheckingDb] = useState(false);
 
   const selectedFileName = mergedDraft.fileName;
   const sheetNames = mergedDraft.sheetNames;
@@ -151,6 +152,9 @@ export default function MergedSheetImportSettings() {
   const importScope = mergedDraft.importScope;
   const allParsedRows = mergedDraft.allParsedRows;
   const updateExisting = mergedDraft.updateExisting;
+  const skipAlreadyImported = mergedDraft.skipAlreadyImported;
+  const existingKeys = mergedDraft.existingKeys;
+  const rowFilter = mergedDraft.rowFilter;
   const searchQuery = mergedDraft.searchQuery;
 
   const isImporting = mergedJob.status === "running";
@@ -163,8 +167,65 @@ export default function MergedSheetImportSettings() {
     setMergedDraft((prev) => ({ ...prev, importScope: scope }));
   const setUpdateExisting = (val: boolean) =>
     setMergedDraft((prev) => ({ ...prev, updateExisting: val }));
+  const setSkipAlreadyImported = (val: boolean) =>
+    setMergedDraft((prev) => ({ ...prev, skipAlreadyImported: val }));
+  const setRowFilter = (f: "ALL" | "REMAINING" | "IMPORTED") =>
+    setMergedDraft((prev) => ({ ...prev, rowFilter: f }));
   const setSearchQuery = (q: string) =>
     setMergedDraft((prev) => ({ ...prev, searchQuery: q }));
+
+  const getRowCheckKey = useCallback((row: any) => {
+    return `${String(row["Site Name"] || "").trim().toLowerCase()}::${String(row["Product Name"] || "").trim().toLowerCase()}`;
+  }, []);
+
+  const existingKeySet = useMemo(() => new Set(existingKeys || []), [existingKeys]);
+
+  const checkExistingRows = useCallback(async (rowsToCheck: any[]) => {
+    if (!rowsToCheck || rowsToCheck.length === 0) {
+      setMergedDraft((prev) => ({ ...prev, existingKeys: [] }));
+      return;
+    }
+    setIsCheckingDb(true);
+    try {
+      const items = rowsToCheck.map((r) => ({
+        siteName: String(r["Site Name"] || "").trim(),
+        productName: String(r["Product Name"] || "").trim(),
+      }));
+      const found = new Set<string>();
+      const BATCH = 500;
+      for (let i = 0; i < items.length; i += BATCH) {
+        const res = await fetch("/api/admin/import-merged-sheet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "check-existing",
+            items: items.slice(i, i + BATCH),
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.existingKeys)) {
+            data.existingKeys.forEach((k: string) => found.add(k));
+          }
+        }
+      }
+      setMergedDraft((prev) => ({ ...prev, existingKeys: Array.from(found) }));
+    } catch (e) {
+      console.warn("Existing rows check failed:", e);
+    } finally {
+      setIsCheckingDb(false);
+    }
+  }, [setMergedDraft]);
+
+  useEffect(() => {
+    const handleImported = (e: any) => {
+      if (e?.detail?.type === "merged" && allParsedRows.length > 0) {
+        checkExistingRows(allParsedRows);
+      }
+    };
+    window.addEventListener("app:data-imported", handleImported);
+    return () => window.removeEventListener("app:data-imported", handleImported);
+  }, [allParsedRows, checkExistingRows]);
 
   // Generate and Download Sample Excel Template
   const handleDownloadTemplate = async () => {
@@ -460,12 +521,15 @@ export default function MergedSheetImportSettings() {
         sheetNames: detectedSheets,
         allParsedRows: parsedRows,
         activeSheetTab: "ALL",
+        rowFilter: "ALL",
+        existingKeys: [],
       }));
 
       if (parsedRows.length === 0) {
         toast.error("No valid product rows found in this sheet.");
       } else {
         toast.success(`Loaded ${parsedRows.length} rows across ${detectedSheets.length} sheet tabs!`);
+        void checkExistingRows(parsedRows);
       }
     } catch (err: any) {
       toast.error("Failed to parse sheet: " + err.message);
@@ -474,21 +538,53 @@ export default function MergedSheetImportSettings() {
     }
   };
 
-  // Filter rows based on active tab and search query
-  const displayedRows = allParsedRows.filter((row) => {
-    if (activeSheetTab !== "ALL" && row.__sheetName !== activeSheetTab && row["Site Name"] !== activeSheetTab) {
-      return false;
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchProd = (row["Product Name"] || "").toLowerCase().includes(q);
-      const matchSite = (row["Site Name"] || "").toLowerCase().includes(q);
-      const matchLinker = (row["Linker Name"] || "").toLowerCase().includes(q);
-      const matchWriter = (row["Writer Name"] || "").toLowerCase().includes(q);
-      return matchProd || matchSite || matchLinker || matchWriter;
-    }
-    return true;
-  });
+  // Tab + search filtered rows (before imported/remaining filter)
+  const tabAndSearchRows = useMemo(() => {
+    return allParsedRows.filter((row) => {
+      if (activeSheetTab !== "ALL" && row.__sheetName !== activeSheetTab && row["Site Name"] !== activeSheetTab) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchProd = (row["Product Name"] || "").toLowerCase().includes(q);
+        const matchSite = (row["Site Name"] || "").toLowerCase().includes(q);
+        const matchLinker = (row["Linker Name"] || "").toLowerCase().includes(q);
+        const matchWriter = (row["Writer Name"] || "").toLowerCase().includes(q);
+        return matchProd || matchSite || matchLinker || matchWriter;
+      }
+      return true;
+    });
+  }, [allParsedRows, activeSheetTab, searchQuery]);
+
+  // Filter rows based on imported/remaining status
+  const displayedRows = useMemo(() => {
+    if (rowFilter === "ALL") return tabAndSearchRows;
+    return tabAndSearchRows.filter((row) => {
+      const isImported = existingKeySet.has(getRowCheckKey(row));
+      return rowFilter === "IMPORTED" ? isImported : !isImported;
+    });
+  }, [tabAndSearchRows, rowFilter, existingKeySet, getRowCheckKey]);
+
+  const tabImportedCount = useMemo(
+    () => tabAndSearchRows.filter((r) => existingKeySet.has(getRowCheckKey(r))).length,
+    [tabAndSearchRows, existingKeySet, getRowCheckKey]
+  );
+  const tabRemainingCount = tabAndSearchRows.length - tabImportedCount;
+
+  const scopedRows = useMemo(() => {
+    return importScope === "ACTIVE" && activeSheetTab !== "ALL"
+      ? allParsedRows.filter(
+          (r) => r.__sheetName === activeSheetTab || r["Site Name"] === activeSheetTab
+        )
+      : allParsedRows;
+  }, [allParsedRows, importScope, activeSheetTab]);
+
+  const scopedImportedCount = useMemo(
+    () => scopedRows.filter((r) => existingKeySet.has(getRowCheckKey(r))).length,
+    [scopedRows, existingKeySet, getRowCheckKey]
+  );
+  const scopedRemainingCount = scopedRows.length - scopedImportedCount;
+  const rowsToSendCount = skipAlreadyImported ? scopedRemainingCount : scopedRows.length;
 
   // Calculate Summary KPIs (splits combined "name, name" strings)
   const uniqueProductsCount = new Set(allParsedRows.map((r) => r["Product Name"])).size;
@@ -510,15 +606,13 @@ export default function MergedSheetImportSettings() {
       return;
     }
 
-    const rowsToImport =
-      importScope === "ACTIVE" && activeSheetTab !== "ALL"
-        ? allParsedRows.filter(
-            (r) => r.__sheetName === activeSheetTab || r["Site Name"] === activeSheetTab
-          )
-        : allParsedRows;
-
-    if (rowsToImport.length === 0) {
+    if (scopedRows.length === 0) {
       toast.error("No valid rows found in the selected scope.");
+      return;
+    }
+
+    if (skipAlreadyImported && scopedRemainingCount === 0) {
+      toast("All rows in the selected scope are already imported.");
       return;
     }
 
@@ -526,8 +620,9 @@ export default function MergedSheetImportSettings() {
     setPopupMinimized(false);
     await startMergedImport({
       fileName: selectedFileName,
-      rowsToImport,
+      rowsToImport: scopedRows,
       updateExisting,
+      skipAlreadyImported,
     });
   };
 
@@ -665,73 +760,148 @@ export default function MergedSheetImportSettings() {
               </div>
             </div>
 
-            {/* KPI Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Total Rows
-                </span>
-                <span className="text-xl font-black text-slate-900 dark:text-white mt-0.5 block">
-                  {allParsedRows.length}
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40">
-                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider block">
-                  Unique Products
-                </span>
-                <span className="text-xl font-black text-blue-700 dark:text-blue-300 mt-0.5 block">
-                  {uniqueProductsCount}
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40">
-                <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider block">
-                  Target Sites
-                </span>
-                <span className="text-xl font-black text-purple-700 dark:text-purple-300 mt-0.5 block">
-                  {uniqueSitesCount}
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40">
-                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block">
-                  Writers / Linkers
-                </span>
-                <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block">
-                  {uniqueWritersCount} / {uniqueLinkersCount}
-                </span>
-              </div>
-            </div>
-
-            {/* Import Configuration Options */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <label className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-start gap-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-850 transition">
-                <input
-                  type="checkbox"
-                  checked={updateExisting}
-                  onChange={(e) => setUpdateExisting(e.target.checked)}
-                  className="w-4 h-4 text-indigo-600 rounded mt-0.5 border-slate-300 focus:ring-indigo-500 cursor-pointer"
-                />
-                <div className="text-xs">
-                  <span className="font-bold text-slate-800 dark:text-white block">
-                    Update existing products & link logs
+              {/* KPI Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Total Rows
                   </span>
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                    If a product already exists on the site, update its links, article status, and writer.
+                  <span className="text-xl font-black text-slate-900 dark:text-white mt-0.5 block">
+                    {allParsedRows.length}
                   </span>
                 </div>
-              </label>
-
-              <div className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex items-start gap-2.5">
-                <Users className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                <div className="text-xs">
-                  <span className="font-bold text-slate-700 dark:text-slate-300 block">
-                    User Matching Only (No Auto-Create)
+                <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/40">
+                  <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">
+                    Already Imported
                   </span>
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                    Matches existing registered Linkers & Writers by name. Unrecognized names are left unassigned.
+                  <span className="text-xl font-black text-amber-700 dark:text-amber-300 mt-0.5 block">
+                    {isCheckingDb ? "..." : scopedImportedCount}
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-900/40">
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
+                    Remaining New
+                  </span>
+                  <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block">
+                    {isCheckingDb ? "..." : scopedRemainingCount}
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40">
+                  <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider block">
+                    Unique Products
+                  </span>
+                  <span className="text-xl font-black text-blue-700 dark:text-blue-300 mt-0.5 block">
+                    {uniqueProductsCount}
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40">
+                  <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider block">
+                    Target Sites
+                  </span>
+                  <span className="text-xl font-black text-purple-700 dark:text-purple-300 mt-0.5 block">
+                    {uniqueSitesCount}
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Writers / Linkers
+                  </span>
+                  <span className="text-xl font-black text-slate-800 dark:text-slate-200 mt-0.5 block">
+                    {uniqueWritersCount} / {uniqueLinkersCount}
                   </span>
                 </div>
               </div>
-            </div>
+
+              {/* Import Configuration Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSkipAlreadyImported(true);
+                    setUpdateExisting(false);
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 cursor-pointer transition ${
+                    skipAlreadyImported
+                      ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 shadow-2xs"
+                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="mergedImportMode"
+                    checked={skipAlreadyImported}
+                    onChange={() => {
+                      setSkipAlreadyImported(true);
+                      setUpdateExisting(false);
+                    }}
+                    className="w-4 h-4 text-emerald-600 mt-0.5 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-slate-900 dark:text-white block">
+                      Skip Already Imported (Remaining Only)
+                    </span>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                      Skips {scopedImportedCount} existing rows and imports only the {scopedRemainingCount} remaining rows.
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSkipAlreadyImported(false);
+                    setUpdateExisting(true);
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 cursor-pointer transition ${
+                    !skipAlreadyImported
+                      ? "border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/30 shadow-2xs"
+                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="mergedImportMode"
+                    checked={!skipAlreadyImported}
+                    onChange={() => {
+                      setSkipAlreadyImported(false);
+                      setUpdateExisting(true);
+                    }}
+                    className="w-4 h-4 text-indigo-600 mt-0.5 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-slate-900 dark:text-white block">
+                      Update Existing + Import New
+                    </span>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                      Updates existing products/articles/links and adds new ones across all {scopedRows.length} rows.
+                    </span>
+                  </div>
+                </button>
+
+                <div className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex items-start justify-between gap-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <Users className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                    <div className="text-xs">
+                      <span className="font-bold text-slate-700 dark:text-slate-300 block">
+                        User & Affiliate Matching
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                        Matches existing registered users & affiliates only.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isCheckingDb || isImporting}
+                    onClick={() => checkExistingRows(allParsedRows)}
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer shrink-0 flex items-center gap-1"
+                    title="Re-check database to refresh Already Imported vs Remaining counts"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isCheckingDb ? "animate-spin" : ""}`} />
+                    <span>Sync DB</span>
+                  </button>
+                </div>
+              </div>
           </div>
 
           {/* Sheet Tabs Bar (Matching Image 2) */}
@@ -746,13 +916,51 @@ export default function MergedSheetImportSettings() {
                 </span>
               </div>
 
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products, sites, writers..."
-                className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-[#FAF9F5] dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 sm:w-64"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setRowFilter("ALL")}
+                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                      rowFilter === "ALL"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
+                    All ({tabAndSearchRows.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRowFilter("REMAINING")}
+                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                      rowFilter === "REMAINING"
+                        ? "bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-2xs"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
+                    Remaining ({tabRemainingCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRowFilter("IMPORTED")}
+                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                      rowFilter === "IMPORTED"
+                        ? "bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-300 shadow-2xs"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
+                    Already Imported ({tabImportedCount})
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products, sites, writers..."
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-[#FAF9F5] dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 sm:w-64"
+                />
+              </div>
             </div>
 
             {/* Horizontal Scrollable Tabs */}
@@ -798,6 +1006,7 @@ export default function MergedSheetImportSettings() {
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
                     <th className="py-2.5 px-3">#</th>
+                    <th className="py-2.5 px-3">DB State</th>
                     <th className="py-2.5 px-3">Product Name</th>
                     <th className="py-2.5 px-3">Site Name</th>
                     <th className="py-2.5 px-3">Linker</th>
@@ -811,9 +1020,26 @@ export default function MergedSheetImportSettings() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {displayedRows.slice(0, 25).map((row, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                  {displayedRows.slice(0, 25).map((row, idx) => {
+                    const isAlreadyInDb = existingKeySet.has(getRowCheckKey(row));
+                    return (
+                    <tr key={idx} className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${isAlreadyInDb && skipAlreadyImported ? "opacity-65" : ""}`}>
                       <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        {isCheckingDb ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-400">
+                            Checking
+                          </span>
+                        ) : isAlreadyInDb ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+                            {skipAlreadyImported ? "Imported (Skip)" : "Imported (Update)"}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                            Remaining
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white whitespace-nowrap">
                         {row["Product Name"]}
                       </td>
@@ -943,7 +1169,8 @@ export default function MergedSheetImportSettings() {
                         })()}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
 
@@ -993,7 +1220,7 @@ export default function MergedSheetImportSettings() {
                       Processing Batch {importProgress.currentChunk} of {importProgress.totalChunks}...
                     </span>
                     <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      (Chunked 120 rows/req to prevent timeouts)
+                      (Chunked 30 rows/req to prevent timeouts)
                     </span>
                   </div>
                   <div className="flex items-center gap-3 self-end sm:self-auto">
@@ -1023,12 +1250,21 @@ export default function MergedSheetImportSettings() {
             {/* Action Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
               <span className="text-xs text-slate-500 dark:text-slate-400">
-                Ready to import <strong>{importScope === "ACTIVE" && activeSheetTab !== "ALL" ? displayedRows.length : allParsedRows.length}</strong> items into database via fast chunks
+                {skipAlreadyImported ? (
+                  <>
+                    Ready to import <strong>{scopedRemainingCount}</strong> remaining row(s) (skipping{" "}
+                    <strong>{scopedImportedCount}</strong> already imported)
+                  </>
+                ) : (
+                  <>
+                    Ready to import <strong>{scopedRows.length}</strong> items into database via fast chunks
+                  </>
+                )}
               </span>
 
               <button
                 type="button"
-                disabled={isImporting || allParsedRows.length === 0}
+                disabled={isImporting || isCheckingDb || allParsedRows.length === 0 || (skipAlreadyImported && scopedRemainingCount === 0)}
                 onClick={handleExecuteImport}
                 className="px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20 disabled:cursor-not-allowed"
               >
@@ -1037,10 +1273,19 @@ export default function MergedSheetImportSettings() {
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     <span>Importing in Batches...</span>
                   </>
+                ) : skipAlreadyImported ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>
+                      {scopedRemainingCount === 0
+                        ? "All Rows Already Imported"
+                        : `Import Remaining (${rowsToSendCount} Rows)`}
+                    </span>
+                  </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirm & Import {importScope === "ACTIVE" && activeSheetTab !== "ALL" ? displayedRows.length : allParsedRows.length} Rows</span>
+                    <span>Confirm & Import {rowsToSendCount} Rows</span>
                   </>
                 )}
               </button>
@@ -1066,7 +1311,7 @@ export default function MergedSheetImportSettings() {
 
               {/* Stats breakdown */}
               {importResult.stats && (
-                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-xs pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-7 gap-2.5 text-xs pt-1">
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center border border-slate-200 dark:border-slate-700">
                     <span className="text-slate-400 text-[10px] font-bold uppercase block">New Products</span>
                     <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
@@ -1077,6 +1322,12 @@ export default function MergedSheetImportSettings() {
                     <span className="text-slate-400 text-[10px] font-bold uppercase block">Updated Products</span>
                     <span className="text-base font-black text-blue-600 dark:text-blue-400">
                       {importResult.stats.updatedProducts}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center border border-slate-200 dark:border-slate-700">
+                    <span className="text-slate-400 text-[10px] font-bold uppercase block">Skipped</span>
+                    <span className="text-base font-black text-amber-600 dark:text-amber-400">
+                      {importResult.stats.skippedProducts || 0}
                     </span>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center border border-slate-200 dark:border-slate-700">

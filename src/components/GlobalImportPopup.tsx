@@ -183,7 +183,7 @@ export default function GlobalImportPopup() {
         )}
 
         {stats && (
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className={`grid ${stats.skippedProducts > 0 ? "grid-cols-4" : "grid-cols-3"} gap-2 text-center`}>
             <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700">
               <span className="text-[10px] font-bold uppercase text-slate-400 block">New</span>
               <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
@@ -196,6 +196,14 @@ export default function GlobalImportPopup() {
                 {stats.updatedProducts}
               </span>
             </div>
+            {stats.skippedProducts > 0 && (
+              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700">
+                <span className="text-[10px] font-bold uppercase text-slate-400 block">Skipped</span>
+                <span className="text-sm font-black text-amber-600 dark:text-amber-400">
+                  {stats.skippedProducts}
+                </span>
+              </div>
+            )}
             <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700">
               <span className="text-[10px] font-bold uppercase text-slate-400 block">Links/GEOs</span>
               <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
