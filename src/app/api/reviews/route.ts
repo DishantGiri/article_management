@@ -4,6 +4,7 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { delByPattern } from "@/lib/redis";
+import { getWriterTeamLeadIds } from "@/lib/team-lead-helpers";
 
 // POST /api/reviews - Team Lead submits a review remark (Approve or Redo)
 export async function POST(req: NextRequest) {
@@ -59,9 +60,13 @@ export async function POST(req: NextRequest) {
     if (reviewerRole === "TEAM_LEAD" && article.writerId && article.writerId !== reviewedById) {
       const writer = await prisma.user.findUnique({
         where: { id: article.writerId },
-        select: { teamLeadId: true },
+        select: {
+          teamLeadId: true,
+          writerTeamLeads: { select: { teamLeadId: true } },
+        },
       });
-      if (writer?.teamLeadId && writer.teamLeadId !== reviewedById) {
+      const writerTlIds = getWriterTeamLeadIds(writer);
+      if (writerTlIds.length > 0 && !writerTlIds.includes(reviewedById)) {
         return NextResponse.json(
           { error: "Access denied: This writer is not assigned to your team." },
           { status: 403 }

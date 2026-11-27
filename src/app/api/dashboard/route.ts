@@ -3,6 +3,7 @@ import { prisma, Prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { cached } from "@/lib/redis";
+import { isWriterAssignedToTlFilter } from "@/lib/team-lead-helpers";
 
 // GET /api/dashboard - role-aware stats
 export async function GET(req: NextRequest) {
@@ -246,6 +247,7 @@ export async function GET(req: NextRequest) {
         OR: [
           { writerId: String(userId) },
           { writer: { teamLeadId: String(userId) } },
+          { writer: { writerTeamLeads: { some: { teamLeadId: String(userId) } } } },
         ],
       };
 
@@ -285,7 +287,7 @@ export async function GET(req: NextRequest) {
 
         // Writer performance: ONLY writers assigned under this team lead
         prisma.user.findMany({
-          where: { role: "WRITER", teamLeadId: String(userId) },
+          where: { role: "WRITER", ...isWriterAssignedToTlFilter(String(userId)) },
           include: {
             _count: {
               select: {

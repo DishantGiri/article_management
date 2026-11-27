@@ -6,6 +6,49 @@ import { authOptions } from "@/lib/auth";
 import { canUserReviewOnSite, canUserWriteOnSite } from "@/lib/permissions";
 import { consolidateLinkLogs } from "@/lib/utils";
 import { delByPattern } from "@/lib/redis";
+import { getWriterTeamLeadIds, isWriterAssignedToTlFilter } from "@/lib/team-lead-helpers";
+
+async function notifyWriterTeamLeads(
+  writerId: string,
+  excludeUserId: string,
+  fallbackWriterName: string,
+  buildMessage: (writerName: string) => string
+) {
+  const writerUser = await prisma.user.findUnique({
+    where: { id: writerId },
+    select: {
+      name: true,
+      teamLeadId: true,
+      writerTeamLeads: { select: { teamLeadId: true } },
+    },
+  });
+  const writerName = writerUser?.name || fallbackWriterName;
+  const assignedTlIds = getWriterTeamLeadIds(writerUser);
+  const recipientIds =
+    assignedTlIds.length > 0
+      ? assignedTlIds
+      : (
+          await prisma.user.findMany({
+            where: { role: "TEAM_LEAD" },
+            select: { id: true },
+          })
+        ).map((tl) => tl.id);
+
+  const message = buildMessage(writerName);
+  for (const tlId of recipientIds) {
+    if (tlId !== excludeUserId) {
+      const notif = await prisma.notification.create({
+        data: {
+          recipientId: tlId,
+          senderId: writerId,
+          type: "ARTICLE_SUGGESTION",
+          message,
+        },
+      });
+      await sendRealtimeNotification(tlId, notif);
+    }
+  }
+}
 
 // GET /api/articles/[slug]
 export async function GET(
@@ -42,7 +85,16 @@ export async function GET(
             },
           },
         },
-        writer: { select: { id: true, name: true, email: true, image: true, teamLeadId: true } },
+        writer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            teamLeadId: true,
+            writerTeamLeads: { select: { teamLeadId: true } },
+          },
+        },
         reviews: {
           include: { reviewedBy: { select: { id: true, name: true } } },
           orderBy: { reviewedAt: "desc" },
@@ -92,10 +144,11 @@ export async function GET(
           }
         }
       } else if (userRole === "TEAM_LEAD" || canReviewSite) {
+        const writerTlIds = getWriterTeamLeadIds(article.writer);
         const isUnderTL =
           article.status === "PENDING" ||
           article.writerId === userId ||
-          article.writer?.teamLeadId === userId ||
+          writerTlIds.includes(userId) ||
           canReviewSite;
         if (!isUnderTL) {
           return NextResponse.json({ error: "Access denied: This article is not under your team." }, { status: 403 });
@@ -199,9 +252,13 @@ export async function PATCH(
     if (!flagForUpdate && activeUserRole === "TEAM_LEAD" && existing.writerId && existing.writerId !== activeUserId && existing.status !== "PENDING") {
       const writer = await prisma.user.findUnique({
         where: { id: existing.writerId },
-        select: { teamLeadId: true },
+        select: {
+          teamLeadId: true,
+          writerTeamLeads: { select: { teamLeadId: true } },
+        },
       });
-      if (writer?.teamLeadId && writer.teamLeadId !== activeUserId) {
+      const writerTlIds = getWriterTeamLeadIds(writer);
+      if (writerTlIds.length > 0 && !writerTlIds.includes(activeUserId)) {
         return NextResponse.json({ error: "Access denied: This writer is not assigned to your team." }, { status: 403 });
       }
     }
@@ -668,44 +725,12 @@ export async function PATCH(
       try {
         const writerIdToQuery = updated.writerId || existing.writerId || activeUserId;
         if (writerIdToQuery) {
-          const writerUser = await prisma.user.findUnique({
-            where: { id: writerIdToQuery },
-            select: { name: true, teamLeadId: true },
-          });
-          const writerName = writerUser?.name || updated.writer?.name || session.user.name || "A writer";
-
-          if (writerUser?.teamLeadId) {
-            if (writerUser.teamLeadId !== activeUserId) {
-              const notif = await prisma.notification.create({
-                data: {
-                  recipientId: writerUser.teamLeadId,
-                  senderId: writerIdToQuery,
-                  type: "ARTICLE_SUGGESTION",
-                  message: `${writerName} started writing the article for "${updated.product.name}".`,
-                },
-              });
-              await sendRealtimeNotification(writerUser.teamLeadId, notif);
-            }
-          } else {
-            // Fallback: If writer has no specific team lead assigned, notify all Team Leads
-            const teamLeads = await prisma.user.findMany({
-              where: { role: "TEAM_LEAD" },
-              select: { id: true },
-            });
-            for (const tl of teamLeads) {
-              if (tl.id !== activeUserId) {
-                const notif = await prisma.notification.create({
-                  data: {
-                    recipientId: tl.id,
-                    senderId: writerIdToQuery,
-                    type: "ARTICLE_SUGGESTION",
-                    message: `${writerName} started writing the article for "${updated.product.name}".`,
-                  },
-                });
-                await sendRealtimeNotification(tl.id, notif);
-              }
-            }
-          }
+          await notifyWriterTeamLeads(
+            writerIdToQuery,
+            activeUserId,
+            updated.writer?.name || session.user.name || "A writer",
+            (writerName) => `${writerName} started writing the article for "${updated.product.name}".`
+          );
         }
       } catch (notifErr) {
         console.error("Failed to notify Team Lead on article start:", notifErr);
@@ -717,46 +742,14 @@ export async function PATCH(
       try {
         const writerIdToQuery = updated.writerId || existing.writerId || activeUserId;
         if (writerIdToQuery) {
-          const writerUser = await prisma.user.findUnique({
-            where: { id: writerIdToQuery },
-            select: { name: true, teamLeadId: true },
-          });
-          const writerName = writerUser?.name || updated.writer?.name || session.user.name || "A writer";
           const reasonText = specialApprovalRequestReason || "Requested edit permission on approved article";
-
-          const notifPayload = {
-            senderId: writerIdToQuery,
-            type: "ARTICLE_SUGGESTION" as const,
-            message: `Update Request: Writer ${writerName} requested permission to edit approved article "${updated.product.name}". Reason: ${reasonText}`,
-          };
-
-          if (writerUser?.teamLeadId) {
-            if (writerUser.teamLeadId !== activeUserId) {
-              const notif = await prisma.notification.create({
-                data: {
-                  recipientId: writerUser.teamLeadId,
-                  ...notifPayload,
-                },
-              });
-              await sendRealtimeNotification(writerUser.teamLeadId, notif);
-            }
-          } else {
-            const teamLeads = await prisma.user.findMany({
-              where: { role: "TEAM_LEAD" },
-              select: { id: true },
-            });
-            for (const tl of teamLeads) {
-              if (tl.id !== activeUserId) {
-                const notif = await prisma.notification.create({
-                  data: {
-                    recipientId: tl.id,
-                    ...notifPayload,
-                  },
-                });
-                await sendRealtimeNotification(tl.id, notif);
-              }
-            }
-          }
+          await notifyWriterTeamLeads(
+            writerIdToQuery,
+            activeUserId,
+            updated.writer?.name || session.user.name || "A writer",
+            (writerName) =>
+              `Update Request: Writer ${writerName} requested permission to edit approved article "${updated.product.name}". Reason: ${reasonText}`
+          );
         }
       } catch (notifErr) {
         console.error("Failed to notify Team Lead on update request:", notifErr);
@@ -786,7 +779,7 @@ export async function PATCH(
       try {
         const senderRole = session.user.role === "SUPER_ADMIN" ? "Super Admin" : session.user.role === "ADMIN" ? "Admin" : session.user.role === "TEAM_LEAD" ? "Team Lead" : (session.user.role || "User").replace("_", " ");
         const teamWriters = await prisma.user.findMany({
-          where: { role: "WRITER", teamLeadId: activeUserId },
+          where: { role: "WRITER", ...isWriterAssignedToTlFilter(activeUserId) },
           select: { id: true },
         });
         for (const w of teamWriters) {
@@ -842,44 +835,12 @@ export async function PATCH(
       try {
         const writerIdToQuery = updated.writerId || existing.writerId || activeUserId;
         if (writerIdToQuery) {
-          const writerUser = await prisma.user.findUnique({
-            where: { id: writerIdToQuery },
-            select: { name: true, teamLeadId: true },
-          });
-          const writerName = writerUser?.name || updated.writer?.name || session.user.name || "A writer";
-
-          if (writerUser?.teamLeadId) {
-            if (writerUser.teamLeadId !== activeUserId) {
-              const notif = await prisma.notification.create({
-                data: {
-                  recipientId: writerUser.teamLeadId,
-                  senderId: writerIdToQuery,
-                  type: "ARTICLE_SUGGESTION",
-                  message: `${writerName} completed the article for "${updated.product.name}". Please review it.`,
-                },
-              });
-              await sendRealtimeNotification(writerUser.teamLeadId, notif);
-            }
-          } else {
-            // Fallback: If writer has no specific team lead assigned, notify all Team Leads
-            const teamLeads = await prisma.user.findMany({
-              where: { role: "TEAM_LEAD" },
-              select: { id: true },
-            });
-            for (const tl of teamLeads) {
-              if (tl.id !== activeUserId) {
-                const notif = await prisma.notification.create({
-                  data: {
-                    recipientId: tl.id,
-                    senderId: writerIdToQuery,
-                    type: "ARTICLE_SUGGESTION",
-                    message: `${writerName} completed the article for "${updated.product.name}". Please review it.`,
-                  },
-                });
-                await sendRealtimeNotification(tl.id, notif);
-              }
-            }
-          }
+          await notifyWriterTeamLeads(
+            writerIdToQuery,
+            activeUserId,
+            updated.writer?.name || session.user.name || "A writer",
+            (writerName) => `${writerName} completed the article for "${updated.product.name}". Please review it.`
+          );
         }
       } catch (notifErr) {
         console.error("Failed to notify Team Lead on article completion:", notifErr);

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { validateUserName } from "@/lib/user-validation";
 import { cached, delByPattern } from "@/lib/redis";
+import { formatUserWithTeamRelations, parseIncomingTeamLeadIds } from "@/lib/team-lead-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function GET() {
     // If Admin (and not Super Admin), filter out Super Admin users
     const whereClause = session.user.role === "ADMIN" ? { role: { not: "SUPER_ADMIN" as const } } : {};
 
-    return prisma.user.findMany({
+    const rawUsers = await prisma.user.findMany({
       where: whereClause,
       include: {
         siteAccess: {
@@ -31,9 +32,16 @@ export async function GET() {
         },
         teamLead: { select: { id: true, name: true } },
         teamMembers: { select: { id: true, name: true } },
+        writerTeamLeads: {
+          include: { teamLead: { select: { id: true, name: true } } },
+        },
+        teamLeadWriters: {
+          include: { writer: { select: { id: true, name: true } } },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
+    return rawUsers.map((u) => formatUserWithTeamRelations(u));
   });
   return NextResponse.json(users);
 }
@@ -47,7 +55,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, email, role, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany, commissionToPartyFund } = body;
+    const { name, email, role, siteIds, allowLinkLogAccess, approved, hasLeftCompany, commissionToPartyFund } = body;
+    const resolvedTeamLeadIds = role === "WRITER" ? (parseIncomingTeamLeadIds(body) || []) : [];
 
     const trimmedName = typeof name === "string" ? name.trim() : "";
     const trimmedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
@@ -136,14 +145,19 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    const user = await prisma.user.create({
+    const createdUser = await prisma.user.create({
       data: {
         name: trimmedName,
         email: trimmedEmail,
         role: role as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST",
         allowLinkLogAccess: role === "WRITER" ? !!allowLinkLogAccess : false,
-        ...(role === "WRITER" && teamLeadId
-          ? { teamLead: { connect: { id: String(teamLeadId) } } }
+        ...(role === "WRITER" && resolvedTeamLeadIds.length > 0
+          ? {
+              teamLead: { connect: { id: resolvedTeamLeadIds[0] } },
+              writerTeamLeads: {
+                create: resolvedTeamLeadIds.map((tlId) => ({ teamLeadId: tlId })),
+              },
+            }
           : {}),
         approved: finalApproved,
         hasLeftCompany: finalHasLeft,
@@ -152,8 +166,13 @@ export async function POST(req: NextRequest) {
       },
       include: {
         siteAccess: { include: { site: { select: { id: true, name: true } } } },
+        teamLead: { select: { id: true, name: true } },
+        teamMembers: { select: { id: true, name: true } },
+        writerTeamLeads: { include: { teamLead: { select: { id: true, name: true } } } },
+        teamLeadWriters: { include: { writer: { select: { id: true, name: true } } } },
       },
     });
+    const user = formatUserWithTeamRelations(createdUser);
 
     await Promise.all([delByPattern("users:*"), delByPattern("dashboard:*")]);
 

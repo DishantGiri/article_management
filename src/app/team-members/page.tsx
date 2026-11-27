@@ -35,6 +35,10 @@ interface TeamMember {
     id: string;
     name: string;
   } | null;
+  teamLeads?: {
+    id: string;
+    name: string;
+  }[];
   activeArticle?: {
     id: string;
     productName: string;
@@ -130,14 +134,19 @@ export default function TeamMembersPage() {
     return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ""}` : `${m}m`;
   };
 
+  const getMemberTeamLeads = (m: TeamMember) => {
+    if (Array.isArray(m.teamLeads) && m.teamLeads.length > 0) return m.teamLeads;
+    return m.teamLead ? [m.teamLead] : [];
+  };
+
   // List of all discoverable team leads
   const availableTeamLeads = useMemo(() => {
     const map = new Map<string, string>();
     teamLeads.forEach((tl) => map.set(tl.id, tl.name));
     members.forEach((m) => {
-      if (m.teamLead) {
-        map.set(m.teamLead.id, m.teamLead.name);
-      }
+      getMemberTeamLeads(m).forEach((tl) => {
+        map.set(tl.id, tl.name);
+      });
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [teamLeads, members]);
@@ -152,7 +161,9 @@ export default function TeamMembersPage() {
   // Subset of members for aggregate KPI cards (scoped by Team Lead if selected)
   const membersForMetrics = useMemo(() => {
     if (selectedTlId === "all") return members;
-    return members.filter((m) => m.teamLead && String(m.teamLead.id) === selectedTlId);
+    return members.filter((m) =>
+      getMemberTeamLeads(m).some((tl) => String(tl.id) === selectedTlId)
+    );
   }, [members, selectedTlId]);
 
   // Aggregate Metrics for Top Summary Bar
@@ -174,14 +185,15 @@ export default function TeamMembersPage() {
   const filteredAndSortedMembers = useMemo(() => {
     return members
       .filter((m) => {
+        const memberTls = getMemberTeamLeads(m);
         const matchesSearch =
           m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           m.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (m.teamLead?.name && m.teamLead.name.toLowerCase().includes(searchTerm.toLowerCase()));
+          memberTls.some((tl) => tl.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
         const matchesTl =
           selectedTlId === "all" ||
-          (m.teamLead && String(m.teamLead.id) === selectedTlId);
+          memberTls.some((tl) => String(tl.id) === selectedTlId);
 
         return matchesSearch && matchesTl;
       })
@@ -530,12 +542,15 @@ export default function TeamMembersPage() {
                             <Mail className="w-3 h-3 shrink-0" />
                             <span className="truncate">{member.email}</span>
                           </a>
-                          {member.teamLead && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#6D8196]/10 text-[#3D4F61] dark:bg-sky-500/15 dark:text-sky-300 border border-[#6D8196]/20 dark:border-sky-500/30 shrink-0">
+                          {getMemberTeamLeads(member).map((tl) => (
+                            <span
+                              key={tl.id}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#6D8196]/10 text-[#3D4F61] dark:bg-sky-500/15 dark:text-sky-300 border border-[#6D8196]/20 dark:border-sky-500/30 shrink-0"
+                            >
                               <ShieldCheck className="w-3 h-3 text-[#6D8196] dark:text-sky-400" />
-                              TL: {member.teamLead.name}
+                              TL: {tl.name}
                             </span>
-                          )}
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -740,12 +755,19 @@ export default function TeamMembersPage() {
                     </td>
 
                     {isAdminOrSuperAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {member.teamLead ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#6D8196]/10 text-[#3D4F61] dark:bg-sky-500/15 dark:text-sky-300 border border-[#6D8196]/20 dark:border-sky-500/30">
-                            <ShieldCheck className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
-                            {member.teamLead.name}
-                          </span>
+                      <td className="px-6 py-4">
+                        {getMemberTeamLeads(member).length > 0 ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {getMemberTeamLeads(member).map((tl) => (
+                              <span
+                                key={tl.id}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#6D8196]/10 text-[#3D4F61] dark:bg-sky-500/15 dark:text-sky-300 border border-[#6D8196]/20 dark:border-sky-500/30 whitespace-nowrap"
+                              >
+                                <ShieldCheck className="w-3.5 h-3.5 text-[#6D8196] dark:text-sky-400" />
+                                {tl.name}
+                              </span>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-xs text-slate-400 dark:text-slate-500 font-medium italic">Unassigned</span>
                         )}

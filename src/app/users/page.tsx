@@ -78,11 +78,22 @@ interface User {
     id: string;
     name: string;
   } | null;
+  teamLeads?: {
+    id: string;
+    name: string;
+  }[];
   teamMembers?: {
     id: string;
     name: string;
   }[];
   createdAt?: string;
+}
+
+function getUserTeamLeads(u: Pick<User, "teamLead" | "teamLeads">): { id: string; name: string }[] {
+  if (Array.isArray(u.teamLeads) && u.teamLeads.length > 0) {
+    return u.teamLeads;
+  }
+  return u.teamLead ? [u.teamLead] : [];
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -193,7 +204,7 @@ export default function UsersPage() {
   // Quick Action Modal States
   // 1. Migrate Team Lead Modal
   const [migrateTlUser, setMigrateTlUser] = useState<User | null>(null);
-  const [selectedNewTlId, setSelectedNewTlId] = useState<string>("");
+  const [selectedNewTlIds, setSelectedNewTlIds] = useState<string[]>([]);
   const [migratingTl, setMigratingTl] = useState(false);
 
   // 2. Migrate / Manage Sites Modal
@@ -219,7 +230,7 @@ export default function UsersPage() {
     role: "WRITER",
     siteIds: [] as string[],
     siteRolesMap: {} as Record<string, string[]>,
-    teamLeadId: "",
+    teamLeadIds: [] as string[],
     allowLinkLogAccess: false,
     approved: true,
     hasLeftCompany: false,
@@ -298,10 +309,10 @@ export default function UsersPage() {
   // QUICK ACTIONS: MIGRATE TL, SITES, ROLE
   // ─────────────────────────────────────────────────────────────────────────
 
-  // 1. Team Lead Migration
+  // 1. Team Lead Assignment / Migration (supports multiple TLs per writer)
   const handleOpenMigrateTl = (u: User) => {
     setMigrateTlUser(u);
-    setSelectedNewTlId(u.teamLead ? String(u.teamLead.id) : "");
+    setSelectedNewTlIds(getUserTeamLeads(u).map((tl) => String(tl.id)));
   };
 
   const handleExecuteMigrateTl = async () => {
@@ -312,23 +323,24 @@ export default function UsersPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          teamLeadId: selectedNewTlId || null,
+          teamLeadIds: selectedNewTlIds,
         }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to migrate Team Lead");
+        throw new Error(err.error || "Failed to update Team Leads");
       }
       const updatedUser = await res.json();
       setUsers((prev) => prev.map((u) => (u.id === migrateTlUser.id ? updatedUser : u)));
       toast.success(
-        selectedNewTlId
-          ? `Migrated ${migrateTlUser.name} to new Team Lead!`
-          : `Removed Team Lead for ${migrateTlUser.name}`
+        selectedNewTlIds.length > 0
+          ? `Updated ${selectedNewTlIds.length} Team Lead${selectedNewTlIds.length > 1 ? "s" : ""} for ${migrateTlUser.name}!`
+          : `Removed Team Leads for ${migrateTlUser.name}`
       );
       setMigrateTlUser(null);
+      fetchData(false);
     } catch (e: any) {
-      toast.error(e.message || "Migration failed");
+      toast.error(e.message || "Team Lead update failed");
     } finally {
       setMigratingTl(false);
     }
@@ -567,7 +579,7 @@ export default function UsersPage() {
       role: "WRITER",
       siteIds: [],
       siteRolesMap: {},
-      teamLeadId: "",
+      teamLeadIds: [],
       allowLinkLogAccess: false,
       approved: true,
       hasLeftCompany: false,
@@ -593,7 +605,7 @@ export default function UsersPage() {
       role: u.role || "WRITER",
       siteIds: u.siteAccess ? u.siteAccess.map((sa) => sa.site.id) : [],
       siteRolesMap: sRolesMap,
-      teamLeadId: u.teamLead ? String(u.teamLead.id) : "",
+      teamLeadIds: getUserTeamLeads(u).map((tl) => String(tl.id)),
       allowLinkLogAccess: u.allowLinkLogAccess,
       approved: hasLeft ? false : Boolean(u.approved),
       hasLeftCompany: hasLeft,
@@ -688,7 +700,7 @@ export default function UsersPage() {
 
       const payload: any = {
         ...form,
-        ...(isGlobalOrGuestFormRole ? { siteIds: [], siteRolesMap: {}, teamLeadId: "" } : {}),
+        ...(isGlobalOrGuestFormRole ? { siteIds: [], siteRolesMap: {}, teamLeadIds: [] } : {}),
         creatorId: currentUserId,
         ...(shouldOmitSiteAccessOnAdminEdit ? {} : { siteAccess }),
       };
@@ -745,9 +757,11 @@ export default function UsersPage() {
   // ─────────────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     return users.filter((u) => {
+      const userTls = getUserTeamLeads(u);
+
       // Permission filter
       if (currentUserRole === "ADMIN" && u.role === "SUPER_ADMIN") return false;
-      if (currentUserRole === "TEAM_LEAD" && u.teamLead?.id !== currentUserId) return false;
+      if (currentUserRole === "TEAM_LEAD" && !userTls.some((tl) => tl.id === currentUserId)) return false;
 
       // Role filter
       if (roleFilter !== "ALL" && u.role !== roleFilter) return false;
@@ -761,8 +775,8 @@ export default function UsersPage() {
       // Team Lead filter
       if (tlFilter !== "ALL") {
         if (tlFilter === "NONE") {
-          if (u.role === "WRITER" && u.teamLead) return false;
-        } else if (String(u.teamLead?.id) !== tlFilter) {
+          if (u.role === "WRITER" && userTls.length > 0) return false;
+        } else if (!userTls.some((tl) => String(tl.id) === tlFilter)) {
           return false;
         }
       }
@@ -777,8 +791,8 @@ export default function UsersPage() {
       if (search.trim()) {
         const siteNames = u.siteAccess?.map((sa) => sa.site.name) || [];
         const roleName = u.role ? ROLE_LABELS[u.role] || u.role : "";
-        const tlName = u.teamLead?.name || "";
-        const isMatch = fuzzyMatchAny([u.name, u.email, roleName, tlName, ...siteNames], search);
+        const tlNames = userTls.map((tl) => tl.name);
+        const isMatch = fuzzyMatchAny([u.name, u.email, roleName, ...tlNames, ...siteNames], search);
         if (!isMatch) return false;
       }
 
@@ -1322,25 +1336,35 @@ export default function UsersPage() {
                         )}
                       </div>
                       {isWriter ? (
-                        u.teamLead ? (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
-                            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-bold text-[9px] shrink-0">
-                              {getInitials(u.teamLead.name)}
+                        (() => {
+                          const writerTls = getUserTeamLeads(u);
+                          return writerTls.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {writerTls.map((tl) => (
+                                <div
+                                  key={tl.id}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 max-w-full"
+                                >
+                                  <div className="w-5 h-5 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-bold text-[8px] shrink-0">
+                                    {getInitials(tl.name)}
+                                  </div>
+                                  <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate">
+                                    {tl.name}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate">
-                              {u.teamLead.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="px-3 py-2 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-[11px] text-amber-700 dark:text-amber-300 font-semibold flex items-center justify-between">
-                            <span>No TL Assigned</span>
-                            {isAdminOrSuperAdmin && (
-                              <button onClick={() => handleOpenMigrateTl(u)} className="underline text-[10px] font-bold cursor-pointer">
-                                Assign
-                              </button>
-                            )}
-                          </div>
-                        )
+                          ) : (
+                            <div className="px-3 py-2 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-[11px] text-amber-700 dark:text-amber-300 font-semibold flex items-center justify-between">
+                              <span>No TL Assigned</span>
+                              {isAdminOrSuperAdmin && (
+                                <button onClick={() => handleOpenMigrateTl(u)} className="underline text-[10px] font-bold cursor-pointer">
+                                  Assign
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()
                       ) : isLead ? (
                         <div className="px-3 py-2 rounded-xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 text-[11px] text-teal-700 dark:text-teal-300 font-semibold flex items-center justify-between">
                           <span>Team Leader</span>
@@ -1547,37 +1571,45 @@ export default function UsersPage() {
                       </td>
 
                       {/* Team Lead */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      <td className="px-4 py-3.5">
                         {isWriter ? (
-                          u.teamLead ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-slate-700 dark:text-slate-300">
-                                {u.teamLead.name}
-                              </span>
-                              {isAdminOrSuperAdmin && (
-                                <button
-                                  onClick={() => handleOpenMigrateTl(u)}
-                                  className="text-[10px] font-bold text-[#6D8196] hover:underline cursor-pointer"
-                                >
-                                  (Migrate)
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                                No TL
-                              </span>
-                              {isAdminOrSuperAdmin && (
-                                <button
-                                  onClick={() => handleOpenMigrateTl(u)}
-                                  className="text-[10px] font-bold text-[#6D8196] hover:underline cursor-pointer"
-                                >
-                                  (Assign)
-                                </button>
-                              )}
-                            </div>
-                          )
+                          (() => {
+                            const writerTls = getUserTeamLeads(u);
+                            return writerTls.length > 0 ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {writerTls.map((tl) => (
+                                  <span
+                                    key={tl.id}
+                                    className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/50 font-bold text-[11px] text-emerald-700 dark:text-emerald-300 whitespace-nowrap"
+                                  >
+                                    {tl.name}
+                                  </span>
+                                ))}
+                                {isAdminOrSuperAdmin && (
+                                  <button
+                                    onClick={() => handleOpenMigrateTl(u)}
+                                    className="text-[10px] font-bold text-[#6D8196] hover:underline cursor-pointer whitespace-nowrap"
+                                  >
+                                    (Edit)
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                                  No TL
+                                </span>
+                                {isAdminOrSuperAdmin && (
+                                  <button
+                                    onClick={() => handleOpenMigrateTl(u)}
+                                    className="text-[10px] font-bold text-[#6D8196] hover:underline cursor-pointer"
+                                  >
+                                    (Assign)
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()
                         ) : u.role === "TEAM_LEAD" ? (
                           <span className="text-teal-600 dark:text-teal-400 font-bold">
                             Lead ({u.teamMembers?.length || 0} writers)
@@ -1724,9 +1756,9 @@ export default function UsersPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                    Migrate Team Lead
+                    Assign Team Leads
                   </h3>
-                  <p className="text-[11px] text-slate-400">Reassign writer to a new lead</p>
+                  <p className="text-[11px] text-slate-400">Select one or more Team Leads for this writer</p>
                 </div>
               </div>
               <button
@@ -1739,49 +1771,88 @@ export default function UsersPage() {
 
             <div className="p-6 space-y-4 text-xs">
               {/* Target User Info */}
-              <div className="p-3 rounded-2xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between gap-3">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Writer</span>
                   <p className="font-black text-slate-800 dark:text-white text-sm">
                     {migrateTlUser.name}
                   </p>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Current TL</span>
-                  <p className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
-                    {migrateTlUser.teamLead?.name || "None (Unassigned)"}
+                <div className="text-right min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Current TLs</span>
+                  <p className="font-bold text-emerald-600 dark:text-emerald-400 text-xs truncate max-w-[200px]">
+                    {getUserTeamLeads(migrateTlUser).map((tl) => tl.name).join(", ") || "None (Unassigned)"}
                   </p>
                 </div>
               </div>
 
-              {/* Select New Team Lead */}
+              {/* Multi-Select Team Leads */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Select New Team Lead
-                </label>
-                <CustomSelect
-                  value={selectedNewTlId}
-                  onChange={(val) => setSelectedNewTlId(val)}
-                  options={[
-                    { value: "", label: "Remove Team Lead (Unassign)" },
-                    ...teamLeads.map((tl) => ({
-                      value: String(tl.id),
-                      label: `${tl.name} (${tl.teamMembers?.length || 0} writers)`,
-                    })),
-                  ]}
-                  placeholder="Select a Team Lead..."
-                  searchable={teamLeads.length > 4}
-                  searchPlaceholder="Search team lead..."
-                  className="w-full"
-                  triggerClassName="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white font-semibold"
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Select Team Leads ({selectedNewTlIds.length} Selected)
+                  </label>
+                  {selectedNewTlIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedNewTlIds([])}
+                      className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-56 overflow-y-auto space-y-1.5 p-2 rounded-2xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
+                  {teamLeads.length === 0 ? (
+                    <p className="text-center py-4 text-slate-400 italic">No Team Leads available</p>
+                  ) : (
+                    teamLeads.map((tl) => {
+                      const tlIdStr = String(tl.id);
+                      const isChecked = selectedNewTlIds.includes(tlIdStr);
+                      return (
+                        <button
+                          key={tl.id}
+                          type="button"
+                          onClick={() =>
+                            setSelectedNewTlIds((prev) =>
+                              prev.includes(tlIdStr)
+                                ? prev.filter((id) => id !== tlIdStr)
+                                : [...prev, tlIdStr]
+                            )
+                          }
+                          className={`w-full px-3 py-2 rounded-xl border text-left flex items-center justify-between gap-2 transition cursor-pointer ${
+                            isChecked
+                              ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200"
+                              : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition ${
+                                isChecked
+                                  ? "bg-emerald-600 border-emerald-600 text-white"
+                                  : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                              }`}
+                            >
+                              {isChecked && <Check className="w-3 h-3" />}
+                            </span>
+                            <span className="font-bold truncate">{tl.name}</span>
+                          </div>
+                          <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+                            {tl.teamMembers?.length || 0} writers
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
 
               <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 text-[11px] text-blue-700 dark:text-blue-300 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <p>
-                  Migrating this writer will redirect future article review requests and TL
-                  commission tracking to the newly assigned Team Lead.
+                  All selected Team Leads will receive notifications, calendar access, and review
+                  permissions for this writer&apos;s articles.
                 </p>
               </div>
             </div>
@@ -1799,7 +1870,7 @@ export default function UsersPage() {
                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowRightLeft className="w-3.5 h-3.5" />
-                <span>{migratingTl ? "Migrating..." : "Confirm Migration"}</span>
+                <span>{migratingTl ? "Saving..." : "Save Team Leads"}</span>
               </button>
             </div>
           </div>
@@ -2317,7 +2388,7 @@ export default function UsersPage() {
                           return {
                             ...prev,
                             role: val,
-                            teamLeadId: "",
+                            teamLeadIds: [],
                             siteIds: [],
                             siteRolesMap: {},
                           };
@@ -2333,7 +2404,7 @@ export default function UsersPage() {
                         return {
                           ...prev,
                           role: val,
-                          teamLeadId: nextRole === "WRITER" ? prev.teamLeadId : "",
+                          teamLeadIds: nextRole === "WRITER" ? prev.teamLeadIds : [],
                           siteRolesMap: nextMap,
                         };
                       });
@@ -2359,20 +2430,60 @@ export default function UsersPage() {
 
                 {form.role === "WRITER" ? (
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                      Assign Team Lead
-                    </label>
-                    <CustomSelect
-                      value={form.teamLeadId}
-                      onChange={(val) => setForm({ ...form, teamLeadId: val })}
-                      placeholder="No Team Lead"
-                      options={[
-                        { value: "", label: "No Team Lead" },
-                        ...teamLeads.map((tl) => ({ value: String(tl.id), label: tl.name })),
-                      ]}
-                      className="w-full"
-                      triggerClassName="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white font-semibold"
-                    />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Assign Team Leads ({form.teamLeadIds.length} Selected)
+                      </label>
+                      {form.teamLeadIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, teamLeadIds: [] })}
+                          className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-36 overflow-y-auto p-2 rounded-xl bg-[#FAF9F5] dark:bg-slate-850 border border-slate-200 dark:border-slate-800 flex flex-wrap gap-1.5">
+                      {teamLeads.length === 0 ? (
+                        <span className="text-[11px] text-slate-400 italic px-1.5 py-1">No Team Leads available</span>
+                      ) : (
+                        teamLeads.map((tl) => {
+                          const tlIdStr = String(tl.id);
+                          const isSelected = form.teamLeadIds.includes(tlIdStr);
+                          return (
+                            <button
+                              key={tl.id}
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  teamLeadIds: prev.teamLeadIds.includes(tlIdStr)
+                                    ? prev.teamLeadIds.filter((id) => id !== tlIdStr)
+                                    : [...prev.teamLeadIds, tlIdStr],
+                                }))
+                              }
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400"
+                              }`}
+                            >
+                              <span
+                                className={`w-3.5 h-3.5 rounded flex items-center justify-center border ${
+                                  isSelected
+                                    ? "bg-white/20 border-white/40 text-white"
+                                    : "border-slate-300 dark:border-slate-600"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-2.5 h-2.5" />}
+                              </span>
+                              <span>{tl.name}</span>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="hidden sm:block" />

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { extractWriterTeamLeads, isWriterAssignedToTlFilter } from "@/lib/team-lead-helpers";
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,10 +29,10 @@ export async function GET(req: NextRequest) {
 
     if (isAdminOrSuperAdmin) {
       if (requestedUserId && requestedUserId !== "all" && requestedUserId !== callerId) {
-        whereClause.teamLeadId = requestedUserId;
+        Object.assign(whereClause, isWriterAssignedToTlFilter(requestedUserId));
       }
     } else {
-      whereClause.teamLeadId = callerId;
+      Object.assign(whereClause, isWriterAssignedToTlFilter(callerId));
     }
 
     // Fetch team members (writers) and their articles
@@ -46,6 +47,16 @@ export async function GET(req: NextRequest) {
           select: {
             id: true,
             name: true,
+          },
+        },
+        writerTeamLeads: {
+          select: {
+            teamLead: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
         articles: {
@@ -89,12 +100,14 @@ export async function GET(req: NextRequest) {
       const avgArticlesPerDay = Number((totalArticles / daysSinceCreated).toFixed(2));
       const avgArticlesPerWeek = Number((totalArticles / weeksSinceCreated).toFixed(2));
 
+      const { teamLead, teamLeads } = extractWriterTeamLeads(member);
       return {
         id: member.id,
         name: member.name,
         email: member.email,
         createdAt: member.createdAt,
-        teamLead: member.teamLead ? { id: member.teamLead.id, name: member.teamLead.name } : null,
+        teamLead,
+        teamLeads,
         activeArticle: activeArticle
           ? {
               id: activeArticle.id,

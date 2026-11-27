@@ -5,6 +5,7 @@ import { sendRealtimeNotification } from "@/lib/notifier";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { delByPattern } from "@/lib/redis";
+import { getWriterTeamLeadIds } from "@/lib/team-lead-helpers";
 
 // POST /api/approvals - Team Lead approves/rejects edit request on an approved article
 export async function POST(req: NextRequest) {
@@ -32,13 +33,21 @@ export async function POST(req: NextRequest) {
       where: { id: targetArticleId },
       include: {
         product: { select: { name: true } },
-        writer: { select: { id: true, name: true, teamLeadId: true } },
+        writer: {
+          select: {
+            id: true,
+            name: true,
+            teamLeadId: true,
+            writerTeamLeads: { select: { teamLeadId: true } },
+          },
+        },
       },
     });
     if (!article) return NextResponse.json({ error: "Article not found" }, { status: 404 });
 
     if (userRole === "TEAM_LEAD" && article.writerId && article.writerId !== approvedById) {
-      if (article.writer?.teamLeadId && article.writer.teamLeadId !== approvedById) {
+      const writerTlIds = getWriterTeamLeadIds(article.writer);
+      if (writerTlIds.length > 0 && !writerTlIds.includes(approvedById)) {
         return NextResponse.json({ error: "Access denied: This writer is not assigned to your team." }, { status: 403 });
       }
     }
@@ -193,6 +202,7 @@ export async function GET() {
       OR: [
         { approvedById: userId },
         { article: { writer: { teamLeadId: userId } } },
+        { article: { writer: { writerTeamLeads: { some: { teamLeadId: userId } } } } },
       ],
     } : {},
     include: { approvedBy: { select: { name: true } } },

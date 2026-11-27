@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { validateUserName, sanitizeUserName } from "@/lib/user-validation";
 import { delByPattern } from "@/lib/redis";
+import { formatUserWithTeamRelations, parseIncomingTeamLeadIds } from "@/lib/team-lead-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -305,7 +306,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
     const body = await req.json();
-    const { name, email, role, image, siteIds, allowLinkLogAccess, teamLeadId, approved, hasLeftCompany, commissionToPartyFund } = body;
+    const { name, email, role, image, siteIds, allowLinkLogAccess, approved, hasLeftCompany, commissionToPartyFund } = body;
+    const incomingTeamLeadIds = parseIncomingTeamLeadIds(body);
 
     if (role !== undefined && role !== null && !VALID_ROLES.has(String(role).toUpperCase())) {
       return NextResponse.json({ error: `Invalid role: ${role}` }, { status: 400 });
@@ -372,7 +374,7 @@ export async function PATCH(
       }
     }
 
-    // Non-admin cannot modify role, approval, or site access
+    // Non-admin cannot modify role, approval, team leads, or site access
     if (
       !isAdmin &&
       (normalizedRequestedRole !== undefined ||
@@ -380,6 +382,7 @@ export async function PATCH(
         siteIds !== undefined ||
         body.siteAccess !== undefined ||
         allowLinkLogAccess !== undefined ||
+        incomingTeamLeadIds !== undefined ||
         hasLeftCompany !== undefined ||
         commissionToPartyFund !== undefined)
     ) {
@@ -531,34 +534,36 @@ export async function PATCH(
       };
     }
 
-    // Resolve teamLeadId updates cleanly (supports migrating, unassigning, and role transitions)
-    let resolvedTeamLeadId: string | null | undefined = undefined;
+    // Resolve teamLeadIds updates cleanly (supports multiple TLs, migrating, unassigning, and role transitions)
+    let resolvedTeamLeadIds: string[] | undefined = undefined;
     if (newRole !== "WRITER") {
-      resolvedTeamLeadId = null;
-    } else if (teamLeadId !== undefined) {
-      const parsedTl = teamLeadId && teamLeadId !== "none" && teamLeadId !== "" ? String(teamLeadId).trim() : null;
-      if (parsedTl !== null) {
-        if (!parsedTl) {
-          return NextResponse.json({ error: "Invalid Team Lead selected." }, { status: 400 });
-        }
-        if (parsedTl === targetId) {
-          return NextResponse.json({ error: "A user cannot be assigned as their own Team Lead." }, { status: 400 });
-        }
+      resolvedTeamLeadIds = [];
+    } else if (incomingTeamLeadIds !== undefined) {
+      if (incomingTeamLeadIds.includes(targetId)) {
+        return NextResponse.json({ error: "A user cannot be assigned as their own Team Lead." }, { status: 400 });
       }
-      resolvedTeamLeadId = parsedTl;
+      resolvedTeamLeadIds = incomingTeamLeadIds;
     }
 
-    const updated = await prisma.user.update({
+    const updatedRaw = await prisma.user.update({
       where: { id: targetId },
       data: {
         ...(finalSanitizedName ? { name: finalSanitizedName } : {}),
         ...(image !== undefined ? { image } : {}),
         ...(resolvedRole ? { role: resolvedRole as "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST" } : {}),
         allowLinkLogAccess: newRole === "WRITER" ? (allowLinkLogAccess !== undefined ? !!allowLinkLogAccess : undefined) : false,
-        ...(resolvedTeamLeadId !== undefined
-          ? resolvedTeamLeadId
-            ? { teamLead: { connect: { id: resolvedTeamLeadId } } }
-            : { teamLead: { disconnect: true } }
+        ...(resolvedTeamLeadIds !== undefined
+          ? {
+              ...(resolvedTeamLeadIds[0]
+                ? { teamLead: { connect: { id: resolvedTeamLeadIds[0] } } }
+                : { teamLead: { disconnect: true } }),
+              writerTeamLeads: {
+                deleteMany: {},
+                ...(resolvedTeamLeadIds.length > 0
+                  ? { create: resolvedTeamLeadIds.map((tlId) => ({ teamLeadId: tlId })) }
+                  : {}),
+              },
+            }
           : {}),
         ...(finalApproved !== undefined ? { approved: finalApproved } : {}),
         ...(finalHasLeftCompany !== undefined ? { hasLeftCompany: finalHasLeftCompany } : {}),
@@ -569,8 +574,11 @@ export async function PATCH(
         siteAccess: { include: { site: { select: { id: true, name: true } } } },
         teamLead: { select: { id: true, name: true } },
         teamMembers: { select: { id: true, name: true } },
+        writerTeamLeads: { include: { teamLead: { select: { id: true, name: true } } } },
+        teamLeadWriters: { include: { writer: { select: { id: true, name: true } } } },
       },
     });
+    const updated = formatUserWithTeamRelations(updatedRaw);
 
     // Cascade display name update across notifications, link logs, history records, and products
     if (finalSanitizedName && targetUser.name && finalSanitizedName !== targetUser.name) {

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { normalizeProductFirstSales } from "@/app/api/commissions/route";
+import { extractWriterTeamLeads } from "@/lib/team-lead-helpers";
 
 export async function GET(req: NextRequest) {
   try {
@@ -46,6 +47,9 @@ export async function GET(req: NextRequest) {
         hasLeftCompany: true,
         commissionToPartyFund: true,
         teamLead: { select: { id: true, name: true } },
+        writerTeamLeads: {
+          select: { teamLead: { select: { id: true, name: true } } },
+        },
       },
       orderBy: { name: "asc" },
     });
@@ -177,6 +181,7 @@ export async function GET(req: NextRequest) {
         else paymentStatus = "PENDING";
       }
 
+      const { teamLeads } = extractWriterTeamLeads(user);
       return {
         id: user.id,
         name: user.name,
@@ -185,7 +190,7 @@ export async function GET(req: NextRequest) {
         image: user.image,
         hasLeftCompany: user.hasLeftCompany || false,
         commissionToPartyFund: user.commissionToPartyFund || false,
-        teamLeadName: user.teamLead?.name || null,
+        teamLeadName: teamLeads.length > 0 ? teamLeads.map((tl) => tl.name).join(", ") : null,
         firstSalesCount,
         firstSalesAmount: parseFloat(firstSalesAmount.toFixed(2)),
         resalesCount,

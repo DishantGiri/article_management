@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
       OR: [
         { writerId: userId },
         { writer: { teamLeadId: userId } },
+        { writer: { writerTeamLeads: { some: { teamLeadId: userId } } } },
         { status: "PENDING" },
       ],
     });

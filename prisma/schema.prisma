@@ -107,12 +107,16 @@ model User {
   // Notifications sent (by team lead)
   notificationsSent Notification[] @relation("NotificationSender")
 
-  // Team Lead assigned to this user (for Writers)
+  // Team Lead assigned to this user (for Writers) — primary/legacy FK kept in sync with first WriterTeamLead
   teamLeadId String?
   teamLead   User?   @relation("TeamMembers", fields: [teamLeadId], references: [id])
 
-  // Writers assigned to this Team Lead
+  // Writers assigned to this Team Lead (legacy 1-to-many)
   teamMembers User[] @relation("TeamMembers")
+
+  // Many-to-many Team Lead assignments (one writer can have multiple TLs)
+  writerTeamLeads WriterTeamLead[] @relation("WriterToTeamLeads")
+  teamLeadWriters WriterTeamLead[] @relation("TeamLeadToWriters")
 
   // Article histories updated by this user
   articleHistories ArticleHistory[] @relation("ArticleHistoryUpdatedBy")
@@ -124,6 +128,21 @@ model User {
 
   // Trendmap products added manually by this user
   trendmapProductsAdded TrendmapProduct[] @relation("TrendmapProductAddedBy")
+}
+
+// Many-to-many join between Writer and Team Lead (one writer can have multiple TLs)
+model WriterTeamLead {
+  id         String   @id @default(cuid())
+  writerId   String
+  teamLeadId String
+  assignedAt DateTime @default(now())
+
+  writer   User @relation("WriterToTeamLeads", fields: [writerId], references: [id], onDelete: Cascade)
+  teamLead User @relation("TeamLeadToWriters", fields: [teamLeadId], references: [id], onDelete: Cascade)
+
+  @@unique([writerId, teamLeadId])
+  @@index([writerId])
+  @@index([teamLeadId])
 }
 
 // ─────────────────────────────────────────────

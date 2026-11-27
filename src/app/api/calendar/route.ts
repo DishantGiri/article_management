@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { cached } from "@/lib/redis";
+import { getWriterTeamLeadIds } from "@/lib/team-lead-helpers";
 import moment from "moment";
 import {
   adYmdToDual,
@@ -66,6 +67,7 @@ export async function GET(req: NextRequest) {
         role: true,
         image: true,
         teamLeadId: true,
+        writerTeamLeads: { select: { teamLeadId: true } },
         createdAt: true,
       },
     });
@@ -88,7 +90,7 @@ export async function GET(req: NextRequest) {
       }
     } else if (sessionUserRole === "TEAM_LEAD") {
       const isSelf = targetUserId === sessionUserId;
-      const isTeamMember = targetUser.teamLeadId === sessionUserId;
+      const isTeamMember = getWriterTeamLeadIds(targetUser).includes(sessionUserId);
       if (!isSelf && !isTeamMember) {
         return NextResponse.json(
           { error: "Access Denied: You can only view calendars for your team members and yourself." },
@@ -131,6 +133,7 @@ export async function GET(req: NextRequest) {
           OR: [
             { id: sessionUserId },
             { teamLeadId: sessionUserId },
+            { writerTeamLeads: { some: { teamLeadId: sessionUserId } } },
           ],
         },
         select: { id: true, name: true, email: true, role: true },

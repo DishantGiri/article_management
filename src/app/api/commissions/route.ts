@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { DEFAULT_COMMISSION_TIERS } from "@/app/api/commission-settings/route";
 import { delByPattern } from "@/lib/redis";
+import { getWriterTeamLeadIds } from "@/lib/team-lead-helpers";
 
 // Helper to determine category key: NUTRA or ECOM
 export function resolveCategoryKey(catName?: string | null): "NUTRA" | "ECOM" {
@@ -509,7 +510,21 @@ export async function POST(req: NextRequest) {
         site: true,
         category: true,
         addedBy: true,
-        article: { include: { writer: true } },
+        article: {
+          include: {
+            writer: {
+              include: {
+                writerTeamLeads: { select: { teamLeadId: true } },
+              },
+            },
+            reviews: {
+              where: { approved: true },
+              orderBy: { reviewedAt: "desc" },
+              take: 1,
+              select: { reviewedById: true },
+            },
+          },
+        },
         linkLogs: { take: 1, orderBy: { addedAt: "desc" }, include: { addedBy: true } },
       },
     });
@@ -667,10 +682,17 @@ export async function POST(req: NextRequest) {
     let tlTransferred = 0;
     let tlAmount = baseTlAmount;
 
-    if (writer?.teamLeadId) {
-      // Writer has a separate assigned Team Lead - credit TL commission to them
+    const writerTlIds = getWriterTeamLeadIds(writer);
+    const approvingReviewerId = product.article?.reviews?.[0]?.reviewedById;
+    const effectiveTlId =
+      approvingReviewerId && writerTlIds.includes(approvingReviewerId)
+        ? approvingReviewerId
+        : writerTlIds[0] || null;
+
+    if (effectiveTlId) {
+      // Writer has an assigned Team Lead (prefer the TL who approved the article if multiple) - credit TL commission to them
       const tl = await prisma.user.findUnique({
-        where: { id: writer.teamLeadId },
+        where: { id: effectiveTlId },
         select: { id: true, name: true, commissionToPartyFund: true, hasLeftCompany: true, approved: true },
       });
       teamLeadId = tl?.id || null;
