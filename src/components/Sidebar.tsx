@@ -12,6 +12,7 @@ import { ArchedNotificationCard } from "./ArchedNotificationCard";
 import { isUserTargeted } from "@/lib/noticeUtils";
 import { getNotificationTargetUrl } from "@/lib/notificationRouting";
 import { getActiveWorkspace, setActiveWorkspace } from "@/lib/workspace";
+import BrandLogo from "./BrandLogo";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "LINKER" | "WRITER" | "TEAM_LEAD" | "PRODUCT_RESEARCHER" | "GUEST";
 
@@ -560,13 +561,7 @@ export default function Sidebar() {
             <Menu className="w-5 h-5" />
           </button>
           <Link href="/" className="flex items-center">
-            <div className="h-9 px-2.5 rounded-lg bg-[#111111] border border-slate-800/80 flex items-center justify-center shrink-0 shadow-2xs">
-              <img
-                src="/logo.svg"
-                alt="Article Flow"
-                className="h-8 w-auto object-contain"
-              />
-            </div>
+            <BrandLogo className="h-11 w-auto" />
           </Link>
         </div>
 
@@ -610,15 +605,9 @@ export default function Sidebar() {
         suppressHydrationWarning
       >
         {/* Logo Header */}
-        <div className="px-5 py-4 border-b border-[#CBCBCB]/40 dark:border-slate-800 flex items-center justify-between gap-2" suppressHydrationWarning>
+        <div className="px-4 py-2 border-b border-[#CBCBCB]/40 dark:border-slate-800 flex items-center justify-between gap-2" suppressHydrationWarning>
           <Link href="/" className="flex items-center flex-1 min-w-0 group cursor-pointer" suppressHydrationWarning>
-            <div className="w-full h-12 px-2 rounded-xl bg-[#111111] border border-slate-800/80 flex items-center justify-center shrink-0 group-hover:scale-[1.02] transition-transform shadow-2xs" suppressHydrationWarning>
-              <img
-                src="/logo.svg"
-                alt="Article Flow"
-                className="h-11 w-auto object-contain"
-              />
-            </div>
+            <BrandLogo className="h-16 w-auto max-w-full group-hover:scale-[1.02] transition-transform" />
           </Link>
           {/* Mobile close button */}
           <button

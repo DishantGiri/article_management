@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
 import Providers from "@/components/Providers";
@@ -10,6 +10,13 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+});
+
+const greatVibes = Great_Vibes({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-great-vibes",
 });
 
 export const metadata: Metadata = {
@@ -31,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const session = await getServerSession(authOptions);
 
   return (
-    <html lang="en" className={`font-sans h-full ${inter.variable} ${inter.className}`} suppressHydrationWarning>
+    <html lang="en" className={`font-sans h-full ${inter.variable} ${greatVibes.variable} ${inter.className}`} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

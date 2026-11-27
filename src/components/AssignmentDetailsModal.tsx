@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -35,6 +35,8 @@ import {
   Layers,
   Plus,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import FormattedRemarks, { formatRemarkDate } from "@/components/FormattedRemarks";
@@ -216,6 +218,9 @@ export default function AssignmentDetailsModal({
   const [activeLogIndex, setActiveLogIndex] = useState<number>(0);
   const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
   const [startingWriting, setStartingWriting] = useState<boolean>(false);
+  const linkTabsScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLinksLeft, setCanScrollLinksLeft] = useState<boolean>(false);
+  const [canScrollLinksRight, setCanScrollLinksRight] = useState<boolean>(false);
 
   useEffect(() => {
     setMounted(true);
@@ -533,6 +538,48 @@ export default function AssignmentDetailsModal({
   useEffect(() => {
     setSelectedGeo(null);
   }, [activeLogIndex, product.id]);
+
+  const checkLinkTabsScroll = useCallback(() => {
+    const el = linkTabsScrollRef.current;
+    if (!el) {
+      setCanScrollLinksLeft(false);
+      setCanScrollLinksRight(false);
+      return;
+    }
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLinksLeft(scrollLeft > 4);
+    setCanScrollLinksRight(scrollLeft + clientWidth < scrollWidth - 4);
+  }, []);
+
+  const scrollLinkTabs = (direction: "left" | "right") => {
+    const el = linkTabsScrollRef.current;
+    if (!el) return;
+    const scrollAmount = 260;
+    el.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
+    setTimeout(checkLinkTabsScroll, 280);
+  };
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(checkLinkTabsScroll);
+    window.addEventListener("resize", checkLinkTabsScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", checkLinkTabsScroll);
+    };
+  }, [checkLinkTabsScroll, linkLogs.length]);
+
+  useEffect(() => {
+    const el = linkTabsScrollRef.current;
+    if (!el) return;
+    const activeEl = el.querySelector<HTMLElement>('[data-active="true"]');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+      setTimeout(checkLinkTabsScroll, 280);
+    }
+  }, [activeLogIndex, checkLinkTabsScroll]);
 
   const activeGeoEntry = validCurrentGeos.find(
     (g) => g.geo.toUpperCase() === selectedGeo?.toUpperCase()
@@ -1466,46 +1513,76 @@ export default function AssignmentDetailsModal({
 
             {/* Multiple Link Logs Tabs Selector */}
             {linkLogs.length > 1 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                {linkLogs.map((log, idx) => {
-                  const statusStyle = LINK_STATUS_STYLES[log.status] || LINK_STATUS_STYLES.REQUESTED;
-                  const isActive = activeLogIndex === idx;
-                  const logGeos = getValidLogGeos(log);
-                  return (
-                    <button
-                      key={`${log.id}-${idx}`}
-                      onClick={() => setActiveLogIndex(idx)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap border ${isActive
-                          ? "bg-[#6D8196] text-white border-[#6D8196] shadow-xs"
-                          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
-                        }`}
-                    >
-                      <span>{log.affiliateName || `Network #${log.id}`}</span>
-                      {log.siteName && (
-                        <span
-                          className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${isActive ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                            }`}
-                        >
-                          {log.siteName}
-                        </span>
-                      )}
-                      {logGeos.length > 0 && (
-                        <span
-                          className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${isActive ? "bg-white/20 text-white" : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300"
-                            }`}
-                        >
-                          {logGeos.length} Geo{logGeos.length !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                      <span
-                        className={`text-[9px] px-1.5 py-0.2 rounded-full font-extrabold ${isActive ? "bg-white/20 text-white" : `${statusStyle.bg} ${statusStyle.text}`
+              <div className="flex items-center gap-1.5 pb-1">
+                <button
+                  type="button"
+                  onClick={() => scrollLinkTabs("left")}
+                  disabled={!canScrollLinksLeft}
+                  aria-label="Scroll link configurations left"
+                  title="Scroll left"
+                  className="w-7 h-7 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-[#6D8196] flex items-center justify-center shrink-0 transition cursor-pointer shadow-2xs disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:dark:hover:bg-slate-800"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div
+                  ref={linkTabsScrollRef}
+                  onScroll={checkLinkTabsScroll}
+                  className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-1 min-w-0"
+                >
+                  {linkLogs.map((log, idx) => {
+                    const statusStyle = LINK_STATUS_STYLES[log.status] || LINK_STATUS_STYLES.REQUESTED;
+                    const isActive = activeLogIndex === idx;
+                    const logGeos = getValidLogGeos(log);
+                    return (
+                      <button
+                        key={`${log.id}-${idx}`}
+                        type="button"
+                        data-active={isActive ? "true" : "false"}
+                        onClick={() => setActiveLogIndex(idx)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 border ${isActive
+                            ? "bg-[#6D8196] text-white border-[#6D8196] shadow-xs"
+                            : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
                           }`}
                       >
-                        {log.status}
-                      </span>
-                    </button>
-                  );
-                })}
+                        <span>{log.affiliateName || `Network #${log.id}`}</span>
+                        {log.siteName && (
+                          <span
+                            className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${isActive ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                              }`}
+                          >
+                            {log.siteName}
+                          </span>
+                        )}
+                        {logGeos.length > 0 && (
+                          <span
+                            className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${isActive ? "bg-white/20 text-white" : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300"
+                              }`}
+                          >
+                            {logGeos.length} Geo{logGeos.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded-full font-extrabold ${isActive ? "bg-white/20 text-white" : `${statusStyle.bg} ${statusStyle.text}`
+                            }`}
+                        >
+                          {log.status}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => scrollLinkTabs("right")}
+                  disabled={!canScrollLinksRight}
+                  aria-label="Scroll link configurations right"
+                  title="Scroll right"
+                  className="w-7 h-7 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-[#6D8196] flex items-center justify-center shrink-0 transition cursor-pointer shadow-2xs disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:dark:hover:bg-slate-800"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             )}
 

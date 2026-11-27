@@ -13,6 +13,7 @@ import {
   Lock,
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
+import BrandLogo from "@/components/BrandLogo";
 
 function SignInContent() {
   const searchParams = useSearchParams();
@@ -44,14 +45,8 @@ function SignInContent() {
       {/* LEFT SHOWCASE PANE */}
       <div className="lg:col-span-7 bg-[#FAF9F5] p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-[#CBCBCB]/60 flex flex-col justify-between space-y-8">
         <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="h-14 px-4 rounded-2xl bg-[#111111] border border-slate-800/80 flex items-center justify-center shadow-xs">
-              <img
-                src="/logo.svg"
-                alt="Article Flow"
-                className="h-12 w-auto object-contain"
-              />
-            </div>
+          <div className="flex items-center">
+            <BrandLogo className="h-16 w-auto" forceLight />
           </div>
 
           <div className="space-y-3">
