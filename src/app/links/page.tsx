@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState, useMemo, Suspense } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { Search, Plus, Download, Tag, Globe, MoreHorizontal, ExternalLink, AlertTriangle, Network, Edit, Trash2, Clock, Info, X, ChevronDown, Copy, Check, GitCompare, Users, Link2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { toast } from "react-hot-toast";
@@ -19,7 +19,6 @@ const EditLinkModal = dynamic(() => import("@/components/EditLinkModal"), { ssr:
 const AffiliateManageModal = dynamic(() => import("@/components/AffiliateManageModal"), { ssr: false });
 const GeoManageModal = dynamic(() => import("@/components/GeoManageModal"), { ssr: false });
 const LinkHistoryModal = dynamic(() => import("@/components/LinkHistoryModal"), { ssr: false });
-import { fuzzyMatchAny } from "@/lib/fuzzy";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getCountryFlag } from "@/lib/geo-constants";
@@ -88,10 +87,24 @@ function LinksPageContent() {
   const [links, setLinks] = useState<LinkLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(urlSearch || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch || "");
   const [isExact, setIsExact] = useState(urlExact);
   const [statusFilter, setStatusFilter] = useState(urlStatus || "");
   const [showOnlyDeadLinks, setShowOnlyDeadLinks] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  const [metaCounts, setMetaCounts] = useState({
+    total: 0,
+    flagged: 0,
+    pending: 0,
+    accepted: 0,
+    missingBridge: 0,
+    uniqueAdders: 0,
+  });
+  const [uniqueAdders, setUniqueAdders] = useState<Array<{ id: string; name: string }>>([]);
+  const [byUserRefreshTrigger, setByUserRefreshTrigger] = useState(0);
+  const [metaLoaded, setMetaLoaded] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
   const [isAffiliateModalOpen, setIsAffiliateModalOpen] = useState(false);
   const [isGeoModalOpen, setIsGeoModalOpen] = useState(false);
@@ -145,11 +158,14 @@ function LinksPageContent() {
     const exact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
     if (t === "compare") {
       setActiveMainTab("compare");
+    } else if (t === "by-user") {
+      setActiveMainTab("by-user");
     } else if (t === "links") {
       setActiveMainTab("links");
     }
     if (s !== null) {
       setSearch(s);
+      setDebouncedSearch(s);
       setIsExact(exact);
       setStatusFilter(st || "");
       setUserFilter("");
@@ -166,38 +182,61 @@ function LinksPageContent() {
     }
   }, [searchParams]);
 
-  const handleExportCSV = () => {
-    const headers = ["ID", "Product", "Site", "Article Link", "Bridge Page", "Affiliate Name", "Affiliate Link", "Geos", "Status", "Added By", "Date", "Remarks"];
-    const rows = sortedFiltered.map((l) => [
-      l.id.toString(),
-      l.product.name,
-      l.product.site?.name || "",
-      l.product.article?.articleLink || "",
-      l.bridgePageLink || "",
-      l.affiliateName,
-      l.affiliateLink,
-      (l.geos || []).map(g => g.geo).join("; "),
-      l.status,
-      l.addedBy?.name || "",
-      new Date(l.addedAt).toLocaleDateString(),
-      l.linkerRemarks || "",
-    ]);
+  const handleExportCSV = async () => {
+    if (exportingCsv) return;
+    setExportingCsv(true);
+    const toastId = toast.loading("Preparing CSV export...");
+    try {
+      const params = new URLSearchParams({ export: "true" });
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+      if (isExact) params.set("exact", "true");
+      if (statusFilter) params.set("status", statusFilter);
+      if (userFilter) params.set("addedById", userFilter);
+      if (showOnlyDeadLinks) params.set("deadOnly", "true");
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.map(val => `"${(val || "").replace(/"/g, '""')}"`).join(","))
-    ].join("\n");
+      const res = await fetch(`/api/links?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to export links");
+      const rowsData: LinkLog[] = await res.json();
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `links_export_${new Date().toISOString().slice(0, 10)}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("CSV exported successfully!");
+      const headers = ["ID", "Product", "Site", "Article Link", "Bridge Page", "Affiliate Name", "Affiliate Link", "Geos", "Status", "Added By", "Date", "Remarks"];
+      const rows = (Array.isArray(rowsData) ? rowsData : []).map((l) => [
+        l.id.toString(),
+        l.product.name,
+        l.product.site?.name || "",
+        l.product.article?.articleLink || "",
+        l.bridgePageLink || "",
+        l.affiliateName,
+        l.affiliateLink,
+        (l.geos || []).map((g) => g.geo).join("; "),
+        l.status,
+        l.addedBy?.name || "",
+        new Date(l.addedAt).toLocaleDateString(),
+        l.linkerRemarks || "",
+      ]);
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row) => row.map((val) => `"${(val || "").replace(/"/g, '""')}"`).join(",")),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `links_export_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${rows.length} links!`, { id: toastId });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to export CSV", { id: toastId });
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
   const handleDeleteLink = async (linkId: string, allIds?: string[]) => {
@@ -226,195 +265,140 @@ function LinksPageContent() {
   };
 
   const [stats, setStats] = useState<any>(null);
+  const [userFilter, setUserFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  const refreshLinksData = (showLoading = false) => {
+  // Debounce search input cleanly
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchAuxData = useCallback(async () => {
     if (!session?.user?.id) return;
     const uId = session.user.id;
     const uRole = getActiveWorkspace(session.user.role, (session.user as any)?.roles);
     setCurrentUserRole(uRole);
 
-    if (showLoading) setLoading(true);
-
-    Promise.all([
-      fetch(`/api/links?userId=${uId}`).then((r) => (r.ok ? r.json() : [])),
-      fetch(`/api/dashboard?userId=${uId}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/products?userId=${uId}&unlinked=true&slim=true`).then((r) => (r.ok ? r.json() : [])),
-    ]).then(([linksData, dashboardData, productsData]) => {
-      const rawArr = Array.isArray(linksData) ? linksData : [];
-      // Consolidate duplicate entries for same product so one product is displayed with all its geo links
-      const map = new Map<string, any>();
-      for (const item of rawArr) {
-        const key = item.productId ? `prod-${item.productId}` : `link-${item.id}`;
-        if (!map.has(key)) {
-          map.set(key, {
-            ...item,
-            allLinkIds: [item.id],
-            geos: [...(item.geos || []).map((g: any) => ({
-              ...g,
-              affiliateLink: g.affiliateLink || item.affiliateLink || "",
-              affiliateName: g.affiliateName || item.affiliateName || "",
-            }))],
-          });
-        } else {
-          const existing = map.get(key)!;
-          if (!existing.allLinkIds.includes(item.id)) {
-            existing.allLinkIds.push(item.id);
-          }
-          if (!existing.bridgePageLink && item.bridgePageLink) {
-            existing.bridgePageLink = item.bridgePageLink;
-          }
-          if (!existing.buyLink && item.buyLink) {
-            existing.buyLink = item.buyLink;
-          }
-          if (!existing.affiliateLink && item.affiliateLink) {
-            existing.affiliateLink = item.affiliateLink;
-          }
-          if (!existing.affiliateName && item.affiliateName) {
-            existing.affiliateName = item.affiliateName;
-          }
-          if (item.linkerRemarks && !existing.linkerRemarks?.includes(item.linkerRemarks)) {
-            existing.linkerRemarks = existing.linkerRemarks
-              ? `${existing.linkerRemarks}\n${item.linkerRemarks}`
-              : item.linkerRemarks;
-          }
-          for (const g of item.geos || []) {
-            const existingGeoIndex = existing.geos.findIndex((eg: any) => eg.geo === g.geo);
-            if (existingGeoIndex === -1) {
-              existing.geos.push({
-                ...g,
-                affiliateLink: g.affiliateLink || item.affiliateLink || "",
-                affiliateName: g.affiliateName || item.affiliateName || "",
-              });
-            } else {
-              if (!existing.geos[existingGeoIndex].affiliateLink && (g.affiliateLink || item.affiliateLink)) {
-                existing.geos[existingGeoIndex].affiliateLink = g.affiliateLink || item.affiliateLink;
-              }
-              if (!existing.geos[existingGeoIndex].affiliateName && (g.affiliateName || item.affiliateName)) {
-                existing.geos[existingGeoIndex].affiliateName = g.affiliateName || item.affiliateName;
-              }
-            }
-          }
-        }
-      }
-      const arr = Array.from(map.values());
-      setLinks(arr);
+    try {
+      const [dashboardData, productsData] = await Promise.all([
+        fetch(`/api/dashboard?userId=${uId}`).then((r) => (r.ok ? r.json() : null)),
+        fetch(`/api/products?userId=${uId}&unlinked=true&slim=true`).then((r) => (r.ok ? r.json() : [])),
+      ]);
       setStats(dashboardData);
-
       const prods = Array.isArray(productsData) ? productsData : (productsData?.products || []);
       const unlinked = prods.filter(
         (p: any) => (!p.linkLogs || p.linkLogs.length === 0) && p.site && !isResearchSite(p.site.name)
       );
       setUnlinkedProducts(unlinked);
+    } catch (err) {
+      console.error("Failed to load links aux data:", err);
+    }
+  }, [session?.user?.id, session?.user?.role]);
 
-      const editIdParam = searchParams.get("editLinkId");
-      if (editIdParam) {
-        const matched = arr.find((l: any) => String(l.id) === editIdParam);
-        if (matched) {
+  const fetchPaginatedLinks = useCallback(
+    async (options?: { showLoading?: boolean; forceMeta?: boolean }) => {
+      if (!session?.user?.id) return;
+      const showLoading = options?.showLoading ?? true;
+      const includeMeta = options?.forceMeta || !metaLoaded;
+      if (showLoading) setLoading(true);
+
+      try {
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          limit: String(itemsPerPage),
+          paginated: "true",
+        });
+        if (includeMeta) params.set("includeMeta", "true");
+        if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+        if (isExact) params.set("exact", "true");
+        if (statusFilter) params.set("status", statusFilter);
+        if (userFilter) params.set("addedById", userFilter);
+        if (showOnlyDeadLinks) params.set("deadOnly", "true");
+        if (startDate) params.set("startDate", startDate);
+        if (endDate) params.set("endDate", endDate);
+
+        const res = await fetch(`/api/links?${params.toString()}`);
+        if (!res.ok) throw new Error("Failed to load links");
+        const data = await res.json();
+
+        setLinks(Array.isArray(data.items) ? data.items : []);
+        if (data.pagination) {
+          setPagination(data.pagination);
+        }
+        if (data.meta) {
+          if (data.meta.counts) setMetaCounts(data.meta.counts);
+          if (Array.isArray(data.meta.adders)) setUniqueAdders(data.meta.adders);
+          setMetaLoaded(true);
+        }
+      } catch (err) {
+        console.error("Failed to fetch paginated links:", err);
+      } finally {
+        if (showLoading) setLoading(false);
+      }
+    },
+    [
+      session?.user?.id,
+      currentPage,
+      itemsPerPage,
+      metaLoaded,
+      debouncedSearch,
+      isExact,
+      statusFilter,
+      userFilter,
+      showOnlyDeadLinks,
+      startDate,
+      endDate,
+    ]
+  );
+
+  const refreshLinksData = useCallback(
+    (showLoading = false) => {
+      fetchPaginatedLinks({ showLoading, forceMeta: true });
+      fetchAuxData();
+      setByUserRefreshTrigger((n) => n + 1);
+    },
+    [fetchPaginatedLinks, fetchAuxData]
+  );
+
+  // Initial load of dashboard stats & unlinked products
+  useEffect(() => {
+    fetchAuxData();
+  }, [fetchAuxData]);
+
+  // Fetch paginated links whenever page or filters change
+  useEffect(() => {
+    fetchPaginatedLinks({ showLoading: true });
+  }, [fetchPaginatedLinks]);
+
+  // Open Edit modal directly if editLinkId is passed in URL
+  useEffect(() => {
+    const editIdParam = searchParams.get("editLinkId");
+    if (!editIdParam || !session?.user?.id) return;
+    fetch(`/api/links/${encodeURIComponent(editIdParam)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((matched) => {
+        if (matched && matched.id) {
           setEditingLink(matched);
         }
-      }
-    }).finally(() => {
-      if (showLoading) setLoading(false);
-    });
-  };
-
-  useEffect(() => {
-    refreshLinksData(true);
-  }, [session?.user?.id, searchParams]);
+      })
+      .catch(() => {});
+  }, [searchParams, session?.user?.id]);
 
   useEffect(() => {
     const handleWorkspaceChanged = (e: any) => {
       if (e.detail?.role) {
         setCurrentUserRole(e.detail.role.toUpperCase());
+        setMetaLoaded(false);
         refreshLinksData(false);
       }
     };
     window.addEventListener("workspace-changed", handleWorkspaceChanged);
     return () => window.removeEventListener("workspace-changed", handleWorkspaceChanged);
-  }, []);
-
-  const [userFilter, setUserFilter] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
-  const uniqueAdders = useMemo(() => {
-    return Array.from(new Set(links.map((l) => l.addedBy?.name).filter(Boolean))) as string[];
-  }, [links]);
-
-  const filtered = useMemo(() => {
-    const cleanQuery = (search || "").trim().toLowerCase();
-    const hasExactAny =
-      isExact && cleanQuery
-        ? links.some(
-            (item) =>
-              (item.product?.name || "").trim().toLowerCase() === cleanQuery ||
-              (item.product?.slug || "").trim().toLowerCase() === cleanQuery
-          )
-        : false;
-
-    return links.filter((l) => {
-      const cleanProductName = (l.product?.name || "").trim().toLowerCase();
-      const cleanProductSlug = (l.product?.slug || "").trim().toLowerCase();
-
-      let matchSearch = false;
-      if (!search) {
-        matchSearch = true;
-      } else if (isExact) {
-        if (hasExactAny) {
-          matchSearch =
-            cleanProductName === cleanQuery ||
-            cleanProductSlug === cleanQuery;
-        } else {
-          matchSearch = cleanProductName.includes(cleanQuery);
-        }
-      } else {
-        matchSearch = fuzzyMatchAny(
-          [
-            l.product?.name,
-            l.product?.slug,
-            l.affiliateName,
-            ...(l.geos || []).map((g) => g.affiliateName),
-            l.product?.site?.name,
-            String(l.id),
-            String(l.productId),
-          ],
-          search
-        );
-      }
-
-      const matchStatus = !statusFilter || (
-        statusFilter === "ISSUE"
-          ? (l.status === "ISSUE" || l.status === "NEED_TO_CHECK" || l.status === "ALERT")
-          : l.status === statusFilter
-      );
-
-      // Added By filter
-      const matchUser = !userFilter || l.addedBy?.name === userFilter;
-
-      // Date Range filter
-      let matchDate = true;
-      if (startDate) {
-        const s = new Date(startDate);
-        s.setHours(0, 0, 0, 0);
-        const d = new Date(l.addedAt);
-        if (d < s) matchDate = false;
-      }
-      if (endDate) {
-        const e = new Date(endDate);
-        e.setHours(23, 59, 59, 999);
-        const d = new Date(l.addedAt);
-        if (d > e) matchDate = false;
-      }
-
-      const matchDeadOnly = !showOnlyDeadLinks || (
-        l.status === "ISSUE" &&
-        l.linkerRemarks &&
-        /dead|down|404|broken/i.test(l.linkerRemarks)
-      );
-
-      return matchSearch && matchStatus && matchUser && matchDate && matchDeadOnly;
-    });
-  }, [links, search, isExact, statusFilter, userFilter, startDate, endDate, showOnlyDeadLinks]);
+  }, [refreshLinksData]);
 
   const activeFiltersCount = [
     Boolean(search),
@@ -426,6 +410,7 @@ function LinksPageContent() {
 
   const handleResetFilters = () => {
     setSearch("");
+    setDebouncedSearch("");
     setStatusFilter("");
     setUserFilter("");
     setStartDate("");
@@ -434,40 +419,18 @@ function LinksPageContent() {
     setCurrentPage(1);
   };
 
-  const { missingBridgeCount, flaggedLinksCount, pendingRequestsCount, acceptedLinksCount } = useMemo(() => {
-    let missing = 0;
-    let flagged = 0;
-    let pending = 0;
-    let accepted = 0;
-    for (const l of links) {
-      if (!l.bridgePageLink) missing++;
-      if (l.status === "ISSUE" || l.status === "NEED_TO_CHECK" || l.status === "ALERT") flagged++;
-      if (l.status === "REQUESTED") pending++;
-      if (l.status === "ACCEPTED") accepted++;
-    }
-    return {
-      missingBridgeCount: missing,
-      flaggedLinksCount: flagged,
-      pendingRequestsCount: pending,
-      acceptedLinksCount: accepted,
-    };
-  }, [links]);
+  const {
+    total: allLinksCount,
+    missingBridge: missingBridgeCount,
+    flagged: flaggedLinksCount,
+    pending: pendingRequestsCount,
+    accepted: acceptedLinksCount,
+    uniqueAdders: uniqueAddersCount,
+  } = metaCounts;
 
-  const sortedFiltered = useMemo(() => {
-    if (!search || !search.trim()) return filtered;
-    const q = search.trim().toLowerCase();
-    return [...filtered].sort((a, b) => {
-      const aName = (a.product?.name || "").toLowerCase().trim();
-      const bName = (b.product?.name || "").toLowerCase().trim();
-      const aExact = aName === q ? 4 : aName.startsWith(q) ? 3 : aName.includes(q) ? 2 : (a.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
-      const bExact = bName === q ? 4 : bName.startsWith(q) ? 3 : bName.includes(q) ? 2 : (b.product?.slug || "").toLowerCase().startsWith(q) ? 1 : 0;
-      if (aExact !== bExact) return bExact - aExact;
-      return 0;
-    });
-  }, [filtered, search]);
-
-  const totalPages = Math.ceil(sortedFiltered.length / itemsPerPage);
-  const paginated = sortedFiltered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = pagination.totalPages || 1;
+  const totalFilteredCount = pagination.total || 0;
+  const paginated = links;
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -485,7 +448,7 @@ function LinksPageContent() {
     return (
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 py-3 px-2 border-t border-slate-100">
         <p className="text-xs font-semibold text-slate-400">
-          Showing {sortedFiltered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, sortedFiltered.length)} of {sortedFiltered.length}
+          Showing {totalFilteredCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalFilteredCount)} of {totalFilteredCount}
         </p>
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
@@ -575,8 +538,8 @@ function LinksPageContent() {
             {activeMainTab === "compare"
               ? "Cross-site product comparison & synchronization"
               : activeMainTab === "by-user"
-              ? `Grouped link configurations across ${uniqueAdders.length} active users`
-              : `${links.length} link entries`}
+              ? `Grouped link configurations across ${uniqueAddersCount || uniqueAdders.length} active users`
+              : `${allLinksCount} link entries`}
           </p>
         </div>
         {activeMainTab === "links" && (
@@ -706,7 +669,7 @@ function LinksPageContent() {
           <span>All Links</span>
           <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${activeMainTab === "links" && !statusFilter && !showOnlyDeadLinks ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
             }`}>
-            {links.length}
+            {allLinksCount}
           </span>
         </button>
         <button
@@ -767,7 +730,7 @@ function LinksPageContent() {
           <Users className="w-4 h-4 text-blue-500" />
           <span>By User</span>
           <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-            {uniqueAdders.length}
+            {uniqueAddersCount || uniqueAdders.length}
           </span>
         </button>
         <button
@@ -793,11 +756,11 @@ function LinksPageContent() {
         <SiteProductComparison currentUserRole={currentUserRole} />
       ) : activeMainTab === "by-user" ? (
         <UserLinksView
-          links={links}
           onEditLink={(link) => setEditingLink(link)}
           onViewHistory={(link) => setHistoryLinkLog(link)}
           onViewRemarks={(data) => setViewingRemarks(data)}
           currentUserRole={currentUserRole}
+          refreshTrigger={byUserRefreshTrigger}
         />
       ) : (
         <>
@@ -829,7 +792,7 @@ function LinksPageContent() {
                   Already Added Product Links
                 </h3>
                 <span className="px-2.5 py-0.5 text-xs font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full shrink-0">
-                  {sortedFiltered.length} {sortedFiltered.length === 1 ? "Link Entry" : "Link Entries"}
+                  {totalFilteredCount} {totalFilteredCount === 1 ? "Link Entry" : "Link Entries"}
                 </span>
               </div>
               <p className="text-xs text-[#737373] dark:text-slate-400 font-medium mt-0.5">
@@ -898,7 +861,7 @@ function LinksPageContent() {
             onChange={(val) => { setUserFilter(val); setCurrentPage(1); }}
             options={[
               { value: "", label: "All Users" },
-              ...uniqueAdders.map((u) => ({ value: u, label: u })),
+              ...uniqueAdders.map((u) => ({ value: u.id, label: u.name })),
             ]}
             placeholder="All Users"
             className="w-44 shrink-0"
@@ -943,7 +906,7 @@ function LinksPageContent() {
               size="md"
             />
           </div>
-        ) : sortedFiltered.length === 0 ? (
+        ) : totalFilteredCount === 0 ? (
           <div className="p-16 text-center">
             <p className="text-slate-500 dark:text-slate-400 font-medium">No links found</p>
           </div>

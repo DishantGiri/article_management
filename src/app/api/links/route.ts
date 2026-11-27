@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { canUserAddLinkOnSite, getUserAuthorizedSiteIds, isAdmin } from "@/lib/permissions";
+import { canUserAddLinkOnSite, isAdmin } from "@/lib/permissions";
 import { isResearchSite } from "@/lib/researchSite";
 import { cached, delByPattern } from "@/lib/redis";
+import {
+  LINK_LOG_INCLUDE,
+  buildLinkLogWhere,
+  consolidateProductLinkLogs,
+  fetchPaginatedConsolidatedLinks,
+  getLinkLogsAuthScope,
+} from "@/lib/link-logs-server";
 
-// GET /api/links?productId=X
+// GET /api/links?productId=X OR server-paginated ?page=1&limit=10&...
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -15,54 +22,179 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const productId = searchParams.get("productId");
+  const pageParam = searchParams.get("page");
+  const limitParam = searchParams.get("limit");
+  const paginatedParam = searchParams.get("paginated") === "true";
+  const includeMeta = searchParams.get("includeMeta") === "true";
+  const all = searchParams.get("all") === "true" || searchParams.get("all") === "1";
+  const exportMode = searchParams.get("export") === "true" || searchParams.get("export") === "1";
+
+  const search = searchParams.get("search");
+  const exact = searchParams.get("exact") === "true" || searchParams.get("exact") === "1";
+  const status = searchParams.get("status");
+  const addedById = searchParams.get("addedById");
+  const addedByName = searchParams.get("addedBy") || searchParams.get("adder");
+  const site = searchParams.get("site");
+  const siteId = searchParams.get("siteId");
+  const deadOnly = searchParams.get("deadOnly") === "true" || searchParams.get("deadOnly") === "1";
+  const startDate = searchParams.get("startDate");
+  const endDate = searchParams.get("endDate");
 
   const userId = session.user.id;
   const userRole = session.user.role || "";
 
-  // Check database for allowLinkLogAccess flag only for WRITER
-  if (userRole === "WRITER") {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { allowLinkLogAccess: true },
+  const authScope = await getLinkLogsAuthScope(userId, userRole);
+  if (!authScope.allowed) {
+    return NextResponse.json({ error: authScope.error }, { status: authScope.status });
+  }
+  const allowedSiteIds = authScope.allowedSiteIds;
+
+  const isPaginated =
+    !all && !exportMode && (paginatedParam || pageParam !== null || limitParam !== null);
+  const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10", 10) || 10));
+
+  const scopePrefix = isAdmin(userRole) ? "global" : `user:${userId}:${userRole}`;
+
+  if (isPaginated) {
+    const pageCacheKey = `links:page:${scopePrefix}:p${page}_l${limit}:s=${search || ""}:ex=${exact ? 1 : 0}:st=${status || ""}:ab=${addedById || addedByName || ""}:site=${siteId || site || ""}:dead=${deadOnly ? 1 : 0}:sd=${startDate || ""}:ed=${endDate || ""}`;
+
+    const pageData = await cached(pageCacheKey, 30, async () => {
+      return fetchPaginatedConsolidatedLinks(
+        {
+          allowedSiteIds,
+          productId,
+          status,
+          search,
+          exact,
+          addedById,
+          addedByName,
+          siteName: site,
+          siteId,
+          deadOnly,
+          startDate,
+          endDate,
+        },
+        page,
+        limit
+      );
     });
-    if (!dbUser?.allowLinkLogAccess) {
-      return NextResponse.json({ error: "Access Denied: Writers do not have access to Link Logs unless allowed separately by the Admin Department." }, { status: 403 });
+
+    let meta: any = undefined;
+    if (includeMeta) {
+      const metaCacheKey = `links:meta:${scopePrefix}`;
+      meta = await cached(metaCacheKey, 45, async () => {
+        const baseWhere = buildLinkLogWhere({ allowedSiteIds });
+        const [
+          total,
+          flagged,
+          pending,
+          accepted,
+          missingBridge,
+          adderGroups,
+        ] = await Promise.all([
+          prisma.product.count({ where: { linkLogs: { some: baseWhere } } }),
+          prisma.product.count({
+            where: {
+              linkLogs: {
+                some: {
+                  ...baseWhere,
+                  status: { in: ["ISSUE", "NEED_TO_CHECK"] },
+                },
+              },
+            },
+          }),
+          prisma.product.count({
+            where: {
+              linkLogs: { some: { ...baseWhere, status: "REQUESTED" } },
+            },
+          }),
+          prisma.product.count({
+            where: {
+              linkLogs: { some: { ...baseWhere, status: "ACCEPTED" } },
+            },
+          }),
+          prisma.product.count({
+            where: {
+              linkLogs: {
+                some: baseWhere,
+                none: {
+                  AND: [
+                    { bridgePageLink: { not: null } },
+                    { bridgePageLink: { not: "" } },
+                  ],
+                },
+              },
+            },
+          }),
+          prisma.linkLog.groupBy({
+            by: ["addedById"],
+            where: baseWhere,
+            _count: { _all: true },
+          }),
+        ]);
+
+        const adderIds = adderGroups.map((g) => g.addedById).filter(Boolean);
+        const adders =
+          adderIds.length > 0
+            ? await prisma.user.findMany({
+                where: { id: { in: adderIds } },
+                select: { id: true, name: true },
+                orderBy: { name: "asc" },
+              })
+            : [];
+
+        return {
+          counts: {
+            total,
+            flagged,
+            pending,
+            accepted,
+            missingBridge,
+            uniqueAdders: adders.length,
+          },
+          adders,
+        };
+      });
     }
+
+    return NextResponse.json({
+      ...pageData,
+      ...(meta ? { meta } : {}),
+    });
   }
 
-  const cacheKey = isAdmin(userRole)
-    ? `links:global:${productId || "all"}`
-    : `links:user:${userId}:${userRole}:${productId || "all"}`;
+  // Export or explicit full / single-product fetch
+  const where = buildLinkLogWhere({
+    allowedSiteIds,
+    productId,
+    status,
+    search,
+    exact,
+    addedById,
+    addedByName,
+    siteName: site,
+    siteId,
+    deadOnly,
+    startDate,
+    endDate,
+  });
+
+  if (exportMode) {
+    const rawRows = await prisma.linkLog.findMany({
+      where,
+      include: LINK_LOG_INCLUDE,
+      orderBy: { addedAt: "desc" },
+    });
+    return NextResponse.json(consolidateProductLinkLogs(rawRows));
+  }
+
+  const cacheKey = `${scopePrefix === "global" ? "links:global" : `links:${scopePrefix}`}:${productId || "all"}`;
 
   const links = await cached(cacheKey, 45, async () => {
-    let allowedSiteIds: string[] | undefined = undefined;
-
-    // Restrict to authorized sites if user has site-specific roles or team lead restrictions
-    if (!isAdmin(userRole)) {
-      const authorizedSites = await getUserAuthorizedSiteIds(userId, userRole, "ADD_LINK");
-      if (authorizedSites !== null) {
-        allowedSiteIds = authorizedSites;
-      }
-    }
-
     return prisma.linkLog.findMany({
-      where: {
-        ...(productId ? { productId: productId.trim() } : {}),
-        ...(allowedSiteIds !== undefined ? { product: { siteId: { in: allowedSiteIds } } } : {}),
-      },
-      include: {
-        geos: true,
-        addedBy: { select: { id: true, name: true, role: true, email: true } },
-        updatedBy: { select: { id: true, name: true, role: true, email: true } },
-        product: {
-          select: {
-            name: true,
-            slug: true,
-            site: { select: { id: true, name: true, url: true, bridgeUrl: true } },
-            article: { select: { articleLink: true } }
-          }
-        },
-      },
+      where,
+      include: LINK_LOG_INCLUDE,
       orderBy: { addedAt: "desc" },
     });
   });

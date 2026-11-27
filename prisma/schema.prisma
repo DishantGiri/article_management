@@ -327,7 +327,9 @@ model LinkLog {
   history   LinkHistory[]
 
   @@index([productId, addedAt])
-  @@index([addedById])
+  @@index([addedAt])
+  @@index([addedById, addedAt])
+  @@index([addedById, status])
   @@index([status])
 }
 
